@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import HomePage from '../pages/Home'; // Make sure this is the correct path
 import Reels from '../pages/reels';
 import Profile from '../pages/Profile';
+import CreatePost from '../pages/CreatePost'; // Add this import
 
 const Tab = createBottomTabNavigator();
 
@@ -47,6 +48,9 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
         } else if (route.name === 'Reels') {
           iconName = isFocused ? 'play-circle' : 'play-circle-outline';
           label = 'Reels';
+        } else if (route.name === 'CreatePost') {
+          iconName = isFocused ? 'add-circle' : 'add-circle-outline';
+          label = 'Create';
         } else if (route.name === 'Profile') {
           iconName = isFocused ? 'person' : 'person-outline';
           label = 'Profile';
@@ -66,7 +70,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             <View style={styles.iconContainer}>
               <Ionicons 
                 name={iconName} 
-                size={24} 
+                size={route.name === 'CreatePost' ? 28 : 24} // Slightly larger for CreatePost
                 color={isFocused ? '#0C3F44' : '#757575'} 
               />
             </View>
@@ -105,6 +109,14 @@ const MainTabNavigator = () => {
         component={Reels}
         options={{
           tabBarLabel: 'Reels',
+        }}
+      />
+      
+      <Tab.Screen 
+        name="CreatePost" 
+        component={CreatePost}
+        options={{
+          tabBarLabel: 'Create',
         }}
       />
       

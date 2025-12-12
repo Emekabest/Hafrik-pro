@@ -409,7 +409,7 @@ const CommentsModal = ({ visible, onClose, reelId, onCommentAdded, currentUser }
                     />
                     <View style={styles.commentContent}>
                       <Text style={styles.commentUsername}>
-                        @{item.user?.username || item.user?.name || 'user'}
+                        {item.user?.username || item.user?.name || 'user'}
                       </Text>
                       <Text style={styles.commentText}>{item.comment || item.text}</Text>
                       <Text style={styles.commentTime}>
@@ -476,7 +476,7 @@ const ReelItem = React.memo(({
   isLiked = false,
   isMuted,
   toggleMute = () => { },
-  user = null
+  user = null // This should come from useAuth()
 }) => {
   const { width, height, VIDEO_HEIGHT } = useResponsiveDimensions();
   const [showDescription, setShowDescription] = useState(false);
@@ -484,8 +484,9 @@ const ReelItem = React.memo(({
   const [isSaved, setIsSaved] = useState(false);
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [likeCount, setLikeCount] = useState(reel.views || reel.likes || 0);
+  const [likeCount, setLikeCount] = useState(reel.likes || 0);
   const [commentCount, setCommentCount] = useState(reel.comment_count || reel.comments_count || 0);
+  const [isLikedState, setIsLikedState] = useState(isLiked);
   const heartAnim = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
 
@@ -500,6 +501,21 @@ const ReelItem = React.memo(({
     avatar: reel.user?.avatar || reel.user?.profile_picture || 'https://via.placeholder.com/40',
     verified: reel.user?.verified || false
   };
+
+  // Initialize isLikedState from prop
+  useEffect(() => {
+    setIsLikedState(isLiked);
+  }, [isLiked]);
+
+  // Debug: Log user state when it changes
+  useEffect(() => {
+    console.log('🔍 ReelItem user state:', {
+      hasUser: !!user,
+      userId: user?.id,
+      username: user?.username,
+      reelId: reel.id
+    });
+  }, [user, reel.id]);
 
   // Fetch comment count when reel data changes
   useEffect(() => {
@@ -541,29 +557,69 @@ const ReelItem = React.memo(({
     fetchCommentCount();
   };
 
-  const handleDoubleTap = useCallback(() => {
-    if (!isLiked && user) {
-      Animated.sequence([
-        Animated.timing(heartAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(heartAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-          delay: 200
-        })
-      ]).start();
-      setShowLikeAnimation(true);
-      setTimeout(() => setShowLikeAnimation(false), 1000);
-      handleLike();
-    }
-  }, [isLiked, user]);
+const handleDoubleTap = useCallback(() => {
+  console.log('👆 DOUBLE TAP DETECTED');
+  console.log('Current isLikedState:', isLikedState);
+  console.log('User check:', {
+    hasUser: !!user,
+    userId: user?.id,
+    username: user?.username
+  });
+  
+  // Always show animation for feedback
+  Animated.sequence([
+    Animated.timing(heartAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }),
+    Animated.timing(heartAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+      delay: 200
+    })
+  ]).start();
+  
+  setShowLikeAnimation(true);
+  setTimeout(() => setShowLikeAnimation(false), 1000);
+  
+  // Check user login
+  if (!user || !user.id) {
+    console.log('⚠️ User not logged in, showing alert');
+    Alert.alert(
+      'Login Required',
+      'Please login to like reels',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: () => navigation.navigate('Login') 
+        }
+      ]
+    );
+    return;
+  }
+  
+  // Only call handleLike if user is logged in
+  if (!isLikedState) {
+    console.log('✅ User is logged in, calling handleLike');
+    handleLike();
+  } else {
+    console.log('ℹ️ Already liked, doing nothing');
+  }
+}, [isLikedState, user]);
 
   const handleLike = async () => {
+    console.log('🟢 HANDLE LIKE CALLED:', {
+      userExists: !!user,
+      userId: user?.id,
+      username: user?.username,
+      reelId: reel.id
+    });
+    
     if (!user || !user.id) {
+      console.log('❌ User not logged in, cannot like');
       Alert.alert('Login Required', 'Please login to like reels');
       return;
     }
@@ -573,24 +629,104 @@ const ReelItem = React.memo(({
       formData.append('post_id', reel.id);
       formData.append('user_id', user.id);
 
+      console.log('📤 Sending like request to API:', {
+        post_id: reel.id,
+        user_id: user.id,
+        endpoint: `${API_BASE_URL}/like.php`
+      });
+
       const response = await fetch(`${API_BASE_URL}/like.php`, {
         method: 'POST',
         body: formData,
       });
 
-      const data = await response.json();
+      console.log('📥 Like API response status:', response.status);
+
+      const responseText = await response.text();
+      console.log('📥 Like API raw response:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('📥 Like API parsed response:', data);
+      } catch (parseError) {
+        console.error('❌ JSON parse error:', parseError);
+        throw new Error('Invalid JSON response from server');
+      }
 
       if (data.status === 'success') {
+        console.log('✅ Like successful:', data.message);
+        
+        // Update local state
+        setIsLikedState(true);
         setLikeCount(prev => prev + 1);
-        onLike(reel.id, true);
+        
+        // Notify parent component
+        if (onLike) {
+          onLike(reel.id, true);
+        }
+        
+        // Optional: Show success message
+        // Alert.alert('Success', 'Reel liked!');
       } else {
+        console.log('❌ Like API returned error:', data.message);
         Alert.alert('Error', data.message || 'Failed to like reel');
       }
     } catch (error) {
-      console.error('Error liking reel:', error);
-      Alert.alert('Error', 'Failed to like reel');
+      console.error('❌ Error in handleLike:', error);
+      Alert.alert('Error', 'Failed to like reel. Please check your connection.');
     }
   };
+
+  const handleUnlike = async () => {
+    console.log('🔴 HANDLE UNLIKE CALLED:', {
+      userExists: !!user,
+      userId: user?.id,
+      reelId: reel.id
+    });
+    
+    if (!user || !user.id) {
+      Alert.alert('Login Required', 'Please login to unlike reels');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('post_id', reel.id);
+      formData.append('user_id', user.id);
+
+      console.log('📤 Sending unlike request:', {
+        post_id: reel.id,
+        user_id: user.id
+      });
+
+      const response = await fetch(`${API_BASE_URL}/unlike.php`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log('📥 Unlike API response:', data);
+
+      if (data.status === 'success') {
+        // Update local state
+        setIsLikedState(false);
+        setLikeCount(prev => Math.max(0, prev - 1));
+        
+        // Notify parent component
+        if (onLike) {
+          onLike(reel.id, false);
+        }
+      } else {
+        Alert.alert('Error', data.message || 'Failed to unlike reel');
+      }
+    } catch (error) {
+      console.error('❌ Error unliking reel:', error);
+      Alert.alert('Error', 'Failed to unlike reel');
+    }
+  };
+
+  
 
   const handleSave = async () => {
     if (!user || !user.id) {
@@ -654,6 +790,26 @@ const ReelItem = React.memo(({
       return;
     }
     setIsFollowing(!isFollowing);
+  };
+
+  // Add this function to handle like/unlike toggle
+  const handleLikeToggle = () => {
+    console.log('🔘 LIKE BUTTON CLICKED:', {
+      isLikedState,
+      hasUser: !!user,
+      userId: user?.id
+    });
+    
+    if (!user || !user.id) {
+      Alert.alert('Login Required', 'Please login to like reels');
+      return;
+    }
+    
+    if (isLikedState) {
+      handleUnlike();
+    } else {
+      handleLike();
+    }
   };
 
   const truncatedCaption = caption?.length > 150
@@ -755,13 +911,13 @@ const ReelItem = React.memo(({
       <View style={styles.rightActions}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={handleLike}
+          onPress={handleLikeToggle}
           activeOpacity={0.7}
         >
           <Ionicons
-            name={isLiked ? "heart" : "heart-outline"}
+            name={isLikedState ? "heart" : "heart-outline"}
             size={32}
-            color={isLiked ? "#ff2442" : "white"}
+            color={isLikedState ? "#ff2442" : "white"}
           />
           <Text style={styles.actionCount}>{likeCount.toLocaleString()}</Text>
         </TouchableOpacity>
@@ -818,14 +974,16 @@ const ReelItem = React.memo(({
         onClose={handleCommentsModalClose}
         reelId={reel.id}
         onCommentAdded={fetchCommentCount}
-        currentUser={user}
+        currentUser={user} // Pass the user from useAuth()
       />
     </View>
   );
 });
 
-const Reels = () => {
+const Reels = ({ route }) => {
   const navigation = useNavigation();
+  const routeParams = route?.params || {};
+  
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(0);
@@ -834,118 +992,281 @@ const Reels = () => {
   const [loadingLikes, setLoadingLikes] = useState({});
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
-  const { user, token, isAuthenticated } = useAuth();
+  
+  // Use auth context properly
+  const { user, token, isAuthenticated, loading: authLoading } = useAuth();
+  
   const flatListRef = useRef(null);
   const isFocused = useIsFocused();
 
-  // Fetch current user data
-  const fetchCurrentUser = async () => {
-    try {
-      // Replace this with your actual user authentication API
-      // For now, we'll set a placeholder - you need to implement actual auth
-      console.log('Fetch current user - implement actual auth here');
-      // Example:
-      // const response = await fetch('https://hafrik.com/api/v1/auth/user', {
-      //   method: 'GET',
-      //   headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
-      // });
-      // const userData = await response.json();
-      // setCurrentUser(userData.data || userData);
 
-      // For now, we'll set user as null until you implement auth
-      setCurrentUser(null);
+  const testLikeAPI = async () => {
+  console.log('🧪 TESTING LIKE API ENDPOINT');
+  
+  // Test 1: Check if endpoint exists
+  try {
+    console.log('1. Testing endpoint existence...');
+    const testResponse = await fetch(`${API_BASE_URL}/like.php`, {
+      method: 'HEAD' // Just check if it exists
+    });
+    console.log('✅ Endpoint exists, status:', testResponse.status);
+  } catch (error) {
+    console.log('❌ Endpoint might not exist:', error.message);
+  }
+  
+  // Test 2: Try a simple POST
+  if (user && user.id) {
+    console.log('2. Testing POST request...');
+    const formData = new FormData();
+    formData.append('test', 'test');
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/like.php`, {
+        method: 'POST',
+        body: formData,
+      });
+      const text = await response.text();
+      console.log('✅ POST works, response:', text.substring(0, 100));
     } catch (error) {
-      console.error('Error fetching user:', error);
-      setCurrentUser(null);
+      console.log('❌ POST failed:', error.message);
+    }
+  }
+  
+  // Test 3: Check what endpoint feeds.js uses
+  console.log('3. IMPORTANT: Check what endpoint feeds.js uses!');
+  console.log('   Look in your feeds.js for "like.php"');
+  console.log('   It might be a different path like:');
+  console.log('   - /api/v1/feed/like.php');
+  console.log('   - /api/v1/posts/like.php');
+  console.log('   - /api/v1/feeds/like.php');
+};
+
+// Call this somewhere to test
+// testLikeAPI();
+
+  // Debug: Log auth state
+  useEffect(() => {
+    console.log('🔍 Reels Component - Auth State:', {
+      user: user ? `User exists (id: ${user?.id})` : 'No user',
+      isAuthenticated,
+      authLoading,
+      tokenExists: !!token
+    });
+  }, [user, isAuthenticated, authLoading]);
+
+  // Get navigation parameters
+  const initialReelId = routeParams.initialReelId;
+  const initialIndex = routeParams.initialIndex || 0;
+  const passedReelsData = routeParams.reelsData || [];
+
+  // Function to check if user is logged in
+  const isUserLoggedIn = () => {
+    const loggedIn = user && user.id && isAuthenticated;
+    console.log('🔍 isUserLoggedIn check:', {
+      loggedIn,
+      hasUser: !!user,
+      userId: user?.id,
+      isAuthenticated
+    });
+    return loggedIn;
+  };
+
+  // Function to scroll to specific reel
+  const scrollToReel = (reelId, reelsArray) => {
+    if (!reelId || !reelsArray || reelsArray.length === 0 || !flatListRef.current) {
+      console.log('❌ Cannot scroll to reel:', {
+        hasReelId: !!reelId,
+        hasReelsArray: !!reelsArray,
+        reelsArrayLength: reelsArray?.length,
+        hasFlatListRef: !!flatListRef.current
+      });
+      return;
+    }
+    
+    const index = reelsArray.findIndex(reel => reel.id === reelId);
+    if (index !== -1) {
+      console.log('📜 Scrolling to reel at index:', index, 'ID:', reelId);
+      
+      setTimeout(() => {
+        flatListRef.current.scrollToIndex({
+          index,
+          animated: false,
+          viewPosition: 0.5
+        });
+        setCurrentPlayingIndex(index);
+      }, 300);
+    } else {
+      console.log('❌ Reel not found in array:', reelId);
     }
   };
 
-const fetchReels = async (pageNum = 1, isRefresh = false) => {
-  try {
-    setLoading(true);
-
-    const response = await fetch(`https://hafrik.com/api/v1/reels/list.php?page=${pageNum}&limit=10`);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+  // Function to scroll to specific index
+  const scrollToIndex = (index) => {
+    if (index >= 0 && flatListRef.current) {
+      console.log('📜 Scrolling to index:', index);
+      
+      setTimeout(() => {
+        flatListRef.current.scrollToIndex({
+          index,
+          animated: false,
+          viewPosition: 0.5
+        });
+        setCurrentPlayingIndex(index);
+      }, 300);
     }
+  };
 
-    const responseText = await response.text();
-    console.log('Raw API Response:', responseText);
-
-    let reelsData = [];
-
+  const fetchReels = async (pageNum = 1, isRefresh = false) => {
     try {
-      // Parse the JSON response
-      const data = JSON.parse(responseText);
-      console.log('Parsed API Data:', data);
+      console.log('📡 Fetching reels page:', pageNum, 'isRefresh:', isRefresh);
+      setLoading(true);
 
-      if (data.status === 'success' && data.data && data.data.data) {
-        // The reels are in data.data.data array
-        reelsData = data.data.data;
-        console.log('Extracted reels:', reelsData);
-      } else if (data.status === 'success' && Array.isArray(data.data)) {
-        // Fallback: if data is directly an array
-        reelsData = data.data;
-      } else {
-        console.log('Unexpected API structure:', data);
-        reelsData = [];
-      }
-    } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      throw new Error('Invalid JSON response from server');
-    }
-
-    if (Array.isArray(reelsData) && reelsData.length > 0) {
-      if (isRefresh) {
-        setReels(reelsData);
-      } else {
-        setReels(prev => [...prev, ...reelsData]);
+      // If we have passed reels data (from HomePage), use it first
+      if (isRefresh && passedReelsData.length > 0) {
+        console.log('📦 Using passed reels data:', passedReelsData.length);
+        setReels(passedReelsData);
+        setHasMore(passedReelsData.length >= 10);
+        
+        // Scroll to the specific reel or index
+        if (initialReelId) {
+          setTimeout(() => {
+            scrollToReel(initialReelId, passedReelsData);
+          }, 100);
+        } else if (initialIndex > 0) {
+          setTimeout(() => {
+            scrollToIndex(initialIndex);
+          }, 100);
+        }
+        
+        setLoading(false);
+        setRefreshing(false);
+        return;
       }
 
-      if (reelsData.length < 10) {
+      const response = await fetch(`https://hafrik.com/api/v1/reels/list.php?page=${pageNum}&limit=10`);
+      console.log('📡 API Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseText = await response.text();
+      console.log('📡 Raw API Response length:', responseText.length);
+
+      let reelsData = [];
+
+      try {
+        // Parse the JSON response
+        const data = JSON.parse(responseText);
+        console.log('📡 Parsed API Data structure:', {
+          status: data.status,
+          hasData: !!data.data,
+          dataType: typeof data.data,
+          isArray: Array.isArray(data.data)
+        });
+
+        if (data.status === 'success' && data.data && data.data.data) {
+          reelsData = data.data.data;
+          console.log('✅ Extracted reels:', reelsData.length);
+          
+          // Debug first reel structure
+          if (reelsData.length > 0) {
+            console.log('🔍 First reel structure:', {
+              id: reelsData[0].id,
+              likes: reelsData[0].likes,
+              views: reelsData[0].views,
+              user: reelsData[0].user,
+              hasMedia: !!reelsData[0].media
+            });
+          }
+        } else if (data.status === 'success' && Array.isArray(data.data)) {
+          reelsData = data.data;
+          console.log('✅ Extracted reels from array:', reelsData.length);
+        } else {
+          console.log('⚠️ Unexpected API structure:', data);
+          reelsData = [];
+        }
+      } catch (parseError) {
+        console.error('❌ JSON Parse Error:', parseError);
+        throw new Error('Invalid JSON response from server');
+      }
+
+      if (Array.isArray(reelsData) && reelsData.length > 0) {
+        if (isRefresh) {
+          setReels(reelsData);
+          
+          // Scroll to the specific reel after setting reels
+          if (initialReelId) {
+            setTimeout(() => {
+              scrollToReel(initialReelId, reelsData);
+            }, 100);
+          } else if (initialIndex > 0) {
+            setTimeout(() => {
+              scrollToIndex(initialIndex);
+            }, 100);
+          }
+        } else {
+          setReels(prev => [...prev, ...reelsData]);
+        }
+
+        if (reelsData.length < 10) {
+          setHasMore(false);
+          console.log('📭 No more reels to load');
+        }
+      } else {
+        if (isRefresh) {
+          setReels([]);
+        }
         setHasMore(false);
+
+        if (isRefresh && reelsData.length === 0) {
+          Alert.alert('No Reels', 'No reels found. Be the first to create one!');
+        }
       }
-    } else {
+    } catch (error) {
+      console.error('❌ Error fetching reels:', error);
+
+      let errorMessage = 'Failed to load reels. Please try again.';
+      if (error.message.includes('JSON')) {
+        errorMessage = 'Server response format error. Please try again later.';
+      } else if (error.message.includes('Network')) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+
+      Alert.alert('Error', errorMessage);
+
       if (isRefresh) {
         setReels([]);
       }
       setHasMore(false);
-
-      if (isRefresh && reelsData.length === 0) {
-        Alert.alert('No Reels', 'No reels found. Be the first to create one!');
-      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      console.log('✅ Fetch reels completed');
     }
-  } catch (error) {
-    console.error('Error fetching reels:', error);
+  };
 
-    let errorMessage = 'Failed to load reels. Please try again.';
-    if (error.message.includes('JSON')) {
-      errorMessage = 'Server response format error. Please try again later.';
-    } else if (error.message.includes('Network')) {
-      errorMessage = 'Network error. Please check your connection.';
+  // Scroll to reel when reels are loaded
+  useEffect(() => {
+    if (reels.length > 0 && initialReelId && !loading) {
+      console.log('🎯 Attempting to scroll to initial reel:', initialReelId);
+      scrollToReel(initialReelId, reels);
     }
-
-    Alert.alert('Error', errorMessage);
-
-    if (isRefresh) {
-      setReels([]);
-    }
-    setHasMore(false);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+  }, [reels, initialReelId, loading]);
 
   // Initial data fetch
   useEffect(() => {
-    fetchCurrentUser();
+    console.log('🚀 Initializing Reels component');
     fetchReels(1, true);
+
+      
+    // Test the API when component mounts (remove after testing)
+    console.log('🧪 Running API tests...');
+    testLikeAPI();
   }, []);
 
   const handleRefresh = useCallback(() => {
+    console.log('🔄 Refreshing reels');
     setRefreshing(true);
     setPage(1);
     setHasMore(true);
@@ -954,67 +1275,152 @@ const fetchReels = async (pageNum = 1, isRefresh = false) => {
 
   const loadMore = useCallback(() => {
     if (!loading && hasMore && !refreshing) {
+      console.log('⬇️ Loading more reels, page:', page + 1);
       const nextPage = page + 1;
       setPage(nextPage);
       fetchReels(nextPage, false);
     }
   }, [loading, hasMore, refreshing, page]);
 
-  const handleLike = useCallback(async (reelId, liked) => {
-    if (!currentUser?.id) {
-      Alert.alert('Login Required', 'Please login to like reels');
-      return;
-    }
+  const handleLike = async () => {
+  console.log('=== REELS LIKE DEBUG START ===');
+  console.log('User object:', user);
+  console.log('User ID field options:', {
+    id: user?.id,
+    user_id: user?.user_id,
+    userId: user?.userId,
+    uid: user?.uid
+  });
+  console.log('Reel ID:', reel.id);
+  console.log('Token exists:', !!token);
+  console.log('API Base URL:', API_BASE_URL);
+  console.log('=== REELS LIKE DEBUG END ===');
+  
+  if (!user || !user.id) {
+    console.log('❌ User check failed - no user or no user.id');
+    Alert.alert('Login Required', 'Please login to like reels');
+    return;
+  }
 
-    setLoadingLikes(prev => ({ ...prev, [reelId]: true }));
+  try {
+    // Method 1: Try FormData (current method)
+    console.log('🔄 Method 1: Trying FormData...');
+    const formData = new FormData();
+    formData.append('post_id', reel.id);
+    formData.append('user_id', user.id);
+    
+    const response1 = await fetch(`${API_BASE_URL}/like.php`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    console.log('FormData response status:', response1.status);
+    const responseText1 = await response1.text();
+    console.log('FormData response text:', responseText1);
+    
+    // Method 2: Try JSON
+    console.log('🔄 Method 2: Trying JSON...');
+    const response2 = await fetch(`${API_BASE_URL}/like.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        post_id: reel.id,
+        user_id: user.id
+      })
+    });
+    
+    console.log('JSON response status:', response2.status);
+    const responseText2 = await response2.text();
+    console.log('JSON response text:', responseText2);
+    
+    // Parse whichever worked
+    let data;
     try {
-      // Update local state to reflect the like
-      setReels(prev => prev.map(reel =>
-        reel.id === reelId
-          ? {
-            ...reel,
-            isLiked: liked,
-            views: liked ? (reel.views || 0) + 1 : Math.max(0, (reel.views || 1) - 1)
-          }
-          : reel
-      ));
-    } catch (error) {
-      console.error('Error updating like state:', error);
-    } finally {
-      setLoadingLikes(prev => ({ ...prev, [reelId]: false }));
+      data = JSON.parse(responseText1 || responseText2);
+    } catch (parseError) {
+      console.error('Failed to parse JSON from both methods');
+      throw new Error('Invalid server response');
     }
-  }, [currentUser]);
+    
+    console.log('Parsed response:', data);
+    
+    if (data.status === 'success') {
+      setIsLikedState(true);
+      setLikeCount(prev => prev + 1);
+      if (onLike) onLike(reel.id, true);
+    } else {
+      Alert.alert('Error', data.message || 'Failed to like reel');
+    }
+  } catch (error) {
+    console.error('❌ All like methods failed:', error);
+    Alert.alert('Error', 'Failed to like reel. Please check your connection.');
+  }
+};
 
   const hasLiked = useCallback((reel = {}) => {
-    return reel.isLiked || false;
+    const liked = reel.isLiked || false;
+    console.log('🔍 Checking if reel is liked:', {
+      reelId: reel.id,
+      isLiked: liked,
+      likesCount: reel.likes
+    });
+    return liked;
   }, []);
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
       const firstVisibleItem = viewableItems[0];
-      if (firstVisibleItem.isViewable) {
+      if (firstVisibleItem.isViewable && firstVisibleItem.index !== currentPlayingIndex) {
+        console.log('🎬 Changing playing index to:', firstVisibleItem.index);
         setCurrentPlayingIndex(firstVisibleItem.index);
       }
     }
   }).current;
 
-  const renderItem = ({ item, index }) => (
-    <ReelItem
-      reel={item}
-      index={index}
-      isActive={isFocused && currentPlayingIndex === index}
-      onPress={(idx) => setCurrentPlayingIndex(idx === currentPlayingIndex ? -1 : idx)}
-      onLike={handleLike}
-      isLiked={hasLiked(item)}
-      isMuted={isMuted}
-      toggleMute={() => setIsMuted(!isMuted)}
-      user={user}
-    />
-  );
+  // Handle scroll to index failures
+  const onScrollToIndexFailed = (info) => {
+    console.log('❌ Scroll to index failed:', info);
+    const wait = new Promise(resolve => setTimeout(resolve, 500));
+    wait.then(() => {
+      flatListRef.current?.scrollToIndex({
+        index: info.index,
+        animated: true,
+        viewPosition: 0.5
+      });
+    });
+  };
+
+  const renderItem = ({ item, index }) => {
+    console.log('🎨 Rendering reel item:', {
+      index,
+      reelId: item.id,
+      isActive: isFocused && currentPlayingIndex === index
+    });
+    
+    return (
+      <ReelItem
+        reel={item}
+        index={index}
+        isActive={isFocused && currentPlayingIndex === index}
+        onPress={(idx) => setCurrentPlayingIndex(idx === currentPlayingIndex ? -1 : idx)}
+        onLike={handleLike}
+        isLiked={hasLiked(item)}
+        isMuted={isMuted}
+        toggleMute={() => setIsMuted(!isMuted)}
+        user={user}
+      />
+    );
+  };
 
   const renderFooter = () => {
-    if (!hasMore) return null;
+    if (!hasMore) {
+      console.log('📭 No footer - no more reels');
+      return null;
+    }
 
+    console.log('⬇️ Showing loading footer');
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color="#4CAF50" />
@@ -1024,6 +1430,7 @@ const fetchReels = async (pageNum = 1, isRefresh = false) => {
   };
 
   if (loading && reels.length === 0) {
+    console.log('⏳ Showing loading screen');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />
@@ -1031,6 +1438,13 @@ const fetchReels = async (pageNum = 1, isRefresh = false) => {
       </View>
     );
   }
+
+  console.log('🎬 Rendering main Reels component:', {
+    reelsCount: reels.length,
+    currentPlayingIndex,
+    isMuted,
+    isFocused
+  });
 
   return (
     <View style={styles.container}>
@@ -1059,9 +1473,11 @@ const fetchReels = async (pageNum = 1, isRefresh = false) => {
         decelerationRate="normal"
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
+        onScrollToIndexFailed={onScrollToIndexFailed}
+        initialScrollIndex={initialIndex > 0 ? initialIndex : 0}
         viewabilityConfig={{
-          itemVisiblePercentThreshold: 70,
-          waitForInteraction: true,
+          itemVisiblePercentThreshold: 50,
+          waitForInteraction: false,
           minimumViewTime: 300
         }}
         pagingEnabled

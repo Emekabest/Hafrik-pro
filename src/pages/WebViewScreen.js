@@ -1,5 +1,5 @@
 // src/pages/WebViewScreen.js
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -9,7 +9,9 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
-  Alert
+  Alert,
+  BackHandler,
+  Platform
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,266 +25,245 @@ const WebViewScreen = ({ navigation, route }) => {
   const webViewRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [injectionCount, setInjectionCount] = useState(0);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState(url || 'https://hafrik.com');
 
-  const handleBackButton = () => {
-    navigation.goBack();
-  };
-
-  // Persistent JavaScript injection that fights back
-  const getInjectTokenScript = () => {
+  // Enhanced authentication injection script
+  const getAuthInjectionScript = useCallback(() => {
+    if (!token || !user) return '';
+    
+    const userData = JSON.stringify(user).replace(/'/g, "\\'");
+    
     return `
       (function() {
-        console.log('🔄 PERSISTENT INJECTION - Attempt ${injectionCount + 1}');
+        console.log('🔐 Mobile App Authentication Injection');
         
-        // Continuous monitoring and protection
-        function startPersistentProtection() {
-          console.log('🛡️ Starting persistent protection...');
-          
-          // 1. Continuous DOM monitoring
-          const domObserver = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-              if (mutation.addedNodes.length > 0) {
-                mutation.addedNodes.forEach(function(node) {
-                  if (node.nodeType === 1) { // Element node
-                    checkAndRemoveAuthElements(node);
-                  }
-                });
-              }
-            });
-          });
-          
-          // Start observing
-          domObserver.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['style', 'class']
-          });
-          
-          // 2. Continuous authentication state maintenance
-          setInterval(function() {
-            maintainAuthentication();
-            simulateLoggedInBehavior();
-          }, 1000);
-          
-          // 3. Override any login redirects
-          const originalPushState = history.pushState;
-          const originalReplaceState = history.replaceState;
-          
-          history.pushState = function(state, title, url) {
-            if (url && isAuthUrl(url)) {
-              console.log('🚫 Blocked auth redirect:', url);
-              return;
-            }
-            return originalPushState.apply(this, arguments);
-          };
-          
-          history.replaceState = function(state, title, url) {
-            if (url && isAuthUrl(url)) {
-              console.log('🚫 Blocked auth replace:', url);
-              return;
-            }
-            return originalReplaceState.apply(this, arguments);
-          };
-          
-          // 4. Intercept and block navigation to login pages
-          window.addEventListener('beforeunload', function(e) {
-            if (isAuthUrl(window.location.href)) {
-              e.preventDefault();
-              e.returnValue = '';
-              console.log('🚫 Blocked navigation to auth page');
-              return '';
-            }
-          });
-          
-          console.log('🛡️ Persistent protection activated');
-        }
-        
-        function isAuthUrl(url) {
-          const authPatterns = [
-            '/login', '/signin', '/auth', '/register', '/join',
-            'login', 'signin', 'auth', 'register', 'join'
-          ];
-          return authPatterns.some(pattern => 
-            url.toLowerCase().includes(pattern.toLowerCase())
-          );
-        }
-        
-        function checkAndRemoveAuthElements(rootNode = document) {
-          // Remove by text content (more aggressive)
-          const authTexts = [
-            'login', 'sign in', 'signin', 'log in', 'join',
-            'register', 'create account', 'sign up', 'welcome, please',
-            'please login', 'please sign in', 'log in to continue'
-          ];
-          
-          authTexts.forEach(text => {
-            const elements = rootNode.querySelectorAll ? 
-              Array.from(rootNode.querySelectorAll('*')) : 
-              [rootNode];
-            
-            elements.forEach(el => {
-              if (el.textContent && el.textContent.toLowerCase().includes(text)) {
-                console.log('🚫 Removing auth element with text:', el.textContent.substring(0, 50));
-                el.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; height: 0 !important; width: 0 !important; overflow: hidden !important; position: absolute !important; left: -9999px !important;';
-                el.innerHTML = '';
-                el.textContent = '';
-              }
-            });
-          });
-          
-          // Remove by attributes and classes
-          const authSelectors = [
-            '[class*="login"]', '[class*="signin"]', '[class*="auth"]',
-            '[class*="register"]', '[class*="join"]', '[id*="login"]',
-            '[id*="signin"]', '[id*="auth"]', '.modal', '.overlay',
-            '.popup', '.dialog', '[role="dialog"]', '[aria-modal="true"]'
-          ];
-          
-          authSelectors.forEach(selector => {
-            try {
-              const elements = rootNode.querySelectorAll ? 
-                rootNode.querySelectorAll(selector) : [];
+        // Function to set authentication tokens
+        function setAuthTokens() {
+          try {
+            // Set localStorage tokens
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem('hafrik_token', '${token}');
+              localStorage.setItem('access_token', '${token}');
+              localStorage.setItem('app_user', '${userData}');
+              localStorage.setItem('user_data', '${userData}');
+              localStorage.setItem('is_mobile_app', 'true');
+              localStorage.setItem('app_auth_timestamp', Date.now().toString());
               
-              elements.forEach(el => {
-                console.log('🚫 Removing element with selector:', selector);
-                el.style.cssText = 'display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important;';
-                el.remove();
-              });
-            } catch (e) {
-              // Ignore selector errors
+              // Set user data
+              const user = ${userData};
+              if (user && user.id) {
+                localStorage.setItem('user_id', user.id.toString());
+                localStorage.setItem('username', user.username || '');
+                localStorage.setItem('email', user.email || '');
+              }
             }
-          });
+            
+            // Set cookies for domain
+            const domain = 'hafrik.com';
+            const subdomains = ['', '.hafrik.com', 'www.hafrik.com'];
+            
+            const cookieNames = [
+              'hafrik_token',
+              'access_token',
+              'auth_token',
+              'token',
+              'app_session'
+            ];
+            
+            subdomains.forEach(domainPart => {
+              const domainStr = domainPart ? ' domain=' + domainPart + domain + ';' : ' domain=' + domain + ';';
+              cookieNames.forEach(cookieName => {
+                try {
+                  document.cookie = \`\${cookieName}=${token}; path=/;\${domainStr} max-age=31536000; Secure; SameSite=None\`;
+                } catch (e) {
+                  console.log('Cookie error:', e);
+                }
+              });
+            });
+            
+            // Dispatch authentication event
+            const authEvent = new CustomEvent('mobileAppAuth', {
+              detail: { token: '${token}', user: ${userData} }
+            });
+            window.dispatchEvent(authEvent);
+            
+            return true;
+          } catch (error) {
+            console.error('Auth injection error:', error);
+            return false;
+          }
         }
         
-        function maintainAuthentication() {
-          // Re-apply authentication tokens continuously
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('hafrik_token', '${token}');
-            localStorage.setItem('hafrik_user', '${JSON.stringify(user).replace(/'/g, "\\'")}');
-            localStorage.setItem('access_token', '${token}');
-            localStorage.setItem('user', '${JSON.stringify(user).replace(/'/g, "\\'")}');
-          }
-          
-          // Re-apply cookies
-          const cookieDomains = ['hafrik.com', '.hafrik.com', 'www.hafrik.com', ''];
-          const cookieNames = ['hafrik_token', 'access_token', 'auth_token', 'token'];
-          
-          cookieDomains.forEach(cookieDomain => {
-            cookieNames.forEach(cookieName => {
+        // Function to hide login elements
+        function hideLoginElements() {
+          try {
+            // Elements to hide
+            const selectors = [
+              '.login-container',
+              '#login-form',
+              '.signin-form',
+              '.auth-modal',
+              '[href*="/login"]',
+              '[href*="/signin"]',
+              '[href*="/auth"]',
+              '.login-button',
+              '.sign-in-button',
+              'form[action*="login"]',
+              'form[action*="signin"]',
+              'form[action*="auth"]'
+            ];
+            
+            selectors.forEach(selector => {
               try {
-                const domainPart = cookieDomain ? ' domain=' + cookieDomain + ';' : '';
-                document.cookie = cookieName + '=${token}; path=/;' + domainPart + ' max-age=86400; SameSite=None; Secure';
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(el => {
+                  el.style.display = 'none';
+                  el.style.visibility = 'hidden';
+                  el.style.opacity = '0';
+                });
               } catch (e) {
-                // Ignore cookie errors
+                // Ignore selector errors
               }
             });
-          });
+            
+            // Also hide by text content
+            const authTexts = [
+              'login', 'sign in', 'signin', 'log in',
+              'please login', 'please sign in', 'log in to continue'
+            ];
+            
+            authTexts.forEach(text => {
+              const elements = document.querySelectorAll('*');
+              elements.forEach(el => {
+                if (el.textContent && el.textContent.toLowerCase().includes(text)) {
+                  el.style.display = 'none';
+                  el.style.visibility = 'hidden';
+                }
+              });
+            });
+            
+            return true;
+          } catch (error) {
+            console.error('Hide elements error:', error);
+            return false;
+          }
         }
         
-        function simulateLoggedInBehavior() {
-          // Continuously update the UI to look logged in
-          
-          // Update user mentions
-          const userElements = document.querySelectorAll('[class*="user"], [class*="profile"], .username, .user-name, .user-info');
-          userElements.forEach(el => {
-            if (el.textContent && !el.textContent.includes('${user?.username || 'User'}')) {
-              el.textContent = '${user?.username || 'User'}';
-            }
-          });
-          
-          // Convert auth buttons to profile buttons
-          const authButtons = document.querySelectorAll('button, a, [role="button"]');
-          authButtons.forEach(btn => {
-            const btnText = btn.textContent?.toLowerCase() || '';
-            if (btnText.includes('login') || btnText.includes('sign in') || btnText.includes('join')) {
-              btn.textContent = 'Profile';
-              btn.style.cssText = 'background-color: #0C3F44 !important; color: white !important; border: none !important;';
-              btn.onclick = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                window.location.href = '/profile';
-                return false;
-              };
-            }
-          });
-          
-          // Remove any "please login" messages that reappear
-          const messages = document.querySelectorAll('body *');
-          messages.forEach(el => {
-            const text = el.textContent?.toLowerCase() || '';
-            if (text.includes('please login') || text.includes('please sign in') || text.includes('log in to continue')) {
-              el.style.cssText = 'display: none !important;';
-              el.innerHTML = '';
-            }
-          });
+        // Function to simulate logged in state
+        function simulateLoggedIn() {
+          try {
+            // Update user display elements
+            const userElements = document.querySelectorAll('.username, .user-name, .profile-name');
+            userElements.forEach(el => {
+              if (el.textContent) {
+                const user = ${userData};
+                el.textContent = user.username || user.email || 'User';
+              }
+            });
+            
+            // Update navigation
+            const loginLinks = document.querySelectorAll('a[href*="/login"], a[href*="/signin"]');
+            loginLinks.forEach(link => {
+              link.href = '/profile';
+              link.textContent = 'Profile';
+              link.onclick = null;
+            });
+            
+            return true;
+          } catch (error) {
+            console.error('Simulate login error:', error);
+            return false;
+          }
         }
         
-        // Override fetch to add auth headers and block auth requests
-        const originalFetch = window.fetch;
-        window.fetch = function(...args) {
-          const [url, options = {}] = args;
+        // Function to check if we're on an auth page
+        function isAuthPage() {
+          const path = window.location.pathname.toLowerCase();
+          const authPaths = ['/login', '/signin', '/auth', '/register', '/signup'];
+          return authPaths.some(authPath => path.includes(authPath));
+        }
+        
+        // Function to redirect from auth pages
+        function redirectFromAuthPages() {
+          if (isAuthPage()) {
+            console.log('Redirecting from auth page to home');
+            window.history.replaceState(null, null, '/');
+            window.location.href = '/';
+          }
+        }
+        
+        // Main execution
+        if (window.authInjected) {
+          console.log('Auth already injected');
+          return;
+        }
+        
+        window.authInjected = true;
+        
+        // Set auth tokens immediately
+        const authSuccess = setAuthTokens();
+        
+        if (authSuccess) {
+          console.log('✅ Auth tokens injected successfully');
           
-          // Block requests to auth endpoints
-          if (isAuthUrl(url)) {
-            console.log('🚫 Blocked auth request:', url);
-            return Promise.resolve(new Response(JSON.stringify({ blocked: true }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' }
+          // Hide login elements
+          hideLoginElements();
+          
+          // Simulate logged in state
+          simulateLoggedIn();
+          
+          // Redirect from auth pages if needed
+          redirectFromAuthPages();
+          
+          // Send success message to app
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'auth_success',
+              timestamp: Date.now()
             }));
           }
+        } else {
+          console.log('❌ Auth injection failed');
           
-          // Add auth headers to all requests
-          const newOptions = {
-            ...options,
-            credentials: 'include',
-            headers: {
-              ...options.headers,
-              'Authorization': 'Bearer ${token}',
-              'X-Auth-Token': '${token}',
-              'X-Access-Token': '${token}',
-              'X-User-Id': '${user?.id || ''}',
-              'X-Username': '${user?.username || ''}'
-            }
-          };
-          
-          return originalFetch(url, newOptions).then(response => {
-            // If we get auth errors, pretend we're authenticated
-            if (response.status === 401 || response.status === 403) {
-              console.log('🔐 Intercepted auth error, returning fake success');
-              return new Response(JSON.stringify({ 
-                success: true, 
-                user: ${JSON.stringify(user).replace(/'/g, "\\'")},
-                message: 'Authenticated via mobile app'
-              }), {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-              });
-            }
-            return response;
-          });
-        };
-        
-        // Initial setup
-        maintainAuthentication();
-        simulateLoggedInBehavior();
-        checkAndRemoveAuthElements(document);
-        startPersistentProtection();
-        
-        console.log('🎯 PERSISTENT PROTECTION ACTIVATED');
-        
-        // Send success message
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'persistent_protection_activated',
-            timestamp: Date.now()
-          }));
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'auth_failed',
+              timestamp: Date.now()
+            }));
+          }
         }
+        
+        // Re-inject on page changes
+        window.addEventListener('load', function() {
+          setTimeout(() => {
+            setAuthTokens();
+            hideLoginElements();
+            simulateLoggedIn();
+            redirectFromAuthPages();
+          }, 1000);
+        });
         
       })();
       true;
     `;
+  }, [token, user]);
+
+  // Initial headers with authentication
+  const getInitialHeaders = () => {
+    if (!token || !user) return {};
+    
+    return {
+      'Authorization': `Bearer ${token}`,
+      'X-Auth-Token': token,
+      'X-Access-Token': token,
+      'X-User-Id': user?.id?.toString() || '',
+      'X-Username': user?.username || '',
+      'X-Email': user?.email || '',
+      'X-Is-Mobile-App': 'true',
+      'Accept': 'application/json, text/html, */*',
+      'Cookie': `hafrik_token=${token}; access_token=${token};`
+    };
   };
 
   const handleLoadStart = (syntheticEvent) => {
@@ -291,43 +272,60 @@ const WebViewScreen = ({ navigation, route }) => {
     setError(false);
   };
 
-  const handleLoadEnd = () => {
+  const handleLoadEnd = (syntheticEvent) => {
+    const { nativeEvent } = syntheticEvent;
     setLoading(false);
     
-    // Continuous injection
-    const interval = setInterval(() => {
-      if (webViewRef.current) {
-        webViewRef.current.injectJavaScript(getInjectTokenScript());
-        setInjectionCount(prev => prev + 1);
-      }
-    }, 2000); // Inject every 2 seconds
-    
-    // Clear interval after 30 seconds
-    setTimeout(() => clearInterval(interval), 30000);
+    // Inject authentication script after load
+    if (webViewRef.current && token && user) {
+      setTimeout(() => {
+        webViewRef.current.injectJavaScript(getAuthInjectionScript());
+      }, 500);
+    }
   };
 
   const handleError = (syntheticEvent) => {
     const { nativeEvent } = syntheticEvent;
-    console.error('❌ WebView error:', nativeEvent);
+    console.error('WebView error:', nativeEvent);
     setLoading(false);
     setError(true);
   };
 
   const handleNavigationStateChange = (navState) => {
-    if (!navState.loading) {
+    setCanGoBack(navState.canGoBack);
+    setCurrentUrl(navState.url);
+    
+    if (!navState.loading && token && user) {
+      // Re-inject auth on navigation
       setTimeout(() => {
         if (webViewRef.current) {
-          webViewRef.current.injectJavaScript(getInjectTokenScript());
-          setInjectionCount(prev => prev + 1);
+          webViewRef.current.injectJavaScript(getAuthInjectionScript());
         }
-      }, 500);
+      }, 300);
     }
   };
 
   const handleMessage = (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      console.log('📨 Message from WebView:', data.type);
+      console.log('Message from WebView:', data.type);
+      
+      if (data.type === 'auth_failed') {
+        Alert.alert(
+          'Authentication Required',
+          'Please log in through the app to access this content.',
+          [
+            {
+              text: 'Go to Login',
+              onPress: () => navigation.navigate('Auth')
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
+      }
     } catch (e) {
       // Ignore parse errors
     }
@@ -336,52 +334,114 @@ const WebViewScreen = ({ navigation, route }) => {
   const handleReload = () => {
     setError(false);
     setLoading(true);
-    setInjectionCount(0);
     if (webViewRef.current) {
       webViewRef.current.reload();
     }
   };
 
+  const handleBack = () => {
+    if (canGoBack && webViewRef.current) {
+      webViewRef.current.goBack();
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  // Handle Android back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        if (canGoBack && webViewRef.current) {
+          webViewRef.current.goBack();
+          return true;
+        }
+        return false;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, [canGoBack]);
+
+  // Show login required if no token
+  if (!token || !user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.authRequiredContainer}>
+          <Ionicons name="lock-closed-outline" size={64} color="#0C3F44" />
+          <Text style={styles.authRequiredTitle}>Authentication Required</Text>
+          <Text style={styles.authRequiredText}>
+            Please log in to access web content
+          </Text>
+          <TouchableOpacity 
+            style={styles.loginButton}
+            onPress={() => navigation.navigate('Auth')}
+          >
+            <Text style={styles.loginButtonText}>Go to Login</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Debug Info Banner */}
-      {__DEV__ && (
-        <View style={styles.debugBanner}>
-          <Text style={styles.debugText}>
-            🔐 Persistent Injections: {injectionCount}
-          </Text>
-        </View>
-      )}
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButtonHeader}
+          onPress={handleBack}
+        >
+          <Ionicons name="arrow-back" size={24} color="#0C3F44" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {title || 'Hafrik'}
+        </Text>
+        <TouchableOpacity 
+          style={styles.reloadButton}
+          onPress={handleReload}
+        >
+          <Ionicons name="refresh" size={24} color="#0C3F44" />
+        </TouchableOpacity>
+      </View>
 
       {/* WebView */}
       <WebView
         ref={webViewRef}
         source={{ 
-          uri: url || 'https://hafrik.com',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-Auth-Token': token,
-            'X-Access-Token': token,
-            'X-User-Id': user?.id?.toString() || '',
-            'X-Username': user?.username || '',
-            'Accept': 'application/json, text/html, */*'
-          }
+          uri: currentUrl,
+          headers: getInitialHeaders()
         }}
         style={styles.webview}
-        startInLoadingState={false}
+        startInLoadingState={true}
         allowsBackForwardNavigationGestures={true}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
         onNavigationStateChange={handleNavigationStateChange}
         onMessage={handleMessage}
-        injectedJavaScript={getInjectTokenScript()}
+        injectedJavaScript={getAuthInjectionScript()}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         sharedCookiesEnabled={true}
         thirdPartyCookiesEnabled={true}
+        cacheEnabled={true}
+        originWhitelist={['*']}
+        mixedContentMode="always"
+        decelerationRate="normal"
+        overScrollMode="content"
+        userAgent={`Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 HafrikApp/${Platform.OS}/${user.id}`}
+        applicationNameForUserAgent="HafrikApp"
+        setSupportMultipleWindows={false}
       />
 
       {/* Loading Indicator */}
@@ -396,9 +456,9 @@ const WebViewScreen = ({ navigation, route }) => {
       {error && (
         <View style={styles.errorContainer}>
           <Ionicons name="warning-outline" size={64} color="#ff6b6b" />
-          <Text style={styles.errorTitle}>Authentication Issue</Text>
+          <Text style={styles.errorTitle}>Connection Error</Text>
           <Text style={styles.errorText}>
-            The website requires separate login
+            Unable to load the content. Please check your connection and try again.
           </Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleReload}>
             <Text style={styles.retryButtonText}>Try Again</Text>
@@ -406,40 +466,49 @@ const WebViewScreen = ({ navigation, route }) => {
         </View>
       )}
 
-      {/* Large Back Button */}
-      <TouchableOpacity 
-        style={styles.bottomBackButton}
-        onPress={handleBackButton}
-        activeOpacity={0.9}
-      >
-        <View style={styles.backButtonContent}>
-          <Ionicons name="arrow-back" size={28} color="#fff" />
-          <Text style={styles.backButtonText}>Back</Text>
+      {/* Debug Info (Dev only) */}
+      {__DEV__ && (
+        <View style={styles.debugInfo}>
+          <Text style={styles.debugText}>
+            User: {user?.username} | URL: {currentUrl?.substring(0, 30)}...
+          </Text>
         </View>
-      </TouchableOpacity>
+      )}
     </SafeAreaView>
   );
 };
 
-// ... styles remain the same as previous version
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
   },
-  debugBanner: {
-    backgroundColor: '#0C3F44',
-    padding: 8,
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
-  debugText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
+  backButtonHeader: {
+    padding: 5,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginHorizontal: 10,
+  },
+  reloadButton: {
+    padding: 5,
   },
   webview: {
     flex: 1,
-    marginBottom: 80,
   },
   loadingContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -486,33 +555,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  bottomBackButton: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-    backgroundColor: '#0C3F44',
+  authRequiredContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
+    padding: 20,
   },
-  backButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  authRequiredTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  authRequiredText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  loginButton: {
+    backgroundColor: '#0C3F44',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backButton: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
   backButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  debugInfo: {
+    backgroundColor: '#0C3F44',
+    padding: 5,
+  },
+  debugText: {
     color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 10,
+    fontSize: 10,
   },
 });
 

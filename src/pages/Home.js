@@ -413,7 +413,7 @@ const HomePage = () => {
   };
 
   // Handle banner press
-   const handleBannerPress = (banner) => {
+  const handleBannerPress = (banner) => {
     if (banner.button_link && banner.button_link !== '#') {
       navigation.navigate('WebView', {
         url: banner.button_link,
@@ -453,7 +453,7 @@ const HomePage = () => {
     else if (normalizedName.includes('forum') || normalizedName.includes('discuss')) {
       navigation.navigate('Forum', { title: linkName });
     }
-     else if (linkUrl && linkUrl !== '#' && linkUrl !== '' &&
+    else if (linkUrl && linkUrl !== '#' && linkUrl !== '' &&
       (linkUrl.startsWith('http://') || linkUrl.startsWith('https://'))) {
       navigation.navigate('WebView', {
         url: linkUrl,
@@ -578,16 +578,29 @@ const HomePage = () => {
   };
 
   // Handle feed press
-  const handleFeedPress = (feed) => {
-    if (feed.type === 'reel' || feed.type === 'video') {
-      navigation.navigate('Reels', {
-        initialReelId: feed.id,
-        reelsData: filteredFeeds.filter(f => f.type === 'reel' || f.type === 'video'),
-      });
-    } else {
-      navigation.navigate('FeedDetail', { feedId: feed.id });
-    }
-  };
+  // Handle feed press
+// Handle feed press
+const handleFeedPress = (feed) => {
+  if (feed.type === 'reel' || feed.type === 'video') {
+    // Create array of only video/reel feeds
+    const reelsData = filteredFeeds.filter(f =>
+      f.type === 'reel' || f.type === 'video'
+    );
+
+    // Find the index of the current feed in the reels array
+    const currentIndex = reelsData.findIndex(f => f.id === feed.id);
+
+    console.log(`🎬 Navigating to reel: ${feed.id}, Index: ${currentIndex}, Total reels: ${reelsData.length}`);
+
+    navigation.navigate('Reels', {
+      initialReelId: feed.id,
+      reelsData: reelsData,
+      initialIndex: currentIndex, // Pass the index for direct navigation
+    });
+  } else {
+    navigation.navigate('FeedDetail', { feedId: feed.id });
+  }
+};
 
   // Calculate grid item height based on caption
   const getGridItemHeight = (feed) => {
@@ -674,32 +687,34 @@ const HomePage = () => {
           onPress={() => handleBannerPress(currentBanner)}
           activeOpacity={0.9}
         >
-          <View style={styles.bannerRow}>
-            <View style={styles.bannerTextContent}>
-              <Text style={styles.bannerTitle}>{currentBanner.title || 'No Title'}</Text>
-              <Text style={styles.bannerDescription}>
-                {currentBanner.subtitle || currentBanner.description || 'No description'}
-              </Text>
-              {currentBanner.button_text && (
-                <TouchableOpacity style={styles.bannerButton}>
-                  <Text style={styles.bannerButtonText}>{currentBanner.button_text}</Text>
-                </TouchableOpacity>
-              )}
+          {/* Background Image */}
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.bannerBackgroundImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.bannerPlaceholderBackground}>
+              <Ionicons name="image-outline" size={40} color="#fff" />
+              <Text style={styles.placeholderText}>No Image</Text>
             </View>
-            <View style={styles.bannerImageContainer}>
-              {imageUrl ? (
-                <Image
-                  source={{ uri: imageUrl }}
-                  style={styles.bannerImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.bannerPlaceholder}>
-                  <Ionicons name="image-outline" size={40} color="#fff" />
-                  <Text style={styles.placeholderText}>No Image</Text>
-                </View>
-              )}
-            </View>
+          )}
+
+          {/* Dark overlay for better text readability */}
+          <View style={styles.bannerOverlay} />
+
+          {/* Text Content */}
+          <View style={styles.bannerTextContainer}>
+            <Text style={styles.bannerTitle}>{currentBanner.title || 'No Title'}</Text>
+            <Text style={styles.bannerDescription}>
+              {currentBanner.subtitle || currentBanner.description || 'No description'}
+            </Text>
+            {currentBanner.button_text && (
+              <TouchableOpacity style={styles.bannerButton}>
+                <Text style={styles.bannerButtonText}>{currentBanner.button_text}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {banners.length > 1 && (
@@ -750,7 +765,6 @@ const HomePage = () => {
           showsHorizontalScrollIndicator={false}
           style={styles.quickLinksScrollView}
           contentContainerStyle={styles.quickLinksScrollContent}
-          pagingEnabled
           onMomentumScrollEnd={handleQuickLinksScroll}
           scrollEventThrottle={16}
         >
@@ -873,7 +887,9 @@ const HomePage = () => {
           renderItem={({ item }) => {
             const personName = item.name || item.username || item.full_name || 'Unknown User';
             const username = item.username || `user_${item.id}`;
-            const avatar = item.avatar || item.profile_picture || item.image_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80';
+            // Use real avatar from API - fallback to default if not available
+            const avatar = item.avatar || item.profile_picture || item.image_url ||
+              'https://hafrik.com/default-avatar.png'; // Use your default avatar
             const profession = item.profession || item.bio || item.occupation || 'Member';
             const mutualFriends = item.mutual_friends || item.mutualFriends || Math.floor(Math.random() * 20) + 1;
 
@@ -882,6 +898,10 @@ const HomePage = () => {
                 <Image
                   source={{ uri: avatar }}
                   style={styles.personAvatar}
+                  onError={() => {
+                    // If avatar fails to load, use a local fallback
+                    console.log('Avatar failed to load for user:', username);
+                  }}
                 />
                 <View style={styles.personInfo}>
                   <Text style={styles.personName}>{personName}</Text>
@@ -904,117 +924,118 @@ const HomePage = () => {
   };
 
   // Render grid feed item 
-const renderGridFeedItem = ({ item: feed }) => {
-  const thumbnail = getFeedThumbnail(feed);
-  const caption = feed.text || feed.caption || '';
-  const user = feed.user || {};
-  const hasMedia = feed.media && feed.media.length > 0;
-  const type = feed.type || 'post';
-  const videoUrl = feed.media?.[0]?.video_url;
+  const renderGridFeedItem = ({ item: feed }) => {
+    const thumbnail = getFeedThumbnail(feed);
+    const caption = feed.text || feed.caption || '';
+    const user = feed.user || {};
+    const hasMedia = feed.media && feed.media.length > 0;
+    const type = feed.type || 'post';
+    const videoUrl = feed.media?.[0]?.video_url;
 
-  const isVideo = type === 'video' || type === 'reel';
-  const isPlaying = currentPlayingVideo === feed.id;
-  const hasCaption = caption.trim().length > 0;
-  const gridItemHeight = getGridItemHeight(feed);
+    const isVideo = type === 'video' || type === 'reel';
+    const isPlaying = currentPlayingVideo === feed.id;
+    const hasCaption = caption.trim().length > 0;
+    const gridItemHeight = getGridItemHeight(feed);
 
-  return (
-    <TouchableOpacity
-      style={[styles.gridItem, { height: gridItemHeight }]}
-      onPress={() => handleFeedPress(feed)}
-      activeOpacity={0.9}
-    >
-      {hasMedia && thumbnail ? (
-        <View style={styles.gridMediaContainer}>
-          {isVideo && videoUrl ? (
-            <TouchableOpacity
-              style={styles.videoContainer}
-              onPress={() => handleFeedPress(feed)}
-              activeOpacity={0.9}
-            >
-              <Video
-                ref={ref => videoRefs.current[feed.id] = ref}
-                source={{ uri: videoUrl }}
-                style={styles.gridVideoPlayer}
-                resizeMode="cover"
-                paused={!isPlaying}
-                repeat={true}
-                muted={true} // Always muted for auto-play
-                controls={false}
-                playWhenInactive={false}
-                playInBackground={false}
-                ignoreSilentSwitch="obey"
-                onLoad={() => handleVideoLoad(feed.id)}
-                onError={(error) => handleVideoError(error, feed.id)}
-              />
+    return (
+      <TouchableOpacity
+        style={[styles.gridItem, { height: gridItemHeight }]}
+        onPress={() => handleFeedPress(feed)}
+        activeOpacity={0.9}
+      >
+        {hasMedia && thumbnail ? (
+          <View style={styles.gridMediaContainer}>
+            {isVideo && videoUrl ? (
+              <TouchableOpacity
+                style={styles.videoContainer}
+                onPress={() => handleFeedPress(feed)}
+                activeOpacity={0.9}
+              >
+                <Video
+                  ref={ref => videoRefs.current[feed.id] = ref}
+                  source={{ uri: videoUrl }}
+                  style={styles.gridVideoPlayer}
+                  resizeMode="cover"
+                  paused={!isPlaying}
+                  repeat={true}
+                  muted={true} // Always muted for auto-play
+                  controls={false}
+                  playWhenInactive={false}
+                  playInBackground={false}
+                  ignoreSilentSwitch="obey"
+                  onLoad={() => handleVideoLoad(feed.id)}
+                  onError={(error) => handleVideoError(error, feed.id)}
+                />
 
-              {/* User Info Overlay */}
-              <View style={styles.userInfoOverlay}>
-                <View style={styles.userInfoRow}>
-                  <Image
-                    source={{ uri: user.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' }}
-                    style={styles.overlayUserAvatar}
-                  />
-                  <Text style={styles.overlayUsername}>
-                    {user.username || 'User'}
-                  </Text>
+                {/* User Info Overlay */}
+                <View style={styles.userInfoOverlay}>
+                  <View style={styles.userInfoRow}>
+                    <Image
+                      source={{ uri: user.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' }}
+                      style={styles.overlayUserAvatar}
+                    />
+                    <Text style={styles.overlayUsername}>
+                      {user.username || 'User'}
+                    </Text>
+                  </View>
+                  <View style={styles.likesOverlay}>
+                    <Ionicons name="heart" size={14} color="#fff" />
+                    <Text style={styles.likesCount}>
+                      {feed.likes_count || 0}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.likesOverlay}>
-                  <Ionicons name="heart" size={14} color="#fff" />
-                  <Text style={styles.likesCount}>
-                    {feed.likes_count || 0}
-                  </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: thumbnail }}
+                  style={styles.gridImage}
+                  resizeMode="cover"
+                />
+
+                {/* User Info Overlay for Images */}
+                <View style={styles.userInfoOverlay}>
+                  <View style={styles.userInfoRow}>
+                    <Image
+                      source={{ uri: user.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' }}
+                      style={styles.overlayUserAvatar}
+                    />
+                    <Text style={styles.overlayUsername}>
+                      {user.username || 'User'}
+                    </Text>
+                  </View>
+                  <View style={styles.likesOverlay}>
+                    <Ionicons name="heart" size={14} color="#fff" />
+                    <Text style={styles.likesCount}>
+                      {feed.likes_count || 0}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: thumbnail }}
-                style={styles.gridImage}
-                resizeMode="cover"
-              />
+            )}
+          </View>
+        ) : (
+          <View style={[styles.gridContentContainer, styles.gridGreenBackground]}>
+            <Text style={styles.gridText} numberOfLines={6}>
+              {caption}
+            </Text>
+          </View>
+        )}
 
-              {/* User Info Overlay for Images */}
-              <View style={styles.userInfoOverlay}>
-                <View style={styles.userInfoRow}>
-                  <Image
-                    source={{ uri: user.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&q=80' }}
-                    style={styles.overlayUserAvatar}
-                  />
-                  <Text style={styles.overlayUsername}>
-                    {user.username || 'User'}
-                  </Text>
-                </View>
-                <View style={styles.likesOverlay}>
-                  <Ionicons name="heart" size={14} color="#fff" />
-                  <Text style={styles.likesCount}>
-                    {feed.likes_count || 0}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
-      ) : (
-        <View style={[styles.gridContentContainer, styles.gridGreenBackground]}>
-          <Text style={styles.gridText} numberOfLines={6}>
-            {caption}
-          </Text>
-        </View>
-      )}
+        {/* Only show caption container if there's a caption */}
+        {hasCaption && (
+          <View style={styles.gridCaptionContainer}>
+            <Text style={styles.gridCaption} numberOfLines={2}>
+              {caption}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
-      {/* Only show caption container if there's a caption */}
-      {hasCaption && (
-        <View style={styles.gridCaptionContainer}>
-          <Text style={styles.gridCaption} numberOfLines={2}>
-            {caption}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-};
-
+  // Render feeds list
   // Render feeds list
   const renderFeedsList = () => {
     if (loading && filteredFeeds.length === 0) {
@@ -1075,7 +1096,8 @@ const renderGridFeedItem = ({ item: feed }) => {
         }}
         ListFooterComponent={
           <>
-            {suggestedPeople.length > 0 && renderPeopleSection()}
+            {/* Always render people section (it handles its own loading/empty state) */}
+            {renderPeopleSection()}
 
             {loading && displayFeeds.length > 0 && (
               <View style={styles.loadingMoreContainer}>
@@ -1301,90 +1323,106 @@ const styles = StyleSheet.create({
   },
   // Banner Styles
   bannerContainer: {
-    margin: 5,
-    borderRadius: 16,
+    margin: 2,
+    borderRadius: 1,
     overflow: 'hidden',
     backgroundColor: '#0C3F44',
+    height: 200,
   },
   bannerContent: {
-    height: 200,
-    padding: 16,
-  },
-  bannerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
+    position: 'relative',
   },
-  bannerImageContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginRight: 9,
-  },
-  bannerImage: {
+  bannerBackgroundImage: {
     width: '100%',
     height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
-  bannerTextContent: {
+  bannerPlaceholderBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(12, 63, 68, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  bannerTextContainer: {
     flex: 1,
     justifyContent: 'center',
+    padding: 20,
+    zIndex: 1,
   },
   bannerTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   bannerDescription: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 12,
-    lineHeight: 16,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.95)',
+    marginBottom: 16,
+    lineHeight: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   bannerButton: {
     backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 20,
     alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
   bannerButtonText: {
     color: '#0C3F44',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 14,
   },
   bannerIndicators: {
+    position: 'absolute',
+    bottom: 15,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
+    zIndex: 2,
   },
   bannerIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 3,
+    marginHorizontal: 4,
   },
   bannerIndicatorActive: {
     backgroundColor: '#fff',
-    width: 20,
-  },
-  bannerPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 24,
   },
   placeholderText: {
     color: '#fff',
-    fontSize: 10,
-    marginTop: 4,
+    fontSize: 12,
+    marginTop: 8,
   },
   bannerLoading: {
-    height: 120,
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
@@ -1394,13 +1432,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#666',
     fontSize: 12,
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginHorizontal: 20,
-    marginVertical: 10,
   },
   // Quick Links Styles
   quickLinksSection: {
@@ -1427,9 +1458,10 @@ const styles = StyleSheet.create({
     width: (screenWidth - 60) / 4,
   },
   quickLinkImageContainer: {
-    width: 30,
-    height: 30,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    padding: 4,
+    borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 6,
     borderWidth: 1,

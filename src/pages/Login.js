@@ -398,146 +398,177 @@ const AuthScreen = () => {
   };
 
   // In your AuthScreen component, update the handleSubmit function
-  const handleSubmit = async () => {
-    if (isLoading || isSubmitting.current) {
-      return;
+ const handleSubmit = async () => {
+  if (isLoading || isSubmitting.current) {
+    return;
+  }
+
+  if (!validateForm()) return;
+
+  setIsLoading(true);
+  isSubmitting.current = true;
+
+  try {
+    let response;
+    let endpoint;
+    let requestData;
+
+    if (authMode === 'login') {
+      endpoint = `${API_BASE_URL}/login.php`;
+      const loginIdentifier = formData.username.trim() || formData.email.trim();
+      requestData = {
+        username: loginIdentifier,
+        password: formData.password
+      };
+    } else {
+      endpoint = `${API_BASE_URL}/register.php`;
+      requestData = {
+        full_name: formData.fullName.trim(),
+        username: formData.username.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        phone_number: getFullPhoneNumber(),
+        country: formData.country.code,
+        country_name: formData.country.name
+      };
     }
 
-    if (!validateForm()) return;
+    console.log(`[HAFRIK Auth] Calling ${endpoint}...`);
+    console.log(`[HAFRIK Auth] Request data:`, JSON.stringify(requestData, null, 2));
 
-    setIsLoading(true);
-    isSubmitting.current = true;
+    response = await axios.post(
+      endpoint,
+      requestData,
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      }
+    );
 
-    try {
-      let response;
-      let endpoint;
-      let requestData;
+    console.log('[HAFRIK Auth] Full API response:', JSON.stringify(response.data, null, 2));
 
-      if (authMode === 'login') {
-        endpoint = `${API_BASE_URL}/login.php`;
-        const loginIdentifier = formData.username.trim() || formData.email.trim();
-        requestData = {
-          username: loginIdentifier,
-          password: formData.password
-        };
-      } else {
-        endpoint = `${API_BASE_URL}/register.php`;
-        requestData = {
-          full_name: formData.fullName.trim(),
-          username: formData.username.trim(),
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-          phone_number: getFullPhoneNumber(),
-          country: formData.country.code,
-          country_name: formData.country.name
-        };
+    if (response.data.status === 'success') {
+      // FIX: Use 'token' instead of 'access_token' and handle user data properly
+      const token = response.data.data?.token;
+      let user = response.data.data?.user;
+
+      console.log('[HAFRIK Auth] Extracted raw data:', {
+        tokenExists: !!token,
+        tokenLength: token?.length,
+        userType: typeof user,
+        isUserArray: Array.isArray(user),
+        userData: user
+      });
+
+      // Handle user data if it's an array
+      if (Array.isArray(user) && user.length > 0) {
+        user = user[0]; // Take first element if it's an array
       }
 
-      console.log(`[HAFRIK Auth] Calling ${endpoint}...`);
+      console.log('[HAFRIK Auth] Processed data:', {
+        token: token ? `${token.substring(0, 20)}...` : 'No token',
+        user: user ? `User ID: ${user.id}` : 'No user',
+        userId: user?.id,
+        username: user?.username
+      });
 
-      response = await axios.post(
-        endpoint,
-        requestData,
-        {
-          timeout: 10000,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        }
+      if (!token || !user) {
+        console.error('[HAFRIK Auth] Missing data:', {
+          token: token,
+          user: user,
+          fullResponse: response.data
+        });
+        throw new Error('Invalid API response: Missing token or user data');
+      }
+
+      console.log('[HAFRIK Auth] Authentication successful!', {
+        userId: user.id,
+        username: user.username,
+        email: user.email
+      });
+
+      // Use the auth context to login
+      await login(user, token);
+      
+      // Reset navigation to MainTabs
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
+
+    } else {
+      console.log('[HAFRIK Auth] API returned unexpected response:', response.data);
+      Alert.alert(
+        'Authentication Failed',
+        response.data.message || 'Please check your credentials and try again'
       );
+    }
+  } catch (error) {
+    console.error('[HAFRIK Auth] Processing error:', error);
+    console.error('[HAFRIK Auth] Error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
 
-      console.log('[HAFRIK Auth] API response received:', response.data);
+    let errorMessage = 'An unexpected error occurred. Please try again.';
 
-      if (response.data.status === 'success') {
-        const token = response.data.data?.access_token;
-        const user = response.data.data?.user;
-
-        console.log('[HAFRIK Auth] Extracted data:', {
-          token: token ? 'Token received' : 'No token',
-          user: user ? 'User received' : 'No user',
-          userId: user?.id
-        });
-
-        if (!token || !user) {
-          console.error('Missing data:', {
-            token: token,
-            user: user,
-            fullResponse: response.data
-          });
-          throw new Error('Invalid API response: Missing token or user data');
-        }
-
-        console.log('[HAFRIK Auth] Authentication successful!', {
-          userId: user.id,
-          username: user.username
-        });
-
-        // Use the auth context to login
-        await login(user, token);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }],
-        });
-
-      } else {
-        console.log('[HAFRIK Auth] API returned unexpected response:', response.data);
-        Alert.alert(
-          'Authentication Failed',
-          response.data.message || 'Please check your credentials and try again'
-        );
+    if (error.response) {
+      const serverError = error.response.data;
+      if (serverError.message) {
+        errorMessage = serverError.message;
+      } else if (error.response.status === 401) {
+        errorMessage = 'Invalid username or password';
+      } else if (error.response.status === 400) {
+        errorMessage = 'Invalid request data';
+      } else if (error.response.status === 422) {
+        errorMessage = 'Validation error. Please check your inputs.';
+      } else if (error.response.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
       }
-    } catch (error) {
-      console.error('[HAFRIK Auth] Processing error:', error);
-
-      let errorMessage = 'An unexpected error occurred. Please try again.';
-
-      if (error.response) {
-        const serverError = error.response.data;
-        if (serverError.message) {
-          errorMessage = serverError.message;
-        } else if (error.response.status === 401) {
-          errorMessage = 'Invalid username or password';
-        } else if (error.response.status === 400) {
-          errorMessage = 'Invalid request data';
-        } else if (error.response.status === 500) {
-          errorMessage = 'Server error. Please try again later.';
-        }
-      } else if (error.message.includes('timeout')) {
-        errorMessage = 'Request timed out. Please check your internet connection.';
-      } else if (error.message.includes('Network Error')) {
-        errorMessage = 'Network unavailable. Please check your connection.';
-      } else if (error.message.includes('Invalid API response')) {
-        errorMessage = 'Server returned invalid response. Please try again.';
-      }
-
-      Alert.alert('Authentication Error', errorMessage);
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => {
-        isSubmitting.current = false;
-      }, 1000);
+    } else if (error.message.includes('timeout')) {
+      errorMessage = 'Request timed out. Please check your internet connection.';
+    } else if (error.message.includes('Network Error')) {
+      errorMessage = 'Network unavailable. Please check your connection.';
+    } else if (error.message.includes('Invalid API response')) {
+      errorMessage = 'Server returned invalid response. Please try again.';
     }
-  };
+
+    Alert.alert('Authentication Error', errorMessage);
+  } finally {
+    setIsLoading(false);
+    setTimeout(() => {
+      isSubmitting.current = false;
+    }, 1000);
+  }
+};
 
 
-  const storeToken = async (token) => {
-    try {
-      console.log('[HAFRIK Auth] Storing token:', token);
-      // await AsyncStorage.setItem('hafrik_token', token);
-    } catch (error) {
-      console.error('[HAFRIK Auth] Error storing token:', error);
-    }
-  };
+ const storeToken = async (token) => {
+  try {
+    console.log('[HAFRIK Auth] Storing token:', `${token.substring(0, 20)}...`);
+    await AsyncStorage.setItem('hafrik_token', token);
+  } catch (error) {
+    console.error('[HAFRIK Auth] Error storing token:', error);
+  }
+};
 
-  const storeUser = async (user) => {
-    try {
-      console.log('[HAFRIK Auth] Storing user data:', user);
-      // await AsyncStorage.setItem('hafrik_user', JSON.stringify(user));
-    } catch (error) {
-      console.error('[HAFRIK Auth] Error storing user:', error);
-    }
-  };
+const storeUser = async (user) => {
+  try {
+    console.log('[HAFRIK Auth] Storing user data:', {
+      id: user.id,
+      username: user.username
+    });
+    await AsyncStorage.setItem('hafrik_user', JSON.stringify(user));
+  } catch (error) {
+    console.error('[HAFRIK Auth] Error storing user:', error);
+  }
+};
+
+
 
   return (
     <KeyboardAvoidingView

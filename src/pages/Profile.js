@@ -1,4 +1,4 @@
-// Profile.js
+// Profile.js - Simplified with direct API uploads
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -16,46 +16,218 @@ import {
   Dimensions,
   Modal,
   TextInput,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../AuthContext';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
 const Profile = () => {
   const { user, token, updateUser, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('posts');
-  const [userData, setUserData] = useState(null);
+  const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [posts, setPosts] = useState([]);
-  const [reels, setReels] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const [followersModalVisible, setFollowersModalVisible] = useState(false);
   const [followingModalVisible, setFollowingModalVisible] = useState(false);
   const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
+
+  // Initialize editForm with all fields from the API
   const [editForm, setEditForm] = useState({
-    fullname: '',
+    // Basic Info
+    first_name: '',
+    last_name: '',
     username: '',
-    bio: '',
-    website: '',
+    gender: '',
+    about: '',
+    birth_day: '',
+    birth_month: '',
+    birth_year: '',
+
+    // Location
+    current_city: '',
+    hometown: '',
+    country: '',
+
+    // Social Links
+    facebook: '',
+    twitter: '',
+    instagram: '',
+    linkedin: '',
+    youtube: '',
   });
+
   const [stats, setStats] = useState({
     posts: 0,
     followers: 0,
     following: 0,
   });
 
+  // Function to construct proper S3 URL from the stored path
+  const constructImageUrl = (storedPath) => {
+    if (!storedPath) return null;
+
+    // Check if it's already a full URL
+    if (storedPath.startsWith('https://') || storedPath.startsWith('http://')) {
+      return storedPath;
+    }
+
+    // If it's a path from the API, construct the full S3 URL
+    if (storedPath.includes('/')) {
+      const bucketUrl = 'https://s3.ap-northeast-1.wasabisys.com/hafriksocial';
+      const fullUrl = `${bucketUrl}/${storedPath}`;
+      return fullUrl;
+    }
+
+    return null;
+  };
+
+  // Function to get avatar URL
+  const getAvatarUrl = (userData) => {
+    if (!userData) {
+      const initial = userData?.username?.charAt(0) || 'U';
+      return `https://via.placeholder.com/100/0C3F44/FFFFFF?text=${initial}`;
+    }
+    
+    const avatarUrl = constructImageUrl(userData.avatar);
+    
+    if (avatarUrl) {
+      return avatarUrl;
+    }
+    
+    // Fallback to placeholder
+    const initial = userData.username?.charAt(0) || 'U';
+    return `https://via.placeholder.com/100/0C3F44/FFFFFF?text=${initial}`;
+  };
+
+  // Function to get cover URL
+  const getCoverUrl = (userData) => {
+    if (!userData) {
+      return 'https://via.placeholder.com/400x150/0C3F44/FFFFFF?text=Cover+Photo';
+    }
+    
+    const coverUrl = constructImageUrl(userData.cover);
+    
+    if (coverUrl) {
+      return coverUrl;
+    }
+    
+    // Fallback to placeholder
+    return 'https://via.placeholder.com/400x150/0C3F44/FFFFFF?text=Cover+Photo';
+  };
+
+  // Handle image upload (avatar or cover)
+  const handleImageUpload = async (imageType) => {
+    try {
+      // Request permission first
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Sorry, we need camera roll permissions to upload images.');
+          return;
+        }
+      }
+
+      // Pick image from gallery
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: imageType === 'avatar' ? [1, 1] : [3, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets[0].uri) {
+        return;
+      }
+
+      setUploading(true);
+      
+      // Prepare form data
+      const formData = new FormData();
+      
+      // Get file info
+      const uri = result.assets[0].uri;
+      const filename = uri.split('/').pop();
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      
+      // Append the file
+      formData.append('file', {
+        uri,
+        name: filename,
+        type,
+      });
+      
+      console.log(`Uploading ${imageType}...`);
+      
+      // Choose the correct API endpoint
+      const endpoint = imageType === 'avatar' 
+        ? 'https://hafrik.com/api/v1/users/update_avatar.php'
+        : 'https://hafrik.com/api/v1/users/update_cover.php';
+      
+      // Upload to the specific endpoint
+      const uploadResponse = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const uploadData = await uploadResponse.json();
+      console.log('Upload response:', uploadData);
+
+      if (uploadData.status === 'success') {
+        // Get the new image URL/path from response
+        const imagePath = uploadData.data?.path || uploadData.data?.url || uploadData.data?.[imageType];
+        
+        if (imagePath) {
+          // Update local state
+          setProfileData(prev => ({
+            ...prev,
+            user: {
+              ...prev.user,
+              [imageType]: imagePath
+            }
+          }));
+
+          // Update auth context
+          const updatedUser = {
+            ...user,
+            [imageType]: imagePath,
+          };
+          await updateUser(updatedUser);
+
+          Alert.alert('Success', `${imageType === 'avatar' ? 'Profile picture' : 'Cover photo'} updated successfully`);
+        } else {
+          throw new Error('No image path returned from server');
+        }
+      } else {
+        throw new Error(uploadData.message || 'Upload failed');
+      }
+
+    } catch (error) {
+      console.error(`Error uploading ${imageType}:`, error);
+      Alert.alert('Error', `Failed to upload ${imageType === 'avatar' ? 'profile picture' : 'cover photo'}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Fetch user profile data from API
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      
+
       if (!token) {
         Alert.alert('Error', 'Please login to view profile');
         return;
       }
 
-      const response = await fetch('https://hafrik.com/api/v1/user/profile.php', {
+      const response = await fetch('https://hafrik.com/api/v1/users/profile.php', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -67,48 +239,77 @@ const Profile = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.status === 'success') {
-        const userProfile = data.data;
-        setUserData(userProfile);
-        
-        // Update stats
+        const apiData = data.data;
+        setProfileData(apiData);
+
+        // Update stats based on API response
+        const userData = apiData.user || {};
+        const postsCount = apiData.posts?.length || 0;
+        const followersCount = apiData.followers?.length || 0;
+        const followingCount = apiData.followings?.length || 0;
+
         setStats({
-          posts: userProfile.posts_count || 0,
-          followers: userProfile.followers_count || 0,
-          following: userProfile.following_count || 0,
+          posts: postsCount,
+          followers: followersCount,
+          following: followingCount,
         });
 
-        // Set edit form data
+        // Set edit form data from API
         setEditForm({
-          fullname: userProfile.fullname || userProfile.name || '',
-          username: userProfile.username || '',
-          bio: userProfile.bio || '',
-          website: userProfile.website || '',
+          // Basic Info
+          first_name: userData.first_name || '',
+          last_name: userData.last_name || '',
+          username: userData.username || '',
+          gender: userData.gender?.toString() || '',
+          about: userData.about || userData.bio || '',
+          birth_day: userData.birth_day?.toString() || '',
+          birth_month: userData.birth_month?.toString() || '',
+          birth_year: userData.birth_year?.toString() || '',
+
+          // Location
+          current_city: userData.current_city || '',
+          hometown: userData.hometown || '',
+          country: userData.country?.toString() || userData.user_country?.toString() || '',
+
+          // Social Links
+          facebook: userData.facebook || '',
+          twitter: userData.twitter || '',
+          instagram: userData.instagram || '',
+          linkedin: userData.linkedin || '',
+          youtube: userData.youtube || '',
         });
 
-        // Fetch user posts
-        fetchUserPosts();
-        
       } else {
         throw new Error(data.message || 'Failed to fetch profile');
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
-      // Fallback to context user data
+      // If API fails, use context user data
       if (user) {
-        setUserData({
-          ...user,
-          posts_count: 0,
-          followers_count: 0,
-          following_count: 0,
-          bio: user.bio || '',
-          website: user.website || '',
-          avatar: user.avatar || user.profile_picture,
-          cover_photo: user.cover_photo,
-          is_verified: user.is_verified || false,
+        setProfileData({
+          user: {
+            ...user,
+            first_name: user.first_name || '',
+            last_name: user.last_name || '',
+            username: user.username || '',
+            about: user.about || user.bio || '',
+            gender: user.gender || '',
+            verified: user.verified || false,
+            avatar: user.avatar,
+            cover: user.cover,
+            joined: user.joined || new Date().toISOString(),
+            last_seen: user.last_seen || new Date().toISOString(),
+          },
+          posts: [],
+          followers: [],
+          followings: [],
+          pages_liked: [],
+          pages_admin: [],
+          groups: [],
         });
-        
+
         setStats({
           posts: 0,
           followers: 0,
@@ -120,107 +321,142 @@ const Profile = () => {
     }
   };
 
-  // Fetch user posts
-  const fetchUserPosts = async () => {
-    try {
-      if (!token) return;
-
-      const response = await fetch('https://hafrik.com/api/v1/users/posts.php', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success') {
-          setPosts(data.data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-      setPosts([]);
-    }
-  };
-
-  // Fetch user reels
-  const fetchUserReels = async () => {
-    try {
-      if (!token) return;
-
-      const response = await fetch('https://hafrik.com/api/v1/user/reels.php', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success') {
-          setReels(data.data || []);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching reels:', error);
-      setReels([]);
-    }
-  };
-
   // Initialize with user data
   useEffect(() => {
-    if (user) {
+    if (user && token) {
       fetchUserProfile();
     }
   }, [user, token]);
 
-  // Handle follow/unfollow
-  const handleFollowToggle = async () => {
+  // Function to update profile (text fields only)
+  const handleUpdateProfile = async () => {
     try {
-      // Implement follow/unfollow API call
-      setIsFollowing(!isFollowing);
-      // You would typically call an API endpoint here
-    } catch (error) {
-      console.error('Error toggling follow:', error);
-      Alert.alert('Error', 'Failed to update follow status');
-    }
-  };
+      setUploading(true);
 
-  // Handle edit profile
-  const handleEditProfile = async () => {
-    try {
-      setLoading(true);
-      
-      const response = await fetch('https://hafrik.com/api/v1/user/update-profile.php', {
+      // Prepare payload - only text fields
+      const payload = {};
+
+      // Basic Info
+      if (editForm.first_name !== (profileData?.user?.first_name || '')) {
+        payload.first_name = editForm.first_name;
+      }
+
+      if (editForm.last_name !== (profileData?.user?.last_name || '')) {
+        payload.last_name = editForm.last_name;
+      }
+
+      if (editForm.username !== (profileData?.user?.username || '')) {
+        payload.username = editForm.username;
+      }
+
+      if (editForm.gender !== (profileData?.user?.gender?.toString() || '')) {
+        payload.gender = editForm.gender ? parseInt(editForm.gender) : '';
+      }
+
+      if (editForm.about !== (profileData?.user?.about || profileData?.user?.bio || '')) {
+        payload.about = editForm.about;
+      }
+
+      if (editForm.birth_day !== (profileData?.user?.birth_day?.toString() || '')) {
+        payload.birth_day = editForm.birth_day ? parseInt(editForm.birth_day) : '';
+      }
+
+      if (editForm.birth_month !== (profileData?.user?.birth_month?.toString() || '')) {
+        payload.birth_month = editForm.birth_month ? parseInt(editForm.birth_month) : '';
+      }
+
+      if (editForm.birth_year !== (profileData?.user?.birth_year?.toString() || '')) {
+        payload.birth_year = editForm.birth_year ? parseInt(editForm.birth_year) : '';
+      }
+
+      // Location
+      if (editForm.current_city !== (profileData?.user?.current_city || '')) {
+        payload.current_city = editForm.current_city;
+      }
+
+      if (editForm.hometown !== (profileData?.user?.hometown || '')) {
+        payload.hometown = editForm.hometown;
+      }
+
+      if (editForm.country !== (profileData?.user?.country?.toString() || profileData?.user?.user_country?.toString() || '')) {
+        payload.country = editForm.country ? parseInt(editForm.country) : '';
+      }
+
+      // Social Links
+      if (editForm.facebook !== (profileData?.user?.facebook || '')) {
+        payload.facebook = editForm.facebook;
+      }
+
+      if (editForm.twitter !== (profileData?.user?.twitter || '')) {
+        payload.twitter = editForm.twitter;
+      }
+
+      if (editForm.instagram !== (profileData?.user?.instagram || '')) {
+        payload.instagram = editForm.instagram;
+      }
+
+      if (editForm.linkedin !== (profileData?.user?.linkedin || '')) {
+        payload.linkedin = editForm.linkedin;
+      }
+
+      if (editForm.youtube !== (profileData?.user?.youtube || '')) {
+        payload.youtube = editForm.youtube;
+      }
+
+      // If no changes, just return
+      if (Object.keys(payload).length === 0) {
+        setUploading(false);
+        Alert.alert('Info', 'No changes to save');
+        return;
+      }
+
+      console.log('Update profile payload:', payload);
+
+      const response = await fetch('https://hafrik.com/api/v1/users/update_profile.php', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success') {
-          // Update both local state and context
-          const updatedUser = { ...user, ...editForm };
-          setUserData(updatedUser);
-          await updateUser(updatedUser);
-          setEditProfileModalVisible(false);
-          Alert.alert('Success', 'Profile updated successfully');
-        } else {
-          throw new Error(data.message || 'Failed to update profile');
-        }
+      const data = await response.json();
+      console.log('Update profile response:', data);
+
+      if (data.status === 'success') {
+        // Update local state
+        setProfileData(prev => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            ...payload
+          }
+        }));
+
+        // Update auth context
+        const updatedUser = {
+          ...user,
+          ...payload,
+        };
+        await updateUser(updatedUser);
+
+        // Close modal
+        setEditProfileModalVisible(false);
+
+        Alert.alert('Success', 'Profile updated successfully');
+
+        // Refresh profile data
+        fetchUserProfile();
+
       } else {
-        throw new Error('Network response was not ok');
+        throw new Error(data.message || 'Failed to update profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update profile');
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
@@ -243,91 +479,113 @@ const Profile = () => {
     );
   };
 
-  // Render post item
-  const renderPostItem = ({ item, index }) => (
-    <TouchableOpacity style={styles.postItem}>
-      {item.media && item.media.length > 0 ? (
-        <Image 
-          source={{ uri: item.media[0].thumbnail || item.media[0].url }} 
-          style={styles.postThumbnail} 
-        />
-      ) : (
-        <View style={styles.textPost}>
-          <Text style={styles.postText} numberOfLines={6}>
-            {item.text || item.caption || ''}
-          </Text>
-        </View>
-      )}
-      {item.type === 'video' && (
-        <View style={styles.videoIndicator}>
-          <Ionicons name="play" size={16} color="#fff" />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+  // Get post thumbnail source
+  const getPostThumbnail = (post) => {
+    // Check if post has media
+    if (post.media && post.media.length > 0) {
+      // Return the first media item
+      const media = post.media[0];
+      if (media.thumbnail) {
+        return { uri: media.thumbnail };
+      } else if (media.url) {
+        return { uri: media.url };
+      }
+    }
+    
+    // If no media, use text thumbnail with caption
+    return null;
+  };
 
-  // Render reel item
-  const renderReelItem = ({ item, index }) => (
-    <TouchableOpacity style={styles.reelItem}>
-      <Image source={{ uri: item.thumbnail || item.media?.[0]?.thumbnail }} style={styles.reelThumbnail} />
-      <View style={styles.reelOverlay}>
-        <View style={styles.reelStats}>
-          <Ionicons name="play" size={16} color="#fff" />
-          <Text style={styles.reelViews}>{item.views_count || '0'}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // Render follower item
-  const renderFollowerItem = ({ item }) => (
-    <View style={styles.followerItem}>
-      <Image 
-        source={{ uri: item.avatar || item.profile_picture }} 
-        style={styles.followerAvatar} 
-      />
-      <View style={styles.followerInfo}>
-        <Text style={styles.followerName}>{item.name || item.username}</Text>
-        <Text style={styles.followerUsername}>@{item.username}</Text>
-      </View>
-      <TouchableOpacity 
-        style={[
-          styles.followButton,
-          item.is_following && styles.followingButton
-        ]}
-        onPress={() => console.log('Follow action')}
-      >
-        <Text style={[
-          styles.followButtonText,
-          item.is_following && styles.followingButtonText
-        ]}>
-          {item.is_following ? 'Following' : 'Follow'}
-        </Text>
+  // Render post item with thumbnail
+  const renderPostItem = ({ item }) => {
+    const thumbnailSource = getPostThumbnail(item);
+    const hasMedia = item.media && item.media.length > 0;
+    
+    return (
+      <TouchableOpacity style={styles.postItem}>
+        {thumbnailSource ? (
+          <Image
+            source={thumbnailSource}
+            style={styles.postThumbnail}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.textThumbnail}>
+            <Text style={styles.textThumbnailText} numberOfLines={6}>
+              {item.text || item.caption || item.content || 'No caption'}
+            </Text>
+          </View>
+        )}
+        
+        {/* Video indicator */}
+        {item.type === 'video' && hasMedia && (
+          <View style={styles.videoIndicator}>
+            <Ionicons name="play" size={16} color="#fff" />
+          </View>
+        )}
+        
+        {/* Multiple media indicator */}
+        {hasMedia && item.media.length > 1 && (
+          <View style={styles.multipleMediaIndicator}>
+            <Ionicons name="layers" size={16} color="#fff" />
+            <Text style={styles.multipleMediaText}>{item.media.length}</Text>
+          </View>
+        )}
       </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   // Render empty state
-  const renderEmptyState = () => (
+  const renderEmptyState = (type) => (
     <View style={styles.emptyState}>
-      <Ionicons 
-        name={activeTab === 'posts' ? 'images-outline' : 'videocam-outline'} 
-        size={64} 
-        color="#ccc" 
+      <Ionicons
+        name={type === 'posts' ? 'images-outline' : type === 'followers' ? 'people-outline' : 'person-add-outline'}
+        size={64}
+        color="#ccc"
       />
       <Text style={styles.emptyStateTitle}>
-        {activeTab === 'posts' ? 'No Posts Yet' : 'No Reels Yet'}
+        {type === 'posts' ? 'No Posts Yet' :
+          type === 'followers' ? 'No Followers Yet' :
+            'Not Following Anyone'}
       </Text>
       <Text style={styles.emptyStateText}>
-        {activeTab === 'posts' 
-          ? 'Share your first post with the world!' 
-          : 'Create your first reel to get started'
+        {type === 'posts'
+          ? 'Share your first post with the world!'
+          : type === 'followers'
+            ? 'When you get followers, they\'ll appear here'
+            : 'When you follow people, they\'ll appear here'
         }
       </Text>
     </View>
   );
 
-  if (loading && !userData) {
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!profileData?.user) return 'User';
+
+    const user = profileData.user;
+    if (user.first_name && user.last_name) {
+      return `${user.first_name} ${user.last_name}`;
+    } else if (user.first_name) {
+      return user.first_name;
+    } else if (user.last_name) {
+      return user.last_name;
+    }
+    return user.username || 'User';
+  };
+
+  if (loading && !profileData) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
@@ -339,21 +597,33 @@ const Profile = () => {
     );
   }
 
+  const userData = profileData?.user || user || {};
+  const posts = profileData?.posts || [];
+  const followers = profileData?.followers || [];
+  const followings = profileData?.followings || [];
+
+  // Get safe image URLs
+  const avatarUrl = getAvatarUrl(userData);
+  const coverUrl = getCoverUrl(userData);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton}>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => setEditProfileModalVisible(true)}
+        >
           <Ionicons name="settings-outline" size={24} color="#333" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerUserInfo}>
-          <Text style={styles.headerUsername}>{userData?.username || 'User'}</Text>
+          <Text style={styles.headerUsername}>{userData.username || 'User'}</Text>
           <Text style={styles.headerPosts}>{stats.posts} posts</Text>
         </View>
-        
+
         <TouchableOpacity style={styles.headerButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color="#333" />
         </TouchableOpacity>
@@ -362,35 +632,52 @@ const Profile = () => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Cover Photo and Profile Info */}
         <View style={styles.profileHeader}>
-          <ImageBackground 
-            source={{ uri: userData?.cover_photo || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80' }} 
-            style={styles.coverPhoto}
-          >
-            <View style={styles.coverOverlay} />
-          </ImageBackground>
+          <TouchableOpacity onPress={() => handleImageUpload('cover')} disabled={uploading}>
+            <ImageBackground
+              source={{ uri: coverUrl }}
+              style={styles.coverPhoto}
+            >
+              <View style={styles.coverOverlay}>
+                <View style={styles.coverEditButton}>
+                  <Ionicons name="camera-outline" size={20} color="#fff" />
+                  <Text style={styles.coverEditText}>{uploading ? 'Uploading...' : 'Edit Cover'}</Text>
+                </View>
+              </View>
+            </ImageBackground>
+          </TouchableOpacity>
 
           <View style={styles.profileInfo}>
             <View style={styles.profileTop}>
-              <Image 
-                source={{ uri: userData?.avatar || userData?.profile_picture || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80' }} 
-                style={styles.profilePicture}
-              />
+              <TouchableOpacity onPress={() => handleImageUpload('avatar')} disabled={uploading}>
+                <View style={styles.avatarContainer}>
+                  <Image
+                    source={{ uri: avatarUrl }}
+                    style={styles.profilePicture}
+                    onError={() => {
+                      console.log('Error loading avatar, using placeholder');
+                    }}
+                  />
+                  <View style={styles.avatarEditButton}>
+                    <Ionicons name="camera" size={16} color="#fff" />
+                  </View>
+                </View>
+              </TouchableOpacity>
               <View style={styles.statsContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.statItem}
-                  onPress={() => setFollowersModalVisible(true)}
+                  onPress={() => setActiveTab('posts')}
                 >
                   <Text style={styles.statNumber}>{stats.posts}</Text>
                   <Text style={styles.statLabel}>Posts</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.statItem}
                   onPress={() => setFollowersModalVisible(true)}
                 >
                   <Text style={styles.statNumber}>{stats.followers}</Text>
                   <Text style={styles.statLabel}>Followers</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.statItem}
                   onPress={() => setFollowingModalVisible(true)}
                 >
@@ -402,28 +689,43 @@ const Profile = () => {
 
             <View style={styles.userInfo}>
               <View style={styles.nameContainer}>
-                <Text style={styles.userName}>{userData?.fullname || userData?.name || userData?.username}</Text>
-                {userData?.is_verified && (
-                  <Ionicons name="checkmark-circle" size={20} color="#4a80f0" />
+                <Text style={styles.userName}>{getUserDisplayName()}</Text>
+                {userData.verified && (
+                  <Ionicons name="checkmark-circle" size={20} color="#4a80f0" style={styles.verifiedBadge} />
                 )}
               </View>
-              <Text style={styles.userBio}>{userData?.bio || 'No bio yet'}</Text>
-              {userData?.website && (
-                <TouchableOpacity>
-                  <Text style={styles.website}>{userData.website}</Text>
-                </TouchableOpacity>
-              )}
+              <Text style={styles.userUsername}>@{userData.username || 'username'}</Text>
+              <Text style={styles.userBio}>{userData.about || userData.bio || 'No bio yet'}</Text>
+
+              {/* Additional Info */}
+              <View style={styles.additionalInfo}>
+                {userData.gender !== undefined && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="person-outline" size={16} color="#666" />
+                    <Text style={styles.infoText}>
+                      {userData.gender === 1 ? 'Male' : userData.gender === 2 ? 'Female' : 'Other'}
+                    </Text>
+                  </View>
+                )}
+                {userData.current_city && (
+                  <View style={styles.infoRow}>
+                    <Ionicons name="location-outline" size={16} color="#666" />
+                    <Text style={styles.infoText}>{userData.current_city}</Text>
+                  </View>
+                )}
+                <View style={styles.infoRow}>
+                  <Ionicons name="calendar-outline" size={16} color="#666" />
+                  <Text style={styles.infoText}>Joined {formatDate(userData.joined)}</Text>
+                </View>
+              </View>
             </View>
 
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.actionButton}
-                onPress={handleEditProfile}
+                onPress={() => setEditProfileModalVisible(true)}
               >
                 <Text style={styles.actionButtonText}>Edit Profile</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="person-add-outline" size={20} color="#333" />
               </TouchableOpacity>
             </View>
           </View>
@@ -431,62 +733,63 @@ const Profile = () => {
 
         {/* Navigation Tabs */}
         <View style={styles.tabContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
             onPress={() => setActiveTab('posts')}
           >
-            <Ionicons 
-              name="grid" 
-              size={24} 
-              color={activeTab === 'posts' ? '#0C3F44' : '#666'} 
+            <Ionicons
+              name="grid"
+              size={24}
+              color={activeTab === 'posts' ? '#0C3F44' : '#666'}
             />
             <Text style={[
               styles.tabText,
               activeTab === 'posts' && styles.activeTabText
             ]}>Posts</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'reels' && styles.activeTab]}
-            onPress={() => setActiveTab('reels')}
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'followers' && styles.activeTab]}
+            onPress={() => setFollowersModalVisible(true)}
           >
-            <Ionicons 
-              name="play" 
-              size={24} 
-              color={activeTab === 'reels' ? '#0C3F44' : '#666'} 
+            <Ionicons
+              name="people"
+              size={24}
+              color={activeTab === 'followers' ? '#0C3F44' : '#666'}
             />
             <Text style={[
               styles.tabText,
-              activeTab === 'reels' && styles.activeTabText
-            ]}>Reels</Text>
+              activeTab === 'followers' && styles.activeTabText
+            ]}>Followers</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'following' && styles.activeTab]}
+            onPress={() => setFollowingModalVisible(true)}
+          >
+            <Ionicons
+              name="person-add"
+              size={24}
+              color={activeTab === 'following' ? '#0C3F44' : '#666'}
+            />
+            <Text style={[
+              styles.tabText,
+              activeTab === 'following' && styles.activeTabText
+            ]}>Following</Text>
           </TouchableOpacity>
         </View>
 
         {/* Content Grid */}
-        {activeTab === 'posts' ? (
+        {activeTab === 'posts' && (
           posts.length > 0 ? (
             <FlatList
               data={posts}
               renderItem={renderPostItem}
-              keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+              keyExtractor={(item, index) => item.id?.toString() || index.toString()}
               numColumns={3}
               scrollEnabled={false}
               contentContainerStyle={styles.postsGrid}
             />
           ) : (
-            renderEmptyState()
-          )
-        ) : (
-          reels.length > 0 ? (
-            <FlatList
-              data={reels}
-              renderItem={renderReelItem}
-              keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-              numColumns={3}
-              scrollEnabled={false}
-              contentContainerStyle={styles.reelsGrid}
-            />
-          ) : (
-            renderEmptyState()
+            renderEmptyState('posts')
           )
         )}
       </ScrollView>
@@ -506,45 +809,214 @@ const Profile = () => {
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
-            <View style={styles.editForm}>
+
+            <ScrollView style={styles.editForm}>
+              {/* Basic Information Section */}
+              <Text style={styles.sectionTitle}>Basic Information</Text>
+
               <TextInput
                 style={styles.input}
-                placeholder="Full Name"
-                value={editForm.fullname}
-                onChangeText={(text) => setEditForm(prev => ({ ...prev, fullname: text }))}
+                placeholder="First Name"
+                value={editForm.first_name}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, first_name: text }))}
               />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Last Name"
+                value={editForm.last_name}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, last_name: text }))}
+              />
+
               <TextInput
                 style={styles.input}
                 placeholder="Username"
                 value={editForm.username}
                 onChangeText={(text) => setEditForm(prev => ({ ...prev, username: text }))}
               />
+
+              <Text style={styles.inputLabel}>Gender</Text>
+              <View style={styles.genderOptions}>
+                <TouchableOpacity
+                  style={[styles.genderOption, editForm.gender === '1' && styles.genderOptionSelected]}
+                  onPress={() => setEditForm(prev => ({ ...prev, gender: '1' }))}
+                >
+                  <Text style={[styles.genderOptionText, editForm.gender === '1' && styles.genderOptionTextSelected]}>
+                    Male
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.genderOption, editForm.gender === '2' && styles.genderOptionSelected]}
+                  onPress={() => setEditForm(prev => ({ ...prev, gender: '2' }))}
+                >
+                  <Text style={[styles.genderOptionText, editForm.gender === '2' && styles.genderOptionTextSelected]}>
+                    Female
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.genderOption, editForm.gender === '0' && styles.genderOptionSelected]}
+                  onPress={() => setEditForm(prev => ({ ...prev, gender: '0' }))}
+                >
+                  <Text style={[styles.genderOptionText, editForm.gender === '0' && styles.genderOptionTextSelected]}>
+                    Other
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <TextInput
                 style={[styles.input, styles.bioInput]}
-                placeholder="Bio"
-                value={editForm.bio}
-                onChangeText={(text) => setEditForm(prev => ({ ...prev, bio: text }))}
+                placeholder="Bio/About"
+                value={editForm.about}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, about: text }))}
                 multiline
-                numberOfLines={3}
+                numberOfLines={4}
               />
+
+              {/* Birth Date Section */}
+              <Text style={styles.sectionTitle}>Birth Date</Text>
+              <View style={styles.birthDateContainer}>
+                <TextInput
+                  style={[styles.input, styles.birthDayInput]}
+                  placeholder="Day"
+                  value={editForm.birth_day}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, birth_day: text }))}
+                  keyboardType="numeric"
+                  maxLength={2}
+                />
+                <TextInput
+                  style={[styles.input, styles.birthMonthInput]}
+                  placeholder="Month"
+                  value={editForm.birth_month}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, birth_month: text }))}
+                  keyboardType="numeric"
+                  maxLength={2}
+                />
+                <TextInput
+                  style={[styles.input, styles.birthYearInput]}
+                  placeholder="Year"
+                  value={editForm.birth_year}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, birth_year: text }))}
+                  keyboardType="numeric"
+                  maxLength={4}
+                />
+              </View>
+
+              {/* Location Section */}
+              <Text style={styles.sectionTitle}>Location</Text>
+
               <TextInput
                 style={styles.input}
-                placeholder="Website"
-                value={editForm.website}
-                onChangeText={(text) => setEditForm(prev => ({ ...prev, website: text }))}
+                placeholder="Current City"
+                value={editForm.current_city}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, current_city: text }))}
               />
-              <TouchableOpacity 
-                style={[styles.saveButton, loading && styles.disabledButton]}
-                onPress={handleEditProfile}
-                disabled={loading}
+
+              <TextInput
+                style={styles.input}
+                placeholder="Hometown"
+                value={editForm.hometown}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, hometown: text }))}
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Country Code"
+                value={editForm.country}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, country: text }))}
+                keyboardType="numeric"
+              />
+
+              {/* Social Links Section */}
+              <Text style={styles.sectionTitle}>Social Links</Text>
+
+              <View style={styles.socialInputContainer}>
+                <Ionicons name="logo-facebook" size={20} color="#1877F2" style={styles.socialIcon} />
+                <TextInput
+                  style={[styles.input, styles.socialInput]}
+                  placeholder="Facebook URL"
+                  value={editForm.facebook}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, facebook: text }))}
+                />
+              </View>
+
+              <View style={styles.socialInputContainer}>
+                <Ionicons name="logo-twitter" size={20} color="#1DA1F2" style={styles.socialIcon} />
+                <TextInput
+                  style={[styles.input, styles.socialInput]}
+                  placeholder="Twitter URL"
+                  value={editForm.twitter}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, twitter: text }))}
+                />
+              </View>
+
+              <View style={styles.socialInputContainer}>
+                <Ionicons name="logo-instagram" size={20} color="#E4405F" style={styles.socialIcon} />
+                <TextInput
+                  style={[styles.input, styles.socialInput]}
+                  placeholder="Instagram URL"
+                  value={editForm.instagram}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, instagram: text }))}
+                />
+              </View>
+
+              <View style={styles.socialInputContainer}>
+                <Ionicons name="logo-linkedin" size={20} color="#0077B5" style={styles.socialIcon} />
+                <TextInput
+                  style={[styles.input, styles.socialInput]}
+                  placeholder="LinkedIn URL"
+                  value={editForm.linkedin}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, linkedin: text }))}
+                />
+              </View>
+
+              <View style={styles.socialInputContainer}>
+                <Ionicons name="logo-youtube" size={20} color="#FF0000" style={styles.socialIcon} />
+                <TextInput
+                  style={[styles.input, styles.socialInput]}
+                  placeholder="YouTube URL"
+                  value={editForm.youtube}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, youtube: text }))}
+                />
+              </View>
+
+              {/* Upload Buttons */}
+              <View style={styles.uploadButtons}>
+                <Text style={styles.sectionTitle}>Photos</Text>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={() => handleImageUpload('avatar')}
+                  disabled={uploading}
+                >
+                  <Ionicons name="person-circle-outline" size={20} color="#0C3F44" />
+                  <Text style={styles.uploadButtonText}>
+                    {uploading ? 'Uploading...' : 'Change Profile Picture'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={() => handleImageUpload('cover')}
+                  disabled={uploading}
+                >
+                  <Ionicons name="image-outline" size={20} color="#0C3F44" />
+                  <Text style={styles.uploadButtonText}>
+                    {uploading ? 'Uploading...' : 'Change Cover Photo'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Save Button */}
+              <TouchableOpacity
+                style={[styles.saveButton, (uploading || loading) && styles.disabledButton]}
+                onPress={handleUpdateProfile}
+                disabled={uploading || loading}
               >
-                {loading ? (
+                {uploading || loading ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                  <Text style={styles.saveButtonText}>Save All Changes</Text>
                 )}
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -604,6 +1076,22 @@ const styles = StyleSheet.create({
   coverOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    padding: 10,
+  },
+  coverEditButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  coverEditText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4,
   },
   profileInfo: {
     paddingTop: 20,
@@ -616,11 +1104,27 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: 15,
   },
+  avatarContainer: {
+    position: 'relative',
+  },
   profilePicture: {
     width: 80,
     height: 80,
     borderRadius: 40,
     borderWidth: 3,
+    borderColor: '#fff',
+  },
+  avatarEditButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#0C3F44',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
     borderColor: '#fff',
   },
   statsContainer: {
@@ -648,7 +1152,7 @@ const styles = StyleSheet.create({
   nameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 2,
   },
   userName: {
     fontSize: 18,
@@ -656,16 +1160,32 @@ const styles = StyleSheet.create({
     color: '#333',
     marginRight: 5,
   },
+  userUsername: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
   userBio: {
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
-    marginBottom: 5,
+    marginBottom: 12,
   },
-  website: {
-    fontSize: 14,
-    color: '#0C3F44',
-    fontWeight: '500',
+  additionalInfo: {
+    marginTop: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#666',
+    marginLeft: 8,
+  },
+  verifiedBadge: {
+    marginLeft: 4,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -673,26 +1193,16 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    backgroundColor: '#0C3F44',
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    color: '#fff',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -729,12 +1239,14 @@ const styles = StyleSheet.create({
     margin: 1,
     backgroundColor: '#f8f8f8',
     position: 'relative',
+    overflow: 'hidden',
   },
   postThumbnail: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#f0f0f0',
   },
-  textPost: {
+  textThumbnail: {
     width: '100%',
     height: '100%',
     padding: 8,
@@ -742,11 +1254,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  postText: {
-    fontSize: 12,
+  textThumbnailText: {
+    fontSize: 11,
     color: '#fff',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 14,
+    fontWeight: '500',
   },
   videoIndicator: {
     position: 'absolute',
@@ -756,40 +1269,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
   },
-  reelsGrid: {
-    padding: 1,
-  },
-  reelItem: {
-    flex: 1,
-    aspectRatio: 0.8,
-    margin: 1,
-    backgroundColor: '#f8f8f8',
-    position: 'relative',
-  },
-  reelThumbnail: {
-    width: '100%',
-    height: '100%',
-  },
-  reelOverlay: {
+  multipleMediaIndicator: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 8,
+    top: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
-  reelStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  reelViews: {
-    color: '#fff',
+  multipleMediaText: {
     fontSize: 12,
-    fontWeight: '500',
+    color: '#fff',
+    marginLeft: 2,
+    fontWeight: 'bold',
   },
   emptyState: {
     alignItems: 'center',
@@ -819,7 +1314,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -837,6 +1332,13 @@ const styles = StyleSheet.create({
   editForm: {
     padding: 20,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+    marginTop: 15,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -846,14 +1348,60 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   bioInput: {
-    height: 80,
+    minHeight: 100,
     textAlignVertical: 'top',
+  },
+  genderOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  genderOption: {
+    flex: 1,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  genderOptionSelected: {
+    backgroundColor: '#0C3F44',
+    borderColor: '#0C3F44',
+  },
+  genderOptionText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  genderOptionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  uploadButtons: {
+    marginVertical: 10,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  uploadButtonText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
   },
   saveButton: {
     backgroundColor: '#0C3F44',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
   },
   disabledButton: {
     opacity: 0.6,
@@ -862,51 +1410,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  followerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f8f8',
-  },
-  followerAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  followerInfo: {
-    flex: 1,
-  },
-  followerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
-  },
-  followerUsername: {
-    fontSize: 14,
-    color: '#666',
-  },
-  followButton: {
-    backgroundColor: '#0C3F44',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  followingButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  followButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  followingButtonText: {
-    color: '#333',
   },
 });
 
