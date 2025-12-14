@@ -18,7 +18,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import Video from 'react-native-video';
+// import Video from 'react-native-video';
+import { Video } from 'expo-av';
+
 import { useAuth } from '../AuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');

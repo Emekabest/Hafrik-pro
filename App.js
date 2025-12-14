@@ -43,6 +43,7 @@ function AppNavigator() {
             gestureEnabled: false,
           }}
         />
+        
         {/* Add your new screens here */}
         <Stack.Screen name="Categories" component={CategoriesScreen} />
         <Stack.Screen name="Events" component={EventsScreen} />
