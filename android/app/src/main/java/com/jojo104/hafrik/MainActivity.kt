@@ -1,4 +1,4 @@
-package com.hafrik
+package com.jojo104.hafrik
 
 import android.os.Build
 import android.os.Bundle

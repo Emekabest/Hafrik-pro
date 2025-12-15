@@ -9,6 +9,7 @@ export const useAuth = () => {
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };
 
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     loadStoredAuth();
   }, []);
+
 
   const loadStoredAuth = async () => {
     try {
@@ -41,6 +43,7 @@ export const AuthProvider = ({ children }) => {
         const userData = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(userData);
+        
         
         console.log('✅ Auto-login successful:', {
           userId: userData.id,

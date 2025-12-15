@@ -18,7 +18,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import Video from 'react-native-video';
+// import Video from 'react-native-video';
+import { Video } from 'expo-av';
+
 import { useAuth } from '../AuthContext';
 
 const { width, height } = Dimensions.get('window');

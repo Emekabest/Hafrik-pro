@@ -20,7 +20,7 @@ import {
   ScrollView,
   Easing
 } from 'react-native';
-import Video from 'react-native-video';
+import { Video } from 'expo-av';
 import { AntDesign, FontAwesome, Feather, Ionicons, MaterialCommunityIcons, MaterialIcons, Entypo } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
@@ -40,7 +40,10 @@ function useResponsiveDimensions() {
     const subscription = Dimensions.addEventListener('change', ({ window }) => setWindow(window));
     return () => subscription?.remove();
   }, []);
+
+
   const width = window.width;
+
   const height = window.height;
   const VIDEO_ASPECT_RATIO = 9 / 16;
   const VIDEO_HEIGHT = height; // Full screen height
@@ -154,12 +157,14 @@ const VideoPlayer = ({
           style={[styles.videoPoster, { width: '100%', height: '100%' }]}
           resizeMode="cover"
         />
+
         <View style={styles.videoErrorOverlay}>
-          <Text style={styles.videoErrorText}>Couldn't load video</Text>
+          <Text style={styles.videoErrorText}>Couldn't load vide</Text>
         </View>
       </View>
     );
   }
+
 
   return (
     <View style={[styles.videoContainer, { height: VIDEO_HEIGHT }]}>
@@ -816,6 +821,7 @@ const handleDoubleTap = useCallback(() => {
     ? caption.substring(0, 150) + '...'
     : caption;
 
+  console.log("This is width::" + width)
   return (
     <View style={[styles.reelContainer, { width, height }]}>
       {/* Video Player - Full Screen */}

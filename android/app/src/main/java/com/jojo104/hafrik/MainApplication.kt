@@ -1,4 +1,4 @@
-package com.hafrik
+package com.jojo104.hafrik
 
 import android.app.Application
 import android.content.res.Configuration
