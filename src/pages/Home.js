@@ -26,6 +26,7 @@ import { useAuth } from '../AuthContext';
 const { width: screenWidth } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (screenWidth) / 2;
 // Base grid item height - will adjust based on caption
+
 const GRID_ITEM_BASE_HEIGHT = 380;
 
 const HomePage = () => {
