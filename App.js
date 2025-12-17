@@ -29,6 +29,7 @@ function AppNavigator() {
 
   return (
     <NavigationContainer>
+      
       <Stack.Navigator 
         initialRouteName={user && token ? "MainTabs" : "Login"}
         screenOptions={{
