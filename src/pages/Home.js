@@ -941,7 +941,7 @@ const handleFeedPress = (feed) => {
     const hasCaption = caption.trim().length > 0;
     const gridItemHeight = getGridItemHeight(feed);
 
-    
+
     return (
       <TouchableOpacity
         style={[styles.gridItem, { height: gridItemHeight }]}
@@ -1177,14 +1177,16 @@ const handleFeedPress = (feed) => {
     );
   };
 
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      {/* <StatusBar barStyle="dark-content" /> */}
 
       <View style={styles.topNav}>
         <TouchableOpacity style={styles.leftIcon}>
           <Ionicons name="menu-outline" size={24} color="#333" />
         </TouchableOpacity>
+       
 
         <View style={styles.logoTextContainer}>
           <Image
@@ -1294,6 +1296,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
+
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
@@ -1301,17 +1304,20 @@ const styles = StyleSheet.create({
     padding: 20,
     maxHeight: '50%',
   },
+
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
+
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
   },
+
   locationOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
