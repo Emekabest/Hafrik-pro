@@ -926,7 +926,8 @@ const handleFeedPress = (feed) => {
     );
   };
 
-  // Render grid feed item 
+
+  // Render grid feed item
   const renderGridFeedItem = ({ item: feed }) => {
     const thumbnail = getFeedThumbnail(feed);
     const caption = feed.text || feed.caption || '';
@@ -940,6 +941,7 @@ const handleFeedPress = (feed) => {
     const hasCaption = caption.trim().length > 0;
     const gridItemHeight = getGridItemHeight(feed);
 
+    
     return (
       <TouchableOpacity
         style={[styles.gridItem, { height: gridItemHeight }]}
@@ -980,6 +982,7 @@ const handleFeedPress = (feed) => {
                     <Text style={styles.overlayUsername}>
                       {user.username || 'User'}
                     </Text>
+        
                   </View>
                   <View style={styles.likesOverlay}>
                     <Ionicons name="heart" size={14} color="#fff" />

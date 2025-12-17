@@ -27,30 +27,24 @@ function AppNavigator() {
     );
   }
 
+
   return (
     <NavigationContainer>
-      <Stack.Navigator 
-        initialRouteName={user && token ? "MainTabs" : "Login"}
-        screenOptions={{
-          headerShown: false
-        }}
-      >
+      
+      <Stack.Navigator initialRouteName={user && token ? "MainTabs" : "Login"} screenOptions={{ headerShown: false }}>
+
         <Stack.Screen name="Login" component={Login} />
-        <Stack.Screen 
-          name="MainTabs" 
-          component={MainTabNavigator}
-          options={{
-            gestureEnabled: false,
-          }}
-        />
+        <Stack.Screen name="MainTabs" component={MainTabNavigator} options={{ gestureEnabled: false, }} />
         
+
         {/* Add your new screens here */}
         <Stack.Screen name="Categories" component={CategoriesScreen} />
         <Stack.Screen name="Events" component={EventsScreen} />
         <Stack.Screen name="Groups" component={GroupsScreen} />
         <Stack.Screen name="WebView" component={WebViewScreen} />
       </Stack.Navigator>
-      <StatusBar style="auto" />
+
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent />    
     </NavigationContainer>
   );
 }
@@ -62,6 +56,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
