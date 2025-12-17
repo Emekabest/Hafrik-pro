@@ -1053,6 +1053,7 @@ const handleFeedPress = (feed) => {
       );
     }
 
+ 
     const displayFeeds = filteredFeeds.filter(feed => {
       const hasMedia = feed.media && feed.media.length > 0;
       const caption = feed.text || feed.caption || '';
@@ -1178,10 +1179,11 @@ const handleFeedPress = (feed) => {
   };
 
 
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* <StatusBar barStyle="dark-content" /> */}
 
+      {/* Home Header */}
       <View style={styles.topNav}>
         <TouchableOpacity style={styles.leftIcon}>
           <Ionicons name="menu-outline" size={24} color="#333" />
@@ -1196,6 +1198,7 @@ const handleFeedPress = (feed) => {
           />
         </View>
 
+
         <TouchableOpacity
           style={styles.locationSelector}
           onPress={() => setLocationModalVisible(true)}
@@ -1204,9 +1207,11 @@ const handleFeedPress = (feed) => {
           <Text style={styles.locationText} numberOfLines={1}>
             {selectedLocation.name}
           </Text>
+
           <Ionicons name="chevron-down-outline" size={14} color="#666" />
         </TouchableOpacity>
       </View>
+
 
       <Modal
         animationType="slide"
