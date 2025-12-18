@@ -10,12 +10,21 @@ import Reels from '../pages/reels';
 import Profile from '../pages/Profile';
 import CreatePost from '../pages/CreatePost'; // Add this import
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 const Tab = createBottomTabNavigator();
+
+
 
 // Custom Tab Bar Component
 const CustomTabBar = ({ state, descriptors, navigation }) => {
+
+  const { bottom } = useSafeAreaInsets();
+
+  
+
   return (
-    <View style={styles.tabBarContainer}>
+    <View style={[styles.tabBarContainer, {paddingBottom: bottom}]}>
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
@@ -68,11 +77,12 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             style={styles.tabItem}
           >
             <View style={styles.iconContainer}>
-              <Ionicons 
-                name={iconName} 
+              <Ionicons
+                name={iconName}
                 size={route.name === 'CreatePost' ? 28 : 24} // Slightly larger for CreatePost
-                color={isFocused ? '#0C3F44' : '#757575'} 
+                color={isFocused ? '#0C3F44' : '#757575'}
               />
+
             </View>
             <Text style={[
               styles.tabLabel,
@@ -81,6 +91,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
               {label}
             </Text>
           </TouchableOpacity>
+          
         );
       })}
     </View>
@@ -135,7 +146,6 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     flexDirection: 'row',
     height: 60,
-    paddingBottom: 8,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',

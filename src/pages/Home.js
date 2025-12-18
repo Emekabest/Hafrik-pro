@@ -22,6 +22,7 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Video } from 'expo-av';
 
 import { useAuth } from '../AuthContext';
+import AppDetails from '../service/appdetails';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (screenWidth) / 2;
@@ -1120,12 +1121,14 @@ const handleFeedPress = (feed) => {
             )}
           </>
         }
+
         ListHeaderComponent={
           <>
             {renderBanner()}
             {banners.length > 0 && <View style={styles.divider} />}
             {renderQuickLinks()}
             {quickLinks.length > 0 && <View style={styles.divider} />}
+
 
             <View style={styles.viewToggleSection}>
               <ScrollView
@@ -1178,42 +1181,54 @@ const handleFeedPress = (feed) => {
     );
   };
 
-
+  
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']} >
 
-      {/* Home Header */}
+
+      {/* Home Header Section............................................................................. */}
       <View style={styles.topNav}>
-        <TouchableOpacity style={styles.leftIcon}>
-          <Ionicons name="menu-outline" size={24} color="#333" />
-        </TouchableOpacity>
-       
+        
+        <View style = {styles.headerLeft} >
+          <TouchableOpacity style={styles.leftIcon} activeOpacity={1}>
 
-        <View style={styles.logoTextContainer}>
-          <Image
-            source={require('../assl.js/logoTop.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+             <Image
+              source={require('../assl.js/hafrik-bg1.jpg')}
+              style={{height:"100%",width:"100%"}}
+              resizeMode="cover"
+            />
+
+          </TouchableOpacity>
         </View>
 
 
-        <TouchableOpacity
-          style={styles.locationSelector}
-          onPress={() => setLocationModalVisible(true)}
-        >
-          <Ionicons name="location-outline" size={16} color="#666" />
-          <Text style={styles.locationText} numberOfLines={1}>
-            {selectedLocation.name}
-          </Text>
+        <View style = {styles.headerMiddle}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../assl.js/logoTop.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
 
-          <Ionicons name="chevron-down-outline" size={14} color="#666" />
-        </TouchableOpacity>
+
+
+         <View style = {styles.headerRight}>
+
+          <TouchableOpacity style={styles.headerSearch} activeOpacity={1} >
+            <Ionicons name="search" size={28} color={AppDetails.primaryColor} />
+          </TouchableOpacity>
+         
+        </View>
+
       </View>
+      {/* Home Header Section />............................................................................. */}
 
+      
 
-      <Modal
+      {/* <Modal
         animationType="slide"
         transparent={true}
         visible={locationModalVisible}
@@ -1244,53 +1259,90 @@ const handleFeedPress = (feed) => {
             ))}
           </View>
         </View>
-      </Modal>
+      </Modal> */}
 
-      {renderFeedsList()}
+      {/* {renderFeedsList()} */}
     </SafeAreaView>
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
-    marginTop: Platform.OS === 'android' ? 25 : 0,
+    backgroundColor: '#fff',
+    height: 20,
+
+    // marginTop: Platform.OS === 'android' ? 25 : 0,
   },
   topNav: {
-    flexDirection: 'row',
+
+    flexDirection: "row",
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: 'transparent',
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+ 
+    height: 50,
+    width: "100%",
+
+    backgroundColor: '#d1d1d1ff',
   },
+
+  headerLeft:{
+    height:"100%",
+    width:"25%",
+    justifyContent:"center",
+
+  },
+
+  headerMiddle:{
+      height:"100%",
+      width:"50%",
+  },
+
+  headerRight:{
+      height:"100%",
+      width:"25%",
+      flexDirection:"row",
+      alignItems:"center",
+      justifyContent:"flex-end",
+  },
+
   leftIcon: {
-    padding: 8,
+    height:35,
+    width:35,
+    borderRadius:"50%",
+    overflow:"hidden"
+    // // padding: 8,
+
   },
-  logoTextContainer: {
+
+  logoContainer: {
+    height:"100%",
+    width:"100%",
+    justifyContent: 'center',
+    alignItems: 'center',
+
     flexDirection: 'row',
     alignItems: 'center',
   },
   logo: {
     width: 105,
     height: 35,
-    marginRight: 120,
   },
   brandText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
-  locationSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+
+  headerSearch: {
+    // flexDirection: 'row',
+    // alignItems: 'center',
+    // paddingHorizontal: 12,
+    // paddingVertical: 8,
   },
+
   locationText: {
     fontSize: 12,
     color: '#333',
