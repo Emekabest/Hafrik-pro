@@ -1188,7 +1188,7 @@ const handleFeedPress = (feed) => {
 
 
       {/* Home Header Section............................................................................. */}
-      <View style={styles.topNav}>
+      <View style={styles.header}>
         
         <View style = {styles.headerLeft} >
           <TouchableOpacity style={styles.leftIcon} activeOpacity={1}>
@@ -1275,7 +1275,7 @@ const styles = StyleSheet.create({
 
     // marginTop: Platform.OS === 'android' ? 25 : 0,
   },
-  topNav: {
+  header: {
 
     flexDirection: "row",
     alignItems: 'center',
