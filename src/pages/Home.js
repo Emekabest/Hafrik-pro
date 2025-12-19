@@ -1303,18 +1303,50 @@ const animatedWidth = searchBarAnim.interpolate({
                         { transform: [{ translateX: drawerAnim }] },
                     ]}
                 >
-                    {drawerColors.map((color, index) => (
-                        <View
-                            key={index}
-                            style={{
-                                height: index === 0 ? 140 : 60,
-                                borderWidth: 1,
-                                borderColor: 'lightgray',
-                                margin: 10,
-                                borderRadius: 5,
-                            }}
-                        />
-                    ))}
+                    {drawerColors.map((color, index) => {
+                        if (index === 0) {
+                            return (
+                                <View
+                                    key={index}
+                                    style={{
+                                        height: 80,
+                                        borderWidth: 1,
+                                        borderColor: 'lightgray',
+                                        margin: 10,
+                                        borderRadius: 5,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingHorizontal: 10,
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Image
+                                            source={require('../assl.js/logo.png')}
+                                            style={{ height: 50, width: 50, borderRadius: 25, marginRight: 10 }}
+                                        />
+                                        <View>
+                                            <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Username</Text>
+                                            <Text style={{ color: 'gray' }}>@username</Text>
+                                        </View>
+                                    </View>
+                                    <Ionicons name="checkmark-circle" size={24} color={AppDetails.primaryColor} />
+                                </View>
+                            )
+                        }
+                        return (
+                            <View
+                                key={index}
+                                style={{
+                                    height: 60,
+                                    borderWidth: 1,
+                                    borderColor: 'lightgray',
+                                    margin: 10,
+                                    borderRadius: 5,
+                                }}
+                            />
+                        )
+                    })}
                 </Animated.View>
             </View>
         </TouchableWithoutFeedback>
