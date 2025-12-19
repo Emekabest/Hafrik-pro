@@ -64,7 +64,7 @@ const HomePage = () => {
     if (isSearchVisible) {
       Animated.timing(searchBarAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 75,
         useNativeDriver: false,
       }).start();
     } else {
