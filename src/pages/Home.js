@@ -17,6 +17,7 @@ import {
   Platform,
   TextInput,
   Animated,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -59,6 +60,33 @@ const HomePage = () => {
 
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const searchBarAnim = useRef(new Animated.Value(0)).current;
+  
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const drawerAnim = useRef(new Animated.Value(-screenWidth * 0.7)).current;
+  const [drawerColors, setDrawerColors] = useState([]);
+
+  useEffect(() => {
+    // Generate random colors for drawer items
+    const colors = Array.from({length: 6}, () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'));
+    setDrawerColors(colors);
+  }, []);
+
+  const openDrawer = () => {
+    setIsDrawerVisible(true);
+    Animated.timing(drawerAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeDrawer = () => {
+    Animated.timing(drawerAnim, {
+      toValue: -screenWidth * 0.7,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setIsDrawerVisible(false));
+  };
 
   useEffect(() => {
     if (isSearchVisible) {
@@ -1233,7 +1261,7 @@ const animatedWidth = searchBarAnim.interpolate({
         ) : (
           <>
             <View style={styles.headerLeft}>
-              <TouchableOpacity style={styles.leftIcon} activeOpacity={1}>
+              <TouchableOpacity style={styles.leftIcon} activeOpacity={1} onPress={openDrawer}>
                 <Image
                   source={require('../assl.js/hafrik-bg1.jpg')}
                   style={{ height: "100%", width: "100%" }}
@@ -1262,6 +1290,34 @@ const animatedWidth = searchBarAnim.interpolate({
       </View>
       {/* Home Header Section />............................................................................. */}
 
+      <Modal
+        animationType="none"
+        transparent={true}
+        visible={isDrawerVisible}
+        onRequestClose={closeDrawer}>
+        <TouchableWithoutFeedback onPress={closeDrawer}>
+            <View style={styles.drawerOverlay}>
+                <Animated.View
+                    style={[
+                        styles.drawerContainer,
+                        { transform: [{ translateX: drawerAnim }] },
+                    ]}
+                >
+                    {drawerColors.map((color, index) => (
+                        <View
+                            key={index}
+                            style={{
+                                height: 60,
+                                backgroundColor: color,
+                                margin: 10,
+                                borderRadius: 5,
+                            }}
+                        />
+                    ))}
+                </Animated.View>
+            </View>
+        </TouchableWithoutFeedback>
+    </Modal>
       
 
       {/* <Modal
@@ -1435,6 +1491,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+  },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  drawerContainer: {
+    width: '70%',
+    height: '100%',
+    backgroundColor: 'white',
+    paddingTop: 40,
   },
 
   locationOption: {
