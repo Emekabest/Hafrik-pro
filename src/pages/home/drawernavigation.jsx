@@ -33,13 +33,13 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
       setShowModal(true); // Show modal immediately for opening
       Animated.timing(drawerAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 100,
         useNativeDriver: true,
       }).start();
     } else {
       Animated.timing(drawerAnim, {
         toValue: -screenWidth * 0.7,
-        duration: 300,
+        duration: 100,
         useNativeDriver: true,
       }).start(() => {
         setShowModal(false); // Hide modal after closing animation completes
