@@ -9,9 +9,13 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../../service/appdetails';
+import { useAuth } from '../../AuthContext';
+import { useNavigation } from '@react-navigation/native';
+
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -19,6 +23,24 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   const drawerAnim = useRef(new Animated.Value(-screenWidth * 0.7)).current;
   const [drawerColors, setDrawerColors] = useState([]);
   const [showModal, setShowModal] = useState(false); // Internal state for Modal visibility
+
+  const [username, setUserName] = useState();
+
+  const { user, token, loading } = useAuth();
+
+  useEffect(() => {
+
+    const formattedName = user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase();
+
+    setUserName(formattedName);
+  },[])
+
+
+  const navigation = useNavigation();
+
+
+
+  
 
   useEffect(() => {
     // Generate random colors for drawer items
@@ -47,6 +69,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
     }
   }, [isVisible, onClose]);
 
+
   return (
     <Modal
       animationType="none"
@@ -69,28 +92,27 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                                   key={index}
                                   style={{
                                       height: 120,
-                                      borderWidth: 1,
-                                      borderColor: 'lightgray',
-                                      marginHorizontal: 10,
                                       marginBottom: 10,
+                                      borderBottomWidth:0.5,
+                                      borderBottomColor:"lightgray",
                                       borderRadius: 5,
                                       flexDirection: 'row',
+                                      borderBottomColor:"#eaeaeaff",
                                       alignItems: 'center',
                                       paddingHorizontal: 10,
                                       justifyContent: 'space-between',
-                                      backgroundColor: '#f9f9f9', // Added background color
                                   }}
                               >
-                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                  <TouchableOpacity onPress={()=> navigation.navigate('Profile')} activeOpacity={1} style={{ flexDirection: 'row', alignItems: 'center' }}>
                                       <Image
-                                          source={require('../../assl.js/logo.png')}
+                                          source={{uri: user.avatar}}
                                           style={{ height: 50, width: 50, borderRadius: 25, marginRight: 10 }}
                                       />
                                       <View>
-                                          <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Username</Text>
-                                          <Text style={{ color: 'gray' }}>@username</Text>
+                                          <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{username}</Text>
+                                          <Text style={{ color: 'gray' }}>{user.email}</Text>
                                       </View>
-                                  </View>
+                                  </TouchableOpacity>
                                   <Ionicons name="checkmark-circle" size={24} color={AppDetails.primaryColor || '#0C3F44'} />
                               </View>
                           )
@@ -100,12 +122,10 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                               key={index}
                               style={{
                                   height: 60,
-                                  borderWidth: 1,
-                                  borderColor: 'lightgray',
-                                  marginHorizontal: 10,
+                                  borderBottomWidth:0.5,
+                                  borderBottomColor:"#eaeaeaff",
                                   marginBottom: 10,
                                   borderRadius: 5,
-                                  backgroundColor: '#f9f9f9', // Added background color
                                   justifyContent: 'center', // Center content vertically
                                   paddingLeft: 15, // Add some padding
                               }}

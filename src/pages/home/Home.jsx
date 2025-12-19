@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  StatusBar,
   Image,
-  Modal,
   ActivityIndicator,
   RefreshControl,
   Dimensions,
   Alert,
   FlatList,
-  Platform,
-  TextInput,
-  Animated,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -27,6 +21,7 @@ import { Video } from 'expo-av';
 import { useAuth } from '../../AuthContext';
 import AppDetails from '../../service/appdetails';
 import DrawerNavigation from './drawernavigation.jsx';
+import Header from '../../pages/header.jsx';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (screenWidth) / 2;
@@ -38,7 +33,6 @@ const HomePage = () => {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { token, user } = useAuth();
-  const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState({ id: 'all', name: 'All Locations' });
   const [selectedFilter, setSelectedFilter] = useState('Latest');
   const [allFeeds, setAllFeeds] = useState([]);
@@ -58,31 +52,17 @@ const HomePage = () => {
   const [currentPlayingVideo, setCurrentPlayingVideo] = useState(null);
   const [mutedVideos, setMutedVideos] = useState({});
   const [isGridView, setIsGridView] = useState(true);
-
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const searchBarAnim = useRef(new Animated.Value(0)).current;
   
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
-  const openDrawer = () => {
+  const openDrawer = useCallback(() => {
     setIsDrawerVisible(true);
-  };
+  }, []);
 
-  const closeDrawer = () => {
+  const closeDrawer = useCallback(() => {
     setIsDrawerVisible(false);
-  };
+  }, []);
 
-  useEffect(() => {
-    if (isSearchVisible) {
-      Animated.timing(searchBarAnim, {
-        toValue: 1,
-        duration: 75,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      searchBarAnim.setValue(0);
-    }
-  }, [isSearchVisible]);
 
   const videoRefs = useRef({});
   const flatListRef = useRef(null);
@@ -430,9 +410,6 @@ const HomePage = () => {
 
   // Handle location change
   const handleLocationChange = (location) => {
-    console.log(`📍 Location changed to: ${location.name} (ID: ${location.id})`);
-    setSelectedLocation(location);
-    setLocationModalVisible(false);
   };
 
   // Handle filter change
@@ -1210,105 +1187,14 @@ const handleFeedPress = (feed) => {
     );
   };
 
-  
-
-  const { width: screenWidth } = Dimensions.get('window');
-const closeButtonWidth = 40; // Approx width for the close button area
-const headerPadding = 20; // 10 on each side
-const searchBarFinalWidth = screenWidth - headerPadding - closeButtonWidth;
-
-const animatedWidth = searchBarAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [searchBarFinalWidth * 0.4, searchBarFinalWidth]
-});
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']} >
 
-
-      {/* Home Header Section............................................................................. */}
-      <View style={styles.header}>
-        {isSearchVisible ? (
-          <View style={styles.headerSearchContainer}>
-            <Animated.View style={[styles.searchInputWrapper, {width: animatedWidth}]}>
-              <Ionicons name="search" size={20} color="#999" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search"
-                placeholderTextColor="#999"
-              />
-            </Animated.View>
-            <TouchableOpacity onPress={() => setIsSearchVisible(false)} style={styles.headerSearch} activeOpacity={1}>
-              <Ionicons name="close" size={28} color={AppDetails.primaryColor} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity style={styles.leftIcon} activeOpacity={1} onPress={openDrawer}>
-                <Image
-                  source={require('../../assl.js/hafrik-bg1.jpg')}
-                  style={{ height: "100%", width: "100%" }}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.headerMiddle}>
-              <View style={styles.logoContainer}>
-                <Image
-                  source={require('../../assl.js/logoTop.png')}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-
-            <View style={styles.headerRight}>
-              <TouchableOpacity onPress={() => setIsSearchVisible(true)} style={styles.headerSearch} activeOpacity={1}>
-                <Ionicons name="search" size={28} color={AppDetails.primaryColor} />
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-      </View>
-      {/* Home Header Section />............................................................................. */}
+      <Header onOpenDrawer={openDrawer} />
 
       <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
-      
 
-      {/* <Modal
-        animationType="slide"
-        transparent={true}
-        visible={locationModalVisible}
-        onRequestClose={() => setLocationModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Location</Text>
-              <TouchableOpacity onPress={() => setLocationModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            {locations.map((location, index) => (
-              <TouchableOpacity
-                key={`location-${index}`}
-                style={[
-                  styles.locationOption,
-                  selectedLocation.id === location.id && styles.selectedLocation
-                ]}
-                onPress={() => handleLocationChange(location)}
-              >
-                <Text style={styles.locationOptionText}>{location.name}</Text>
-                {selectedLocation.id === location.id && (
-                  <Ionicons name="checkmark" size={20} color="#0C3F44" />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </Modal> */}
+
 
       {renderFeedsList()}
     </SafeAreaView>
@@ -1322,100 +1208,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     height: 20,
 
-    // marginTop: Platform.OS === 'android' ? 25 : 0,
-  },
-  header: {
-
-    flexDirection: "row",
-    alignItems: 'center',
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
- 
-    height: 50,
-    width: "100%",
-
-  },
-
-  headerLeft:{
-    height:"100%",
-    width:"25%",
-    justifyContent:"center",
-
-  },
-
-  headerMiddle:{
-      height:"100%",
-      width:"50%",
-  },
-
-  headerRight:{
-      height:"100%",
-      width:"25%",
-      flexDirection:"row",
-      alignItems:"center",
-      justifyContent:"flex-end",
-  },
-
-  leftIcon: {
-    height:35,
-    width:35,
-    borderRadius:"50%",
-    overflow:"hidden"
-    // // padding: 8,
-
-  },
-
-  logoContainer: {
-    height:"100%",
-    width:"100%",
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logo: {
-    width: 105,
-    height: 35,
-  },
-  brandText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-
-  headerSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    justifyContent: 'flex-end',
-  },
-
-  searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#edededff',
-    borderRadius: 50,
-    height: 35,
-    paddingHorizontal: 10,
-  },
-
-  searchInput: {
-    flex: 1,
-    height: 35,
-    marginLeft: 5,
-    fontSize: 14,
-    color: '#333',
-    paddingVertical: 0,
-    textAlignVertical: 'center',
-  },
-
-  headerSearch: {
-    marginLeft: 10,
-    // flexDirection: 'row',
-    // alignItems: 'center',
-    // paddingHorizontal: 12,
-    // paddingVertical: 8,
   },
 
   locationText: {
