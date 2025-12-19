@@ -1192,9 +1192,20 @@ const handleFeedPress = (feed) => {
 
       <Header onOpenDrawer={openDrawer} />
 
+      
+      <View style={styles.quickActionsContainer}>
+        <TouchableOpacity style={styles.quickActionButton}>
+          <Text style={styles.quickActionButtonText}>What's {"\n"} Nearby</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickActionButton}>
+          <Text style={styles.quickActionButtonText}>Trending on Hafrik</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickActionButton}>
+          <Text style={styles.quickActionButtonText}>Recent Updates</Text>
+        </TouchableOpacity>
+      </View>
+
       <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
-
-
 
       {renderFeedsList()}
     </SafeAreaView>
@@ -1209,6 +1220,7 @@ const styles = StyleSheet.create({
     height: 20,
 
   },
+
 
   locationText: {
     fontSize: 12,
@@ -1257,6 +1269,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+
+
+    // Quick Actions
+  quickActionsContainer: {
+    height: 100,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  quickActionButton: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+    marginHorizontal: 5,
+    borderRadius: 8,
+    height: '80%',
+  },
+  quickActionButtonText: {
+    color: '#333',
+    // fontWeight: '600',
+    textAlign: 'center',
+  },
+
+
   // Banner Styles
   bannerContainer: {
     margin: 2,
@@ -1791,6 +1832,7 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 12,
   },
+
 });
 
 export default HomePage;
