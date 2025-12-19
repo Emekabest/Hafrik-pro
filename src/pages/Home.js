@@ -1194,11 +1194,14 @@ const handleFeedPress = (feed) => {
       <View style={styles.header}>
         {isSearchVisible ? (
           <View style={styles.headerSearchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search"
-              placeholderTextColor="#999"
-            />
+            <View style={styles.searchInputWrapper}>
+              <Ionicons name="search" size={20} color="#999" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search"
+                placeholderTextColor="#999"
+              />
+            </View>
             <TouchableOpacity onPress={() => setIsSearchVisible(false)} style={styles.headerSearch} activeOpacity={1}>
               <Ionicons name="close" size={28} color={AppDetails.primaryColor} />
             </TouchableOpacity>
@@ -1270,7 +1273,7 @@ const handleFeedPress = (feed) => {
         </View>
       </Modal> */}
 
-      {/* {renderFeedsList()} */}
+      {renderFeedsList()}
     </SafeAreaView>
   );
 };
@@ -1350,21 +1353,28 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#edededff',
+    borderRadius: 50,
+    height: 35,
+    paddingHorizontal: 10,
+  },
+
   searchInput: {
     flex: 1,
     height: 35,
-    backgroundColor: '#edededff',
-    borderRadius: 50,
-    paddingHorizontal: 10,
-    fontSize: 16,
+    marginLeft: 5,
+    fontSize: 14,
     color: '#333',
-    fontSize:14,
     paddingVertical: 0,
     textAlignVertical: 'center',
-
   },
 
   headerSearch: {
+    marginLeft: 10,
     // flexDirection: 'row',
     // alignItems: 'center',
     // paddingHorizontal: 12,
