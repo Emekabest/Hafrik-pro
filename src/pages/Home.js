@@ -15,6 +15,7 @@ import {
   Alert,
   FlatList,
   Platform,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -54,6 +55,8 @@ const HomePage = () => {
   const [currentPlayingVideo, setCurrentPlayingVideo] = useState(null);
   const [mutedVideos, setMutedVideos] = useState({});
   const [isGridView, setIsGridView] = useState(true);
+
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
 
   const videoRefs = useRef({});
   const flatListRef = useRef(null);
@@ -1189,40 +1192,46 @@ const handleFeedPress = (feed) => {
 
       {/* Home Header Section............................................................................. */}
       <View style={styles.header}>
-        
-        <View style = {styles.headerLeft} >
-          <TouchableOpacity style={styles.leftIcon} activeOpacity={1}>
-
-             <Image
-              source={require('../assl.js/hafrik-bg1.jpg')}
-              style={{height:"100%",width:"100%"}}
-              resizeMode="cover"
+        {isSearchVisible ? (
+          <View style={styles.headerSearchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search"
+              placeholderTextColor="#999"
             />
-
-          </TouchableOpacity>
-        </View>
-
-
-        <View style = {styles.headerMiddle}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../assl.js/logoTop.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <TouchableOpacity onPress={() => setIsSearchVisible(false)} style={styles.headerSearch} activeOpacity={1}>
+              <Ionicons name="close" size={28} color={AppDetails.primaryColor} />
+            </TouchableOpacity>
           </View>
-        </View>
+        ) : (
+          <>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity style={styles.leftIcon} activeOpacity={1}>
+                <Image
+                  source={require('../assl.js/hafrik-bg1.jpg')}
+                  style={{ height: "100%", width: "100%" }}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            </View>
 
+            <View style={styles.headerMiddle}>
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require('../assl.js/logoTop.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
 
-
-         <View style = {styles.headerRight}>
-
-          <TouchableOpacity style={styles.headerSearch} activeOpacity={1} >
-            <Ionicons name="search" size={28} color={AppDetails.primaryColor} />
-          </TouchableOpacity>
-         
-        </View>
-
+            <View style={styles.headerRight}>
+              <TouchableOpacity onPress={() => setIsSearchVisible(true)} style={styles.headerSearch} activeOpacity={1}>
+                <Ionicons name="search" size={28} color={AppDetails.primaryColor} />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
       {/* Home Header Section />............................................................................. */}
 
@@ -1285,7 +1294,6 @@ const styles = StyleSheet.create({
     height: 50,
     width: "100%",
 
-    backgroundColor: '#d1d1d1ff',
   },
 
   headerLeft:{
@@ -1334,6 +1342,26 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+  },
+
+  headerSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  searchInput: {
+    flex: 1,
+    height: 35,
+    backgroundColor: '#edededff',
+    borderRadius: 50,
+    paddingHorizontal: 10,
+    fontSize: 16,
+    color: '#333',
+    fontSize:14,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+
   },
 
   headerSearch: {
