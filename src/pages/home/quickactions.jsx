@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import AppDetails from '../../service/appdetails';
 
 const QuickActions = () => {
-  const [activeQuickAction, setActiveQuickAction] = useState(0);
+  const [activeQuickAction, setActiveQuickAction] = useState(2);
 
   return (
     <View style={styles.quickActionsContainer}>
@@ -48,7 +48,7 @@ const QuickActions = () => {
 
 const styles = StyleSheet.create({
   quickActionsContainer: {
-    height: 100,
+    height: 80,
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderBottomWidth: 1,
@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   quickActionButton: {
+    // paddingTop:9,
     flex: 1,
     justifyContent: 'space-between',
     alignItems: 'center',
