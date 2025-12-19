@@ -1137,7 +1137,7 @@ const handleFeedPress = (feed) => {
             {quickLinks.length > 0 && <View style={styles.divider} />}
 
 
-            <View style={styles.viewToggleSection}>
+            {/* <View style={styles.viewToggleSection}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1173,9 +1173,10 @@ const handleFeedPress = (feed) => {
                   color="#0C3F44"
                 />
               </TouchableOpacity>
-            </View>
+            </View> */}
           </>
         }
+        
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
