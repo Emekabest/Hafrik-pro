@@ -21,8 +21,6 @@ const QuickLinks = () => {
   const { token, user } = useAuth();
   const [quickLinks, setQuickLinks] = useState([]);
   const [quickLinksLoading, setQuickLinksLoading] = useState(true);
-  const [currentQuickLinksIndex, setCurrentQuickLinksIndex] = useState(0);
-  const quickLinksScrollViewRef = useRef(null);
 
   const fetchQuickLinks = async () => {
     try {
@@ -69,31 +67,7 @@ const QuickLinks = () => {
     }
   };
 
-  const handleQuickLinksScroll = (event) => {
-    const containerWidth = screenWidth - 30;
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(contentOffsetX / containerWidth);
-    if (currentIndex !== currentQuickLinksIndex) setCurrentQuickLinksIndex(currentIndex);
-  };
-
   useEffect(() => { fetchQuickLinks(); }, []);
-
-  useEffect(() => {
-    if (quickLinks.length > 8) {
-      const interval = setInterval(() => {
-        const containersCount = Math.ceil(quickLinks.length / 8);
-        setCurrentQuickLinksIndex(prev => (prev === containersCount - 1 ? 0 : prev + 1));
-      }, 6000);
-      return () => clearInterval(interval);
-    }
-  }, [quickLinks.length]);
-
-  useEffect(() => {
-    if (quickLinksScrollViewRef.current && quickLinks.length > 8) {
-      const containerWidth = screenWidth - 30;
-      quickLinksScrollViewRef.current.scrollTo({ x: currentQuickLinksIndex * containerWidth, animated: true });
-    }
-  }, [currentQuickLinksIndex, quickLinks.length]);
 
   if (quickLinksLoading) {
     return (
@@ -105,38 +79,22 @@ const QuickLinks = () => {
 
   if (quickLinks.length === 0) return null;
 
-  const containers = [];
-  for (let i = 0; i < quickLinks.length; i += 8) containers.push(quickLinks.slice(i, i + 8));
-
   return (
     <>
       <View style={styles.quickLinksSection}>
-        <ScrollView ref={quickLinksScrollViewRef} horizontal showsHorizontalScrollIndicator={false} style={styles.quickLinksScrollView} contentContainerStyle={styles.quickLinksScrollContent} onMomentumScrollEnd={handleQuickLinksScroll} scrollEventThrottle={16}>
-          {containers.map((container, containerIndex) => (
-            <View key={`container-${containerIndex}`} style={styles.quickLinksContainer}>
-              {[0, 4].map(start => (
-                <View key={`row-${start}`} style={styles.quickLinksRow}>
-                  {container.slice(start, start + 4).map((link, index) => {
-                    const imageUrl = link.image || link.icon || link.image_url;
-                    return (
-                      <TouchableOpacity key={`link-${link.id || index}`} style={styles.quickLinkItem} onPress={() => handleQuickLinkPress(link)}>
-                        <View style={styles.quickLinkImageContainer}>
-                          {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.quickLinkImage} resizeMode="cover" /> : <View style={styles.quickLinkPlaceholder}><Ionicons name="grid-outline" size={16} color="#666" /></View>}
-                        </View>
-                        <Text style={styles.quickLinkText} numberOfLines={2}>{link.name || link.title || `Category ${index + 1}`}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickLinksScrollContent}>
+          {quickLinks.map((link, index) => {
+            const imageUrl = link.image || link.icon || link.image_url;
+            return (
+              <TouchableOpacity key={`link-${link.id || index}`} style={styles.quickLinkItem} onPress={() => handleQuickLinkPress(link)}>
+                <View style={styles.quickLinkImageContainer}>
+                  {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.quickLinkImage} resizeMode="cover" /> : <View style={styles.quickLinkPlaceholder}><Ionicons name="grid-outline" size={16} color="#666" /></View>}
                 </View>
-              ))}
-            </View>
-          ))}
+                <Text style={styles.quickLinkText} numberOfLines={2}>{link.name || link.title || `Category ${index + 1}`}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
-        {containers.length > 1 && (
-          <View style={styles.quickLinksIndicators}>
-            {containers.map((_, index) => <View key={`indicator-${index}`} style={[styles.quickLinksIndicator, index === currentQuickLinksIndex && styles.quickLinksIndicatorActive]} />)}
-          </View>
-        )}
       </View>
       <View style={styles.divider} />
     </>
@@ -145,21 +103,35 @@ const QuickLinks = () => {
 
 const styles = StyleSheet.create({
   divider: { height: 8, backgroundColor: '#f8f9fa' },
-  quickLinksSection: { padding: 15, paddingBottom: 10 },
-  quickLinksScrollView: { flexGrow: 0 },
-  quickLinksScrollContent: { paddingRight: 15 },
-  quickLinksContainer: { width: screenWidth - 30, marginRight: 15 },
-  quickLinksRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  quickLinkItem: { alignItems: 'center', width: (screenWidth - 60) / 4 },
-  quickLinkImageContainer: { width: 40, height: 40, padding: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 6, borderWidth: 1, borderColor: '#f0f0f0', backgroundColor: '#f8f9fa' },
+  quickLinksSection: {
+    paddingVertical: 15,
+  },
+  quickLinksScrollContent: {
+    paddingHorizontal: 10,
+  },
+  quickLinkItem: {
+    alignItems: 'center', // Centers the image and text vertically
+    width: 70, // Defines the touchable area width
+    marginRight: 15, // Space between items
+  },
+  quickLinkImageContainer: {
+    width: 50, // Larger container for the icon
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12, // Rounded corners for the container
+    overflow: 'hidden',
+    padding:10,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#dadadaff', // Subtle border color
+    backgroundColor: '#ddeaedff',
+  },
   quickLinkImage: { width: '100%', height: '100%' },
   quickLinkPlaceholder: { width: '100%', height: '100%', backgroundColor: '#f8f9fa', justifyContent: 'center', alignItems: 'center' },
-  quickLinkText: { fontSize: 10, color: '#333', textAlign: 'center', fontWeight: '500', lineHeight: 12 },
-  quickLinksLoading: { height: 140, justifyContent: 'center', alignItems: 'center' },
+  quickLinkText: { fontSize: 10, color: '#214f53ff', textAlign: 'center', fontWeight: '500', lineHeight: 12 },
+  quickLinksLoading: { height: 80, justifyContent: 'center', alignItems: 'center' },
   quickLinksLoadingText: { marginTop: 8, color: '#666', fontSize: 12 },
-  quickLinksIndicators: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12 },
-  quickLinksIndicator: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#e0e0e0', marginHorizontal: 3 },
-  quickLinksIndicatorActive: { backgroundColor: '#0C3F44', width: 20 },
 });
 
 export default QuickLinks;
