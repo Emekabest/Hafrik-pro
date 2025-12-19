@@ -16,6 +16,7 @@ import {
   FlatList,
   Platform,
   TextInput,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -57,6 +58,19 @@ const HomePage = () => {
   const [isGridView, setIsGridView] = useState(true);
 
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const searchBarAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isSearchVisible) {
+      Animated.timing(searchBarAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      searchBarAnim.setValue(0);
+    }
+  }, [isSearchVisible]);
 
   const videoRefs = useRef({});
   const flatListRef = useRef(null);
@@ -1186,6 +1200,16 @@ const handleFeedPress = (feed) => {
 
   
 
+  const { width: screenWidth } = Dimensions.get('window');
+const closeButtonWidth = 40; // Approx width for the close button area
+const headerPadding = 20; // 10 on each side
+const searchBarFinalWidth = screenWidth - headerPadding - closeButtonWidth;
+
+const animatedWidth = searchBarAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [searchBarFinalWidth * 0.4, searchBarFinalWidth]
+});
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']} >
 
@@ -1194,14 +1218,14 @@ const handleFeedPress = (feed) => {
       <View style={styles.header}>
         {isSearchVisible ? (
           <View style={styles.headerSearchContainer}>
-            <View style={styles.searchInputWrapper}>
+            <Animated.View style={[styles.searchInputWrapper, {width: animatedWidth}]}>
               <Ionicons name="search" size={20} color="#999" />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search"
                 placeholderTextColor="#999"
               />
-            </View>
+            </Animated.View>
             <TouchableOpacity onPress={() => setIsSearchVisible(false)} style={styles.headerSearch} activeOpacity={1}>
               <Ionicons name="close" size={28} color={AppDetails.primaryColor} />
             </TouchableOpacity>
@@ -1351,10 +1375,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
+    justifyContent: 'flex-end',
   },
 
   searchInputWrapper: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#edededff',
