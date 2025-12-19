@@ -1307,7 +1307,7 @@ const animatedWidth = searchBarAnim.interpolate({
                         <View
                             key={index}
                             style={{
-                                height: 60,
+                                height: index === 0 ? 140 : 60,
                                 backgroundColor: color,
                                 margin: 10,
                                 borderRadius: 5,
@@ -1500,7 +1500,7 @@ const styles = StyleSheet.create({
     width: '70%',
     height: '100%',
     backgroundColor: 'white',
-    paddingTop: 40,
+    paddingTop: 0,
   },
 
   locationOption: {
