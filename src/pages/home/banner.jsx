@@ -171,11 +171,6 @@ const BannerCard = ({ banner, imageUrl, onPress }) => (
             <Text style={styles.bannerDescription} numberOfLines={3}>
                 {banner.subtitle || banner.description || 'No description'}
             </Text>
-            {banner.button_text && (
-                <View style={styles.bannerButton}>
-                    <Text style={styles.bannerButtonText}>{banner.button_text}</Text>
-                </View>
-            )}
         </View>
     </TouchableOpacity>
 );
@@ -196,8 +191,6 @@ const styles = StyleSheet.create({
     bannerTextContainer: { flex: 1, justifyContent: 'center', padding: 20, zIndex: 1 },
     bannerTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 8, textShadowColor: 'rgba(0, 0, 0, 0.75)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
     bannerDescription: { fontSize: 14, color: 'rgba(255, 255, 255, 0.95)', marginBottom: 16, lineHeight: 20, textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
-    bannerButton: { backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, alignSelf: 'flex-start', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 3 },
-    bannerButtonText: { color: '#0C3F44', fontWeight: '600', fontSize: 14 },
     bannerIndicators: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10 },
     bannerIndicator: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.5)', marginHorizontal: 4 },
     bannerIndicatorActive: { backgroundColor: '#fff', width: 24 },
