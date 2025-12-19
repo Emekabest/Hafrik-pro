@@ -24,8 +24,8 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 // import Video from 'react-native-video';
 import { Video } from 'expo-av';
 
-import { useAuth } from '../AuthContext';
-import AppDetails from '../service/appdetails';
+import { useAuth } from '../../AuthContext';
+import AppDetails from '../../service/appdetails';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (screenWidth) / 2;
@@ -1263,7 +1263,7 @@ const animatedWidth = searchBarAnim.interpolate({
             <View style={styles.headerLeft}>
               <TouchableOpacity style={styles.leftIcon} activeOpacity={1} onPress={openDrawer}>
                 <Image
-                  source={require('../assl.js/hafrik-bg1.jpg')}
+                  source={require('../../assl.js/hafrik-bg1.jpg')}
                   style={{ height: "100%", width: "100%" }}
                   resizeMode="cover"
                 />
@@ -1273,7 +1273,7 @@ const animatedWidth = searchBarAnim.interpolate({
             <View style={styles.headerMiddle}>
               <View style={styles.logoContainer}>
                 <Image
-                  source={require('../assl.js/logoTop.png')}
+                  source={require('../../assl.js/logoTop.png')}
                   style={styles.logo}
                   resizeMode="contain"
                 />
@@ -1322,7 +1322,7 @@ const animatedWidth = searchBarAnim.interpolate({
                                 >
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         <Image
-                                            source={require('../assl.js/logo.png')}
+                                            source={require('../../assl.js/logo.png')}
                                             style={{ height: 50, width: 50, borderRadius: 25, marginRight: 10 }}
                                         />
                                         <View>

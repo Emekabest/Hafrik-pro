@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Import your screens
-import HomePage from '../pages/Home'; // Make sure this is the correct path
+import HomePage from '../pages/home/Home'; // Make sure this is the correct path
 import Reels from '../pages/reels';
 import Profile from '../pages/Profile';
 import CreatePost from '../pages/CreatePost'; // Add this import
