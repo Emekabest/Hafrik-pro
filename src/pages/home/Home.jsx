@@ -22,6 +22,7 @@ import { useAuth } from '../../AuthContext';
 import AppDetails from '../../service/appdetails';
 import DrawerNavigation from './drawernavigation.jsx';
 import Header from '../../pages/header.jsx';
+import QuickActions from './quickactions.jsx';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (screenWidth) / 2;
@@ -53,7 +54,6 @@ const HomePage = () => {
   const [mutedVideos, setMutedVideos] = useState({});
   const [isGridView, setIsGridView] = useState(true);
   
-  const [activeQuickAction, setActiveQuickAction] = useState(0);
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
   const openDrawer = useCallback(() => {
@@ -1193,41 +1193,7 @@ const handleFeedPress = (feed) => {
 
       <Header onOpenDrawer={openDrawer} />
 
-      
-      <View style={styles.quickActionsContainer}>
-        <TouchableOpacity
-          style={[styles.quickActionButton]}
-          onPress={() => setActiveQuickAction(0)}
-        >
-          <View style={styles.quicActionsButtonTop}>
-            <Text style={[styles.quickActionButtonText, activeQuickAction === 0 && styles.activeQuickActionButtonText]}>What's {"\n"} Nearby</Text>
-
-          </View>
-          <View style={activeQuickAction === 0 && styles.quickActionsButtonBottom}   />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.quickActionButton]}
-          onPress={() => setActiveQuickAction(1)}
-        >
-          <View style={styles.quicActionsButtonTop}>
-            <Text style={[styles.quickActionButtonText, activeQuickAction === 1 && styles.activeQuickActionButtonText]}>Trending on Hafrik</Text>
-
-          </View>
-          <View style={activeQuickAction === 1 && styles.quickActionsButtonBottom}   />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.quickActionButton]}
-          onPress={() => setActiveQuickAction(2)}
-        >
-          <View style={styles.quicActionsButtonTop}>
-            <Text style={[styles.quickActionButtonText, activeQuickAction === 2 && styles.activeQuickActionButtonText]}>Recent Updates</Text>
-
-          </View>
-          <View style={activeQuickAction === 2 && styles.quickActionsButtonBottom} />
-        </TouchableOpacity>
-      </View>
+      <QuickActions />
 
       <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
 
@@ -1293,52 +1259,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-
-
-    // Quick Actions
-  quickActionsContainer: {
-    height: 100,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  quickActionButton: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    height: '100%',
-  },
-
-  quicActionsButtonTop:{
-    height:"96%", 
-    width:"100%",
-    alignItems:"center",
-    justifyContent:"center",
-  },
-
-  quickActionsButtonBottom:{
-    height:"4%", 
-    width:"100%",
-    borderTopLeftRadius:3,
-    borderTopRightRadius:3,
-    backgroundColor:AppDetails.primaryColor
-  },
-
-  activeQuickActionButton: {
-    // borderBottomStartRadius:5,
-  },
-  quickActionButtonText: {
-    color: '#333',
-    // fontWeight: '600',
-    textAlign: 'center',
-  },
-  activeQuickActionButtonText: {
-    color: '#0C3F44',
-    fontWeight: '600',
-  },
-
 
 
   // Banner Styles
