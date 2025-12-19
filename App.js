@@ -40,6 +40,8 @@ function AppNavigator() {
 
   const { user, token, loading } = useAuth();
 
+  console.log(user)
+
   // Show a loading screen while checking authentication
   if (loading) {
     return (

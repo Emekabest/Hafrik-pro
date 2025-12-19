@@ -28,7 +28,6 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   }, []); // <--- This useEffect is for drawerColors
 
   useEffect(() => {
-    console.log('AppDetails:', AppDetails); // Debug log
     if (isVisible) {
       setShowModal(true); // Show modal immediately for opening
       Animated.timing(drawerAnim, {
@@ -69,7 +68,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                               <View
                                   key={index}
                                   style={{
-                                      height: 80,
+                                      height: 120,
                                       borderWidth: 1,
                                       borderColor: 'lightgray',
                                       marginHorizontal: 10,
