@@ -1308,7 +1308,8 @@ const animatedWidth = searchBarAnim.interpolate({
                             key={index}
                             style={{
                                 height: index === 0 ? 140 : 60,
-                                backgroundColor: color,
+                                borderWidth: 1,
+                                borderColor: 'lightgray',
                                 margin: 10,
                                 borderRadius: 5,
                             }}
