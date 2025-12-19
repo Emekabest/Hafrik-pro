@@ -1129,10 +1129,9 @@ const handleFeedPress = (feed) => {
           </>
         }
 
-
         ListHeaderComponent={
           <>
-            {/* {renderBanner()} */}
+            {renderBanner()}
             {banners.length > 0 && <View style={styles.divider} />}
             {renderQuickLinks()}
             {quickLinks.length > 0 && <View style={styles.divider} />}
