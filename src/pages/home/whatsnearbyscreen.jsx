@@ -1,25 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Header from '../../pages/header.jsx';
-import QuickActions from './quickactions.jsx';
-import DrawerNavigation from './drawernavigation.jsx';
 
 const WhatsNearbyScreen = () => {
-  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
-
-  const openDrawer = useCallback(() => setIsDrawerVisible(true), []);
-  const closeDrawer = useCallback(() => setIsDrawerVisible(false), []);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-      <Header onOpenDrawer={openDrawer} />
-      <QuickActions currentScreen="WhatsNearby" />
-      <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
+    <View style={styles.container}>
       <View style={styles.content}>
-        <Text>Hello world</Text>
+        <Text>Whats Nearby - Coming Soon</Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

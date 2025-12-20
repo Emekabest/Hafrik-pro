@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
+  View,
+  Text,
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
@@ -7,9 +9,11 @@ import DrawerNavigation from './drawernavigation.jsx';
 import Header from '../../pages/header.jsx';
 import QuickActions from './quickactions.jsx';
 import RecentUpdatesScreen from './recentupdatescreen.jsx';
+import WhatsNearbyScreen from './whatsnearbyscreen.jsx';
 
 const HomePage = () => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState(2);
 
   const openDrawer = useCallback(() => {
     setIsDrawerVisible(true);
@@ -24,11 +28,17 @@ const HomePage = () => {
 
       <Header onOpenDrawer={openDrawer} />
 
-      <QuickActions />
+      <QuickActions activeTab={activeTab} onTabChange={setActiveTab} />
 
       <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
 
-      <RecentUpdatesScreen />
+      {activeTab === 0 && <WhatsNearbyScreen />}
+      {activeTab === 1 && (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>Trending on Hafrik - Coming Soon</Text>
+        </View>
+      )}
+      {activeTab === 2 && <RecentUpdatesScreen />}
     </SafeAreaView>
   );
 };
