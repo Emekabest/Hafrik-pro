@@ -815,7 +815,7 @@ const handleFeedPress = (feed) => {
 
       <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
 
-      {/* {renderFeedsList()} */}
+      {renderFeedsList()}
     </SafeAreaView>
   );
 };
