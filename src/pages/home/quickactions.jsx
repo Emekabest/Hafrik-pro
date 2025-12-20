@@ -1,15 +1,31 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import AppDetails from '../../service/appdetails';
 
-const QuickActions = () => {
-  const [activeQuickAction, setActiveQuickAction] = useState(2);
+const QuickActions = ({ currentScreen = 'Home' }) => {
+  const navigation = useNavigation();
+  const [activeQuickAction, setActiveQuickAction] = useState(currentScreen === 'WhatsNearby' ? 0 : 2);
+
+  const handlePress = (index) => {
+    if (currentScreen === 'WhatsNearby') {
+      if (index !== 0) {
+        navigation.navigate('MainTabs');
+      }
+    } else {
+      if (index === 0) {
+        navigation.navigate('WhatsNearby');
+      } else {
+        setActiveQuickAction(index);
+      }
+    }
+  };
 
   return (
     <View style={styles.quickActionsContainer}>
       <TouchableOpacity
         style={styles.quickActionButton}
-        onPress={() => setActiveQuickAction(0)}
+        onPress={() => handlePress(0)}
       >
         <View style={styles.quicActionsButtonTop}>
           <Text style={[styles.quickActionButtonText, activeQuickAction === 0 && styles.activeQuickActionButtonText]}>
@@ -21,7 +37,7 @@ const QuickActions = () => {
 
       <TouchableOpacity
         style={styles.quickActionButton}
-        onPress={() => setActiveQuickAction(1)}
+        onPress={() => handlePress(1)}
       >
         <View style={styles.quicActionsButtonTop}>
           <Text style={[styles.quickActionButtonText, activeQuickAction === 1 && styles.activeQuickActionButtonText]}>
@@ -33,7 +49,7 @@ const QuickActions = () => {
 
       <TouchableOpacity
         style={styles.quickActionButton}
-        onPress={() => setActiveQuickAction(2)}
+        onPress={() => handlePress(2)}
       >
         <View style={styles.quicActionsButtonTop}>
           <Text style={[styles.quickActionButtonText, activeQuickAction === 2 && styles.activeQuickActionButtonText]}>
