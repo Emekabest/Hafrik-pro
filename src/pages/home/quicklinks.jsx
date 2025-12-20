@@ -109,7 +109,7 @@ const QuickLinks = () => {
 };
 
 const styles = StyleSheet.create({
-  divider: { height: 8, backgroundColor: '#f8f9fa' },
+  divider: { height: 1, backgroundColor: '#f0f0f0' },
   quickLinksSection: {
     paddingVertical: 15,
   },
