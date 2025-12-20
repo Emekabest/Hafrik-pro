@@ -53,6 +53,8 @@ const QuickLinks = () => {
     const linkUrl = link.url || link.button_link || '';
     const normalizedName = linkName.toLowerCase().trim();
 
+    console.log(linkUrl)
+
     if (normalizedName.includes('categor')) navigation.navigate('Categories', { title: linkName });
     else if (normalizedName.includes('event')) navigation.navigate('Events', { title: linkName });
     else if (normalizedName.includes('group')) navigation.navigate('Groups', { title: linkName });
@@ -62,8 +64,10 @@ const QuickLinks = () => {
     else if (normalizedName.includes('forum') || normalizedName.includes('discuss')) navigation.navigate('Forum', { title: linkName });
     else if (linkUrl && linkUrl !== '#' && linkUrl !== '' && (linkUrl.startsWith('http://') || linkUrl.startsWith('https://'))) {
       navigation.navigate('WebView', { url: linkUrl, title: linkName, token: token, user: user });
+      
     } else {
       Alert.alert('Coming Soon', `The "${linkName}" feature is coming soon!`, [{ text: 'OK' }]);
+
     }
   };
 

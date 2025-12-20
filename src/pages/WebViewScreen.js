@@ -20,6 +20,8 @@ import { useAuth } from '../AuthContext';
 const { height: screenHeight } = Dimensions.get('window');
 
 const WebViewScreen = ({ navigation, route }) => {
+
+
   const { url, title } = route.params || {};
   const { token, user } = useAuth();
   const webViewRef = useRef(null);
@@ -364,7 +366,12 @@ const WebViewScreen = ({ navigation, route }) => {
   }, [canGoBack]);
 
   // Show login required if no token
+  console.log("Webviewscreen is working")
+
   if (!token || !user) {
+
+
+
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
