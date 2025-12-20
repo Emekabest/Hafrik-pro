@@ -10,6 +10,7 @@ import {
   Dimensions,
   Alert,
   FlatList,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -18,6 +19,7 @@ import { Video } from 'expo-av';
 import { useAuth } from '../../AuthContext';
 import Banner from './banner.jsx';
 import QuickLinks from './quicklinks.jsx';
+import PostFeed from './postfeed.jsx';
 
 
 const RecentUpdatesScreen = () => {
@@ -28,15 +30,19 @@ const RecentUpdatesScreen = () => {
 
   return (
    
-    <View>
+    <ScrollView style={styles.container}>
         <Banner />
         <QuickLinks />
-    </View>
+        <PostFeed />
+    </ScrollView>
 
   );
 };
 
 const styles = StyleSheet.create({
+  container:{
+    
+  }
 
 });
 

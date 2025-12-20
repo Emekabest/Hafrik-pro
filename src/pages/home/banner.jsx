@@ -177,7 +177,7 @@ const BannerCard = ({ banner, imageUrl, onPress }) => (
 
 const styles = StyleSheet.create({
     sliderContainer: { height: 200, marginVertical: 10 },
-    slideContainer: { width: SLIDE_WIDTH, height: 180, paddingHorizontal: 5 },
+    slideContainer: { width: SLIDE_WIDTH, height: 180, paddingHorizontal: 10 },
     bannerContent: {
         flex: 1,
         position: 'relative',

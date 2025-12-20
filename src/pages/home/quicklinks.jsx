@@ -103,24 +103,30 @@ const QuickLinks = () => {
           })}
         </ScrollView>
       </View>
-      <View style={styles.divider} />
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  divider: { height: 1, backgroundColor: '#f0f0f0' },
+
+
   quickLinksSection: {
-    paddingVertical: 15,
+    paddingBottom:15,
+    borderBottomWidth:1,
+    borderBottomColor:"#f0f0f0"
   },
+
   quickLinksScrollContent: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 5,
+    paddingVertical:15
   },
+
   quickLinkItem: {
     alignItems: 'center', // Centers the image and text vertically
     width: 70, // Defines the touchable area width
     marginRight: 15, // Space between items
   },
+
   quickLinkImageContainer: {
     width: 50, // Larger container for the icon
     height: 50,
@@ -134,6 +140,8 @@ const styles = StyleSheet.create({
     borderColor: '#dadadaff', // Subtle border color
     backgroundColor: '#ddeaedff',
   },
+
+
   quickLinkImage: { width: '100%', height: '100%' },
   quickLinkPlaceholder: { width: '100%', height: '100%', backgroundColor: '#f8f9fa', justifyContent: 'center', alignItems: 'center' },
   quickLinkText: { fontSize: 10, color: '#214f53ff', textAlign: 'center', fontWeight: '500', lineHeight: 12 },
