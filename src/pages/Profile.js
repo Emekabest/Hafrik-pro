@@ -34,6 +34,9 @@ const Profile = () => {
   const [followingModalVisible, setFollowingModalVisible] = useState(false);
   const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
 
+
+  
+
   // Initialize editForm with all fields from the API
   const [editForm, setEditForm] = useState({
     // Basic Info
@@ -588,7 +591,8 @@ const Profile = () => {
   if (loading && !profileData) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="dark-content"  />
+        
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0C3F44" />
           <Text style={styles.loadingText}>Loading profile...</Text>
@@ -608,7 +612,6 @@ const Profile = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,25 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  StatusBar,
   Image,
-  Modal,
   ActivityIndicator,
   RefreshControl,
   Dimensions,
   Alert,
   FlatList,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 // import Video from 'react-native-video';
 import { Video } from 'expo-av';
 
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../../AuthContext';
+import AppDetails from '../../service/appdetails';
+import DrawerNavigation from './drawernavigation.jsx';
+import Header from '../../pages/header.jsx';
+import QuickActions from './quickactions.jsx';
+import Banner from './banner.jsx';
+import QuickLinks from './quicklinks.jsx';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (screenWidth) / 2;
@@ -33,30 +36,33 @@ const HomePage = () => {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { token, user } = useAuth();
-  const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState({ id: 'all', name: 'All Locations' });
   const [selectedFilter, setSelectedFilter] = useState('Latest');
   const [allFeeds, setAllFeeds] = useState([]);
   const [filteredFeeds, setFilteredFeeds] = useState([]);
-  const [banners, setBanners] = useState([]);
-  const [quickLinks, setQuickLinks] = useState([]);
   const [suggestedPeople, setSuggestedPeople] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [bannerLoading, setBannerLoading] = useState(true);
-  const [quickLinksLoading, setQuickLinksLoading] = useState(true);
   const [peopleLoading, setPeopleLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pageNum, setPageNum] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-  const [currentQuickLinksIndex, setCurrentQuickLinksIndex] = useState(0);
   const [currentPlayingVideo, setCurrentPlayingVideo] = useState(null);
   const [mutedVideos, setMutedVideos] = useState({});
   const [isGridView, setIsGridView] = useState(true);
+  
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+
+  const openDrawer = useCallback(() => {
+    setIsDrawerVisible(true);
+  }, []);
+
+  const closeDrawer = useCallback(() => {
+    setIsDrawerVisible(false);
+  }, []);
+
 
   const videoRefs = useRef({});
   const flatListRef = useRef(null);
-  const quickLinksScrollViewRef = useRef(null);
   const viewableItems = useRef([]);
 
   // Location mapping based on your database table
@@ -99,82 +105,6 @@ const HomePage = () => {
     'Most Viewed',
     'New Arrivals'
   ];
-
-  // Fetch banners from API
-  const fetchBanners = async () => {
-    try {
-      setBannerLoading(true);
-      const response = await fetch('https://hafrik.com/api/v1/home/banners.php');
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const responseText = await response.text();
-      let bannersData = [];
-
-      try {
-        const data = JSON.parse(responseText);
-        if (data.status === 'success') {
-          if (Array.isArray(data.data)) {
-            bannersData = data.data;
-          } else if (data.data && Array.isArray(data.data.data)) {
-            bannersData = data.data.data;
-          } else if (data.data && typeof data.data === 'object') {
-            bannersData = Object.values(data.data).filter(item => Array.isArray(item))[0] || [];
-          }
-        }
-      } catch (parseError) {
-        console.error('Banners JSON Parse Error:', parseError);
-      }
-
-      setBanners(bannersData);
-
-    } catch (error) {
-      console.error('Error fetching banners:', error);
-      setBanners([]);
-    } finally {
-      setBannerLoading(false);
-    }
-  };
-
-  // Fetch quick links from API
-  const fetchQuickLinks = async () => {
-    try {
-      setQuickLinksLoading(true);
-      const response = await fetch('https://hafrik.com/api/v1/home/quick_links.php');
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const responseText = await response.text();
-      let quickLinksData = [];
-
-      try {
-        const data = JSON.parse(responseText);
-        if (data.status === 'success') {
-          if (Array.isArray(data.data)) {
-            quickLinksData = data.data;
-          } else if (data.data && Array.isArray(data.data.data)) {
-            quickLinksData = data.data.data;
-          } else if (data.data && typeof data.data === 'object') {
-            quickLinksData = Object.values(data.data).filter(item => Array.isArray(item))[0] || [];
-          }
-        }
-      } catch (parseError) {
-        console.error('Quick links JSON Parse Error:', parseError);
-      }
-
-      setQuickLinks(quickLinksData);
-
-    } catch (error) {
-      console.error('Error fetching quick links:', error);
-      setQuickLinks([]);
-    } finally {
-      setQuickLinksLoading(false);
-    }
-  };
 
   // Fetch suggested people from API
   const fetchSuggestedPeople = async () => {
@@ -393,16 +323,11 @@ const HomePage = () => {
   // Refresh all data
   const onRefresh = () => {
     fetchFeeds(1, true, selectedFilter);
-    fetchBanners();
-    fetchQuickLinks();
     fetchSuggestedPeople();
   };
 
   // Handle location change
   const handleLocationChange = (location) => {
-    console.log(`📍 Location changed to: ${location.name} (ID: ${location.id})`);
-    setSelectedLocation(location);
-    setLocationModalVisible(false);
   };
 
   // Handle filter change
@@ -413,65 +338,6 @@ const HomePage = () => {
     setFilteredFeeds([]);
     setHasMore(true);
     fetchFeeds(1, false, filter);
-  };
-
-  // Handle banner press
-  const handleBannerPress = (banner) => {
-    if (banner.button_link && banner.button_link !== '#') {
-      navigation.navigate('WebView', {
-        url: banner.button_link,
-        title: banner.title || 'Banner',
-        token: token, // Pass token
-        user: user    // Pass user data
-      });
-    }
-  };
-
-
-  // Handle quick link press
-  const handleQuickLinkPress = (link) => {
-    const linkName = link.name || link.title || 'Quick Link';
-    const linkUrl = link.url || link.button_link || '';
-
-    const normalizedName = linkName.toLowerCase().trim();
-
-    if (normalizedName.includes('categor')) {
-      navigation.navigate('Categories', { title: linkName });
-    }
-    else if (normalizedName.includes('event')) {
-      navigation.navigate('Events', { title: linkName });
-    }
-    else if (normalizedName.includes('group')) {
-      navigation.navigate('Groups', { title: linkName });
-    }
-    else if (normalizedName.includes('market') || normalizedName.includes('shop') || normalizedName.includes('store')) {
-      navigation.navigate('Marketplace', { title: linkName });
-    }
-    else if (normalizedName.includes('news') || normalizedName.includes('blog')) {
-      navigation.navigate('News', { title: linkName });
-    }
-    else if (normalizedName.includes('job') || normalizedName.includes('career')) {
-      navigation.navigate('Jobs', { title: linkName });
-    }
-    else if (normalizedName.includes('forum') || normalizedName.includes('discuss')) {
-      navigation.navigate('Forum', { title: linkName });
-    }
-    else if (linkUrl && linkUrl !== '#' && linkUrl !== '' &&
-      (linkUrl.startsWith('http://') || linkUrl.startsWith('https://'))) {
-      navigation.navigate('WebView', {
-        url: linkUrl,
-        title: linkName,
-        token: token, // Pass token
-        user: user    // Pass user data
-      });
-    }
-    else {
-      Alert.alert(
-        'Coming Soon',
-        `The "${linkName}" feature is coming soon!`,
-        [{ text: 'OK' }]
-      );
-    }
   };
 
   // Video visibility handler for auto-play
@@ -494,17 +360,6 @@ const HomePage = () => {
     }
   }).current;
 
-
-  // Add this function back - Handle quick links scroll to update current index
-  const handleQuickLinksScroll = (event) => {
-    const containerWidth = screenWidth - 30;
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(contentOffsetX / containerWidth);
-
-    if (currentIndex !== currentQuickLinksIndex) {
-      setCurrentQuickLinksIndex(currentIndex);
-    }
-  };
 
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 70,
@@ -622,236 +477,8 @@ const handleFeedPress = (feed) => {
   useEffect(() => {
     console.log('🚀 HomePage component mounted - Starting initial data load');
     fetchFeeds(1, false, selectedFilter);
-    fetchBanners();
-    fetchQuickLinks();
     fetchSuggestedPeople();
   }, []);
-
-  // Auto-rotate banners
-  useEffect(() => {
-    if (banners.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentBannerIndex(prev =>
-          prev === banners.length - 1 ? 0 : prev + 1
-        );
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [banners.length]);
-
-  // Auto-rotate quick links
-  useEffect(() => {
-    if (quickLinks.length > 8) {
-      const interval = setInterval(() => {
-        const containersCount = Math.ceil(quickLinks.length / 8);
-        setCurrentQuickLinksIndex(prev =>
-          prev === containersCount - 1 ? 0 : prev + 1
-        );
-      }, 6000);
-      return () => clearInterval(interval);
-    }
-  }, [quickLinks.length]);
-
-  // Scroll to current quick links container when index changes
-  useEffect(() => {
-    if (quickLinksScrollViewRef.current && quickLinks.length > 8) {
-      const containerWidth = screenWidth - 30;
-      quickLinksScrollViewRef.current.scrollTo({
-        x: currentQuickLinksIndex * containerWidth,
-        animated: true
-      });
-    }
-  }, [currentQuickLinksIndex, quickLinks.length]);
-
-  // Render Banner Section
-  const renderBanner = () => {
-    if (bannerLoading) {
-      return (
-        <View style={styles.bannerContainer}>
-          <View style={styles.bannerLoading}>
-            <ActivityIndicator size="small" color="#0C3F44" />
-            <Text style={styles.bannerLoadingText}>Loading banner...</Text>
-          </View>
-        </View>
-      );
-    }
-
-    if (banners.length === 0) {
-      return null;
-    }
-
-    const currentBanner = banners[currentBannerIndex] || banners[0];
-    const imageUrl = currentBanner.image || currentBanner.banner_image || currentBanner.image_url;
-
-    return (
-      <View style={styles.bannerContainer}>
-        <TouchableOpacity
-          style={styles.bannerContent}
-          onPress={() => handleBannerPress(currentBanner)}
-          activeOpacity={0.9}
-        >
-          {/* Background Image */}
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.bannerBackgroundImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={styles.bannerPlaceholderBackground}>
-              <Ionicons name="image-outline" size={40} color="#fff" />
-              <Text style={styles.placeholderText}>No Image</Text>
-            </View>
-          )}
-
-          {/* Dark overlay for better text readability */}
-          <View style={styles.bannerOverlay} />
-
-          {/* Text Content */}
-          <View style={styles.bannerTextContainer}>
-            <Text style={styles.bannerTitle}>{currentBanner.title || 'No Title'}</Text>
-            <Text style={styles.bannerDescription}>
-              {currentBanner.subtitle || currentBanner.description || 'No description'}
-            </Text>
-            {currentBanner.button_text && (
-              <TouchableOpacity style={styles.bannerButton}>
-                <Text style={styles.bannerButtonText}>{currentBanner.button_text}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {banners.length > 1 && (
-            <View style={styles.bannerIndicators}>
-              {banners.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.bannerIndicator,
-                    index === currentBannerIndex && styles.bannerIndicatorActive
-                  ]}
-                />
-              ))}
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  // Render Quick Links Section with Pagination
-  const renderQuickLinks = () => {
-    if (quickLinksLoading) {
-      return (
-        <View style={styles.quickLinksSection}>
-          <View style={styles.quickLinksLoading}>
-            <ActivityIndicator size="small" color="#0C3F44" />
-            <Text style={styles.quickLinksLoadingText}>Loading categories...</Text>
-          </View>
-        </View>
-      );
-    }
-
-    if (quickLinks.length === 0) {
-      return null;
-    }
-
-    const containers = [];
-    for (let i = 0; i < quickLinks.length; i += 8) {
-      containers.push(quickLinks.slice(i, i + 8));
-    }
-
-    return (
-      <View style={styles.quickLinksSection}>
-        <ScrollView
-          ref={quickLinksScrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.quickLinksScrollView}
-          contentContainerStyle={styles.quickLinksScrollContent}
-          onMomentumScrollEnd={handleQuickLinksScroll}
-          scrollEventThrottle={16}
-        >
-          {containers.map((container, containerIndex) => (
-            <View key={`container-${containerIndex}`} style={styles.quickLinksContainer}>
-              <View style={styles.quickLinksRow}>
-                {container.slice(0, 4).map((link, index) => {
-                  const imageUrl = link.image || link.icon || link.image_url;
-                  return (
-                    <TouchableOpacity
-                      key={`link-${link.id || index}`}
-                      style={styles.quickLinkItem}
-                      onPress={() => handleQuickLinkPress(link)}
-                    >
-                      <View style={styles.quickLinkImageContainer}>
-                        {imageUrl ? (
-                          <Image
-                            source={{ uri: imageUrl }}
-                            style={styles.quickLinkImage}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View style={styles.quickLinkPlaceholder}>
-                            <Ionicons name="grid-outline" size={16} color="#666" />
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.quickLinkText} numberOfLines={2}>
-                        {link.name || link.title || `Category ${index + 1}`}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <View style={styles.quickLinksRow}>
-                {container.slice(4, 8).map((link, index) => {
-                  const imageUrl = link.image || link.icon || link.image_url;
-                  return (
-                    <TouchableOpacity
-                      key={`link-${link.id || index + 4}`}
-                      style={styles.quickLinkItem}
-                      onPress={() => handleQuickLinkPress(link)}
-                    >
-                      <View style={styles.quickLinkImageContainer}>
-                        {imageUrl ? (
-                          <Image
-                            source={{ uri: imageUrl }}
-                            style={styles.quickLinkImage}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View style={styles.quickLinkPlaceholder}>
-                            <Ionicons name="grid-outline" size={16} color="#666" />
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.quickLinkText} numberOfLines={2}>
-                        {link.name || link.title || `Category ${index + 5}`}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-
-        {containers.length > 1 && (
-          <View style={styles.quickLinksIndicators}>
-            {containers.map((_, index) => (
-              <View
-                key={`indicator-${index}`}
-                style={[
-                  styles.quickLinksIndicator,
-                  index === currentQuickLinksIndex && styles.quickLinksIndicatorActive
-                ]}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-    );
-  };
 
   // Render "People You May Know" section
   const renderPeopleSection = () => {
@@ -926,7 +553,8 @@ const handleFeedPress = (feed) => {
     );
   };
 
-  // Render grid feed item 
+
+  // Render grid feed item
   const renderGridFeedItem = ({ item: feed }) => {
     const thumbnail = getFeedThumbnail(feed);
     const caption = feed.text || feed.caption || '';
@@ -939,6 +567,7 @@ const handleFeedPress = (feed) => {
     const isPlaying = currentPlayingVideo === feed.id;
     const hasCaption = caption.trim().length > 0;
     const gridItemHeight = getGridItemHeight(feed);
+
 
     return (
       <TouchableOpacity
@@ -980,6 +609,7 @@ const handleFeedPress = (feed) => {
                     <Text style={styles.overlayUsername}>
                       {user.username || 'User'}
                     </Text>
+        
                   </View>
                   <View style={styles.likesOverlay}>
                     <Ionicons name="heart" size={14} color="#fff" />
@@ -1050,6 +680,7 @@ const handleFeedPress = (feed) => {
       );
     }
 
+ 
     const displayFeeds = filteredFeeds.filter(feed => {
       const hasMedia = feed.media && feed.media.length > 0;
       const caption = feed.text || feed.caption || '';
@@ -1116,14 +747,14 @@ const handleFeedPress = (feed) => {
             )}
           </>
         }
+
         ListHeaderComponent={
           <>
-            {renderBanner()}
-            {banners.length > 0 && <View style={styles.divider} />}
-            {renderQuickLinks()}
-            {quickLinks.length > 0 && <View style={styles.divider} />}
+            <Banner />
+            <QuickLinks />
 
-            <View style={styles.viewToggleSection}>
+
+            {/* <View style={styles.viewToggleSection}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1159,9 +790,10 @@ const handleFeedPress = (feed) => {
                   color="#0C3F44"
                 />
               </TouchableOpacity>
-            </View>
+            </View> */}
           </>
         }
+        
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1175,112 +807,29 @@ const handleFeedPress = (feed) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']} >
 
-      <View style={styles.topNav}>
-        <TouchableOpacity style={styles.leftIcon}>
-          <Ionicons name="menu-outline" size={24} color="#333" />
-        </TouchableOpacity>
+      <Header onOpenDrawer={openDrawer} />
 
-        <View style={styles.logoTextContainer}>
-          <Image
-            source={require('../assl.js/logoTop.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
+      <QuickActions />
 
-        <TouchableOpacity
-          style={styles.locationSelector}
-          onPress={() => setLocationModalVisible(true)}
-        >
-          <Ionicons name="location-outline" size={16} color="#666" />
-          <Text style={styles.locationText} numberOfLines={1}>
-            {selectedLocation.name}
-          </Text>
-          <Ionicons name="chevron-down-outline" size={14} color="#666" />
-        </TouchableOpacity>
-      </View>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={locationModalVisible}
-        onRequestClose={() => setLocationModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Location</Text>
-              <TouchableOpacity onPress={() => setLocationModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            {locations.map((location, index) => (
-              <TouchableOpacity
-                key={`location-${index}`}
-                style={[
-                  styles.locationOption,
-                  selectedLocation.id === location.id && styles.selectedLocation
-                ]}
-                onPress={() => handleLocationChange(location)}
-              >
-                <Text style={styles.locationOptionText}>{location.name}</Text>
-                {selectedLocation.id === location.id && (
-                  <Ionicons name="checkmark" size={20} color="#0C3F44" />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </Modal>
+      <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
 
       {renderFeedsList()}
     </SafeAreaView>
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
-    marginTop: Platform.OS === 'android' ? 25 : 0,
+    backgroundColor: '#fff',
+    height: 20,
+
   },
-  topNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: 'transparent',
-  },
-  leftIcon: {
-    padding: 8,
-  },
-  logoTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logo: {
-    width: 105,
-    height: 35,
-    marginRight: 120,
-  },
-  brandText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  locationSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
+
+
   locationText: {
     fontSize: 12,
     color: '#333',
@@ -1291,6 +840,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
+
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
@@ -1298,17 +848,20 @@ const styles = StyleSheet.create({
     padding: 20,
     maxHeight: '50%',
   },
+
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
+
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
   },
+
   locationOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1324,199 +877,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  // Banner Styles
-  bannerContainer: {
-    margin: 2,
-    borderRadius: 1,
-    overflow: 'hidden',
-    backgroundColor: '#0C3F44',
-    height: 200,
-  },
-  bannerContent: {
-    flex: 1,
-    position: 'relative',
-  },
-  bannerBackgroundImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  bannerPlaceholderBackground: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(12, 63, 68, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-  },
-  bannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  bannerTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    zIndex: 1,
-  },
-  bannerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  bannerDescription: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.95)',
-    marginBottom: 16,
-    lineHeight: 20,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  bannerButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  bannerButtonText: {
-    color: '#0C3F44',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  bannerIndicators: {
-    position: 'absolute',
-    bottom: 15,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2,
-  },
-  bannerIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    marginHorizontal: 4,
-  },
-  bannerIndicatorActive: {
-    backgroundColor: '#fff',
-    width: 24,
-  },
-  placeholderText: {
-    color: '#fff',
-    fontSize: 12,
-    marginTop: 8,
-  },
-  bannerLoading: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-  },
-  bannerLoadingText: {
-    marginTop: 8,
-    color: '#666',
-    fontSize: 12,
-  },
-  // Quick Links Styles
-  quickLinksSection: {
-    padding: 15,
-    paddingBottom: 10,
-  },
-  quickLinksScrollView: {
-    flexGrow: 0,
-  },
-  quickLinksScrollContent: {
-    paddingRight: 15,
-  },
-  quickLinksContainer: {
-    width: screenWidth - 30,
-    marginRight: 15,
-  },
-  quickLinksRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  quickLinkItem: {
-    alignItems: 'center',
-    width: (screenWidth - 60) / 4,
-  },
-  quickLinkImageContainer: {
-    width: 40,
-    height: 40,
-    padding: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
-    backgroundColor: '#f8f9fa',
-  },
-  quickLinkImage: {
-    width: '100%',
-    height: '100%',
-  },
-  quickLinkPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickLinkText: {
-    fontSize: 10,
-    color: '#333',
-    textAlign: 'center',
-    fontWeight: '500',
-    lineHeight: 12,
-  },
-  quickLinksLoading: {
-    height: 140,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickLinksLoadingText: {
-    marginTop: 8,
-    color: '#666',
-    fontSize: 12,
-  },
-  // Quick Links Pagination Indicators
-  quickLinksIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  quickLinksIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#e0e0e0',
-    marginHorizontal: 3,
-  },
-  quickLinksIndicatorActive: {
-    backgroundColor: '#0C3F44',
-    width: 20,
-  },
+
 
   // View Toggle and Filter Section
   viewToggleSection: {
@@ -1858,6 +1219,7 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 12,
   },
+
 });
 
 export default HomePage;
