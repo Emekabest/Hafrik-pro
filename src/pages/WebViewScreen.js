@@ -100,51 +100,24 @@ const WebViewScreen = ({ navigation, route }) => {
         // Function to hide login elements
         function hideLoginElements() {
           try {
-            // Elements to hide
             const selectors = [
-              '.login-container',
-              '#login-form',
-              '.signin-form',
-              '.auth-modal',
-              '[href*="/login"]',
-              '[href*="/signin"]',
-              '[href*="/auth"]',
-              '.login-button',
-              '.sign-in-button',
-              'form[action*="login"]',
-              'form[action*="signin"]',
-              'form[action*="auth"]'
+              '.login-container', '#login-form', '.signin-form', '.auth-modal',
+              '[href*="/login"]', '[href*="/signin"]', '[href*="/auth"]',
+              '.login-button', '.sign-in-button',
+              'form[action*="login"]', 'form[action*="signin"]', 'form[action*="auth"]'
             ];
             
             selectors.forEach(selector => {
               try {
-                const elements = document.querySelectorAll(selector);
-                elements.forEach(el => {
-                  el.style.display = 'none';
-                  el.style.visibility = 'hidden';
-                  el.style.opacity = '0';
+                document.querySelectorAll(selector).forEach(el => {
+                  el.style.display = 'none !important';
+                  el.style.visibility = 'hidden !important';
+                  el.style.opacity = '0 !important';
                 });
               } catch (e) {
-                // Ignore selector errors
+                console.error('Selector error:', e);
               }
             });
-            
-            // Also hide by text content
-            const authTexts = [
-              'login', 'sign in', 'signin', 'log in',
-              'please login', 'please sign in', 'log in to continue'
-            ];
-            
-            authTexts.forEach(text => {
-              const elements = document.querySelectorAll('*');
-              elements.forEach(el => {
-                if (el.textContent && el.textContent.toLowerCase().includes(text)) {
-                  el.style.display = 'none';
-                  el.style.visibility = 'hidden';
-                }
-              });
-            });
-            
             return true;
           } catch (error) {
             console.error('Hide elements error:', error);
@@ -155,23 +128,25 @@ const WebViewScreen = ({ navigation, route }) => {
         // Function to simulate logged in state
         function simulateLoggedIn() {
           try {
+            const user = ${userData};
+            if (!user) return;
+
             // Update user display elements
-            const userElements = document.querySelectorAll('.username, .user-name, .profile-name');
-            userElements.forEach(el => {
+            document.querySelectorAll('.username, .user-name, .profile-name').forEach(el => {
               if (el.textContent) {
-                const user = ${userData};
                 el.textContent = user.username || user.email || 'User';
               }
             });
             
             // Update navigation
-            const loginLinks = document.querySelectorAll('a[href*="/login"], a[href*="/signin"]');
-            loginLinks.forEach(link => {
+            document.querySelectorAll('a[href*="/login"], a[href*="/signin"]').forEach(link => {
               link.href = '/profile';
               link.textContent = 'Profile';
-              link.onclick = null;
+              link.onclick = (e) => {
+                e.preventDefault();
+                window.location.href = '/profile';
+              };
             });
-            
             return true;
           } catch (error) {
             console.error('Simulate login error:', error);
@@ -182,7 +157,7 @@ const WebViewScreen = ({ navigation, route }) => {
         // Function to check if we're on an auth page
         function isAuthPage() {
           const path = window.location.pathname.toLowerCase();
-          const authPaths = ['/login', '/signin', '/auth', '/register', '/signup'];
+          const authPaths = ['/login', '/signin', 'auth', '/register', '/signup'];
           return authPaths.some(authPath => path.includes(authPath));
         }
         
@@ -190,8 +165,7 @@ const WebViewScreen = ({ navigation, route }) => {
         function redirectFromAuthPages() {
           if (isAuthPage()) {
             console.log('Redirecting from auth page to home');
-            window.history.replaceState(null, null, '/');
-            window.location.href = '/';
+            window.location.replace('/');
           }
         }
         
@@ -200,25 +174,19 @@ const WebViewScreen = ({ navigation, route }) => {
           console.log('Auth already injected');
           return;
         }
-        
         window.authInjected = true;
         
-        // Set auth tokens immediately
-        const authSuccess = setAuthTokens();
-        
-        if (authSuccess) {
+        if (setAuthTokens()) {
           console.log('✅ Auth tokens injected successfully');
           
-          // Hide login elements
-          hideLoginElements();
+          try {
+            hideLoginElements();
+            simulateLoggedIn();
+            redirectFromAuthPages();
+          } catch (e) {
+            console.error('Main injection function error:', e);
+          }
           
-          // Simulate logged in state
-          simulateLoggedIn();
-          
-          // Redirect from auth pages if needed
-          redirectFromAuthPages();
-          
-          // Send success message to app
           if (window.ReactNativeWebView) {
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'auth_success',
@@ -227,7 +195,6 @@ const WebViewScreen = ({ navigation, route }) => {
           }
         } else {
           console.log('❌ Auth injection failed');
-          
           if (window.ReactNativeWebView) {
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'auth_failed',
@@ -239,11 +206,15 @@ const WebViewScreen = ({ navigation, route }) => {
         // Re-inject on page changes
         window.addEventListener('load', function() {
           setTimeout(() => {
-            setAuthTokens();
-            hideLoginElements();
-            simulateLoggedIn();
-            redirectFromAuthPages();
-          }, 1000);
+            try {
+              setAuthTokens();
+              hideLoginElements();
+              simulateLoggedIn();
+              redirectFromAuthPages();
+            } catch (e) {
+              console.error('Re-injection error:', e);
+            }
+          }, 500);
         });
         
       })();
@@ -438,6 +409,7 @@ const WebViewScreen = ({ navigation, route }) => {
         onNavigationStateChange={handleNavigationStateChange}
         onMessage={handleMessage}
         injectedJavaScript={getAuthInjectionScript()}
+        onContentProcessDidTerminate={handleReload}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         sharedCookiesEnabled={true}
