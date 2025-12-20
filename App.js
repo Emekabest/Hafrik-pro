@@ -13,6 +13,7 @@ import GroupsScreen from './src/pages/GroupsScreen';
 import { useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppDetails from './src/service/appdetails';
+import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
 
 const Stack = createStackNavigator();
 
@@ -71,6 +72,7 @@ function AppNavigator() {
               <Stack.Screen name="Events" component={EventsScreen} />
               <Stack.Screen name="Groups" component={GroupsScreen} />
               <Stack.Screen name="WebView" component={WebViewScreen} />
+              <Stack.Screen name="WhatsNearby" component={WhatsNearbyScreen} />
             </Stack.Navigator>
         </SafeAreaView>
 

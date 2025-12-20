@@ -2,45 +2,44 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import AppDetails from '../../service/appdetails';
 
-const QuickActions = () => {
-  const [activeQuickAction, setActiveQuickAction] = useState(2);
+const QuickActions = ({ activeTab, onTabChange }) => {
 
   return (
     <View style={styles.quickActionsContainer}>
       <TouchableOpacity
         style={styles.quickActionButton}
-        onPress={() => setActiveQuickAction(0)}
+        onPress={() => onTabChange(0)}
       >
         <View style={styles.quicActionsButtonTop}>
-          <Text style={[styles.quickActionButtonText, activeQuickAction === 0 && styles.activeQuickActionButtonText]}>
+          <Text style={[styles.quickActionButtonText, activeTab === 0 && styles.activeQuickActionButtonText]}>
             What's {"\n"} Nearby
           </Text>
         </View>
-        {activeQuickAction === 0 && <View style={styles.quickActionsButtonBottom} />}
+        {activeTab === 0 && <View style={styles.quickActionsButtonBottom} />}
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.quickActionButton}
-        onPress={() => setActiveQuickAction(1)}
+        onPress={() => onTabChange(1)}
       >
         <View style={styles.quicActionsButtonTop}>
-          <Text style={[styles.quickActionButtonText, activeQuickAction === 1 && styles.activeQuickActionButtonText]}>
-            Trending on Hafrik
+          <Text style={[styles.quickActionButtonText, activeTab === 1 && styles.activeQuickActionButtonText]}>
+            Trending on {"\n"} Hafrik
           </Text>
         </View>
-        {activeQuickAction === 1 && <View style={styles.quickActionsButtonBottom} />}
+        {activeTab === 1 && <View style={styles.quickActionsButtonBottom} />}
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.quickActionButton}
-        onPress={() => setActiveQuickAction(2)}
+        onPress={() => onTabChange(2)}
       >
         <View style={styles.quicActionsButtonTop}>
-          <Text style={[styles.quickActionButtonText, activeQuickAction === 2 && styles.activeQuickActionButtonText]}>
-            Recent Updates
+          <Text style={[styles.quickActionButtonText, activeTab === 2 && styles.activeQuickActionButtonText]}>
+            Recent {"\n"} Updates
           </Text>
         </View>
-        {activeQuickAction === 2 && <View style={styles.quickActionsButtonBottom} />}
+        {activeTab === 2 && <View style={styles.quickActionsButtonBottom} />}
       </TouchableOpacity>
     </View>
   );
@@ -79,10 +78,11 @@ const styles = StyleSheet.create({
   quickActionButtonText: {
     color: '#333',
     textAlign: 'center',
+    fontSize:13,
   },
   activeQuickActionButtonText: {
     color: '#0C3F44',
-    fontWeight: '600',
+    fontWeight: '500',
   },
 });
 
