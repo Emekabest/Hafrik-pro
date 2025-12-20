@@ -445,7 +445,6 @@ const WebViewScreen = ({ navigation, route }) => {
         cacheEnabled={true}
         originWhitelist={['*']}
         mixedContentMode="always"
-        decelerationRate="normal"
         overScrollMode="content"
         userAgent={`Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 HafrikApp/${Platform.OS}/${user.id}`}
         applicationNameForUserAgent="HafrikApp"
