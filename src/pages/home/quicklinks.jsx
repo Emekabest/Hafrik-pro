@@ -57,7 +57,7 @@ const QuickLinks = () => {
 
 
     if (normalizedName.includes('categor')) navigation.navigate('Categories', { title: linkName });
-    else if (normalizedName.includes('event')) navigation.navigate('Events', { title: linkName });
+    // else if (normalizedName.includes('event')) navigation.navigate('Events', { title: linkName });
     else if (normalizedName.includes('group')) navigation.navigate('Groups', { title: linkName });
     else if (normalizedName.includes('market') || normalizedName.includes('shop') || normalizedName.includes('store')) navigation.navigate('Marketplace', { title: linkName });
     else if (normalizedName.includes('news') || normalizedName.includes('blog')) navigation.navigate('News', { title: linkName });

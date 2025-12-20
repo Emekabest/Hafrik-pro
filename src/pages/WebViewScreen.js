@@ -30,6 +30,8 @@ const WebViewScreen = ({ navigation, route }) => {
   const [canGoBack, setCanGoBack] = useState(false);
   const [currentUrl, setCurrentUrl] = useState(url || 'https://hafrik.com');
 
+  console.log( "This is current Url::" + currentUrl)
+
   // Enhanced authentication injection script
   const getAuthInjectionScript = useCallback(() => {
     if (!token || !user) return '';
