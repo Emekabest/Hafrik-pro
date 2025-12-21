@@ -1,8 +1,10 @@
-import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback } from "react-native"
+import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Keyboard, Animated, Dimensions, Platform } from "react-native"
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
+
+const FOCUSED_CONTAINER_HEIGHT = 350;
 
 const PostFeed = () => {
 
@@ -12,6 +14,7 @@ const PostFeed = () => {
     const [isFocused, setIsFocused] = useState(false);
     const [topOffset, setTopOffset] = useState(0);
     const containerRef = useRef(null);
+    const shiftAnim = useRef(new Animated.Value(0)).current;
 
     const bottomLeftIconsSize = 19
 
@@ -35,9 +38,57 @@ const PostFeed = () => {
         
     ]
 
+    useEffect(() => {
+        if (isFocused) {
+            const showSubscription = Keyboard.addListener(
+                Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+                (e) => {
+                    const keyboardHeight = e.endCoordinates.height;
+                    const screenHeight = Dimensions.get('window').height;
+                    const containerHeight = FOCUSED_CONTAINER_HEIGHT; 
+                    const gap = 20;
+                    
+                    const targetBottom = screenHeight - keyboardHeight - gap;
+                    const currentBottom = topOffset + containerHeight;
+                    
+                    if (currentBottom > targetBottom) {
+                        const shift = targetBottom - currentBottom;
+                        Animated.timing(shiftAnim, {
+                            toValue: shift,
+                            duration: Platform.OS === 'ios' ? e.duration : 250,
+                            useNativeDriver: true,
+                        }).start();
+                    }
+                }
+            );
+            const hideSubscription = Keyboard.addListener(
+                Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+                (e) => {
+                    Animated.timing(shiftAnim, {
+                        toValue: 0,
+                        duration: Platform.OS === 'ios' ? e.duration : 250,
+                        useNativeDriver: true,
+                    }).start();
+                }
+            );
+
+            return () => {
+                showSubscription.remove();
+                hideSubscription.remove();
+            };
+        } else {
+            shiftAnim.setValue(0);
+        }
+    }, [isFocused, topOffset]);
+
     const handlePress = () => {
         containerRef.current?.measureInWindow((x, y, width, height) => {
-            setTopOffset(y);
+            const screenHeight = Dimensions.get('window').height;
+            let newTop = y;
+            if (y + FOCUSED_CONTAINER_HEIGHT > screenHeight) {
+                newTop = screenHeight - FOCUSED_CONTAINER_HEIGHT - 10;
+            }
+            setTopOffset(newTop);
             setIsFocused(true);
         });
     };
@@ -53,10 +104,24 @@ const PostFeed = () => {
                     />
                 </View>
                 <View style = {styles.containerTopTextContainer}>
-                    <Text style = {styles.containerTopTextContainer_Text}>What is on your mind? #Hashtag.. {"\n"} @Mention.. Link..  </Text>
+                    <TextInput
+                        style={styles.containerTopTextContainer_Input}
+                        placeholder={`What is on your mind? #Hashtag.. \n @Mention.. Link..`}
+                        placeholderTextColor="#848484ff"
+                        multiline={true}
+                        editable={isFocused}
+                        autoFocus={isFocused}
+                    />
                 </View>
-
             </View>
+
+
+            <View style={[styles.containerMiddle, !isFocused && { display: 'none' }]}>
+                <View style = {styles.containerMiddleTop}></View>
+                <View style = {styles.containerMiddleBottom}></View>
+            </View>
+
+
             <View style = {styles.containerBottom}>
                 <View style={styles.containerBottomLeft}>
                     <FlatList
@@ -101,9 +166,9 @@ const PostFeed = () => {
                 <TouchableWithoutFeedback onPress={() => setIsFocused(false)}>
                     <View style={styles.modalOverlay}>
                         <TouchableWithoutFeedback onPress={() => {}}>
-                            <View style={[styles.container, styles.focusedContainer, { position: 'absolute', top: topOffset, left: 0, right: 0 }]}>
+                            <Animated.View style={[styles.container, styles.focusedContainer, { position: 'absolute', top: topOffset, left: 0, right: 0, transform: [{ translateY: shiftAnim }] }]}>
                                 {renderContent()}
-                            </View>
+                            </Animated.View>
                         </TouchableWithoutFeedback>
                     </View>
                 </TouchableWithoutFeedback>
@@ -125,11 +190,19 @@ const styles = StyleSheet.create({
     },
 
     containerTop:{
-        height:"70%",
+        height:"50%",
         display:"flex",
         flexDirection:"row",
         alignItems:"center",
         paddingHorizontal:15,
+    },
+
+    containerMiddle:{
+        height:"20%",
+        backgroundColor:"lightgreen",
+
+
+
     },
 
     containerTopImage:{
@@ -140,15 +213,14 @@ const styles = StyleSheet.create({
     },
 
     containerTopTextContainer:{
-        marginLeft:10
-
+        marginLeft:10,
+        flex: 1,
     },
 
-    containerTopTextContainer_Text:{
+    containerTopTextContainer_Input:{
         fontSize:16,
-        color:"#848484ff"
-
-
+        color:"#000",
+        textAlignVertical: "center",
     },
 
     containerBottom:{
@@ -209,6 +281,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
+        height: FOCUSED_CONTAINER_HEIGHT,
     }
 
 })
