@@ -2,13 +2,35 @@ import { Image, StyleSheet, Text, View, TouchableOpacity } from "react-native"
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
 import { useState } from "react";
-
+import SvgIcon from "../../assl.js/svg/svg";
 
 const PostFeed = () => {
 
     const { token, user } = useAuth();
 
     const [postButtonOpacity, setPostButtonOpacity] = useState(0.5)
+
+    const bottomLeftIconsSize = 19
+
+
+    const icons = [
+        {
+            id:1,
+            name: "location",
+        },
+
+        {
+            id:2,
+            name: "music",
+        },
+
+        {
+            id:3,
+            name: "photos",
+
+        }
+        
+    ]
 
     
 
@@ -29,6 +51,11 @@ const PostFeed = () => {
             </View>
             <View style = {styles.containerBottom}>
                 <View style={styles.containerBottomLeft}>
+
+                    
+                    <TouchableOpacity activeOpacity={1} style = {styles.containerBottomLeftIcons}>
+                        <SvgIcon name="music" width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
+                    </TouchableOpacity>
 
                 </View>
                 <View style={styles.containerBottomRight}>
@@ -89,13 +116,31 @@ const styles = StyleSheet.create({
         borderBottomColor:"#f0f0f0ff",
     },
 
-    containerBottomLeft: {},
+    containerBottomLeft: {
+        height:"100%",
+        width:"70%",
+        display:"flex",
+        flexDirection:"row",
+        paddingRight:35,
+        alignItems:"center",
+        justifyContent:"flex-end",
+    },
 
-    containerBottomRight: {},
+    containerBottomLeftIcons:{
+        marginLeft:17
+
+    },
+
+    containerBottomRight: {
+        height:"100%",
+        width:"70%",
+        justifyContent:"center"
+
+    },
 
     postButton: {
         backgroundColor: AppDetails.primaryColor,
-        height:45,
+        height:43,
         width:110,
         justifyContent: "center",
         alignItems: "center",
