@@ -1,11 +1,14 @@
-import { Image, StyleSheet, Text, View } from "react-native"
+import { Image, StyleSheet, Text, View, TouchableOpacity } from "react-native"
 import { useAuth } from "../../AuthContext";
-
+import AppDetails from "../../service/appdetails";
+import { useState } from "react";
 
 
 const PostFeed = () => {
 
     const { token, user } = useAuth();
+
+    const [postButtonOpacity, setPostButtonOpacity] = useState(0.5)
 
     
 
@@ -20,11 +23,20 @@ const PostFeed = () => {
                     />
                 </View>
                 <View style = {styles.containerTopTextContainer}>
-                    <Text style = {styles.containerTopTextContainer_Text}>What is on your mind? #Hashtag... {"\n"} @Mention.. Link..  </Text>
+                    <Text style = {styles.containerTopTextContainer_Text}>What is on your mind? #Hashtag.. {"\n"} @Mention.. Link..  </Text>
                 </View>
 
             </View>
-            <View style = {styles.containerBottom}></View>
+            <View style = {styles.containerBottom}>
+                <View style={styles.containerBottomLeft}>
+
+                </View>
+                <View style={styles.containerBottomRight}>
+                    <TouchableOpacity activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity }]}>
+                        <Text style={styles.postButtonText}>Post</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
 
 
         </View>
@@ -69,12 +81,35 @@ const styles = StyleSheet.create({
 
     containerBottom:{
         height:"30%",
-        backgroundColor:"#f0f0f0ff"
+        backgroundColor:"#f0f0f0ff",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderBottomWidth:1,
+        borderBottomColor:"#f0f0f0ff",
+    },
+
+    containerBottomLeft: {},
+
+    containerBottomRight: {},
+
+    postButton: {
+        backgroundColor: AppDetails.primaryColor,
+        height:45,
+        width:110,
+        justifyContent: "center",
+        alignItems: "center",
+        borderRadius: 50,
+        
+        
+    },
+
+    postButtonText: {
+        color: "#fff",
+        fontWeight: "bold",
     }
 
 })
 
 
 export default PostFeed;
-
-
