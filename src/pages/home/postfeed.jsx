@@ -35,7 +35,7 @@ const PostFeed = () => {
     
 
     return(
-        <View style = {styles.container}>
+        <TouchableOpacity style = {styles.container} activeOpacity={1}>
             <View style = {styles.containerTop}>
                 <View style = {styles.containerTopImage}>
                     <Image
@@ -72,8 +72,7 @@ const PostFeed = () => {
                 </View>
             </View>
 
-
-        </View>
+        </TouchableOpacity>
     )
 }
 
