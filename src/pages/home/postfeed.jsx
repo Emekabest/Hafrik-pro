@@ -1,7 +1,7 @@
-import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList } from "react-native"
+import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback } from "react-native"
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 
 const PostFeed = () => {
@@ -9,6 +9,9 @@ const PostFeed = () => {
     const { token, user } = useAuth();
 
     const [postButtonOpacity, setPostButtonOpacity] = useState(0.5)
+    const [isFocused, setIsFocused] = useState(false);
+    const [topOffset, setTopOffset] = useState(0);
+    const containerRef = useRef(null);
 
     const bottomLeftIconsSize = 19
 
@@ -32,10 +35,15 @@ const PostFeed = () => {
         
     ]
 
-    
+    const handlePress = () => {
+        containerRef.current?.measureInWindow((x, y, width, height) => {
+            setTopOffset(y);
+            setIsFocused(true);
+        });
+    };
 
-    return(
-        <TouchableOpacity style = {styles.container} activeOpacity={1}>
+    const renderContent = () => (
+        <>
             <View style = {styles.containerTop}>
                 <View style = {styles.containerTopImage}>
                     <Image
@@ -71,8 +79,36 @@ const PostFeed = () => {
                     </TouchableOpacity>
                 </View>
             </View>
+        </>
+    );
 
-        </TouchableOpacity>
+    return(
+        <>
+            {isFocused ? (
+                <View style={styles.container} />
+            ) : (
+                <TouchableOpacity ref={containerRef} style={styles.container} activeOpacity={1} onPress={handlePress}>
+                    {renderContent()}
+                </TouchableOpacity>
+            )}
+
+            <Modal
+                visible={isFocused}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setIsFocused(false)}
+            >
+                <TouchableWithoutFeedback onPress={() => setIsFocused(false)}>
+                    <View style={styles.modalOverlay}>
+                        <TouchableWithoutFeedback onPress={() => {}}>
+                            <View style={[styles.container, styles.focusedContainer, { position: 'absolute', top: topOffset, left: 0, right: 0 }]}>
+                                {renderContent()}
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
+        </>
     )
 }
 
@@ -83,6 +119,9 @@ const styles = StyleSheet.create({
     container:{
         marginHorizontal:10,
         height:180,
+        backgroundColor: "#fff",
+        borderRadius: 10,
+        overflow: "hidden",
     },
 
     containerTop:{
@@ -157,6 +196,19 @@ const styles = StyleSheet.create({
     postButtonText: {
         color: "#fff",
         fontWeight: "bold",
+    },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)",
+    },
+
+    focusedContainer: {
+        elevation: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
     }
 
 })
