@@ -4,7 +4,7 @@ import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 
-const FOCUSED_CONTAINER_HEIGHT = 350;
+const FOCUSED_CONTAINER_HEIGHT = 400;
 
 const PostFeed = () => {
 
@@ -27,16 +27,80 @@ const PostFeed = () => {
 
         {
             id:2,
-            name: "music",
+            name: "video",
         },
 
         {
             id:3,
+            name: "poll",
+
+        },
+        {
+            id:4,
+            name: "music",
+
+        },
+
+        {
+            id:5,
+            name: "abulm",
+
+        },
+
+        {
+            id:6,
             name: "photos",
+        }
+    ]
+
+        const middleContainerIcons = [
+        {
+            id:1,
+            name: "color",
+            text:"",
+        },
+
+        {
+            id:2,
+            name: "reel",
+            text:"",
+
+        },
+
+        {
+            id:3,
+            name: "gif",
+            text:"",
+
+        },
+
+        {
+            id:4,
+            name: "feelings",
+            text:"",
+
+
+        },
+
+        {
+            id:5,
+            name: "more",
+            text:"More",
+
+        },
+
+
+        {
+            id:6,
+            name: "settings",
+            text:"Options",
 
         }
         
     ]
+
+
+
 
     useEffect(() => {
         if (isFocused) {
@@ -61,6 +125,7 @@ const PostFeed = () => {
                     }
                 }
             );
+            
             const hideSubscription = Keyboard.addListener(
                 Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
                 (e) => {
@@ -71,6 +136,7 @@ const PostFeed = () => {
                     }).start();
                 }
             );
+
 
             return () => {
                 showSubscription.remove();
@@ -116,13 +182,41 @@ const PostFeed = () => {
             </View>
 
 
+            { /** Middle Post Section.......... */   }
+
             <View style={[styles.containerMiddle, !isFocused && { display: 'none' }]}>
-                <View style = {styles.containerMiddleTop}></View>
-                <View style = {styles.containerMiddleBottom}></View>
+                <FlatList
+                    data={middleContainerIcons}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => `middle-${item.id.toString()}`}
+                    contentContainerStyle={{ alignItems: 'center' }}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity style={styles.middleButton}>
+                            <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
+                            <Text style={styles.middleButtonText}>{ item.text }</Text>
+                        </TouchableOpacity>
+                    )}
+                />
+
+
+                <View style = {{display:"flex", flexDirection:"row", justifyContent:"flex-start", alignItems:"center", paddingTop:18}}>
+
+                    <TouchableOpacity style = {styles.containerMiddleBottomIcons}>
+                        <SvgIcon name="hash" width={bottomLeftIconsSize} height={bottomLeftIconsSize} color="#8e8e8eff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style = {styles.containerMiddleBottomIcons}>
+                        <SvgIcon name="at" width={bottomLeftIconsSize} height={bottomLeftIconsSize} color="#8e8e8eff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style = {styles.containerMiddleBottomIcons}>
+                        <SvgIcon name="sticker" width={bottomLeftIconsSize} height={bottomLeftIconsSize} color="#8e8e8eff" />
+                    </TouchableOpacity>
+
+                </View>
             </View>
 
 
-            <View style = {styles.containerBottom}>
+            <View style = {[styles.containerBottom, { borderTopWidth: !isFocused ? 0 : 0.5, borderTopColor:"#eeeeeeff", }]}>
                 <View style={styles.containerBottomLeft}>
                     <FlatList
                         data={icons}
@@ -139,7 +233,7 @@ const PostFeed = () => {
 
                 </View>
                 <View style={styles.containerBottomRight}>
-                    <TouchableOpacity activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity }]}>
+                    <TouchableOpacity activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity, height:!isFocused ? 30 : 40, width:!isFocused ? 80: 110}]}>
                         <Text style={styles.postButtonText}>Post</Text>
                     </TouchableOpacity>
                 </View>
@@ -190,20 +284,14 @@ const styles = StyleSheet.create({
     },
 
     containerTop:{
-        height:"50%",
+        height:"60%",
         display:"flex",
         flexDirection:"row",
         alignItems:"center",
         paddingHorizontal:15,
     },
 
-    containerMiddle:{
-        height:"20%",
-        backgroundColor:"lightgreen",
 
-
-
-    },
 
     containerTopImage:{
         height:50,
@@ -223,13 +311,27 @@ const styles = StyleSheet.create({
         textAlignVertical: "center",
     },
 
+    containerMiddle:{
+        height:"20%",
+        paddingHorizontal: 15,
+        justifyContent: 'center',
+    },
+
+
+    containerMiddleBottomIcons:{
+        marginRight:18,
+        fontSize:18,
+    },
+
+    
     containerBottom:{
-        height:"30%",
+        height:"20%",
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        borderBottomWidth:1,
-        borderBottomColor:"#f0f0f0ff",
+        borderBottomWidth:1 ,
+        borderBottomColor:"#f0f0f0ff", 
+        marginTop:10,
     },
 
     containerBottomLeft: {
@@ -268,6 +370,23 @@ const styles = StyleSheet.create({
     postButtonText: {
         color: "#fff",
         fontWeight: "bold",
+    },
+
+    middleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        
+        paddingHorizontal: 5,
+        paddingVertical: 8,
+        borderRadius: 20,
+        // marginRight: 10,
+    },
+
+    middleButtonText: {
+        marginLeft: 6,
+        color: AppDetails.primaryColor,
+        fontWeight: '500',
+        fontSize: 12,
     },
 
     modalOverlay: {
