@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View, TouchableOpacity } from "react-native"
+import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList } from "react-native"
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
 import { useState } from "react";
@@ -51,11 +51,18 @@ const PostFeed = () => {
             </View>
             <View style = {styles.containerBottom}>
                 <View style={styles.containerBottomLeft}>
-
-                    
-                    <TouchableOpacity activeOpacity={1} style = {styles.containerBottomLeftIcons}>
-                        <SvgIcon name="music" width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
-                    </TouchableOpacity>
+                    <FlatList
+                        data={icons}
+                        horizontal
+                        inverted
+                        showsHorizontalScrollIndicator={false}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity activeOpacity={1} style={styles.containerBottomLeftIcons}>
+                                <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
+                            </TouchableOpacity>
+                        )}
+                    />
 
                 </View>
                 <View style={styles.containerBottomRight}>
@@ -76,7 +83,7 @@ const styles = StyleSheet.create({
 
     container:{
         marginHorizontal:10,
-        height:200,
+        height:180,
     },
 
     containerTop:{
@@ -108,7 +115,6 @@ const styles = StyleSheet.create({
 
     containerBottom:{
         height:"30%",
-        backgroundColor:"#f0f0f0ff",
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
