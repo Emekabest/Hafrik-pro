@@ -305,26 +305,30 @@ const PostFeed = () => {
                 );
             })()}
             
-            {isFocused && middleIconStates['color'] && (
-                <View style={[styles.colorPickerContainer, { marginTop: 'auto' }]}>
-                    <FlatList
-                        data={colorPickerBackground}
-                        horizontal
-                        extraData={selectedBackground}
-                        showsHorizontalScrollIndicator={false}
-                        keyExtractor={(item) => `color-${item.id}`}
-                        renderItem={({ item }) => (
-                            <ColorPickerItem 
-                                item={item} 
-                                isSelected={selectedBackground === item.id} 
-                                onSelect={handleBackgroundSelect} 
+            
+
+                    {isFocused && middleIconStates['color'] && (
+                        <View style={[styles.colorPickerContainer, { marginTop: 'auto' }]}>
+                            <FlatList
+                                data={colorPickerBackground}
+                                horizontal
+                                extraData={selectedBackground}
+                                showsHorizontalScrollIndicator={false}
+                                keyExtractor={(item) => `color-${item.id}`}
+                                renderItem={({ item }) => (
+                                    <ColorPickerItem 
+                                        item={item} 
+                                        isSelected={selectedBackground === item.id} 
+                                        onSelect={handleBackgroundSelect} 
+                                    />
+                                )}
                             />
-                        )}
-                    />
+                        </View>
+                    )}
+                
+                <View style={styles.containerInterface}>
+
                 </View>
-            )}
-
-
 
 
             { /** Middle Post Section.......... */   }
