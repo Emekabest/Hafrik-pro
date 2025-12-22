@@ -2,45 +2,11 @@ import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, Touch
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
-
-// const bottomContainerIcons = [
-//     {
-//         id:1,
-//         name: "location",
-//     },
-
-//     {
-//         id:2,
-//         name: "video",
-//     },
-
-//     {
-//         id:3,
-//         name: "poll",
-
-//     },
-//     {
-//         id:4,
-//         name: "music",
-
-//     },
-
-//     {
-//         id:5,
-//         name: "album",
-
-//     },
-
-//     {
-//         id:6,
-//         name: "photos",
-//     }
-// ]
-
 
 
 
@@ -169,6 +135,7 @@ const ColorPickerItem = ({ item, isSelected, onSelect }) => {
 
 const PostFeed = () => {
 
+    const navigation = useNavigation();
     const { token, user } = useAuth();
 
     const [postButtonOpacity, setPostButtonOpacity] = useState(0.5)
@@ -283,6 +250,12 @@ const PostFeed = () => {
             return;
         }
 
+        if (name === 'reel') {
+            handleClose();
+            navigation.navigate('CreatePost');
+            return;
+        }
+
         setMiddleIconStates((prevState) => {
             const newState = !prevState[name];
             console.log(`${name} is ${newState}`);
@@ -306,6 +279,7 @@ const PostFeed = () => {
         setSelectedBackground(null);
         setSelectedImages([]);
         setSelectedVideo(null);
+        setMiddleIconStates({});
     };
 
     const renderContent = () => (
@@ -424,11 +398,11 @@ const PostFeed = () => {
                         const isAlbumActive = middleIconStates['album'];
                         const isPhotosActive = middleIconStates['photos'];
                         const isVideoActive = middleIconStates['video'];
-                        const isDisabled = (isColorActive && ['reel', 'gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
-                                           (isGifActive && ['reel', 'color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
-                                           (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'photos'].includes(item.name)) ||
-                                           (isPhotosActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name)) ||
-                                           (isVideoActive && ['reel', 'gif', 'color', 'poll', 'music', 'album', 'photos'].includes(item.name));
+                        const isDisabled = (isColorActive && ['gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
+                                           (isGifActive && ['color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
+                                           (isAlbumActive && ['gif', 'color', 'video', 'poll', 'music', 'photos'].includes(item.name)) ||
+                                           (isPhotosActive && ['gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name)) ||
+                                           (isVideoActive && ['gif', 'color', 'poll', 'music', 'album', 'photos'].includes(item.name));
                         return (
                             <TouchableOpacity style={[styles.middleButton, isDisabled && { opacity: 0.3 }]} onPress={() => handleMiddleIconToggle(item.name)} disabled={isDisabled}>
                                 <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
@@ -473,11 +447,11 @@ const PostFeed = () => {
                             const isAlbumActive = middleIconStates['album'];
                             const isPhotosActive = middleIconStates['photos'];
                             const isVideoActive = middleIconStates['video'];
-                            const isDisabled = (isColorActive && ['reel', 'gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
-                                               (isGifActive && ['reel', 'color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
-                                               (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'photos'].includes(item.name)) ||
-                                               (isPhotosActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name)) ||
-                                               (isVideoActive && ['reel', 'gif', 'color', 'poll', 'music', 'album', 'photos'].includes(item.name));
+                            const isDisabled = (isColorActive && ['gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
+                                               (isGifActive && ['color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
+                                               (isAlbumActive && ['gif', 'color', 'video', 'poll', 'music', 'photos'].includes(item.name)) ||
+                                               (isPhotosActive && ['gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name)) ||
+                                               (isVideoActive && ['gif', 'color', 'poll', 'music', 'album', 'photos'].includes(item.name));
                             return (
                                 <TouchableOpacity activeOpacity={1} style={[styles.containerBottomLeftIcons, isDisabled && { opacity: 0.3 }]} disabled={isDisabled} onPress={() => handleMiddleIconToggle(item.name)}>
                                     <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
