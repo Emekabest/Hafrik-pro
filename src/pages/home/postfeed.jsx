@@ -205,8 +205,8 @@ const PostFeed = () => {
     };
 
     const handleBackgroundSelect = useCallback((id) => {
-        setSelectedBackground(id);
-    }, []);
+        setSelectedBackground(prevId => (prevId === id ? null : id));
+    }, []); 
 
 
     const handlePress = () => {
