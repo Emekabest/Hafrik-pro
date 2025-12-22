@@ -15,6 +15,7 @@ const PostFeed = () => {
     const [topOffset, setTopOffset] = useState(0);
     const containerRef = useRef(null);
     const shiftAnim = useRef(new Animated.Value(0)).current;
+    const [middleIconStates, setMiddleIconStates] = useState({});
 
     const bottomLeftIconsSize = 19
 
@@ -43,7 +44,7 @@ const PostFeed = () => {
 
         {
             id:5,
-            name: "abulm",
+            name: "album",
 
         },
 
@@ -62,7 +63,7 @@ const PostFeed = () => {
 
         {
             id:2,
-            name: "reel",
+            name: "reel",   
             text:"",
 
         },
@@ -99,6 +100,13 @@ const PostFeed = () => {
         
     ]
 
+    const handleMiddleIconToggle = (name) => {
+        setMiddleIconStates((prevState) => {
+            const newState = !prevState[name];
+            console.log(`${name} is ${newState}`);
+            return { ...prevState, [name]: newState };
+        });
+    };
 
 
 
@@ -191,12 +199,20 @@ const PostFeed = () => {
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => `middle-${item.id.toString()}`}
                     contentContainerStyle={{ alignItems: 'center' }}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity style={styles.middleButton}>
-                            <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
-                            <Text style={styles.middleButtonText}>{ item.text }</Text>
-                        </TouchableOpacity>
-                    )}
+                    renderItem={({ item }) => {
+                        const isColorActive = middleIconStates['color'];
+                        const isGifActive = middleIconStates['gif'];
+                        const isAlbumActive = middleIconStates['album'];
+                        const isDisabled = (isColorActive && ['reel', 'gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
+                                           (isGifActive && ['reel', 'color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
+                                           (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music'].includes(item.name));
+                        return (
+                            <TouchableOpacity style={[styles.middleButton, isDisabled && { opacity: 0.3 }]} onPress={() => handleMiddleIconToggle(item.name)} disabled={isDisabled}>
+                                <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
+                                <Text style={styles.middleButtonText}>{ item.text }</Text>
+                            </TouchableOpacity>
+                        )
+                    }}
                 />
 
 
@@ -224,12 +240,21 @@ const PostFeed = () => {
                         inverted
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={(item) => item.id.toString()}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity activeOpacity={1} style={styles.containerBottomLeftIcons}>
-                                <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
-                            </TouchableOpacity>
-                        )}
+                        renderItem={({ item }) => {
+                            const isColorActive = middleIconStates['color'];
+                            const isGifActive = middleIconStates['gif'];
+                            const isAlbumActive = middleIconStates['album'];
+                            const isDisabled = (isColorActive && ['reel', 'gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
+                                               (isGifActive && ['reel', 'color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
+                                               (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music'].includes(item.name));
+                            return (
+                                <TouchableOpacity activeOpacity={1} style={[styles.containerBottomLeftIcons, isDisabled && { opacity: 0.3 }]} disabled={isDisabled} onPress={() => handleMiddleIconToggle(item.name)}>
+                                    <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
+                                </TouchableOpacity>
+                            )
+                        }}
                     />
+                    
 
                 </View>
                 <View style={styles.containerBottomRight}>
