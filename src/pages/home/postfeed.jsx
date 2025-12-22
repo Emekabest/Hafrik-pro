@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Keyboard, Animated, Dimensions, Platform } from "react-native"
+import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Keyboard, Animated, Dimensions, Platform, ImageBackground } from "react-native"
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -134,6 +134,7 @@ const colorPickerBackground = [
 
 ]
 
+
 const ColorPickerItem = ({ item, isSelected, onSelect }) => {
     if (item.type === 'image') {
         return (
@@ -145,8 +146,10 @@ const ColorPickerItem = ({ item, isSelected, onSelect }) => {
                 {isSelected && <View style={styles.selectedOverlay} />} 
             </TouchableOpacity>
         );
-    }
+}
 
+    
+    
     const colorMatch = item.src.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
     const backgroundColor = colorMatch ? colorMatch[0] : 'gray';
 
@@ -155,7 +158,7 @@ const ColorPickerItem = ({ item, isSelected, onSelect }) => {
             {isSelected && (
                 <View style={styles.selectedOverlayWhite} />
             )}
-            {isSelected && <View style={styles.selectedOverlay} />}
+            { isSelected && <View style={styles.selectedOverlay} /> }
         </TouchableOpacity>
     );
 };
@@ -171,6 +174,7 @@ const PostFeed = () => {
     const shiftAnim = useRef(new Animated.Value(0)).current;
     const [middleIconStates, setMiddleIconStates] = useState({});
     const [selectedBackground, setSelectedBackground] = useState(null);
+    const [postBackground, setPostBackground] = useState(null);
 
     const bottomLeftIconsSize = 19
 
@@ -182,6 +186,15 @@ const PostFeed = () => {
 
         imagesToPrefetch.forEach(url => Image.prefetch(url));
     }, []);
+
+    useEffect(() => {
+        if (selectedBackground) {
+            const bg = colorPickerBackground.find(item => item.id === selectedBackground);
+            setPostBackground(bg);
+        } else {
+            setPostBackground(null);
+        }
+    }, [selectedBackground]);
 
     const handleMiddleIconToggle = (name) => {
         setMiddleIconStates((prevState) => {
@@ -255,26 +268,47 @@ const PostFeed = () => {
 
     const renderContent = () => (
         <>
-            <View style = {styles.containerTop}>
-                <View style = {styles.containerTopImage}>
-                    <Image
-                        source={{uri: user.avatar}}
-                        style={{ height: "100%", width: "100%" }}
-                        resizeMode="cover"
-                    />
-                </View>
-                <View style = {styles.containerTopTextContainer}>
-                    <TextInput
-                        style={styles.containerTopTextContainer_Input}
-                        placeholder={`What is on your mind? #Hashtag.. \n @Mention.. Link..`}
-                        placeholderTextColor="#848484ff"
-                        multiline={true}
-                        editable={isFocused}
-                        autoFocus={isFocused}
-                    />
-                </View>
+            {(() => {
+                const isBgImage = postBackground?.type === 'image';
+                let bgColor = null;
+                if (postBackground?.type === 'color') {
+                    const colorMatch = postBackground.src.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
+                    bgColor = colorMatch ? colorMatch[0] : null;
+                }
 
-            </View>
+                const TextContainerComponent = isBgImage ? ImageBackground : View;
+                const textContainerProps = isBgImage ? { source: { uri: postBackground.src } } : {};
+
+                return (
+                    <View style={styles.containerTop}>
+                        <View style={styles.containerTopImage}>
+                            <Image
+                                source={{ uri: user.avatar }}
+                                style={{ height: "100%", width: "100%" }}
+                                resizeMode="cover"
+                            />
+                        </View>
+                        <TextContainerComponent 
+                            style={[
+                                styles.containerTopTextContainer, 
+                                bgColor && { backgroundColor: bgColor },
+                                postBackground && styles.containerTopTextContainerWithBackground
+                            ]} 
+                            {...textContainerProps}
+                            imageStyle={{ borderRadius: 10 }}
+                        >
+                            <TextInput
+                                style={[styles.containerTopTextContainer_Input, postBackground && { color: '#fff', textAlign: 'center', width: '100%' }]}
+                                placeholder={`What is on your mind? #Hashtag.. \n @Mention.. Link..`}
+                                placeholderTextColor={postBackground ? '#fff' : "#848484ff"}
+                                multiline={true}
+                                editable={isFocused}
+                                autoFocus={isFocused}
+                            />
+                        </TextContainerComponent>
+                    </View>
+                );
+            })()}
             
             {isFocused && middleIconStates['color'] && (
                 <View style={styles.colorPickerContainer}>
@@ -441,6 +475,15 @@ const styles = StyleSheet.create({
         fontSize:16,
         color:"#000",
         textAlignVertical: "center",
+    },
+
+    containerTopTextContainerWithBackground: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 10,
+        padding: 10,
+        height: '90%',
+        overflow: 'hidden',
     },
 
     containerMiddle:{
