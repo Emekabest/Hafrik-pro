@@ -187,8 +187,22 @@ const PostFeed = () => {
                         autoFocus={isFocused}
                     />
                 </View>
-            </View>
 
+            </View>
+            
+            {isFocused && middleIconStates['color'] && (
+                <View style={styles.colorPickerContainer}>
+                    <FlatList
+                        data={Array(7).fill(0)}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        keyExtractor={(item, index) => `color-${index}`}
+                        renderItem={() => (
+                            <TouchableOpacity style={styles.colorCircle} />
+                        )}
+                    />
+                </View>
+            )}
 
             { /** Middle Post Section.......... */   }
 
@@ -254,7 +268,7 @@ const PostFeed = () => {
                             )
                         }}
                     />
-                    
+
 
                 </View>
                 <View style={styles.containerBottomRight}>
@@ -309,7 +323,7 @@ const styles = StyleSheet.create({
     },
 
     containerTop:{
-        height:"60%",
+        flex: 1,
         display:"flex",
         flexDirection:"row",
         alignItems:"center",
@@ -412,6 +426,20 @@ const styles = StyleSheet.create({
         color: AppDetails.primaryColor,
         fontWeight: '500',
         fontSize: 12,
+    },
+
+    colorPickerContainer: {
+        paddingHorizontal: 15,
+        alignItems:"center",
+        paddingVertical: 10,
+    },
+
+    colorCircle: {
+        width: 30,
+        height: 30,
+        borderRadius: 50,
+        backgroundColor: 'gray',
+        marginRight: 5,
     },
 
     modalOverlay: {
