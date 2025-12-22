@@ -239,6 +239,9 @@ const PostFeed = () => {
         setMiddleIconStates((prevState) => {
             const newState = !prevState[name];
             console.log(`${name} is ${newState}`);
+            if (name === 'color' && !newState) {
+                setSelectedBackground(null);
+            }
             return { ...prevState, [name]: newState };
         });
     };
@@ -256,6 +259,7 @@ const PostFeed = () => {
         setIsFocused(false);
         setSelectedBackground(null);
     };
+
 
     const renderContent = () => (
         <>
@@ -320,8 +324,10 @@ const PostFeed = () => {
                 </View>
             )}
 
-            { /** Middle Post Section.......... */   }
 
+
+
+            { /** Middle Post Section.......... */   }
             <View style={[styles.containerMiddle, !isFocused && { display: 'none' }, isFocused && middleIconStates['color'] && { marginTop: 0 }]}>
                 <FlatList
                     data={middleContainerIcons}
@@ -363,12 +369,15 @@ const PostFeed = () => {
             </View>
 
 
+
+            { /** Bottom Post Section...............................................................................................
+             * ..................................................................................................................... */   }
             <View style = {[styles.containerBottom, { borderTopWidth: !isFocused ? 0 : 0.5, borderTopColor:"#eeeeeeff", }]}>
                 <View style={styles.containerBottomLeft}>
                     <FlatList
                         data={bottomContainerIcons}
                         horizontal
-                            
+                        
                         extraData={middleIconStates}
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={(item) => item.id.toString()}
@@ -386,6 +395,7 @@ const PostFeed = () => {
                             )
                         }}
                     />
+
 
 
                 </View>
