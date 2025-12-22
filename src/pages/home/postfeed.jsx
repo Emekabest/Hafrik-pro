@@ -1,9 +1,10 @@
-import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Animated, Dimensions, ImageBackground } from "react-native"
+import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Animated, Dimensions, ImageBackground } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
-
 
 // const bottomContainerIcons = [
 //     {
@@ -176,6 +177,7 @@ const PostFeed = () => {
     const [middleIconStates, setMiddleIconStates] = useState({});
     const [selectedBackground, setSelectedBackground] = useState(null);
     const [postBackground, setPostBackground] = useState(null);
+    const [selectedImages, setSelectedImages] = useState([]);
     const [bottomContainerIcons, setBottomContainerIcons] = useState([
     {
         id:1,
@@ -211,12 +213,16 @@ const PostFeed = () => {
 ])
 
 
-    if (bottomContainerIcons[0].name === "location") {
-        setBottomContainerIcons(bottomContainerIcons.reverse())
-    }
+    useEffect(() => {
+        if (bottomContainerIcons[0].name === "location") {
+
+            
+            setBottomContainerIcons(bottomContainerIcons.reverse())
+
+        }
+    }, []);
 
     const bottomLeftIconsSize = 19
-
 
     useEffect(() => {
         const imagesToPrefetch = colorPickerBackground
@@ -235,7 +241,27 @@ const PostFeed = () => {
         }
     }, [selectedBackground]);
 
+    const pickImage = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 1,
+            allowsMultipleSelection: true,
+        });
+
+        if (!result.canceled) {
+            const newImages = result.assets.map(asset => asset.uri);
+            setSelectedImages(prev => [...prev, ...newImages]);
+            setMiddleIconStates(prev => ({ ...prev, photos: true }));
+        }
+    };
+
     const handleMiddleIconToggle = (name) => {
+        if (name === 'photos') {
+            pickImage();
+            return;
+        }
+
         setMiddleIconStates((prevState) => {
             const newState = !prevState[name];
             console.log(`${name} is ${newState}`);
@@ -250,7 +276,6 @@ const PostFeed = () => {
         setSelectedBackground(prevId => (prevId === id ? null : id));
     }, []); 
 
-
     const handlePress = () => {
         setIsFocused(true);
     };
@@ -258,8 +283,8 @@ const PostFeed = () => {
     const handleClose = () => {
         setIsFocused(false);
         setSelectedBackground(null);
+        setSelectedImages([]);
     };
-
 
     const renderContent = () => (
         <>
@@ -305,33 +330,50 @@ const PostFeed = () => {
                 );
             })()}
             
-            
+            {isFocused && selectedImages.length > 0 && (
+                <View style={styles.imagePreviewContainer}>
+                    <FlatList
+                        style={{ width: '100%' }}
+                        data={selectedImages}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        keyExtractor={(item, index) => index.toString()}
+                        renderItem={({ item: uri, index }) => (
+                            <View style={styles.singleImageWrapper}>
+                                <Image source={{ uri: uri }} style={styles.imagePreview} resizeMode="cover" />
+                                <TouchableOpacity style={styles.removeImageButton} onPress={() => {
+                                    const newImages = [...selectedImages];
+                                    newImages.splice(index, 1);
+                                    setSelectedImages(newImages);
 
-                    {isFocused && middleIconStates['color'] && (
-                        <View style={[styles.colorPickerContainer, { marginTop: 'auto' }]}>
-                            <FlatList
-                                data={colorPickerBackground}
-                                horizontal
-                                extraData={selectedBackground}
-                                showsHorizontalScrollIndicator={false}
-                                keyExtractor={(item) => `color-${item.id}`}
-                                renderItem={({ item }) => (
-                                    <ColorPickerItem 
-                                        item={item} 
-                                        isSelected={selectedBackground === item.id} 
-                                        onSelect={handleBackgroundSelect} 
-                                    />
-                                )}
-                            />
-                        </View>
-                    )}
-                
-                <View style={styles.containerInterface}>
-
+                                    if (newImages.length === 0) {
+                                        setMiddleIconStates(prev => ({...prev, photos: false}));
+                                    }
+                                }}>
+                                    <Ionicons name="close-circle" size={20} color="rgba(0,0,0,0.7)" />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    />
                 </View>
+            )}
 
+            {isFocused && middleIconStates['color'] && (
+                <View style={[styles.colorPickerContainer, { marginTop: 'auto' }]}>
+                    <FlatList
+                        data={colorPickerBackground}
+                        horizontal
+                        extraData={selectedBackground}
+                        showsHorizontalScrollIndicator={false}
+                        keyExtractor={(item) => `color-${item.id}`}
+                        renderItem={({ item }) => (
+                            <ColorPickerItem item={item} isSelected={selectedBackground === item.id} onSelect={handleBackgroundSelect} />
+                        )}
+                    />
+                </View>
+            )}
 
-            { /** Middle Post Section.......... */   }
+            { /** Middle Post Section.......... */  }
             <View style={[styles.containerMiddle, !isFocused && { display: 'none' }, isFocused && middleIconStates['color'] && { marginTop: 0 }]}>
                 <FlatList
                     data={middleContainerIcons}
@@ -344,9 +386,11 @@ const PostFeed = () => {
                         const isColorActive = middleIconStates['color'];
                         const isGifActive = middleIconStates['gif'];
                         const isAlbumActive = middleIconStates['album'];
+                        const isPhotosActive = middleIconStates['photos'];
                         const isDisabled = (isColorActive && ['reel', 'gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
                                            (isGifActive && ['reel', 'color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
-                                           (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music'].includes(item.name));
+                                           (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'photos'].includes(item.name)) ||
+                                           (isPhotosActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name));
                         return (
                             <TouchableOpacity style={[styles.middleButton, isDisabled && { opacity: 0.3 }]} onPress={() => handleMiddleIconToggle(item.name)} disabled={isDisabled}>
                                 <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
@@ -389,9 +433,11 @@ const PostFeed = () => {
                             const isColorActive = middleIconStates['color'];
                             const isGifActive = middleIconStates['gif'];
                             const isAlbumActive = middleIconStates['album'];
+                            const isPhotosActive = middleIconStates['photos'];
                             const isDisabled = (isColorActive && ['reel', 'gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
                                                (isGifActive && ['reel', 'color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
-                                               (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music'].includes(item.name));
+                                               (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'photos'].includes(item.name)) ||
+                                               (isPhotosActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name));
                             return (
                                 <TouchableOpacity activeOpacity={1} style={[styles.containerBottomLeftIcons, isDisabled && { opacity: 0.3 }]} disabled={isDisabled} onPress={() => handleMiddleIconToggle(item.name)}>
                                     <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
@@ -488,7 +534,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 10,
         overflow: 'hidden',
-        minHeight: 250,
+        minHeight: 350,
     },
 
     containerMiddle:{
@@ -566,6 +612,32 @@ const styles = StyleSheet.create({
         color: AppDetails.primaryColor,
         fontWeight: '500',
         fontSize: 12,
+    },
+
+    imagePreviewContainer: {
+        marginHorizontal: 15,
+        marginTop: 10,
+        width: Dimensions.get('window').width - 50,
+    },
+
+    singleImageWrapper: {
+        position: 'relative',
+        marginRight: 10,
+    },
+
+    imagePreview: {
+        width: 70,
+        height: 70,
+        borderRadius: 10,
+    },
+
+    removeImageButton: {
+        position: 'absolute',
+        top: 2,
+        right: 2,
+        backgroundColor: 'rgba(255,255,255,0.8)',
+        borderRadius: 10,
+        padding: 1,
     },
 
     colorPickerContainer: {
