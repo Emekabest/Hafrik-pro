@@ -4,7 +4,7 @@ import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 
-const FOCUSED_CONTAINER_HEIGHT = 400;
+const FOCUSED_CONTAINER_HEIGHT = 500;
 
 const icons = [
     {
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
 
     container:{
         marginHorizontal:10,
-        height:180,
+        minHeight:180,
         backgroundColor: "#fff",
         borderRadius: 10,
         overflow: "hidden",
@@ -433,10 +433,11 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 10,
         overflow: 'hidden',
+        height: '100%',
     },
 
     containerMiddle:{
-        height:"20%",
+        height: 100,
         paddingHorizontal: 15,
         justifyContent: 'center',
     },
@@ -449,7 +450,7 @@ const styles = StyleSheet.create({
 
     
     containerBottom:{
-        height:"20%",
+        height: 60,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
