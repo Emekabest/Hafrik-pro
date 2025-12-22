@@ -1,10 +1,155 @@
 import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Keyboard, Animated, Dimensions, Platform } from "react-native"
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 
 const FOCUSED_CONTAINER_HEIGHT = 400;
+
+const icons = [
+    {
+        id:1,
+        name: "location",
+    },
+
+    {
+        id:2,
+        name: "video",
+    },
+
+    {
+        id:3,
+        name: "poll",
+
+    },
+    {
+        id:4,
+        name: "music",
+
+    },
+
+    {
+        id:5,
+        name: "album",
+
+    },
+
+    {
+        id:6,
+        name: "photos",
+    }
+]
+
+const middleContainerIcons = [
+    {
+        id:1,
+        name: "color",
+        text:"",
+    },
+
+    {
+        id:2,
+        name: "reel",   
+        text:"",
+
+    },
+
+    {
+        id:3,
+        name: "gif",
+        text:"",
+
+    },
+
+    {
+        id:4,
+        name: "feelings",
+        text:"",
+
+
+    },
+
+    {
+        id:5,
+        name: "more",
+        text:"More",
+
+    },
+
+
+    {
+        id:6,
+        name: "settings",
+        text:"Options",
+
+    }
+    
+]
+
+const colorPickerBackground = [
+
+    {
+        id:1,
+        type:"image",
+        src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/1.jpg`
+    },
+
+    {
+        id:2,
+        type:"image",
+        src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/2.jpg`
+    },
+
+    {
+        id:3,
+        type:"image",
+        src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/3.jpg`
+    },
+
+
+    {
+        id:4,
+        type:"image",
+        src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/4.jpg`
+    },
+
+    {
+        id:5,
+        type:"image",
+        src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/5.jpg`
+    },
+
+    {
+        id:6,
+        type:"color",
+        src:'linear-gradient(45deg, #FF00FF, #030355)'
+    },
+
+    {
+        id:7,
+        type:"color",
+        src:'linear-gradient(45deg, #FF003D, #D73A3A)'
+
+    }
+
+]
+
+const ColorPickerItem = ({ item, isSelected, onSelect }) => {
+    if (item.type === 'image') {
+        return (
+            <TouchableOpacity style={[styles.colorCircle, isSelected && styles.selectedColorCircle]} onPress={() => onSelect(item.id)}>
+                <Image source={{ uri: item.src }} style={styles.colorCircleImage} resizeMode="cover" />
+            </TouchableOpacity>
+        );
+    }
+
+    const colorMatch = item.src.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
+    const backgroundColor = colorMatch ? colorMatch[0] : 'gray';
+
+    return (
+        <TouchableOpacity style={[styles.colorCircle, { backgroundColor }, isSelected && styles.selectedColorCircle]} onPress={() => onSelect(item.id)} />
+    );
+};
 
 const PostFeed = () => {
 
@@ -16,138 +161,10 @@ const PostFeed = () => {
     const containerRef = useRef(null);
     const shiftAnim = useRef(new Animated.Value(0)).current;
     const [middleIconStates, setMiddleIconStates] = useState({});
+    const [selectedBackground, setSelectedBackground] = useState(null);
 
     const bottomLeftIconsSize = 19
 
-
-    const icons = [
-        {
-            id:1,
-            name: "location",
-        },
-
-        {
-            id:2,
-            name: "video",
-        },
-
-        {
-            id:3,
-            name: "poll",
-
-        },
-        {
-            id:4,
-            name: "music",
-
-        },
-
-        {
-            id:5,
-            name: "album",
-
-        },
-
-        {
-            id:6,
-            name: "photos",
-        }
-    ]
-
-        const middleContainerIcons = [
-        {
-            id:1,
-            name: "color",
-            text:"",
-        },
-
-        {
-            id:2,
-            name: "reel",   
-            text:"",
-
-        },
-
-        {
-            id:3,
-            name: "gif",
-            text:"",
-
-        },
-
-        {
-            id:4,
-            name: "feelings",
-            text:"",
-
-
-        },
-
-        {
-            id:5,
-            name: "more",
-            text:"More",
-
-        },
-
-
-        {
-            id:6,
-            name: "settings",
-            text:"Options",
-
-        }
-        
-    ]
-
-
-    const colorPickerBackground = [
-
-        {
-            id:1,
-            type:"image",
-            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/1.jpg`
-        },
-
-        {
-            id:2,
-            type:"image",
-            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/2.jpg`
-        },
-
-        {
-            id:3,
-            type:"image",
-            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/3.jpg`
-        },
-
-
-        {
-            id:4,
-            type:"image",
-            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/4.jpg`
-        },
-
-        {
-            id:5,
-            type:"image",
-            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/5.jpg`
-        },
-
-        {
-            id:6,
-            type:"color",
-            src:'linear-gradient(45deg, #FF00FF, #030355)'
-        },
-
-        {
-            id:7,
-            type:"color",
-            src:'linear-gradient(45deg, #FF003D, #D73A3A)'
-
-        }
-
-    ]
 
     useEffect(() => {
         const imagesToPrefetch = colorPickerBackground
@@ -165,6 +182,9 @@ const PostFeed = () => {
         });
     };
 
+    const handleBackgroundSelect = useCallback((id) => {
+        setSelectedBackground(id);
+    }, []);
 
 
     useEffect(() => {
@@ -252,24 +272,16 @@ const PostFeed = () => {
                     <FlatList
                         data={colorPickerBackground}
                         horizontal
+                        extraData={selectedBackground}
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={(item) => `color-${item.id}`}
-                        renderItem={({ item }) => {
-                            if (item.type === 'image') {
-                                return (
-                                    <TouchableOpacity style={styles.colorCircle}>
-                                        <Image source={{ uri: item.src }} style={styles.colorCircleImage} resizeMode="cover" />
-                                    </TouchableOpacity>
-                                );
-                            }
-
-                            const colorMatch = item.src.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
-                            const backgroundColor = colorMatch ? colorMatch[0] : 'gray';
-
-                            return (
-                                <TouchableOpacity style={[styles.colorCircle, { backgroundColor }]} />
-                            );
-                        }}
+                        renderItem={({ item }) => (
+                            <ColorPickerItem 
+                                item={item} 
+                                isSelected={selectedBackground === item.id} 
+                                onSelect={handleBackgroundSelect} 
+                            />
+                        )}
                     />
                 </View>
             )}
@@ -280,6 +292,7 @@ const PostFeed = () => {
                 <FlatList
                     data={middleContainerIcons}
                     horizontal
+                    extraData={middleIconStates}
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => `middle-${item.id.toString()}`}
                     contentContainerStyle={{ alignItems: 'center' }}
@@ -321,6 +334,7 @@ const PostFeed = () => {
                     <FlatList
                         data={icons}
                         horizontal
+                        extraData={middleIconStates}
                         inverted
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={(item) => item.id.toString()}
@@ -511,11 +525,17 @@ const styles = StyleSheet.create({
         backgroundColor: 'gray',
         marginRight: 5,
         overflow: 'hidden',
+        borderWidth: 2,
+        borderColor: 'transparent',
     },
 
     colorCircleImage: {
         width: '100%',
         height: '100%',
+    },
+
+    selectedColorCircle: {
+        borderColor: '#333',
     },
 
     modalOverlay: {
