@@ -332,29 +332,22 @@ const PostFeed = () => {
             
             {isFocused && selectedImages.length > 0 && (
                 <View style={styles.imagePreviewContainer}>
-                    <FlatList
-                        style={{ width: '100%' }}
-                        data={selectedImages}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        keyExtractor={(item, index) => index.toString()}
-                        renderItem={({ item: uri, index }) => (
-                            <View style={styles.singleImageWrapper}>
-                                <Image source={{ uri: uri }} style={styles.imagePreview} resizeMode="cover" />
-                                <TouchableOpacity style={styles.removeImageButton} onPress={() => {
-                                    const newImages = [...selectedImages];
-                                    newImages.splice(index, 1);
-                                    setSelectedImages(newImages);
+                    {selectedImages.map((uri, index) => (
+                        <View key={index} style={styles.singleImageWrapper}>
+                            <Image source={{ uri: uri }} style={styles.imagePreview} resizeMode="cover" />
+                            <TouchableOpacity style={styles.removeImageButton} onPress={() => {
+                                const newImages = [...selectedImages];
+                                newImages.splice(index, 1);
+                                setSelectedImages(newImages);
 
-                                    if (newImages.length === 0) {
-                                        setMiddleIconStates(prev => ({...prev, photos: false}));
-                                    }
-                                }}>
-                                    <Ionicons name="close-circle" size={20} color="rgba(0,0,0,0.7)" />
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    />
+                                if (newImages.length === 0) {
+                                    setMiddleIconStates(prev => ({...prev, photos: false}));
+                                }
+                            }}>
+                                <Ionicons name="close-circle" size={20} color="rgba(0,0,0,0.7)" />
+                            </TouchableOpacity>
+                        </View>
+                    ))}
                 </View>
             )}
 
@@ -618,11 +611,14 @@ const styles = StyleSheet.create({
         marginHorizontal: 15,
         marginTop: 10,
         width: Dimensions.get('window').width - 50,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
     },
 
     singleImageWrapper: {
         position: 'relative',
         marginRight: 10,
+        marginBottom: 10,
     },
 
     imagePreview: {
