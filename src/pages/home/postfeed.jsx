@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Keyboard, Animated, Dimensions, Platform, ImageBackground } from "react-native"
+import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Animated, Dimensions, ImageBackground } from "react-native"
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -209,61 +209,11 @@ const PostFeed = () => {
     }, []);
 
 
-    useEffect(() => {
-        if (isFocused) {
-            const showSubscription = Keyboard.addListener(
-                Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-                (e) => {
-                    const keyboardHeight = e.endCoordinates.height;
-                    const screenHeight = Dimensions.get('window').height;
-                    const containerHeight = FOCUSED_CONTAINER_HEIGHT; 
-                    const gap = 20;
-                    
-                    const targetBottom = screenHeight - keyboardHeight - gap;
-                    const currentBottom = topOffset + containerHeight;
-                    
-                    if (currentBottom > targetBottom) {
-                        const shift = targetBottom - currentBottom;
-                        Animated.timing(shiftAnim, {
-                            toValue: shift,
-                            duration: Platform.OS === 'ios' ? e.duration : 250,
-                            useNativeDriver: true,
-                        }).start();
-                    }
-                }
-            );
-            
-            const hideSubscription = Keyboard.addListener(
-                Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-                (e) => {
-                    Animated.timing(shiftAnim, {
-                        toValue: 0,
-                        duration: Platform.OS === 'ios' ? e.duration : 250,
-                        useNativeDriver: true,
-                    }).start();
-                }
-            );
-
-
-            return () => {
-                showSubscription.remove();
-                hideSubscription.remove();
-            };
-        } else {
-            shiftAnim.setValue(0);
-        }
-    }, [isFocused, topOffset]);
-
     const handlePress = () => {
-        containerRef.current?.measureInWindow((x, y, width, height) => {
-            const screenHeight = Dimensions.get('window').height;
-            let newTop = y;
-            if (y + FOCUSED_CONTAINER_HEIGHT > screenHeight) {
-                newTop = screenHeight - FOCUSED_CONTAINER_HEIGHT - 10;
-            }
-            setTopOffset(newTop);
-            setIsFocused(true);
-        });
+        const screenHeight = Dimensions.get('window').height;
+        const centeredTop = (screenHeight - FOCUSED_CONTAINER_HEIGHT) / 2;
+        setTopOffset(centeredTop);
+        setIsFocused(true);
     };
 
     const renderContent = () => (
@@ -453,8 +403,8 @@ const styles = StyleSheet.create({
         flex: 1,
         display:"flex",
         flexDirection:"row",
-        alignItems:"center",
         paddingHorizontal:15,
+        paddingTop: 15,
     },
 
 
@@ -482,7 +432,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 10,
         padding: 10,
-        height: '90%',
         overflow: 'hidden',
     },
 
