@@ -1,5 +1,6 @@
 import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Animated, Dimensions, ImageBackground } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
@@ -178,6 +179,7 @@ const PostFeed = () => {
     const [selectedBackground, setSelectedBackground] = useState(null);
     const [postBackground, setPostBackground] = useState(null);
     const [selectedImages, setSelectedImages] = useState([]);
+    const [selectedVideo, setSelectedVideo] = useState(null);
     const [bottomContainerIcons, setBottomContainerIcons] = useState([
     {
         id:1,
@@ -256,9 +258,28 @@ const PostFeed = () => {
         }
     };
 
+    
+    const pickVideo = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+            quality: 1,
+        });
+
+
+        if (!result.canceled) {
+            setSelectedVideo(result.assets[0].uri);
+            setMiddleIconStates(prev => ({ ...prev, video: true }));
+        }
+    };
+
     const handleMiddleIconToggle = (name) => {
         if (name === 'photos') {
             pickImage();
+            return;
+        }
+
+        if (name === 'video') {
+            pickVideo();
             return;
         }
 
@@ -284,6 +305,7 @@ const PostFeed = () => {
         setIsFocused(false);
         setSelectedBackground(null);
         setSelectedImages([]);
+        setSelectedVideo(null);
     };
 
     const renderContent = () => (
@@ -351,6 +373,26 @@ const PostFeed = () => {
                 </View>
             )}
 
+            {isFocused && selectedVideo && (
+                <View style={styles.imagePreviewContainer}>
+                    <View style={styles.singleImageWrapper}>
+                        <Video
+                            source={{ uri: selectedVideo }}
+                            style={styles.videoPreview}
+                            useNativeControls
+                            resizeMode={ResizeMode.COVER}
+                            isLooping
+                        />
+                        <TouchableOpacity style={styles.removeImageButton} onPress={() => {
+                            setSelectedVideo(null);
+                            setMiddleIconStates(prev => ({...prev, video: false}));
+                        }}>
+                            <Ionicons name="close-circle" size={20} color="rgba(0,0,0,0.7)" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
             {isFocused && middleIconStates['color'] && (
                 <View style={[styles.colorPickerContainer, { marginTop: 'auto' }]}>
                     <FlatList
@@ -366,6 +408,7 @@ const PostFeed = () => {
                 </View>
             )}
 
+
             { /** Middle Post Section.......... */  }
             <View style={[styles.containerMiddle, !isFocused && { display: 'none' }, isFocused && middleIconStates['color'] && { marginTop: 0 }]}>
                 <FlatList
@@ -380,10 +423,12 @@ const PostFeed = () => {
                         const isGifActive = middleIconStates['gif'];
                         const isAlbumActive = middleIconStates['album'];
                         const isPhotosActive = middleIconStates['photos'];
+                        const isVideoActive = middleIconStates['video'];
                         const isDisabled = (isColorActive && ['reel', 'gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
                                            (isGifActive && ['reel', 'color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
                                            (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'photos'].includes(item.name)) ||
-                                           (isPhotosActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name));
+                                           (isPhotosActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name)) ||
+                                           (isVideoActive && ['reel', 'gif', 'color', 'poll', 'music', 'album', 'photos'].includes(item.name));
                         return (
                             <TouchableOpacity style={[styles.middleButton, isDisabled && { opacity: 0.3 }]} onPress={() => handleMiddleIconToggle(item.name)} disabled={isDisabled}>
                                 <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
@@ -427,10 +472,12 @@ const PostFeed = () => {
                             const isGifActive = middleIconStates['gif'];
                             const isAlbumActive = middleIconStates['album'];
                             const isPhotosActive = middleIconStates['photos'];
+                            const isVideoActive = middleIconStates['video'];
                             const isDisabled = (isColorActive && ['reel', 'gif', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
                                                (isGifActive && ['reel', 'color', 'video', 'poll', 'music', 'album', 'photos'].includes(item.name)) ||
                                                (isAlbumActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'photos'].includes(item.name)) ||
-                                               (isPhotosActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name));
+                                               (isPhotosActive && ['reel', 'gif', 'color', 'video', 'poll', 'music', 'album'].includes(item.name)) ||
+                                               (isVideoActive && ['reel', 'gif', 'color', 'poll', 'music', 'album', 'photos'].includes(item.name));
                             return (
                                 <TouchableOpacity activeOpacity={1} style={[styles.containerBottomLeftIcons, isDisabled && { opacity: 0.3 }]} disabled={isDisabled} onPress={() => handleMiddleIconToggle(item.name)}>
                                     <SvgIcon name={item.name} width={bottomLeftIconsSize} height={bottomLeftIconsSize} color={AppDetails.primaryColor} />
@@ -625,6 +672,13 @@ const styles = StyleSheet.create({
         width: 70,
         height: 70,
         borderRadius: 10,
+    },
+
+    videoPreview: {
+        width: 100,
+        height: 150,
+        borderRadius: 10,
+        backgroundColor: 'black',
     },
 
     removeImageButton: {

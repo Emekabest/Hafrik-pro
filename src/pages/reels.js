@@ -292,7 +292,6 @@ export default function Reels() {
 
   return (
     <View style={{ flex: 1, backgroundColor: 'black' }}>
-      <StatusBar style="light" />
 
       <FlatList
         data={reels}
