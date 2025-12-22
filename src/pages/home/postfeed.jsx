@@ -100,6 +100,63 @@ const PostFeed = () => {
         
     ]
 
+
+    const colorPickerBackground = [
+
+        {
+            id:1,
+            type:"image",
+            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/1.jpg`
+        },
+
+        {
+            id:2,
+            type:"image",
+            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/2.jpg`
+        },
+
+        {
+            id:3,
+            type:"image",
+            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/3.jpg`
+        },
+
+
+        {
+            id:4,
+            type:"image",
+            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/4.jpg`
+        },
+
+        {
+            id:5,
+            type:"image",
+            src:`https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/patterns/5.jpg`
+        },
+
+        {
+            id:6,
+            type:"color",
+            src:'linear-gradient(45deg, #FF00FF, #030355)'
+        },
+
+        {
+            id:7,
+            type:"color",
+            src:'linear-gradient(45deg, #FF003D, #D73A3A)'
+
+        }
+
+    ]
+
+    useEffect(() => {
+        const imagesToPrefetch = colorPickerBackground
+            .filter(item => item.type === 'image')
+            .map(item => item.src);
+
+        imagesToPrefetch.forEach(url => Image.prefetch(url));
+    }, []);
+
     const handleMiddleIconToggle = (name) => {
         setMiddleIconStates((prevState) => {
             const newState = !prevState[name];
@@ -193,13 +250,26 @@ const PostFeed = () => {
             {isFocused && middleIconStates['color'] && (
                 <View style={styles.colorPickerContainer}>
                     <FlatList
-                        data={Array(7).fill(0)}
+                        data={colorPickerBackground}
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        keyExtractor={(item, index) => `color-${index}`}
-                        renderItem={() => (
-                            <TouchableOpacity style={styles.colorCircle} />
-                        )}
+                        keyExtractor={(item) => `color-${item.id}`}
+                        renderItem={({ item }) => {
+                            if (item.type === 'image') {
+                                return (
+                                    <TouchableOpacity style={styles.colorCircle}>
+                                        <Image source={{ uri: item.src }} style={styles.colorCircleImage} resizeMode="cover" />
+                                    </TouchableOpacity>
+                                );
+                            }
+
+                            const colorMatch = item.src.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/);
+                            const backgroundColor = colorMatch ? colorMatch[0] : 'gray';
+
+                            return (
+                                <TouchableOpacity style={[styles.colorCircle, { backgroundColor }]} />
+                            );
+                        }}
                     />
                 </View>
             )}
@@ -437,9 +507,15 @@ const styles = StyleSheet.create({
     colorCircle: {
         width: 30,
         height: 30,
-        borderRadius: 50,
+        borderRadius: 15,
         backgroundColor: 'gray',
         marginRight: 5,
+        overflow: 'hidden',
+    },
+
+    colorCircleImage: {
+        width: '100%',
+        height: '100%',
     },
 
     modalOverlay: {
