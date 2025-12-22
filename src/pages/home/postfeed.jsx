@@ -4,39 +4,43 @@ import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 
-const icons = [
-    {
-        id:1,
-        name: "location",
-    },
 
-    {
-        id:2,
-        name: "video",
-    },
+// const bottomContainerIcons = [
+//     {
+//         id:1,
+//         name: "location",
+//     },
 
-    {
-        id:3,
-        name: "poll",
+//     {
+//         id:2,
+//         name: "video",
+//     },
 
-    },
-    {
-        id:4,
-        name: "music",
+//     {
+//         id:3,
+//         name: "poll",
 
-    },
+//     },
+//     {
+//         id:4,
+//         name: "music",
 
-    {
-        id:5,
-        name: "album",
+//     },
 
-    },
+//     {
+//         id:5,
+//         name: "album",
 
-    {
-        id:6,
-        name: "photos",
-    }
-]
+//     },
+
+//     {
+//         id:6,
+//         name: "photos",
+//     }
+// ]
+
+
+
 
 const middleContainerIcons = [
     {
@@ -172,6 +176,44 @@ const PostFeed = () => {
     const [middleIconStates, setMiddleIconStates] = useState({});
     const [selectedBackground, setSelectedBackground] = useState(null);
     const [postBackground, setPostBackground] = useState(null);
+    const [bottomContainerIcons, setBottomContainerIcons] = useState([
+    {
+        id:1,
+        name: "location",
+    },
+
+    {
+        id:2,
+        name: "video",
+    },
+
+    {
+        id:3,
+        name: "poll",
+
+    },
+    {
+        id:4,
+        name: "music",
+
+    },
+
+    {
+        id:5,
+        name: "album",
+
+    },
+
+    {
+        id:6,
+        name: "photos",
+    }
+])
+
+
+    if (bottomContainerIcons[0].name === "location") {
+        setBottomContainerIcons(bottomContainerIcons.reverse())
+    }
 
     const bottomLeftIconsSize = 19
 
@@ -319,10 +361,10 @@ const PostFeed = () => {
             <View style = {[styles.containerBottom, { borderTopWidth: !isFocused ? 0 : 0.5, borderTopColor:"#eeeeeeff", }]}>
                 <View style={styles.containerBottomLeft}>
                     <FlatList
-                        data={icons}
+                        data={bottomContainerIcons}
                         horizontal
+                            
                         extraData={middleIconStates}
-                        inverted
                         showsHorizontalScrollIndicator={false}
                         keyExtractor={(item) => item.id.toString()}
                         renderItem={({ item }) => {
@@ -458,9 +500,8 @@ const styles = StyleSheet.create({
         width:"70%",
         display:"flex",
         flexDirection:"row",
-        paddingRight:35,
         alignItems:"center",
-        justifyContent:"flex-end",
+        justifyContent:"flex-start"
     },
 
     containerBottomLeftIcons:{
@@ -470,7 +511,7 @@ const styles = StyleSheet.create({
 
     containerBottomRight: {
         height:"100%",
-        width:"70%",
+        width:"30%",
         justifyContent:"center"
 
     },
