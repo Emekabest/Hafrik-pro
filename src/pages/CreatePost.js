@@ -297,6 +297,8 @@ const CreatePost = ({ navigation }) => {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
+            console.log(token)
+
             const response = await fetch(`${API_BASE_URL}/reels/upload.php`, {
                 method: 'POST',
                 body: formData,

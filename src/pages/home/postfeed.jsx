@@ -252,6 +252,11 @@ const PostFeed = () => {
         setIsFocused(true);
     };
 
+    const handleClose = () => {
+        setIsFocused(false);
+        setSelectedBackground(null);
+    };
+
     const renderContent = () => (
         <>
             {(() => {
@@ -407,9 +412,9 @@ const PostFeed = () => {
                 visible={isFocused}
                 transparent={true}
                 animationType="fade"
-                onRequestClose={() => setIsFocused(false)}
+                onRequestClose={handleClose}
             >
-                <TouchableWithoutFeedback onPress={() => setIsFocused(false)}>
+                <TouchableWithoutFeedback onPress={handleClose}>
                     <View style={styles.modalOverlay}>
                         <TouchableWithoutFeedback onPress={() => {}}>
                             <Animated.View style={[styles.container, styles.focusedContainer, { transform: [{ translateY: shiftAnim }] }]}>
