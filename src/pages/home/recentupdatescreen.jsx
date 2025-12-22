@@ -20,6 +20,7 @@ import { useAuth } from '../../AuthContext';
 import Banner from './banner.jsx';
 import QuickLinks from './quicklinks.jsx';
 import PostFeed from './postfeed.jsx';
+import Feeds from './feeds.jsx';
 
 
 const RecentUpdatesScreen = () => {
@@ -34,6 +35,8 @@ const RecentUpdatesScreen = () => {
         <Banner />
         <QuickLinks />
         <PostFeed />
+        <Feeds />
+
     </ScrollView>
 
   );
