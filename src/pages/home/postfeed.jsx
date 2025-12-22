@@ -139,7 +139,10 @@ const ColorPickerItem = ({ item, isSelected, onSelect }) => {
         return (
             <TouchableOpacity style={styles.colorCircle} onPress={() => onSelect(item.id)}>
                 <Image source={{ uri: item.src }} style={styles.colorCircleImage} resizeMode="cover" />
-                {isSelected && <View style={styles.selectedOverlay} />}
+                {isSelected && (
+                    <View style={styles.selectedOverlayWhite} />
+                )}
+                {isSelected && <View style={styles.selectedOverlay} />} 
             </TouchableOpacity>
         );
     }
@@ -149,6 +152,9 @@ const ColorPickerItem = ({ item, isSelected, onSelect }) => {
 
     return (
         <TouchableOpacity style={[styles.colorCircle, { backgroundColor }]} onPress={() => onSelect(item.id)}>
+            {isSelected && (
+                <View style={styles.selectedOverlayWhite} />
+            )}
             {isSelected && <View style={styles.selectedOverlay} />}
         </TouchableOpacity>
     );
@@ -539,6 +545,13 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         borderWidth: 2,
         borderColor: '#333',
+        borderRadius: 15,
+    },
+
+    selectedOverlayWhite: {
+        ...StyleSheet.absoluteFillObject,
+        borderWidth: 4,
+        borderColor: '#fff',
         borderRadius: 15,
     },
 
