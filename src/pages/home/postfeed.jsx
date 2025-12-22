@@ -4,8 +4,6 @@ import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 
-const FOCUSED_CONTAINER_HEIGHT = 500;
-
 const icons = [
     {
         id:1,
@@ -169,7 +167,6 @@ const PostFeed = () => {
 
     const [postButtonOpacity, setPostButtonOpacity] = useState(0.5)
     const [isFocused, setIsFocused] = useState(false);
-    const [topOffset, setTopOffset] = useState(0);
     const containerRef = useRef(null);
     const shiftAnim = useRef(new Animated.Value(0)).current;
     const [middleIconStates, setMiddleIconStates] = useState({});
@@ -210,9 +207,6 @@ const PostFeed = () => {
 
 
     const handlePress = () => {
-        const screenHeight = Dimensions.get('window').height;
-        const centeredTop = (screenHeight - FOCUSED_CONTAINER_HEIGHT) / 2;
-        setTopOffset(centeredTop);
         setIsFocused(true);
     };
 
@@ -230,7 +224,7 @@ const PostFeed = () => {
                 const textContainerProps = isBgImage ? { source: { uri: postBackground.src } } : {};
 
                 return (
-                    <View style={styles.containerTop}>
+                    <View style={[styles.containerTop, isFocused && { flex: 0, height: 'auto', marginBottom: 15 }]}>
                         <View style={styles.containerTopImage}>
                             <Image
                                 source={{ uri: user.avatar }}
@@ -261,7 +255,7 @@ const PostFeed = () => {
             })()}
             
             {isFocused && middleIconStates['color'] && (
-                <View style={styles.colorPickerContainer}>
+                <View style={[styles.colorPickerContainer, { marginTop: 'auto' }]}>
                     <FlatList
                         data={colorPickerBackground}
                         horizontal
@@ -281,7 +275,7 @@ const PostFeed = () => {
 
             { /** Middle Post Section.......... */   }
 
-            <View style={[styles.containerMiddle, !isFocused && { display: 'none' }]}>
+            <View style={[styles.containerMiddle, !isFocused && { display: 'none' }, isFocused && middleIconStates['color'] && { marginTop: 0 }]}>
                 <FlatList
                     data={middleContainerIcons}
                     horizontal
@@ -306,7 +300,7 @@ const PostFeed = () => {
                 />
 
 
-                <View style = {{display:"flex", flexDirection:"row", justifyContent:"flex-start", alignItems:"center", paddingTop:18}}>
+                <View style = {{display:"flex", flexDirection:"row", justifyContent:"flex-start", alignItems:"center", paddingBottom:13}}>
 
                     <TouchableOpacity style = {styles.containerMiddleBottomIcons}>
                         <SvgIcon name="hash" width={bottomLeftIconsSize} height={bottomLeftIconsSize} color="#8e8e8eff" />
@@ -376,7 +370,7 @@ const PostFeed = () => {
                 <TouchableWithoutFeedback onPress={() => setIsFocused(false)}>
                     <View style={styles.modalOverlay}>
                         <TouchableWithoutFeedback onPress={() => {}}>
-                            <Animated.View style={[styles.container, styles.focusedContainer, { position: 'absolute', top: topOffset, left: 0, right: 0, transform: [{ translateY: shiftAnim }] }]}>
+                            <Animated.View style={[styles.container, styles.focusedContainer, { transform: [{ translateY: shiftAnim }] }]}>
                                 {renderContent()}
                             </Animated.View>
                         </TouchableWithoutFeedback>
@@ -433,13 +427,14 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: 10,
         overflow: 'hidden',
-        height: '100%',
+        minHeight: 250,
     },
 
     containerMiddle:{
         height: 100,
         paddingHorizontal: 15,
         justifyContent: 'center',
+        marginTop: "auto",
     },
 
 
@@ -456,7 +451,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         borderBottomWidth:1 ,
         borderBottomColor:"#f0f0f0ff", 
-        marginTop:10,
     },
 
     containerBottomLeft: {
@@ -549,8 +543,10 @@ const styles = StyleSheet.create({
     },
 
     modalOverlay: {
-        flex: 1,
+        height: Dimensions.get('window').height,
+        width: Dimensions.get('window').width,
         backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "center",
     },
 
     focusedContainer: {
@@ -559,7 +555,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
-        height: FOCUSED_CONTAINER_HEIGHT,
+        height: "auto",
+        minHeight: 400,
     }
 
 })
