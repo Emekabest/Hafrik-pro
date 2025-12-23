@@ -294,6 +294,28 @@ const PostFeed = () => {
         setLocationText("");
     };
 
+
+
+    /**This function handles posting of the content to the database */
+    const handlePost = () => {
+
+
+        const postData ={
+            postText,
+            selectedBackground,
+            selectedImages,
+            selectedVideo,
+            locationText
+        }
+
+        console.log(postData)
+
+    };
+    /**.............................................................. */
+
+
+
+
     const renderContent = () => (
         <>
             {(() => {
@@ -495,7 +517,7 @@ const PostFeed = () => {
 
                 </View>
                 <View style={styles.containerBottomRight}>
-                    <TouchableOpacity activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity, height:!isFocused ? 30 : 40, width:!isFocused ? 80: 110}]}>
+                    <TouchableOpacity onPress={handlePost} disabled={postButtonOpacity !== 1} activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity, height:!isFocused ? 30 : 40, width:!isFocused ? 80: 110}]}>
                         <Text style={styles.postButtonText}>Post</Text>
                     </TouchableOpacity>
                 </View>
