@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useNavigation } from '@react-navigation/native';
 import AppDetails from "../../../service/appdetails";
 
 
 const FeedCard = ()=>{
-
+    const navigation = useNavigation();
 
 
     return(
@@ -58,7 +59,7 @@ const FeedCard = ()=>{
                         <Text style ={styles.engagementCount}>1.2k</Text>
 
                     </TouchableOpacity>
-                    <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]}>
+                    <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen')}>
                         <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>72k</Text>
 
