@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import FeedCard from "./feedcard.jsx";
 
 
 
@@ -21,8 +22,17 @@ const Feeds = ()=>{
                         <Text style ={{fontSize:12, fontWeight:"500"}}>All</Text>
                     </TouchableOpacity>
                 </View>
+
             </View>
 
+            <View style = {styles.containerFeeds}>
+
+                <FeedCard />
+                <FeedCard />
+                <FeedCard />
+
+
+            </View>
 
 
         </View>
@@ -35,7 +45,7 @@ const Feeds = ()=>{
 const styles = StyleSheet.create({
 
     container:{
-        paddingHorizontal:10,        
+        // paddingHorizontal:10,        
     },
 
     containerHeader:{
@@ -44,9 +54,9 @@ const styles = StyleSheet.create({
         flexDirection:"row",
         justifyContent:"space-between",
         alignItems:"center",
-        borderBottomWidth:1,
         paddingVertical:35,
-        borderBottomColor:"#f0f0f0ff",
+        paddingHorizontal:10,        
+
     },
 
     containerHeaderLeft:{
@@ -89,6 +99,11 @@ const styles = StyleSheet.create({
         alignItems:"center",
         justifyContent:"space-around",
         paddingHorizontal:7,
+
+    },
+
+    containerFeeds:{
+        // paddingHorizontal:10,        
 
     }
 
