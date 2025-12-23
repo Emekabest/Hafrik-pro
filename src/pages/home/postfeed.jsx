@@ -8,6 +8,7 @@ import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 import PostFeedController from "../../controllers/postfeedcontroller";
+import UploadMediaController from "../../controllers/uploadmediacontroller";
 
 
 
@@ -219,6 +220,7 @@ const PostFeed = () => {
         } else {
             setPostButtonOpacity(0.5);
         }
+
     }, [postText, selectedImages, selectedVideo]);
 
     const pickImage = async () => {
@@ -229,8 +231,24 @@ const PostFeed = () => {
             allowsMultipleSelection: true,
         });
 
+
         if (!result.canceled) {
-            const newImages = result.assets.map(asset => asset.uri);
+            const newImages = result.assets.map(asset => ({
+                uri: asset.uri,
+                fileName: asset.fileName,
+                type: asset.type
+            }));
+
+            
+            const upload = async(newImage)=>{
+
+                const response = await UploadMediaController(newImage, token)
+            }
+
+            newImages.forEach(upload);
+
+
+
             setSelectedImages(prev => [...prev, ...newImages]);
             setMiddleIconStates(prev => ({ ...prev, photos: true }));
         }
@@ -245,7 +263,12 @@ const PostFeed = () => {
 
 
         if (!result.canceled) {
-            setSelectedVideo(result.assets[0].uri);
+            const asset = result.assets[0];
+            setSelectedVideo({
+                uri: asset.uri,
+                fileName: asset.fileName,
+                type: asset.type
+            });
             setMiddleIconStates(prev => ({ ...prev, video: true }));
         }
     };
@@ -306,7 +329,7 @@ const PostFeed = () => {
         const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
 
 
-        const respose = await PostFeedController({postText, selectedBackground: backgroundDetails, selectedImages, selectedVideo, locationText})
+        // const respose = await PostFeedController({postText, selectedBackground: backgroundDetails, selectedImages, selectedVideo, locationText})
 
 
     };
@@ -363,9 +386,9 @@ const PostFeed = () => {
             
             {isFocused && selectedImages.length > 0 && (
                 <View style={styles.imagePreviewContainer}>
-                    {selectedImages.map((uri, index) => (
+                    {selectedImages.map((image, index) => (
                         <View key={index} style={styles.singleImageWrapper}>
-                            <Image source={{ uri: uri }} style={styles.imagePreview} resizeMode="cover" />
+                            <Image source={{ uri: image.uri }} style={styles.imagePreview} resizeMode="cover" />
                             <TouchableOpacity style={styles.removeImageButton} onPress={() => {
                                 const newImages = [...selectedImages];
                                 newImages.splice(index, 1);
@@ -386,7 +409,7 @@ const PostFeed = () => {
                 <View style={styles.imagePreviewContainer}>
                     <View style={styles.singleImageWrapper}>
                         <Video
-                            source={{ uri: selectedVideo }}
+                            source={{ uri: selectedVideo.uri }}
                             style={styles.videoPreview}
                             useNativeControls
                             resizeMode={ResizeMode.COVER}
