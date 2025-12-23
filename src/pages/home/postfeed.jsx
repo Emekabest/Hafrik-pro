@@ -7,6 +7,7 @@ import { useAuth } from "../../AuthContext";
 import AppDetails from "../../service/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
+import PostFeedController from "../../controllers/postfeedcontroller";
 
 
 
@@ -272,6 +273,9 @@ const PostFeed = () => {
             if (name === 'color' && !newState) {
                 setSelectedBackground(null);
             }
+            if (name === 'location' && !newState) {
+                setLocationText("");
+            }
             return { ...prevState, [name]: newState };
         });
     };
@@ -297,19 +301,13 @@ const PostFeed = () => {
 
 
     /**This function handles posting of the content to the database */
-    const handlePost = () => {
+    const handlePost = async() => {
 
         const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
 
-        const postData ={
-            postText,
-            selectedBackground: backgroundDetails,
-            selectedImages,
-            selectedVideo,
-            locationText
-        }
 
-        console.log(postData)
+        const respose = await PostFeedController({postText, selectedBackground: backgroundDetails, selectedImages, selectedVideo, locationText})
+
 
     };
     /**.............................................................. */
