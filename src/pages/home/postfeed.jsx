@@ -147,6 +147,7 @@ const PostFeed = () => {
     const [postBackground, setPostBackground] = useState(null);
     const [selectedImages, setSelectedImages] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState(null);
+    const [postText, setPostText] = useState("");
     const [bottomContainerIcons, setBottomContainerIcons] = useState([
     {
         id:1,
@@ -209,6 +210,14 @@ const PostFeed = () => {
             setPostBackground(null);
         }
     }, [selectedBackground]);
+
+    useEffect(() => {
+        if (postText.trim().length > 0 || selectedImages.length > 0 || selectedVideo) {
+            setPostButtonOpacity(1);
+        } else {
+            setPostButtonOpacity(0.5);
+        }
+    }, [postText, selectedImages, selectedVideo]);
 
     const pickImage = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
@@ -280,6 +289,7 @@ const PostFeed = () => {
         setSelectedImages([]);
         setSelectedVideo(null);
         setMiddleIconStates({});
+        setPostText("");
     };
 
     const renderContent = () => (
@@ -320,6 +330,8 @@ const PostFeed = () => {
                                 multiline={true}
                                 editable={isFocused}
                                 autoFocus={isFocused}
+                                value={postText}
+                                onChangeText={setPostText}
                             />
                         </TextContainerComponent>
                     </View>
