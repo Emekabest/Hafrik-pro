@@ -4,6 +4,7 @@ import { useAuth } from "../AuthContext";
 
 
 const UploadMediaController = async(media, token)=>{
+    console.log("Ok")
 
     const API_URL = `https://hafrik.com/api/v1/uploads/media.php`;
 
