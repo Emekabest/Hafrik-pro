@@ -1,12 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback } from "react-native";
 import { useNavigation } from '@react-navigation/native';
+import { useState, useRef } from "react";
 import AppDetails from "../../../service/appdetails";
 
 
 const FeedCard = ()=>{
     const navigation = useNavigation();
+    const [showProfileOptions, setShowProfileOptions] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const iconRef = useRef(null);
 
+    const handleOpenOptions = () => {
+        iconRef.current?.measureInWindow((x, y, width, height) => {
+            setMenuPosition({ top: y + height, left: x });
+            setShowProfileOptions(true);
+        });
+    };
 
     return(
         <View style = {styles.container}>
@@ -17,9 +27,35 @@ const FeedCard = ()=>{
                     </View>
 
 
-                    <View style = {[styles.profileIconContainer, {backgroundColor:AppDetails.primaryColor}]}>
+                    <TouchableOpacity 
+                        ref={iconRef}
+                        activeOpacity={1} 
+                        style = {[styles.profileIconContainer, {backgroundColor:AppDetails.primaryColor}]} 
+                        onPress={handleOpenOptions}
+                    >
                             <Ionicons name="add" size={16} style={{color:"#fff", fontWeight:"bold"}} />
-                    </View>
+                    </TouchableOpacity>
+
+                    <Modal
+                        visible={showProfileOptions}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={() => setShowProfileOptions(false)}
+                    >
+                        <TouchableWithoutFeedback onPress={() => setShowProfileOptions(false)}>
+                            <View style={styles.modalOverlay}>
+                                <View style={[styles.profileOptionsModal, { top: menuPosition.top, left: menuPosition.left }]}>
+                                    <TouchableOpacity style={styles.profileOptionItem} onPress={() => setShowProfileOptions(false)}>
+                                        <Text style={styles.profileOptionText}>Visit Profile</Text>
+                                    </TouchableOpacity>
+                                    <View style={styles.divider} />
+                                    <TouchableOpacity style={styles.profileOptionItem} onPress={() => setShowProfileOptions(false)}>
+                                        <Text style={styles.profileOptionText}>Follow</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </Modal>
 
                 </View>
             </View>
@@ -202,7 +238,37 @@ const styles = StyleSheet.create({
         position:"absolute",
         backgroundColor:"#a38080ff"
 
-    }
+    },
+
+    profileOptionsModal: {
+        position: 'absolute',
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        width: 130,
+        elevation: 5,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        zIndex: 1000,
+    },
+    profileOptionItem: {
+        padding: 12,
+        justifyContent: 'center',
+    },
+    profileOptionText: {
+        fontSize: 14,
+        color: '#333',
+        fontWeight: '500',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#f0f0f0',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'transparent',
+    },
 
 })
 
