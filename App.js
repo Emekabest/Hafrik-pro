@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppDetails from './src/service/appdetails';
 import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
+import CommentScreen from './src/pages/home/feeds/commentscreen';
 
 const Stack = createStackNavigator();
 
@@ -41,6 +42,7 @@ function AppNavigator() {
 
   const { user, token, loading } = useAuth();
 
+  console.log(token)
 
   // Show a loading screen while checking authentication
   if (loading) {
@@ -73,6 +75,8 @@ function AppNavigator() {
               <Stack.Screen name="Groups" component={GroupsScreen} />
               <Stack.Screen name="WebView" component={WebViewScreen} />
               <Stack.Screen name="WhatsNearby" component={WhatsNearbyScreen} />
+              <Stack.Screen name="CommentScreen" component={CommentScreen} />
+
             </Stack.Navigator>
         </SafeAreaView>
 
