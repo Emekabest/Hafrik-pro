@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import AppDetails from "../../../service/appdetails";
 
@@ -50,6 +50,11 @@ const FeedCard = ()=>{
                 </View>
 
                 <View style = {styles.mediaSection}>
+                    <Image
+                        source={{uri:"https://objetos-xlk.estaticos-marca.com/uploads/2025/09/24/68d3c4e8cf11f.jpeg"}}
+                        style={{height:"100%", width:"100%"}}
+                        resizeMode="cover"
+                    />
 
                 </View>
 
@@ -64,11 +69,11 @@ const FeedCard = ()=>{
                         <Text style ={styles.engagementCount}>72k</Text>
 
                     </TouchableOpacity>
-                    <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
+                    {/* <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
                         <Ionicons name="repeat-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>182</Text>
 
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                     <TouchableOpacity style = {[styles.shareSection, styles.engagementBarViews]}>
                         <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>29</Text>
@@ -139,8 +144,9 @@ const styles = StyleSheet.create({
 
     mediaSection:{
         height:300,
-        width:"100%",
+        // width:"100%",
         borderRadius:10,
+        overflow:"hidden",
         backgroundColor:'#b1aaaaff'
     },
 

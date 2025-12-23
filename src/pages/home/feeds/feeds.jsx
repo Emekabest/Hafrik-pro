@@ -6,6 +6,43 @@ import FeedCard from "./feedcard.jsx";
 
 const Feeds = ()=>{
 
+
+
+    const feeds = [
+        {
+            id: '1',
+            user: {
+                username: "Amazah",
+                avatar: "https://randomuser.me/api/portraits/men/2.jpg",
+            },
+            content: "I enjoyed the ride last night, Buza ride is the best",
+            time: "30m",
+            likes: 120
+        },
+
+        {
+            id: '1',
+            user: {
+                username: "Hallow",
+                avatar: "https://randomuser.me/api/portraits/men/3.jpg",
+            },
+            content: "I enjoyed the ride last night, Buza ride is the best",
+            time: "30m",
+            likes: 120
+        },
+
+
+
+
+    ]
+
+
+
+
+
+
+
+
     return (
         <View style = {styles.container}>
             <View style = {styles.containerHeader} >
