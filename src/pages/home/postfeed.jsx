@@ -148,6 +148,7 @@ const PostFeed = () => {
     const [selectedImages, setSelectedImages] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [postText, setPostText] = useState("");
+    const [locationText, setLocationText] = useState("");
     const [bottomContainerIcons, setBottomContainerIcons] = useState([
     {
         id:1,
@@ -290,6 +291,7 @@ const PostFeed = () => {
         setSelectedVideo(null);
         setMiddleIconStates({});
         setPostText("");
+        setLocationText("");
     };
 
     const renderContent = () => (
@@ -394,6 +396,23 @@ const PostFeed = () => {
                 </View>
             )}
 
+            {isFocused && middleIconStates['location'] && (
+                <View style={styles.locationInputContainer}>
+                    <View style={styles.locationInputWrapper}>
+                        <Ionicons name="location" size={16} color={AppDetails.primaryColor} />
+                        <TextInput
+                            style={styles.locationInput}
+                            placeholder="Add Location"
+                            placeholderTextColor="#999"
+                            value={locationText}
+                            onChangeText={setLocationText}
+                        />
+                        <TouchableOpacity onPress={() => handleMiddleIconToggle('location')}>
+                            <Ionicons name="close-circle" size={18} color="#999" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
 
             { /** Middle Post Section.......... */  }
             <View style={[styles.containerMiddle, !isFocused && { display: 'none' }, isFocused && middleIconStates['color'] && { marginTop: 0 }]}>
@@ -674,6 +693,29 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.8)',
         borderRadius: 10,
         padding: 1,
+    },
+
+    locationInputContainer: {
+        paddingHorizontal: 15,
+        alignItems: 'flex-end',
+        marginBottom: 5,
+        marginTop: 10,
+    },
+
+    locationInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+
+    locationInput: {
+        fontSize: 14,
+        color: '#333',
+        marginHorizontal: 5,
+        minWidth: 100,
     },
 
     colorPickerContainer: {
