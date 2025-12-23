@@ -299,10 +299,11 @@ const PostFeed = () => {
     /**This function handles posting of the content to the database */
     const handlePost = () => {
 
+        const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
 
         const postData ={
             postText,
-            selectedBackground,
+            selectedBackground: backgroundDetails,
             selectedImages,
             selectedVideo,
             locationText
