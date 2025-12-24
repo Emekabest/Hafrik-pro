@@ -21,6 +21,9 @@ const FeedCard = ({ feed })=>{
     };
 
 
+    console.log(feed.media)
+
+
 
     return(
         <View style = {styles.container}>
@@ -66,6 +69,7 @@ const FeedCard = ({ feed })=>{
                 </View>
             </View>
 
+
             <View style = {styles.containerRight}>
                 <View style = {styles.firstSection}>
                     <View style = {styles.usernameSection}>
@@ -87,13 +91,21 @@ const FeedCard = ({ feed })=>{
                     <Text>{feed.text}</Text>
                 </View>
 
-                <View style = {styles.mediaSection}>
-                    <Image
-                        source={{uri:"https://objetos-xlk.estaticos-marca.com/uploads/2025/09/24/68d3c4e8cf11f.jpeg"}}
-                        style={{height:"100%", width:"100%"}}
-                        resizeMode="cover"
-                    />
-                </View>
+                {
+                    feed.media.length > 0 ?
+
+                        <View style = {styles.mediaSection}>
+                            <Image
+                                source={{uri:feed.media[0].url}}
+                                style={{height:"100%", width:"100%"}}
+                                resizeMode="cover"
+                            />
+                        </View>
+
+                    :
+
+                        <View />
+                }
 
 
                 <View style = {styles.engagementBar}>
@@ -115,6 +127,7 @@ const FeedCard = ({ feed })=>{
                     </TouchableOpacity>
                 </View>
             </View>
+
 
             <Modal
                 visible={showPostOptions}
@@ -160,7 +173,7 @@ const styles = StyleSheet.create({
     container:{
         borderTopWidth:1,
         borderTopColor:"#efefefff",
-        minHeight:300,
+        // minHeight:150,
         width:"100%",
         padding:10,  
         display:"flex",
@@ -205,6 +218,11 @@ const styles = StyleSheet.create({
         width:"20%",
         display:"flex",
         alignItems:"flex-end",
+    },
+
+    textSection:{
+        paddingVertical:5,
+
     },
 
     mediaSection:{

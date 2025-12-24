@@ -6,6 +6,7 @@ import GetFeedsController from "../../../controllers/getfeedscontroller.js";
 import Banner from "../banner.jsx";
 import QuickLinks from "../quicklinks.jsx";
 import PostFeed from "../postfeed.jsx";
+import { useAuth } from "../../../AuthContext.js";
 
 
 
@@ -13,12 +14,13 @@ const Feeds = ()=>{
 
 
     const [feeds, setFeeds] = useState([])
+    const { token } = useAuth();
 
 
     useEffect(()=>{
         const getFeeds = async()=>{
 
-            const response = await GetFeedsController();   
+            const response = await GetFeedsController(token);   
             setFeeds(response.data);
         }
         getFeeds()
