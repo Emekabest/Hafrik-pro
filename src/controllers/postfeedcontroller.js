@@ -15,12 +15,9 @@ const PostFeedController = async(postData, token)=>{
         })
 
 
-        console.log(response.data)
-
+        return {status:response.status, message:"Success"}
     }
     catch(error){
-
-        console.log(error)
 
         return{status:error.status, message:error.message}
     }

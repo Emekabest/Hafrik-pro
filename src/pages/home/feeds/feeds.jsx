@@ -62,11 +62,9 @@ const Feeds = ()=>{
                             )
                     }}
                      scrollEnabled={false}
-              
                 />
+                
             </View>
-
-
         </View>
     )
 

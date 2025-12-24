@@ -399,11 +399,9 @@ const PostFeed = () => {
     /**This function handles posting of the content to the database................. */
     const handlePost = async() => {
         
-
         const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
 
         
-
         let postData ={
             text:postText,
             location:locationText,
@@ -415,7 +413,6 @@ const PostFeed = () => {
             postData.type = "photos",
             postData.media = selectedImages.map(images => images.uri)
 
-
         }
         else if(selectedVideo != null){
             postData.type = "video",
@@ -423,15 +420,25 @@ const PostFeed = () => {
             if(selectedThumbnail){
                 postData.thumbnail = selectedThumbnail.uri
             }
+
         }
         else if (postData != ""){
             postData.type = "post"
+
         }
 
 
 
         const respose = await PostFeedController(postData, token)
 
+        if (respose.status === 200){
+            handleClose();
+
+        }
+        else{
+            
+
+        }
     };
     /**.............................................................. */
 
