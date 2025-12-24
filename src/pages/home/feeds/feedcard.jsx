@@ -5,7 +5,7 @@ import { useState, useRef } from "react";
 import AppDetails from "../../../service/appdetails";
 
 
-const FeedCard = ()=>{
+const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
@@ -18,6 +18,8 @@ const FeedCard = ()=>{
             setShowProfileOptions(true);
         });
     };
+
+
 
     return(
         <View style = {styles.container}>
@@ -65,7 +67,7 @@ const FeedCard = ()=>{
                 <View style = {styles.firstSection}>
                     <View style = {styles.usernameSection}>
                         <View style = {styles.username}>
-                            <Text style = {{color:"#333", fontWeight:"bold"}}>Username</Text>
+                            <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.username}</Text>
                         </View>
                         <View style = {styles.elapsed}>
                             <Text style = {{color:"#787878ff"}}>44m</Text>

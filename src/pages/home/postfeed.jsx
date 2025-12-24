@@ -107,6 +107,8 @@ const colorPickerBackground = [
 ]
 
 
+
+
 const ColorPickerItem = ({ item, isSelected, onSelect }) => {
     if (item.type === 'image') {
         return (
@@ -149,6 +151,7 @@ const PostFeed = () => {
     const [postBackground, setPostBackground] = useState(null);
     const [selectedImages, setSelectedImages] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState(null);
+    const [selectedThumbnail, setSelectedThumbnail] = useState(null);
     const [postText, setPostText] = useState("");
     const [locationText, setLocationText] = useState("");
     const [bottomContainerIcons, setBottomContainerIcons] = useState([
@@ -217,14 +220,15 @@ const PostFeed = () => {
     useEffect(() => {
         const isAnyImageLoading = selectedImages.some(img => img.uploading || img.loading);
         const isVideoLoading = selectedVideo?.uploading;
+        const isThumbnailLoading = selectedThumbnail?.uploading || selectedThumbnail?.loading;
 
-        if ((postText.trim().length > 0 || selectedImages.length > 0 || selectedVideo) && !isAnyImageLoading && !isVideoLoading) {
+        if ((postText.trim().length > 0 || selectedImages.length > 0 || selectedVideo) && !isAnyImageLoading && !isVideoLoading && !isThumbnailLoading) {
             setPostButtonOpacity(1);
         } else {
             setPostButtonOpacity(0.5);
         }
 
-    }, [postText, selectedImages, selectedVideo]);
+    }, [postText, selectedImages, selectedVideo, selectedThumbnail]);
 
 
 
@@ -259,7 +263,6 @@ const PostFeed = () => {
                 if (response.status === "success"){
                     const uploadedImage = response.data;
                     
-                    console.log(uploadedImage)
 
                     setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uri: uploadedImage.url, uploading: false, loading: true } : img));
                 } else {
@@ -297,22 +300,58 @@ const PostFeed = () => {
             setMiddleIconStates(prev => ({ ...prev, video: true }));
 
            const response = await UploadMediaController(videoItem, token);
-           console.log(response.data)
-        //     if (response.status === "success"){
-        //         const uploadedVideo = response.data;
-        //         setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uri: uploadedImage.url, uploading: false, loading: true } : img));
+            if (response.status === "success"){
+                const uploadedVideo = response.data;
+                setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uri: uploadedImage.url, uploading: false, loading: true } : img));
 
-        //         setSelectedVideo(prev => prev ? { ...prev, uri: uploadedVideo.url, uploading: false } : null);
+                setSelectedVideo(prev => prev ? { ...prev, uri: uploadedVideo.url, uploading: false } : null);
 
-        //     }
-
+            }
+            else{
                 setSelectedVideo(prev => prev ? { ...prev, uploading: false } : null);
+
+            }
+
         }
     };
     /**..................................................................................... */
 
+    const pickThumbnail = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            aspect: [16, 9],
+            quality: 1,
+        });
 
 
+        if (!result.canceled) {
+            const asset = result.assets[0];
+            const newThumbnail = {
+                id: Date.now() + Math.random(),
+                uri: asset.uri,
+                fileName: asset.fileName || "thumbnail.jpg",
+                type: asset.type || "image",
+                uploading: true,
+                loading: true,
+                fileType:"photo"
+            };
+        
+            setSelectedThumbnail(newThumbnail);
+            
+            const response =  await UploadMediaController(newThumbnail, token);
+
+            if (response.status === "success"){
+                const uploadedImage = response.data;
+                setSelectedThumbnail(prev => prev && prev.id === newThumbnail.id ? { ...prev, uri: uploadedImage.url, uploading: false, loading: true } : prev);
+            } else {
+                setSelectedThumbnail(prev => prev && prev.id === newThumbnail.id ? { ...prev, uploading: false, loading: false } : prev);
+            }
+        }
+
+    };
+
+    
 
     const handleMiddleIconToggle = (name) => {
         if (name === 'photos') {
@@ -333,7 +372,6 @@ const PostFeed = () => {
 
         setMiddleIconStates((prevState) => {
             const newState = !prevState[name];
-            console.log(`${name} is ${newState}`);
             if (name === 'color' && !newState) {
                 setSelectedBackground(null);
             }
@@ -381,10 +419,15 @@ const PostFeed = () => {
         }
         else if(selectedVideo != null){
             postData.type = "video",
-            postData.media = selectedVideo.uri
+            postData.video_url = selectedVideo.uri
+            if(selectedThumbnail){
+                postData.thumbnail = selectedThumbnail.uri
+            }
+        }
+        else if (postData != ""){
+            postData.type = "post"
         }
 
-        console.log(postData)
 
 
         const respose = await PostFeedController(postData, token)
@@ -491,10 +534,43 @@ const PostFeed = () => {
                         )}
                         <TouchableOpacity style={styles.removeImageButton} onPress={() => {
                             setSelectedVideo(null);
+                            setSelectedThumbnail(null);
                             setMiddleIconStates(prev => ({...prev, video: false}));
                         }}>
                             <Ionicons name="close-circle" size={20} color="rgba(0,0,0,0.7)" />
                         </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.singleImageWrapper}>
+                        <Text style={styles.thumbnailLabel}>Thumbnail</Text>
+                        <TouchableOpacity onPress={pickThumbnail} style={styles.thumbnailContainer}>
+                            {selectedThumbnail ? (
+                                <>
+                                    <Image 
+                                        source={{ uri: selectedThumbnail.uri }} 
+                                        style={styles.thumbnailPreview} 
+                                        resizeMode="cover"
+                                        onLoad={() => setSelectedThumbnail(prev => prev ? { ...prev, loading: false } : null)}
+                                        onError={() => setSelectedThumbnail(prev => prev ? { ...prev, loading: false } : null)}
+                                    />
+                                    {(selectedThumbnail.uploading || selectedThumbnail.loading) && (
+                                        <View style={[styles.thumbnailPreview, styles.loadingContainer, { position: "absolute" }]}>
+                                            <ActivityIndicator size="small" color={AppDetails.primaryColor} />
+                                        </View>
+                                    )}
+                                </>
+                            ) : (
+                                <View style={styles.thumbnailPlaceholder}>
+                                    <Ionicons name="image-outline" size={24} color="#999" />
+                                    <Text style={styles.thumbnailPlaceholderText}>Select</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                         {selectedThumbnail && (
+                             <TouchableOpacity style={styles.removeImageButton} onPress={() => setSelectedThumbnail(null)}>
+                                <Ionicons name="close-circle" size={20} color="rgba(0,0,0,0.7)" />
+                            </TouchableOpacity>
+                         )}
                     </View>
                 </View>
             )}
@@ -891,6 +967,37 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#f0f0f0',
+    },
+
+    thumbnailContainer: {
+        width: 100,
+        height: 100,
+        borderRadius: 10,
+        overflow: 'hidden',
+        backgroundColor: '#f0f0f0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#eee',
+    },
+    thumbnailPreview: {
+        width: '100%',
+        height: '100%',
+    },
+    thumbnailPlaceholder: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    thumbnailLabel: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 5,
+        marginLeft: 2,
+    },
+    thumbnailPlaceholderText: {
+        fontSize: 10,
+        color: "#999",
+        marginTop: 4
     }
 
 })

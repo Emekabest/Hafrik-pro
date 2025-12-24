@@ -31,14 +31,12 @@ const RecentUpdatesScreen = () => {
 
   return (
    
-    <ScrollView style={styles.container}>
-        <Banner />
-        <QuickLinks />
-        <PostFeed />
-        <Feeds />
-
-    </ScrollView>
-
+      <ScrollView style={styles.container}>
+          <Banner />
+          <QuickLinks />
+          <PostFeed />
+          <Feeds />
+      </ScrollView>
   );
 };
 

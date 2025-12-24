@@ -165,6 +165,7 @@ const Profile = () => {
       
       console.log(`Uploading ${imageType}...`);
       
+      
       // Choose the correct API endpoint
       const endpoint = imageType === 'avatar' 
         ? 'https://hafrik.com/api/v1/users/update_avatar.php'
@@ -179,6 +180,7 @@ const Profile = () => {
         },
         body: formData,
       });
+
 
       const uploadData = await uploadResponse.json();
       console.log('Upload response:', uploadData);

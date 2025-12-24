@@ -1,40 +1,32 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import FeedCard from "./feedcard.jsx";
+import { useEffect, useState } from "react";
+import GetFeedsController from "../../../controllers/getfeedscontroller.js";
+import Banner from "../banner.jsx";
+import QuickLinks from "../quicklinks.jsx";
+import PostFeed from "../postfeed.jsx";
 
 
 
 const Feeds = ()=>{
 
-    const feeds = [
-        {
-            id: '1',
-            user: {
-                username: "Amazah",
-                avatar: "https://randomuser.me/api/portraits/men/2.jpg",
-            },
-            content: "I enjoyed the ride last night, Buza ride is the best",
-            time: "30m",
-            likes: 120
-        },
 
-        {
-            id: '2',
-            user: {
-                username: "Hallow",
-                avatar: "https://randomuser.me/api/portraits/men/3.jpg",
-            },
-            content: "I enjoyed the ride last night, Buza ride is the best",
-            time: "30m",
-            likes: 120
-        },
+    const [feeds, setFeeds] = useState([])
 
-    ]
+
+    useEffect(()=>{
+        const getFeeds = async()=>{
+
+            const response = await GetFeedsController();   
+            setFeeds(response.data);
+        }
+        getFeeds()
+    },[])
 
 
 
-
-
+    console.log(feeds.length)
 
 
 
@@ -59,11 +51,17 @@ const Feeds = ()=>{
 
             <View style = {styles.containerFeeds}>
 
-                <FeedCard />
-                <FeedCard />
-                <FeedCard />
-
-
+                <FlatList 
+                    data={feeds}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({item})=>{
+                            return(
+                                <FeedCard feed={item} />
+                            )
+                    }}
+                     scrollEnabled={false}
+              
+                />
             </View>
 
 
