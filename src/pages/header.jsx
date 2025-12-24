@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AppDetails from '../service/appdetails';
+import AppDetails from '../helpers/appdetails';
 import { useAuth } from '../AuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');

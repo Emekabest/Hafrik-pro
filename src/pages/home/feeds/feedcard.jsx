@@ -2,8 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef } from "react";
-import AppDetails from "../../../service/appdetails";
-import CalculateElapsedTime from "../../../service/calculateelapsedtime";
+import AppDetails from "../../../helpers/appdetails";
+import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
 
 const FeedCard = ({ feed })=>{

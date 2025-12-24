@@ -12,7 +12,7 @@ import EventsScreen from './src/pages/EventsScreen';
 import GroupsScreen from './src/pages/GroupsScreen';
 import { useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppDetails from './src/service/appdetails';
+import AppDetails from './src/helpers/appdetails';
 import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
 import CommentScreen from './src/pages/home/feeds/commentscreen';
 

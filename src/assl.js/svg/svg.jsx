@@ -1,5 +1,5 @@
 import { SvgXml } from 'react-native-svg';
-import AppDetails from '../../service/appdetails';
+import AppDetails from '../../helpers/appdetails';
 
 
 

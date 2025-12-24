@@ -14,7 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from "../../../AuthContext";
-import AppDetails from "../../../service/appdetails";
+import AppDetails from "../../../helpers/appdetails";
 
 const CommentScreen = ()=>{
     const navigation = useNavigation();

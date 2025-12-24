@@ -4,7 +4,7 @@ import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from "../../AuthContext";
-import AppDetails from "../../service/appdetails";
+import AppDetails from "../../helpers/appdetails";
 import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 import PostFeedController from "../../controllers/postfeedcontroller";

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import AppDetails from '../../service/appdetails';
+import AppDetails from '../../helpers/appdetails';
 
 const QuickActions = ({ activeTab, onTabChange }) => {
 
