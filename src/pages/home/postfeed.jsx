@@ -239,7 +239,8 @@ const PostFeed = () => {
                 fileName: asset.fileName,
                 type: asset.type,
                 uploading: true
-            }));
+        }));
+        
 
             setSelectedImages(prev => [...prev, ...newImages]);
             setMiddleIconStates(prev => ({ ...prev, photos: true }));
@@ -252,6 +253,9 @@ const PostFeed = () => {
                     
                     console.log(uploadedImage)
 
+                    setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uri: uploadedImage.url, uploading: false } : img));
+                } else {
+                    setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uploading: false } : img));
                 }
 
 
