@@ -8,10 +8,10 @@ const UploadMediaController = async(media, token)=>{
     try{
           const formData = new FormData();
 
-          formData.append('type', 'photo');
+          formData.append('type', media.fileType);
           formData.append('file', {
             uri: media.uri,
-            type: "image/jpeg",
+            type: media.type.includes("image") ? "image/jpeg" : media.type.includes("video") ? "video/mp4" : "",
             name: media.fileName
           });
 
@@ -23,11 +23,14 @@ const UploadMediaController = async(media, token)=>{
             },
         })
   
+        console.log(response.data)
 
         return {status:response.data.status, data:response.data.data} 
 
     }
     catch(error){
+
+        console.log(error)
 
         return {status:error.status, message:error}
     }

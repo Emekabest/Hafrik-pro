@@ -1,26 +1,29 @@
 import axios from "axios";
 
 
-const PostFeedController = (postData)=>{
+const PostFeedController = async(postData, token)=>{
+    const API_URL = `https://hafrik.com/api/v1/posts/create.php`;
 
 
     try{
 
-        const response = axios.post(url, postData, {
-        headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        }
-    })
+        const response = await axios.post(API_URL, postData, {
+            headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            }
+        })
 
-    
+
+        console.log(response.data)
 
     }
     catch(error){
 
+        console.log(error)
+
         return{status:error.status, message:error.message}
     }
-
 
 }
 

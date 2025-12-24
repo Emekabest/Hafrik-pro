@@ -245,7 +245,8 @@ const PostFeed = () => {
                 fileName: asset.fileName,
                 type: asset.type,
                 uploading: true,
-                loading: true
+                loading: true,
+                fileType:"photo"
         }));
         
 
@@ -274,7 +275,8 @@ const PostFeed = () => {
 
     
 
-    /**This function deals with picking a video from the gallery */
+
+    /**This function deals with picking a video from the gallery............................... */
     const pickVideo = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Videos,
@@ -288,13 +290,23 @@ const PostFeed = () => {
                 uri: asset.uri,
                 fileName: asset.fileName,
                 type: asset.type,
-                uploading: true
+                uploading: true,
+                fileType:"video"
             };
             setSelectedVideo(videoItem);
             setMiddleIconStates(prev => ({ ...prev, video: true }));
 
-            await UploadMediaController(videoItem, token);
-            setSelectedVideo(prev => prev ? { ...prev, uploading: false } : null);
+           const response = await UploadMediaController(videoItem, token);
+           console.log(response.data)
+        //     if (response.status === "success"){
+        //         const uploadedVideo = response.data;
+        //         setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uri: uploadedImage.url, uploading: false, loading: true } : img));
+
+        //         setSelectedVideo(prev => prev ? { ...prev, uri: uploadedVideo.url, uploading: false } : null);
+
+        //     }
+
+                setSelectedVideo(prev => prev ? { ...prev, uploading: false } : null);
         }
     };
     /**..................................................................................... */
@@ -342,24 +354,40 @@ const PostFeed = () => {
 
     const handleClose = () => {
         setIsFocused(false);
-        setSelectedBackground(null);
-        setSelectedImages([]);
-        setSelectedVideo(null);
-        setMiddleIconStates({});
-        setPostText("");
-        setLocationText("");
     };
 
 
 
-    /**This function handles posting of the content to the database */
+    /**This function handles posting of the content to the database................. */
     const handlePost = async() => {
+        
 
         const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
 
+        
 
-        // const respose = await PostFeedController({postText, selectedBackground: backgroundDetails, selectedImages, selectedVideo, locationText})
+        let postData ={
+            text:postText,
+            location:locationText,
+        };
 
+
+        if (selectedImages.length > 0){
+
+            postData.type = "photos",
+            postData.media = selectedImages.map(images => images.uri)
+
+
+        }
+        else if(selectedVideo != null){
+            postData.type = "video",
+            postData.media = selectedVideo.uri
+        }
+
+        console.log(postData)
+
+
+        const respose = await PostFeedController(postData, token)
 
     };
     /**.............................................................. */
