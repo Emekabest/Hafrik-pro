@@ -215,7 +215,10 @@ const PostFeed = () => {
     }, [selectedBackground]);
 
     useEffect(() => {
-        if (postText.trim().length > 0 || selectedImages.length > 0 || selectedVideo) {
+        const isAnyImageLoading = selectedImages.some(img => img.uploading || img.loading);
+        const isVideoLoading = selectedVideo?.uploading;
+
+        if ((postText.trim().length > 0 || selectedImages.length > 0 || selectedVideo) && !isAnyImageLoading && !isVideoLoading) {
             setPostButtonOpacity(1);
         } else {
             setPostButtonOpacity(0.5);
@@ -225,7 +228,7 @@ const PostFeed = () => {
 
 
 
-    /**This function deals with picking an image from the gallery */
+    /**This function deals with picking an image from the gallery...................... */
     const pickImage = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -295,6 +298,8 @@ const PostFeed = () => {
         }
     };
     /**..................................................................................... */
+
+
 
 
     const handleMiddleIconToggle = (name) => {
