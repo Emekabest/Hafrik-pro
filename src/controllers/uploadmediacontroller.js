@@ -1,5 +1,4 @@
 import axios from "axios";
-import { useAuth } from "../AuthContext";
 
 
 const UploadMediaController = async(media, token)=>{
@@ -9,35 +8,28 @@ const UploadMediaController = async(media, token)=>{
     try{
           const formData = new FormData();
 
-          formData.append('image', {
+          formData.append('type', 'photo');
+          formData.append('file', {
             uri: media.uri,
-            type: 'image/jpeg',
-            name: media.fileName || `photo_${Date.now()}.jpg`
+            type: "image/jpeg",
+            name: media.fileName
           });
 
+          
           const response = await axios.post(API_URL, formData, {
             headers: {
                 Authorization: `Bearer ${token}`,
+                "Content-Type": "multipart/form-data",
             },
         })
+  
 
-          console.log(response.data)
-          return response.data;
+        console.log(response.data)
+
     }
     catch(error){
 
-        console.log("An error occured::", error)
-        console.log("resopnse::"+error.response)
-        console.log("request::"+error.request)
-
-
-        if (error.response){
-            console.log('Server responded:', error.response.data);
-        } else if (error.request) {
-            console.log('Request made but no response');
-        } else {
-            console.log('Axios config error:', error.message);
-        }
+        console.log(error);
 
     }
 

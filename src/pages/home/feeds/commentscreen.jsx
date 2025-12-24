@@ -58,7 +58,7 @@ const CommentScreen = ()=>{
             time: "25m",
             likes: 85
         },
-         {
+        {
             id: '3',
             user: {
                 name: "Frenkie de Jong",

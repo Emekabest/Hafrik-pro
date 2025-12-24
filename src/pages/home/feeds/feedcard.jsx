@@ -8,6 +8,7 @@ import AppDetails from "../../../service/appdetails";
 const FeedCard = ()=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
+    const [showPostOptions, setShowPostOptions] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const iconRef = useRef(null);
 
@@ -72,7 +73,7 @@ const FeedCard = ()=>{
                     </View>
 
 
-                    <TouchableOpacity style = {styles.options}>
+                    <TouchableOpacity style = {styles.options} onPress={() => setShowPostOptions(true)}>
                         <Ionicons name="ellipsis-horizontal" size={20} style={{color:"#333", fontWeight:"bold"}} />
                     </TouchableOpacity>
                 </View>
@@ -91,32 +92,59 @@ const FeedCard = ()=>{
                         style={{height:"100%", width:"100%"}}
                         resizeMode="cover"
                     />
-
                 </View>
+
 
                 <View style = {styles.engagementBar}>
                     <TouchableOpacity style = {[styles.likeSection, styles.engagementBarViews]}>
                         <Ionicons name="heart-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>1.2k</Text>
-
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen')}>
                         <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>72k</Text>
-
                     </TouchableOpacity>
-                    {/* <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
+                    <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
                         <Ionicons name="repeat-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>182</Text>
-
-                    </TouchableOpacity> */}
+                    </TouchableOpacity>
                     <TouchableOpacity style = {[styles.shareSection, styles.engagementBarViews]}>
                         <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>29</Text>
                     </TouchableOpacity>
                 </View>
-
             </View>
+
+            <Modal
+                visible={showPostOptions}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowPostOptions(false)}
+            >
+                <TouchableWithoutFeedback onPress={() => setShowPostOptions(false)}>
+                    <View style={styles.bottomSheetContainer}>
+                        <TouchableWithoutFeedback onPress={() => {}}>
+                            <View style={styles.bottomSheetContent}>
+                                <View style={styles.bottomSheetHandle} />
+                                <Text style={styles.bottomSheetTitle}>Options</Text>
+                                
+                                <TouchableOpacity style={styles.bottomSheetOption}>
+                                    <Ionicons name="bookmark-outline" size={24} color="#333" />
+                                    <Text style={styles.bottomSheetOptionText}>Save Post</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.bottomSheetOption}>
+                                    <Ionicons name="eye-off-outline" size={24} color="#333" />
+                                    <Text style={styles.bottomSheetOptionText}>Hide Post</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.bottomSheetOption}>
+                                    <Ionicons name="alert-circle-outline" size={24} color="#ff4444" />
+                                    <Text style={[styles.bottomSheetOptionText, {color: '#ff4444'}]}>Report Post</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
 
         </View>
     )
@@ -268,6 +296,47 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'transparent',
+    },
+    bottomSheetContainer: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    bottomSheetContent: {
+        backgroundColor: '#fff',
+        height: '50%',
+        width: '100%',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+    },
+    bottomSheetHandle: {
+        width: 40,
+        height: 5,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 2.5,
+        alignSelf: 'center',
+        marginBottom: 15,
+    },
+    bottomSheetTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+        color: '#333',
+    },
+    bottomSheetOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    bottomSheetOptionText: {
+        fontSize: 16,
+        marginLeft: 15,
+        color: '#333',
+        fontWeight: '500',
     },
 
 })

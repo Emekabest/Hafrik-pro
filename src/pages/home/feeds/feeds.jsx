@@ -6,8 +6,6 @@ import FeedCard from "./feedcard.jsx";
 
 const Feeds = ()=>{
 
-
-
     const feeds = [
         {
             id: '1',
@@ -21,7 +19,7 @@ const Feeds = ()=>{
         },
 
         {
-            id: '1',
+            id: '2',
             user: {
                 username: "Hallow",
                 avatar: "https://randomuser.me/api/portraits/men/3.jpg",
@@ -30,9 +28,6 @@ const Feeds = ()=>{
             time: "30m",
             likes: 120
         },
-
-
-
 
     ]
 
