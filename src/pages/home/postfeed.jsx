@@ -223,6 +223,9 @@ const PostFeed = () => {
 
     }, [postText, selectedImages, selectedVideo]);
 
+
+
+    /**This function deals with picking an image from the gallery */
     const pickImage = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -238,7 +241,8 @@ const PostFeed = () => {
                 uri: asset.uri,
                 fileName: asset.fileName,
                 type: asset.type,
-                uploading: true
+                uploading: true,
+                loading: true
         }));
         
 
@@ -253,21 +257,21 @@ const PostFeed = () => {
                     
                     console.log(uploadedImage)
 
-                    setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uri: uploadedImage.url, uploading: false } : img));
+                    setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uri: uploadedImage.url, uploading: false, loading: true } : img));
                 } else {
-                    setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uploading: false } : img));
+                    setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uploading: false, loading: false } : img));
                 }
-
-
-
-                setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uploading: false } : img));
             }
 
             newImages.forEach(upload);
         }
     };
 
+    /**..................................................................................... */
+
     
+
+    /**This function deals with picking a video from the gallery */
     const pickVideo = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Videos,
@@ -290,6 +294,8 @@ const PostFeed = () => {
             setSelectedVideo(prev => prev ? { ...prev, uploading: false } : null);
         }
     };
+    /**..................................................................................... */
+
 
     const handleMiddleIconToggle = (name) => {
         if (name === 'photos') {
@@ -406,12 +412,17 @@ const PostFeed = () => {
                 <View style={styles.imagePreviewContainer}>
                     {selectedImages.map((image, index) => (
                         <View key={index} style={styles.singleImageWrapper}>
-                            {image.uploading ? (
-                                <View style={[styles.imagePreview, styles.loadingContainer]}>
+                            <Image 
+                                source={{ uri: image.uri }} 
+                                style={styles.imagePreview} 
+                                resizeMode="cover" 
+                                onLoad={() => setSelectedImages(prev => prev.map(img => img.id === image.id ? { ...img, loading: false } : img))}
+                                onError={() => setSelectedImages(prev => prev.map(img => img.id === image.id ? { ...img, loading: false } : img))}
+                            />
+                            {(image.uploading || image.loading) && (
+                                <View style={[styles.imagePreview, styles.loadingContainer, { position: "absolute" }]}>
                                     <ActivityIndicator size="small" color={AppDetails.primaryColor} />
                                 </View>
-                            ) : (
-                                <Image source={{ uri: image.uri }} style={styles.imagePreview} resizeMode="cover" />
                             )}
                             <TouchableOpacity style={styles.removeImageButton} onPress={() => {
                                 const newImages = [...selectedImages];
