@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Animated, Dimensions, ImageBackground } from "react-native";
+import { Image, StyleSheet, Text, View, TouchableOpacity, FlatList, Modal, TouchableWithoutFeedback, TextInput, Animated, Dimensions, ImageBackground, ActivityIndicator } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
@@ -234,23 +234,32 @@ const PostFeed = () => {
 
         if (!result.canceled) {
             const newImages = result.assets.map(asset => ({
+                id: Date.now() + Math.random(),
                 uri: asset.uri,
                 fileName: asset.fileName,
-                type: asset.type
+                type: asset.type,
+                uploading: true
             }));
-
-            
-            const upload = async(newImage)=>{
-
-                const response = await UploadMediaController(newImage, token)
-            }
-
-            newImages.forEach(upload);
-
-
 
             setSelectedImages(prev => [...prev, ...newImages]);
             setMiddleIconStates(prev => ({ ...prev, photos: true }));
+            
+            const upload = async(newImage)=>{
+               const response =  await UploadMediaController(newImage, token);
+
+                if (response.status === "success"){
+                    const uploadedImage = response.data;
+                    
+                    console.log(uploadedImage)
+
+                }
+
+
+
+                setSelectedImages(prev => prev.map(img => img.id === newImage.id ? { ...img, uploading: false } : img));
+            }
+
+            newImages.forEach(upload);
         }
     };
 
@@ -264,12 +273,17 @@ const PostFeed = () => {
 
         if (!result.canceled) {
             const asset = result.assets[0];
-            setSelectedVideo({
+            const videoItem = {
                 uri: asset.uri,
                 fileName: asset.fileName,
-                type: asset.type
-            });
+                type: asset.type,
+                uploading: true
+            };
+            setSelectedVideo(videoItem);
             setMiddleIconStates(prev => ({ ...prev, video: true }));
+
+            await UploadMediaController(videoItem, token);
+            setSelectedVideo(prev => prev ? { ...prev, uploading: false } : null);
         }
     };
 
@@ -388,7 +402,13 @@ const PostFeed = () => {
                 <View style={styles.imagePreviewContainer}>
                     {selectedImages.map((image, index) => (
                         <View key={index} style={styles.singleImageWrapper}>
-                            <Image source={{ uri: image.uri }} style={styles.imagePreview} resizeMode="cover" />
+                            {image.uploading ? (
+                                <View style={[styles.imagePreview, styles.loadingContainer]}>
+                                    <ActivityIndicator size="small" color={AppDetails.primaryColor} />
+                                </View>
+                            ) : (
+                                <Image source={{ uri: image.uri }} style={styles.imagePreview} resizeMode="cover" />
+                            )}
                             <TouchableOpacity style={styles.removeImageButton} onPress={() => {
                                 const newImages = [...selectedImages];
                                 newImages.splice(index, 1);
@@ -408,13 +428,19 @@ const PostFeed = () => {
             {isFocused && selectedVideo && (
                 <View style={styles.imagePreviewContainer}>
                     <View style={styles.singleImageWrapper}>
-                        <Video
-                            source={{ uri: selectedVideo.uri }}
-                            style={styles.videoPreview}
-                            useNativeControls
-                            resizeMode={ResizeMode.COVER}
-                            isLooping
-                        />
+                        {selectedVideo.uploading ? (
+                            <View style={[styles.videoPreview, styles.loadingContainer]}>
+                                <ActivityIndicator size="small" color={AppDetails.primaryColor} />
+                            </View>
+                        ) : (
+                            <Video
+                                source={{ uri: selectedVideo.uri }}
+                                style={styles.videoPreview}
+                                useNativeControls
+                                resizeMode={ResizeMode.COVER}
+                                isLooping
+                            />
+                        )}
                         <TouchableOpacity style={styles.removeImageButton} onPress={() => {
                             setSelectedVideo(null);
                             setMiddleIconStates(prev => ({...prev, video: false}));
@@ -811,6 +837,12 @@ const styles = StyleSheet.create({
         shadowRadius: 3.84,
         height: "auto",
         minHeight: 400,
+    },
+
+    loadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
     }
 
 })

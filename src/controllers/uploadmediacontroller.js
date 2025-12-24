@@ -24,13 +24,12 @@ const UploadMediaController = async(media, token)=>{
         })
   
 
-        console.log(response.data)
+        return {status:response.data.status, data:response.data.data} 
 
     }
     catch(error){
 
-        console.log(error);
-
+        return {status:error.status, message:error}
     }
 
 }
