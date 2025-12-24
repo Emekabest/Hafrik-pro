@@ -73,7 +73,7 @@ const FeedCard = ({ feed })=>{
                             <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.username}</Text>
                         </View>
                         <View style = {styles.elapsed}>
-                            <Text style = {{color:"#787878ff"}}>{CalculateElapsedTime(feed.createdAt)}</Text>
+                            <Text style = {{color:"#787878ff"}}>{CalculateElapsedTime(feed.created)}</Text>
                         </View>
                     </View>
 
