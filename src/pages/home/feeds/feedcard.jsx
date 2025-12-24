@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithou
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef } from "react";
 import AppDetails from "../../../service/appdetails";
+import CalculateElapsedTime from "../../../service/calculateelapsedtime";
 
 
 const FeedCard = ({ feed })=>{
@@ -26,10 +27,12 @@ const FeedCard = ({ feed })=>{
             <View style = {styles.containerLeft}>
                 <View style = {styles.ProfileContainer}>
                     <View style = {styles.ImageContainer}>
+                        <Image
+                            source={{uri:feed.user.avatar}}
+                            style={{height:"100%", width:"100%"}}
+                        />
 
                     </View>
-
-
                     <TouchableOpacity 
                         ref={iconRef}
                         activeOpacity={1} 
@@ -70,7 +73,7 @@ const FeedCard = ({ feed })=>{
                             <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.username}</Text>
                         </View>
                         <View style = {styles.elapsed}>
-                            <Text style = {{color:"#787878ff"}}>44m</Text>
+                            <Text style = {{color:"#787878ff"}}>{CalculateElapsedTime(feed.createdAt)}</Text>
                         </View>
                     </View>
 
@@ -81,11 +84,7 @@ const FeedCard = ({ feed })=>{
                 </View>
 
                 <View style={styles.textSection}>
-                    <Text>
-                        Lamine Yamal launched his YouTube channel and gave a tour of his house while wearing a Luis Diaz kit {"\n"} {"\n"}
-
-                        "This is the most precious thing i have at home: the ball i scored the goal with against france at the EUROs"
-                    </Text>
+                    <Text>{feed.text}</Text>
                 </View>
 
                 <View style = {styles.mediaSection}>
@@ -253,6 +252,7 @@ const styles = StyleSheet.create({
         height:50,
         width:"100%",
         borderRadius:50,
+        overflow:"hidden",
         backgroundColor:"#e9e9e9ff"
     },
 
