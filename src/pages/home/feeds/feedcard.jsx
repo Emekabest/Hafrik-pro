@@ -6,6 +6,31 @@ import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
 
+const FeedImageItem = ({ uri, targetHeight, maxWidth, marginRight }) => {
+    const [width, setWidth] = useState(maxWidth);
+
+    useEffect(() => {
+        Image.getSize(uri, (w, h) => {
+            const aspectRatio = w / h;
+            const calculatedWidth = targetHeight * aspectRatio;
+            setWidth(Math.min(calculatedWidth, maxWidth));
+        }, (error) => console.log(error));
+    }, [uri, targetHeight, maxWidth]);
+
+    return (
+        <Image
+            source={{ uri: uri }}
+            style={{
+                height: "100%",
+                width: width,
+                marginRight: marginRight,
+                borderRadius: 10,
+            }}
+            resizeMode="contain"
+        />
+    );
+};
+
 const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
@@ -39,10 +64,7 @@ const FeedCard = ({ feed })=>{
         });
     };
 
-
-
-
-
+    
     return(
         <View style = {styles.container}>
             <View style = {styles.containerLeft}>
@@ -62,6 +84,7 @@ const FeedCard = ({ feed })=>{
                     >
                             <Ionicons name="add" size={16} style={{color:"#fff", fontWeight:"bold"}} />
                     </TouchableOpacity>
+
 
                     <Modal
                         visible={showProfileOptions}
@@ -109,7 +132,9 @@ const FeedCard = ({ feed })=>{
                     <Text>{feed.text}</Text>
                 </View>
 
+
                 {
+
                     feed.media.length > 0 ?
 
                         <View 
@@ -125,21 +150,14 @@ const FeedCard = ({ feed })=>{
                                     horizontal 
                                     showsHorizontalScrollIndicator={false}
                                     contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}
-                                    snapToInterval={imageWidth + 10}
-                                    decelerationRate="fast"
-                                    snapToAlignment="start"
                                 >
                                     {feed.media.map((item, index) => (
-                                        <Image
+                                        <FeedImageItem
                                             key={index}
-                                            source={{uri:item.url}}
-                                            style={{
-                                                height:"100%", 
-                                                width: imageWidth,
-                                                marginRight: 10,
-                                                borderRadius: 10
-                                            }}
-                                            resizeMode="cover"
+                                            uri={item.url}
+                                            targetHeight={isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240)}
+                                            maxWidth={imageWidth}
+                                            marginRight={10}
                                         />
                                     ))}
                                 </ScrollView>
