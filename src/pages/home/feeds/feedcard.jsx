@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert } from "react-native";
+import { Video, ResizeMode } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
@@ -34,11 +35,65 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
     );
 });
 
+const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight }) => {
+    const [width, setWidth] = useState(maxWidth);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const video = useRef(null);
+
+    useEffect(() => {
+        if (thumbnail) {
+            Image.getSize(thumbnail, (w, h) => {
+                const aspectRatio = w / h;
+                const calculatedWidth = targetHeight * aspectRatio;
+                setWidth(Math.min(calculatedWidth, maxWidth));
+            }, (error) => console.log(error));
+        }
+    }, [thumbnail, targetHeight, maxWidth]);
+
+    return (
+        <View style={{
+            height: "100%",
+            width: width,
+            marginRight: marginRight,
+            borderRadius: 10,
+            overflow: 'hidden',
+            backgroundColor: '#000',
+        }}>
+            <Video
+                ref={video}
+                style={{ width: "100%", height: "100%" }}
+                source={{
+                    uri: videoUrl,
+                }}
+                useNativeControls
+                resizeMode={ResizeMode.CONTAIN}
+                isLooping={false}
+                posterSource={{ uri: thumbnail }}
+                posterStyle={{ resizeMode: 'cover', height: '100%', width: '100%' }}
+                usePoster={true}
+                onPlaybackStatusUpdate={status => setIsPlaying(status.isPlaying)}
+            />
+            {!isPlaying && (
+                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
+                    <TouchableOpacity 
+                        onPress={() => video.current?.playAsync()}
+                        style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 10}}
+                    >
+                        <Ionicons name="play" size={30} color="white" />
+                    </TouchableOpacity>
+                </View>
+            )}
+        </View>
+    );
+});
+
 const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
+    const singleVideoRef = useRef(null);
+    const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [aspectRatio, setAspectRatio] = useState(null);
     const [mediaWidth, setMediaWidth] = useState(0);
@@ -51,14 +106,18 @@ const FeedCard = ({ feed })=>{
     const imageWidth = screenWidth - leftOffset - rightOffset;
 
     const isMultiMedia = feed.media && feed.media.length > 1;
+    const isVideo = feed.type === 'video' || feed.type === 'reel';
 
     useEffect(() => {
         if (feed.media && feed.media.length > 0) {
-            Image.getSize(feed.media[0].url, (width, height) => {
-                setAspectRatio((width / height));
-            }, (error) => console.log(error));
+            const mediaUrl = isVideo ? feed.media[0].thumbnail : feed.media[0].url;
+            if (mediaUrl) {
+                Image.getSize(mediaUrl, (width, height) => {
+                    setAspectRatio((width / height));
+                }, (error) => console.log(error));
+            }
         }
-    }, [feed.media]);
+    }, [feed.media, isVideo]);
 
     const handleOpenOptions = () => {
         iconRef.current?.measureInWindow((x, y, width, height) => {
@@ -67,16 +126,16 @@ const FeedCard = ({ feed })=>{
         });
     };
 
+
     const handleSaveImage = () => {
         // To implement actual saving, you would typically use expo-media-library and expo-file-system
         Alert.alert("Save Image", "Image saved to gallery!");
+
     };
 
 
+
     console.log(feed.type)
-
-
-
     
     return(
         <View style = {styles.container}>
@@ -164,25 +223,66 @@ const FeedCard = ({ feed })=>{
                                     showsHorizontalScrollIndicator={false}
                                     contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}
                                 >
-                                    {feed.media.map((item, index) => (
-                                        <FeedImageItem
-                                            key={index}
-                                            uri={item.url}
-                                            targetHeight={isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240)}
-                                            maxWidth={imageWidth}
-                                            marginRight={10}
-                                            onPress={() => setFullScreenImage(item.url)}
-                                        />
-                                    ))}
+                                    {feed.media.map((item, index) => {
+                                        if (isVideo) {
+                                            return (
+                                                <FeedVideoItem
+                                                    key={index}
+                                                    videoUrl={item.video_url}
+                                                    thumbnail={item.thumbnail}
+                                                    targetHeight={isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240)}
+                                                    maxWidth={imageWidth}
+                                                    marginRight={10}
+                                                />
+                                            );
+                                        } else {
+                                            return (
+                                                <FeedImageItem
+                                                    key={index}
+                                                    uri={item.url}
+                                                    targetHeight={isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240)}
+                                                    maxWidth={imageWidth}
+                                                    marginRight={10}
+                                                    onPress={() => setFullScreenImage(item.url)}
+                                                />
+                                            );
+                                        }
+                                    })}
                                 </ScrollView>
                             ) : (
-                                <TouchableOpacity onPress={() => setFullScreenImage(feed.media[0].url)} activeOpacity={0.9} style={{flex: 1}}>
-                                    <Image
-                                        source={{uri:feed.media[0].url}}
-                                        style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
-                                        resizeMode="cover"
-                                    />
-                                </TouchableOpacity>
+                                isVideo ? (
+                                    <View style={{height: "100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
+                                        <Video
+                                            ref={singleVideoRef}
+                                            style={{height:"100%", width: "100%"}}
+                                            source={{ uri: feed.media[0].video_url }}
+                                            useNativeControls
+                                            resizeMode={ResizeMode.CONTAIN}
+                                            posterSource={{ uri: feed.media[0].thumbnail }}
+                                            posterStyle={{ resizeMode: 'cover' }}
+                                            usePoster={true}
+                                            onPlaybackStatusUpdate={status => setIsSingleVideoPlaying(status.isPlaying)}
+                                        />
+                                        {!isSingleVideoPlaying && (
+                                            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
+                                                <TouchableOpacity 
+                                                    onPress={() => singleVideoRef.current?.playAsync()}
+                                                    style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 15}}
+                                                >
+                                                    <Ionicons name="play" size={40} color="white" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity onPress={() => setFullScreenImage(feed.media[0].url)} activeOpacity={0.9} style={{flex: 1}}>
+                                        <Image
+                                            source={{uri:feed.media[0].url}}
+                                            style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
+                                            resizeMode="cover"
+                                        />
+                                    </TouchableOpacity>
+                                )
                             )}
                         </View>
 
