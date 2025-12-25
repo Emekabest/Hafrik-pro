@@ -319,7 +319,6 @@ const styles = StyleSheet.create({
         width:"20%",
         display:"flex",
         flexDirection:"row",
-        justifyContent:"space-around",
         alignItems:"center",
         // backgroundColor:"#468137ff"
     },
@@ -327,9 +326,8 @@ const styles = StyleSheet.create({
     engagementCount:{
         fontSize:13,
         // fontWeight:"bold",
-        color:"#333"
-
-
+        color:"#333",
+        marginLeft: 3
     },
 
     ProfileContainer:{
