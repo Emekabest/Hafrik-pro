@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback } from "react-native";
 import { useNavigation } from '@react-navigation/native';
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
@@ -11,7 +11,16 @@ const FeedCard = ({ feed })=>{
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const [aspectRatio, setAspectRatio] = useState(null);
     const iconRef = useRef(null);
+
+    useEffect(() => {
+        if (feed.media && feed.media.length > 0) {
+            Image.getSize(feed.media[0].url, (width, height) => {
+                setAspectRatio(width / height);
+            }, (error) => console.log(error));
+        }
+    }, [feed.media]);
 
     const handleOpenOptions = () => {
         iconRef.current?.measureInWindow((x, y, width, height) => {
@@ -94,7 +103,7 @@ const FeedCard = ({ feed })=>{
                 {
                     feed.media.length > 0 ?
 
-                        <View style = {styles.mediaSection}>
+                        <View style = {[styles.mediaSection, aspectRatio ? { aspectRatio } : { height: 240 }]}>
                             <Image
                                 source={{uri:feed.media[0].url}}
                                 style={{height:"100%", width:"100%"}}
@@ -226,7 +235,7 @@ const styles = StyleSheet.create({
     },
 
     mediaSection:{
-        height:300,
+        width:"80%",
         // width:"100%",
         borderRadius:10,
         overflow:"hidden",
