@@ -1,7 +1,7 @@
 import axios from "axios"
 
 const GetFeedsController = async(token)=>{
-    const API_URL = 'https://hafrik.com/api/v1/feed/list.php?page=6';
+    const API_URL = 'https://hafrik.com/api/v1/feed/list.php?page=1';
 
     try{
         const response = await axios.get(API_URL ,  {

@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions } from "react-native";
 import { useNavigation } from '@react-navigation/native';
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
 
-const FeedImageItem = ({ uri, targetHeight, maxWidth, marginRight }) => {
+const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight }) => {
     const [width, setWidth] = useState(maxWidth);
 
     useEffect(() => {
@@ -29,7 +29,7 @@ const FeedImageItem = ({ uri, targetHeight, maxWidth, marginRight }) => {
             resizeMode="contain"
         />
     );
-};
+});
 
 const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
@@ -51,7 +51,6 @@ const FeedCard = ({ feed })=>{
     useEffect(() => {
         if (feed.media && feed.media.length > 0) {
             Image.getSize(feed.media[0].url, (width, height) => {
-                console.log("Width::"+width+" Height::"+height)
                 setAspectRatio((width / height));
             }, (error) => console.log(error));
         }
@@ -63,6 +62,10 @@ const FeedCard = ({ feed })=>{
             setShowProfileOptions(true);
         });
     };
+
+
+
+    console.log(feed)
 
     
     return(
@@ -179,7 +182,7 @@ const FeedCard = ({ feed })=>{
                 <View style = {styles.engagementBar}>
                     <TouchableOpacity style = {[styles.likeSection, styles.engagementBarViews]}>
                         <Ionicons name="heart-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                        <Text style ={styles.engagementCount}>1.2k</Text>
+                        <Text style ={styles.engagementCount}>{feed.likes_count}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen')}>
                         <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
@@ -307,6 +310,7 @@ const styles = StyleSheet.create({
         display:"flex",
         flexDirection:"row",
         justifyContent:"space-between",
+        marginTop:10,
 
     },
 
@@ -430,4 +434,4 @@ const styles = StyleSheet.create({
 })
 
 
-export default FeedCard;
+export default memo(FeedCard);

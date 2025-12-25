@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import FeedCard from "./feedcard.jsx";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import GetFeedsController from "../../../controllers/getfeedscontroller.js";
 import Banner from "../banner.jsx";
 import QuickLinks from "../quicklinks.jsx";
@@ -30,10 +30,11 @@ const Feeds = ()=>{
 
     console.log(feeds.length)
 
-
-
-    return (
-        <View style = {styles.container}>
+    const renderHeader = () => (
+        <View>
+            <Banner />
+            <QuickLinks />
+            <PostFeed />
             <View style = {styles.containerHeader} >
                 <View style = {styles.containerHeaderLeft}>
                     <Text style ={{fontSize:17, fontWeight:"500"}}>Recent Updates</Text>
@@ -48,23 +49,27 @@ const Feeds = ()=>{
                         <Text style ={{fontSize:12, fontWeight:"500"}}>All</Text>
                     </TouchableOpacity>
                 </View>
-
             </View>
+        </View>
+    );
 
-            <View style = {styles.containerFeeds}>
+    const renderItem = useCallback(({item}) => {
+        return <FeedCard feed={item} />
+    }, []);
 
-                <FlatList 
-                    data={feeds}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({item})=>{
-                            return(
-                                <FeedCard feed={item} />
-                            )
-                    }}
-                     scrollEnabled={false}
-                />
-                
-            </View>
+    return (
+        <View style={styles.container}>
+            <FlatList 
+                data={feeds}
+                keyExtractor={(item) => item.id}
+                renderItem={renderItem}
+                ListHeaderComponent={renderHeader}
+                initialNumToRender={5}
+                maxToRenderPerBatch={5}
+                windowSize={5}
+                removeClippedSubviews={true}
+                contentContainerStyle={styles.containerFeeds}
+            />
         </View>
     )
 
@@ -75,7 +80,7 @@ const Feeds = ()=>{
 const styles = StyleSheet.create({
 
     container:{
-        // paddingHorizontal:10,        
+        flex: 1,
     },
 
     containerHeader:{
