@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
 
-const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight }) => {
+const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress }) => {
     const [width, setWidth] = useState(maxWidth);
 
     useEffect(() => {
@@ -17,17 +17,20 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight }) => {
         }, (error) => console.log(error));
     }, [uri, targetHeight, maxWidth]);
 
+
     return (
-        <Image
-            source={{ uri: uri }}
-            style={{
-                height: "100%",
-                width: width,
-                marginRight: marginRight,
-                borderRadius: 10,
-            }}
-            resizeMode="contain"
-        />
+        <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+            <Image
+                source={{ uri: uri }}
+                style={{
+                    height: "100%",
+                    width: width,
+                    marginRight: marginRight,
+                    borderRadius: 10,
+                }}
+                resizeMode="contain"
+            />
+        </TouchableOpacity>
     );
 });
 
@@ -35,6 +38,7 @@ const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
+    const [fullScreenImage, setFullScreenImage] = useState(null);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [aspectRatio, setAspectRatio] = useState(null);
     const [mediaWidth, setMediaWidth] = useState(0);
@@ -63,9 +67,15 @@ const FeedCard = ({ feed })=>{
         });
     };
 
+    const handleSaveImage = () => {
+        // To implement actual saving, you would typically use expo-media-library and expo-file-system
+        Alert.alert("Save Image", "Image saved to gallery!");
+    };
 
 
-    console.log(feed)
+    console.log(feed.type)
+
+
 
     
     return(
@@ -161,15 +171,18 @@ const FeedCard = ({ feed })=>{
                                             targetHeight={isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240)}
                                             maxWidth={imageWidth}
                                             marginRight={10}
+                                            onPress={() => setFullScreenImage(item.url)}
                                         />
                                     ))}
                                 </ScrollView>
                             ) : (
-                                <Image
-                                    source={{uri:feed.media[0].url}}
-                                    style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
-                                    resizeMode="cover"
-                                />
+                                <TouchableOpacity onPress={() => setFullScreenImage(feed.media[0].url)} activeOpacity={0.9} style={{flex: 1}}>
+                                    <Image
+                                        source={{uri:feed.media[0].url}}
+                                        style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
+                                        resizeMode="cover"
+                                    />
+                                </TouchableOpacity>
                             )}
                         </View>
 
@@ -186,11 +199,11 @@ const FeedCard = ({ feed })=>{
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen')}>
                         <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                        <Text style ={styles.engagementCount}>72k</Text>
+                        <Text style ={styles.engagementCount}>{feed.comments_count}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
-                        <Ionicons name="repeat-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                        <Text style ={styles.engagementCount}>182</Text>
+                        <Ionicons name="eye-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                        <Text style ={styles.engagementCount}>{feed.views}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.shareSection, styles.engagementBarViews]}>
                         <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
@@ -229,6 +242,18 @@ const FeedCard = ({ feed })=>{
                         </TouchableWithoutFeedback>
                     </View>
                 </TouchableWithoutFeedback>
+            </Modal>
+
+            <Modal visible={!!fullScreenImage} transparent={true} onRequestClose={() => setFullScreenImage(null)} animationType="fade">
+                <View style={styles.fullScreenContainer}>
+                    <TouchableOpacity style={styles.closeButton} onPress={() => setFullScreenImage(null)}>
+                        <Ionicons name="close" size={30} color="white" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.saveButton} onPress={handleSaveImage}>
+                        <Ionicons name="download-outline" size={30} color="white" />
+                    </TouchableOpacity>
+                    <Image source={{uri: fullScreenImage}} style={styles.fullScreenImage} resizeMode="contain" />
+                </View>
             </Modal>
 
         </View>
@@ -328,6 +353,35 @@ const styles = StyleSheet.create({
         // fontWeight:"bold",
         color:"#333",
         marginLeft: 3
+    },
+    
+    fullScreenContainer: {
+        flex: 1,
+        backgroundColor: 'black',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    fullScreenImage: {
+        width: '100%',
+        height: '100%',
+    },
+    closeButton: {
+        position: 'absolute',
+        top: 50,
+        left: 20,
+        zIndex: 10,
+        padding: 10,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        borderRadius: 20,
+    },
+    saveButton: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        zIndex: 10,
+        padding: 10,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        borderRadius: 20,
     },
 
     ProfileContainer:{
