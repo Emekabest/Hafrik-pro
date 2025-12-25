@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect } from "react";
 import AppDetails from "../../../helpers/appdetails";
@@ -12,12 +12,22 @@ const FeedCard = ({ feed })=>{
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [aspectRatio, setAspectRatio] = useState(null);
+    const [mediaWidth, setMediaWidth] = useState(0);
     const iconRef = useRef(null);
+
+    const screenWidth = Dimensions.get("window").width;
+    // Calculate offset: Container Padding (10) + Left Column Width (13% of available space) + Right Column Padding (5)
+    const leftOffset = 10 + ((screenWidth - 20) * 0.13) + 5;
+    const rightOffset = 15;
+    const imageWidth = screenWidth - leftOffset - rightOffset;
+
+    const isMultiMedia = feed.media && feed.media.length > 1;
 
     useEffect(() => {
         if (feed.media && feed.media.length > 0) {
             Image.getSize(feed.media[0].url, (width, height) => {
-                setAspectRatio(width / height);
+                console.log("Width::"+width+" Height::"+height)
+                setAspectRatio((width / height));
             }, (error) => console.log(error));
         }
     }, [feed.media]);
@@ -30,7 +40,6 @@ const FeedCard = ({ feed })=>{
     };
 
 
-    console.log(feed.media)
 
 
 
@@ -103,12 +112,44 @@ const FeedCard = ({ feed })=>{
                 {
                     feed.media.length > 0 ?
 
-                        <View style = {[styles.mediaSection, aspectRatio ? { aspectRatio } : { height: 240 }]}>
-                            <Image
-                                source={{uri:feed.media[0].url}}
-                                style={{height:"100%", width:"100%"}}
-                                resizeMode="cover"
-                            />
+                        <View 
+                            style = {[
+                                styles.mediaSection,
+                                { height: isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240) },
+                                { width: screenWidth, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
+                            ]}
+                            onLayout={(event) => setMediaWidth(event.nativeEvent.layout.width)}
+                        >
+                            {mediaWidth > 0 ? (
+                                <ScrollView 
+                                    horizontal 
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}
+                                    snapToInterval={imageWidth + 10}
+                                    decelerationRate="fast"
+                                    snapToAlignment="start"
+                                >
+                                    {feed.media.map((item, index) => (
+                                        <Image
+                                            key={index}
+                                            source={{uri:item.url}}
+                                            style={{
+                                                height:"100%", 
+                                                width: imageWidth,
+                                                marginRight: 10,
+                                                borderRadius: 10
+                                            }}
+                                            resizeMode="cover"
+                                        />
+                                    ))}
+                                </ScrollView>
+                            ) : (
+                                <Image
+                                    source={{uri:feed.media[0].url}}
+                                    style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
+                                    resizeMode="cover"
+                                />
+                            )}
                         </View>
 
                     :
@@ -235,9 +276,9 @@ const styles = StyleSheet.create({
     },
 
     mediaSection:{
-        width:"80%",
+        // width:"80%",
         // width:"100%",
-        borderRadius:10,
+        // borderRadius:10,
         overflow:"hidden",
         backgroundColor:'#b1aaaaff'
     },
