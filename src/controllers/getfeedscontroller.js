@@ -8,8 +8,7 @@ const GetFeedsController = async(token)=>{
             headers:{
                     Authorization: `Bearer ${token}`
             }
-
-        } )
+        })
 
         return {status:response.status, data:response.data.data.data}
     }

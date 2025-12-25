@@ -143,6 +143,7 @@ const PostFeed = () => {
     const { token, user } = useAuth();
 
     const [postButtonOpacity, setPostButtonOpacity] = useState(0.5)
+    const [isPosting, setIsPosting] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const containerRef = useRef(null);
     const shiftAnim = useRef(new Animated.Value(0)).current;
@@ -222,13 +223,13 @@ const PostFeed = () => {
         const isVideoLoading = selectedVideo?.uploading;
         const isThumbnailLoading = selectedThumbnail?.uploading || selectedThumbnail?.loading;
 
-        if ((postText.trim().length > 0 || selectedImages.length > 0 || selectedVideo) && !isAnyImageLoading && !isVideoLoading && !isThumbnailLoading) {
+        if ((postText.trim().length > 0 || selectedImages.length > 0 || selectedVideo) && !isAnyImageLoading && !isVideoLoading && !isThumbnailLoading && !isPosting) {
             setPostButtonOpacity(1);
         } else {
             setPostButtonOpacity(0.5);
         }
 
-    }, [postText, selectedImages, selectedVideo, selectedThumbnail]);
+    }, [postText, selectedImages, selectedVideo, selectedThumbnail, isPosting]);
 
 
 
@@ -398,6 +399,7 @@ const PostFeed = () => {
 
     /**This function handles posting of the content to the database................. */
     const handlePost = async() => {
+        setIsPosting(true);
         
         const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
 
@@ -427,20 +429,29 @@ const PostFeed = () => {
 
         }
 
-
+        
 
         const respose = await PostFeedController(postData, token)
 
+        setIsPosting(false);
+
         if (respose.status === 200){
+
+            setPostText("");
+            setSelectedImages([]);
+            setSelectedVideo(null);
+            setSelectedThumbnail(null);
+            setSelectedBackground(null);
+            setLocationText("");
+            setMiddleIconStates({});
             handleClose();
 
         }
         else{
-            
 
         }
     };
-    /**.............................................................. */
+    /**....................................................................... */
 
 
 
@@ -696,8 +707,12 @@ const PostFeed = () => {
 
                 </View>
                 <View style={styles.containerBottomRight}>
-                    <TouchableOpacity onPress={handlePost} disabled={postButtonOpacity !== 1} activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity, height:!isFocused ? 30 : 40, width:!isFocused ? 80: 110}]}>
-                        <Text style={styles.postButtonText}>Post</Text>
+                    <TouchableOpacity onPress={handlePost} disabled={postButtonOpacity !== 1 || isPosting} activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity, height:!isFocused ? 30 : 40, width:!isFocused ? 80: 110}]}>
+                        {isPosting ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <Text style={styles.postButtonText}>Post</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
