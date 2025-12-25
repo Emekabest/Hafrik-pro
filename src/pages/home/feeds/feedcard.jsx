@@ -38,6 +38,7 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
 const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight }) => {
     const [width, setWidth] = useState(maxWidth);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isFinished, setIsFinished] = useState(false);
     const video = useRef(null);
 
     useEffect(() => {
@@ -71,12 +72,26 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 posterSource={{ uri: thumbnail }}
                 posterStyle={{ resizeMode: 'cover', height: '100%', width: '100%' }}
                 usePoster={true}
-                onPlaybackStatusUpdate={status => setIsPlaying(status.isPlaying)}
+                onPlaybackStatusUpdate={status => {
+                    setIsPlaying(status.isPlaying);
+                    if (status.didJustFinish) {
+                        setIsFinished(true);
+                    }
+                    if (status.isPlaying) {
+                        setIsFinished(false);
+                    }
+                }}
             />
             {!isPlaying && (
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                     <TouchableOpacity 
-                        onPress={() => video.current?.playAsync()}
+                        onPress={() => {
+                            if (isFinished) {
+                                video.current?.replayAsync();
+                            } else {
+                                video.current?.playAsync();
+                            }
+                        }}
                         style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 10}}
                     >
                         <Ionicons name="play" size={30} color="white" />
@@ -94,6 +109,7 @@ const FeedCard = ({ feed })=>{
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const singleVideoRef = useRef(null);
     const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
+    const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [aspectRatio, setAspectRatio] = useState(null);
     const [mediaWidth, setMediaWidth] = useState(0);
@@ -261,12 +277,26 @@ const FeedCard = ({ feed })=>{
                                             posterSource={{ uri: feed.media[0].thumbnail }}
                                             posterStyle={{ resizeMode: 'cover' }}
                                             usePoster={true}
-                                            onPlaybackStatusUpdate={status => setIsSingleVideoPlaying(status.isPlaying)}
+                                            onPlaybackStatusUpdate={status => {
+                                                setIsSingleVideoPlaying(status.isPlaying);
+                                                if (status.didJustFinish) {
+                                                    setIsSingleVideoFinished(true);
+                                                }
+                                                if (status.isPlaying) {
+                                                    setIsSingleVideoFinished(false);
+                                                }
+                                            }}
                                         />
                                         {!isSingleVideoPlaying && (
                                             <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                                                 <TouchableOpacity 
-                                                    onPress={() => singleVideoRef.current?.playAsync()}
+                                                    onPress={() => {
+                                                        if (isSingleVideoFinished) {
+                                                            singleVideoRef.current?.replayAsync();
+                                                        } else {
+                                                            singleVideoRef.current?.playAsync();
+                                                        }
+                                                    }}
                                                     style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 15}}
                                                 >
                                                     <Ionicons name="play" size={40} color="white" />
