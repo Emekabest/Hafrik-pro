@@ -12,7 +12,6 @@ import { useAuth } from "../../../AuthContext.js";
 
 const Feeds = ()=>{
 
-
     const [feeds, setFeeds] = useState([])
     const { token } = useAuth();
 
@@ -50,7 +49,7 @@ const Feeds = ()=>{
         </View>
     );
 
-    
+
     const renderItem = useCallback(({item}) => {
         return <FeedCard feed={item} />
     }, []);
