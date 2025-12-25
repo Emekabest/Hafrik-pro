@@ -1,10 +1,10 @@
 import axios from "axios"
 
-const GetFeedsController = async(token)=>{
-    const API_URL = 'https://hafrik.com/api/v1/feed/list.php?page=1';
+const GetFeedsController = async(token, page = 1)=>{
+    const API_URL = `https://hafrik.com/api/v1/feed/list.php?page=${page}`;
 
     try{
-        const response = await axios.get(API_URL ,  {
+        const response = await axios.get(API_URL , {
             headers:{
                     Authorization: `Bearer ${token}`
             }

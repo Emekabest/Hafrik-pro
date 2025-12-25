@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native"
 import FeedCard from "./feedcard.jsx";
 import { useEffect, useState, useCallback } from "react";
 import GetFeedsController from "../../../controllers/getfeedscontroller.js";
@@ -13,18 +13,34 @@ import { useAuth } from "../../../AuthContext.js";
 const Feeds = ()=>{
 
     const [feeds, setFeeds] = useState([])
+    const [page, setPage] = useState(1);
+    const [loadingMore, setLoadingMore] = useState(false);
     const { token } = useAuth();
 
 
     useEffect(()=>{
         const getFeeds = async()=>{
 
-            const response = await GetFeedsController(token);   
+            const response = await GetFeedsController(token, 1);   
             setFeeds(response.data);
         }
         getFeeds()
     },[])
 
+
+    const handleLoadMore = async () => {
+        if (loadingMore) return;
+        
+        setLoadingMore(true);
+        const nextPage = page + 1;
+        const response = await GetFeedsController(token, nextPage);
+        
+        if (response.data && Array.isArray(response.data)) {
+            setFeeds(prevFeeds => [...prevFeeds, ...response.data]);
+            setPage(nextPage);
+        }
+        setLoadingMore(false);
+    };
 
     const renderHeader = () => (
         <View>
@@ -49,6 +65,17 @@ const Feeds = ()=>{
         </View>
     );
 
+    const renderFooter = () => (
+        <View style={styles.footerContainer}>
+            {loadingMore ? (
+                <ActivityIndicator size="small" color="#000" />
+            ) : (
+                <TouchableOpacity style={styles.moreStoriesButton} onPress={handleLoadMore}>
+                    <Text style={styles.moreStoriesText}>More Stories</Text>
+                </TouchableOpacity>
+            )}
+        </View>
+    );
 
     const renderItem = useCallback(({item}) => {
         return <FeedCard feed={item} />
@@ -61,6 +88,7 @@ const Feeds = ()=>{
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 ListHeaderComponent={renderHeader}
+                ListFooterComponent={renderFooter}
                 initialNumToRender={5}
                 maxToRenderPerBatch={5}
                 windowSize={5}
@@ -137,6 +165,23 @@ const styles = StyleSheet.create({
     containerFeeds:{
         // paddingHorizontal:10,        
 
+    },
+
+    footerContainer: {
+        paddingVertical: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    moreStoriesButton: {
+        backgroundColor: '#e9e9e9',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 20,
+    },
+    moreStoriesText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#333',
     }
 
 
