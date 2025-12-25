@@ -27,9 +27,6 @@ const Feeds = ()=>{
     },[])
 
 
-
-    console.log(feeds.length)
-
     const renderHeader = () => (
         <View>
             <Banner />
@@ -53,6 +50,7 @@ const Feeds = ()=>{
         </View>
     );
 
+    
     const renderItem = useCallback(({item}) => {
         return <FeedCard feed={item} />
     }, []);
