@@ -142,6 +142,8 @@ const FeedCard = ({ feed })=>{
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const [liked, setLiked] = useState(false);
+    const [likeCount, setLikeCount] = useState(parseInt(feed.likes_count) || 0);
     
     const isMultiMedia = feed.media && feed.media.length > 1;
     const isVideo = feed.type === 'video' || feed.type === 'reel';
@@ -188,6 +190,11 @@ const FeedCard = ({ feed })=>{
         // To implement actual saving, you would typically use expo-media-library and expo-file-system
         Alert.alert("Save Image", "Image saved to gallery!");
 
+    };
+
+    const handleLike = () => {
+        setLiked(!liked);
+        setLikeCount(prev => liked ? prev - 1 : prev + 1);
     };
 
 
@@ -373,9 +380,9 @@ const FeedCard = ({ feed })=>{
                 </View>
 
                 <View style = {[styles.engagementBar, { marginTop: 5 }]}>
-                    <TouchableOpacity style = {[styles.likeSection, styles.engagementBarViews]}>
-                        <Ionicons name="heart-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                        <Text style ={styles.engagementCount}>{feed.likes_count}</Text>
+                    <TouchableOpacity style = {[styles.likeSection, styles.engagementBarViews]} onPress={handleLike}>
+                        <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
+                        <Text style ={styles.engagementCount}>{likeCount}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen')}>
                         <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
