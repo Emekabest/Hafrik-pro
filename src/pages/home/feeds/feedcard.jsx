@@ -192,12 +192,12 @@ const FeedCard = ({ feed })=>{
 
     };
 
-    const handleLike = () => {
+    const handleLike = () => {  
         setLiked(!liked);
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
     };
 
-
+    
 
     console.log(feed.type)
     
