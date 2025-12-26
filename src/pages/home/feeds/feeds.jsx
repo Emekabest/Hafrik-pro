@@ -36,7 +36,11 @@ const Feeds = ()=>{
         const response = await GetFeedsController(token, nextPage);
         
         if (response.data && Array.isArray(response.data)) {
-            setFeeds(prevFeeds => [...prevFeeds, ...response.data]);
+            setFeeds(prevFeeds => {
+                const existingIds = new Set(prevFeeds.map(feed => feed.id));
+                const newFeeds = response.data.filter(feed => !existingIds.has(feed.id));
+                return [...prevFeeds, ...newFeeds];
+            });
             setPage(nextPage);
         }
         setLoadingMore(false);

@@ -132,6 +132,47 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
 });
 
 
+const SharedPostCard = memo(({ post }) => {
+    const isVideo = post.type === 'video' || post.type === 'reel';
+    const mediaUrl = (post.media && post.media.length > 0) ? post.media[0].url : null;
+    const videoUrl = (post.media && post.media.length > 0 && isVideo) ? post.media[0].video_url : null;
+    const thumbnailUrl = (post.media && post.media.length > 0 && isVideo) ? post.media[0].thumbnail : null;
+
+    return (
+        <View style={{ borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10, marginTop: 10, overflow: 'hidden' }}>
+            <View style={{ padding: 10 }}>
+                {/* User info */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
+                    <View style={{ marginLeft: 10 }}>
+                        <Text style={{ fontWeight: 'bold' }}>{post.user.username}</Text>
+                        <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
+                    </View>
+                </View>
+                {/* Post text */}
+                {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
+            </View>
+            {/* Media */}
+            {mediaUrl && !isVideo && (
+                <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: 250 }} resizeMode="cover" />
+            )}
+            {videoUrl && isVideo && (
+                 <Video
+                    style={{ width: "100%", height: 250 }}
+                    source={{ uri: videoUrl }}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    isLooping={false}
+                    posterSource={{ uri: thumbnailUrl }}
+                    posterStyle={{ resizeMode: 'cover', height: '100%', width: '100%' }}
+                    usePoster={true}
+                />
+            )}
+        </View>
+    );
+});
+
+
 const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
@@ -199,8 +240,6 @@ const FeedCard = ({ feed })=>{
 
     
 
-    console.log(feed.type)
-    
     return(
         <View style = {styles.container}>
             <View style = {styles.containerLeft}>
@@ -269,10 +308,10 @@ const FeedCard = ({ feed })=>{
                 </View>
 
 
-                {
-
-                    feed.media.length > 0 ?
-
+                {feed.type === 'shared' && feed.shared_post ? (
+                    <SharedPostCard post={feed.shared_post} />
+                ) : (
+                    feed.media.length > 0 ? (
                         <View 
                             style = {[
                                 styles.mediaSection,
@@ -368,11 +407,8 @@ const FeedCard = ({ feed })=>{
                                 )
                             )}
                         </View>
-
-                    :
-
-                        <View />
-                }
+                    ) : <View />
+                )}
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
                     <Ionicons name="eye-outline" size={16} style={{color:"#787878ff", marginRight: 4}} />
