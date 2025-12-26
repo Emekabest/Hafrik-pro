@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator } from "react-native";
 import { Video, ResizeMode } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
@@ -56,6 +56,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     });
     const [isPlaying, setIsPlaying] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
     const video = useRef(null);
 
     useEffect(() => {
@@ -96,6 +97,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 usePoster={true}
                 onPlaybackStatusUpdate={status => {
                     setIsPlaying(status.isPlaying);
+                    setIsBuffering(status.isBuffering);
                     if (status.didJustFinish) {
                         setIsFinished(true);
                     }
@@ -104,7 +106,12 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     }
                 }}
             />
-            {!isPlaying && (
+            {isBuffering && (
+                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]}>
+                    <ActivityIndicator size="large" color="#fff" />
+                </View>
+            )}
+            {!isPlaying && !isBuffering && (
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                     <TouchableOpacity 
                         onPress={() => {
@@ -132,6 +139,7 @@ const FeedCard = ({ feed })=>{
     const singleVideoRef = useRef(null);
     const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
+    const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     
     const isMultiMedia = feed.media && feed.media.length > 1;
@@ -310,6 +318,7 @@ const FeedCard = ({ feed })=>{
                                             usePoster={true}
                                             onPlaybackStatusUpdate={status => {
                                                 setIsSingleVideoPlaying(status.isPlaying);
+                                                setIsSingleVideoBuffering(status.isBuffering);
                                                 if (status.didJustFinish) {
                                                     setIsSingleVideoFinished(true);
                                                 }
@@ -318,7 +327,12 @@ const FeedCard = ({ feed })=>{
                                                 }
                                             }}
                                         />
-                                        {!isSingleVideoPlaying && (
+                                        {isSingleVideoBuffering && (
+                                            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]}>
+                                                <ActivityIndicator size="large" color="#fff" />
+                                            </View>
+                                        )}
+                                        {!isSingleVideoPlaying && !isSingleVideoBuffering && (
                                             <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                                                 <TouchableOpacity 
                                                     onPress={() => {
@@ -336,7 +350,7 @@ const FeedCard = ({ feed })=>{
                                         )}
                                     </View>
                                 ) : (
-                                    <TouchableOpacity onPress={() => setFullScreenImage(feed.media[0].url)} activeOpacity={0.9} style={{flex: 1}}>
+                                    <TouchableOpacity onPress={() => setFullScreenImage(feed.media[0].url)} activeOpacity={1} style={{flex: 1}}>
                                         <Image
                                             source={{uri:feed.media[0].url}}
                                             style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
