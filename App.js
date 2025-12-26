@@ -46,6 +46,8 @@ function AppNavigator() {
 
   // Show a loading screen while checking authentication
   if (loading) {
+
+    
     return (
       <View style={styles.loadingContainer}>
         <StatusBar style="auto" />
