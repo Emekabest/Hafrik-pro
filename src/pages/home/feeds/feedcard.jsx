@@ -7,15 +7,27 @@ import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
 
+const aspectRatioCache = new Map();
+
 const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress }) => {
-    const [width, setWidth] = useState(maxWidth);
+    const [width, setWidth] = useState(() => {
+        if (aspectRatioCache.has(uri)) {
+            return Math.min(targetHeight * aspectRatioCache.get(uri), maxWidth);
+        }
+        return maxWidth;
+    });
 
     useEffect(() => {
-        Image.getSize(uri, (w, h) => {
-            const aspectRatio = w / h;
-            const calculatedWidth = targetHeight * aspectRatio;
-            setWidth(Math.min(calculatedWidth, maxWidth));
-        }, (error) => console.log(error));
+        if (aspectRatioCache.has(uri)) {
+            setWidth(Math.min(targetHeight * aspectRatioCache.get(uri), maxWidth));
+        } else {
+            Image.getSize(uri, (w, h) => {
+                const aspectRatio = w / h;
+                aspectRatioCache.set(uri, aspectRatio);
+                const calculatedWidth = targetHeight * aspectRatio;
+                setWidth(Math.min(calculatedWidth, maxWidth));
+            }, (error) => console.log(error));
+        }
     }, [uri, targetHeight, maxWidth]);
 
 
@@ -36,18 +48,28 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
 });
 
 const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight }) => {
-    const [width, setWidth] = useState(maxWidth);
+    const [width, setWidth] = useState(() => {
+        if (thumbnail && aspectRatioCache.has(thumbnail)) {
+            return Math.min(targetHeight * aspectRatioCache.get(thumbnail), maxWidth);
+        }
+        return maxWidth;
+    });
     const [isPlaying, setIsPlaying] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
     const video = useRef(null);
 
     useEffect(() => {
         if (thumbnail) {
-            Image.getSize(thumbnail, (w, h) => {
-                const aspectRatio = w / h;
-                const calculatedWidth = targetHeight * aspectRatio;
-                setWidth(Math.min(calculatedWidth, maxWidth));
-            }, (error) => console.log(error));
+            if (aspectRatioCache.has(thumbnail)) {
+                setWidth(Math.min(targetHeight * aspectRatioCache.get(thumbnail), maxWidth));
+            } else {
+                Image.getSize(thumbnail, (w, h) => {
+                    const aspectRatio = w / h;
+                    aspectRatioCache.set(thumbnail, aspectRatio);
+                    const calculatedWidth = targetHeight * aspectRatio;
+                    setWidth(Math.min(calculatedWidth, maxWidth));
+                }, (error) => console.log(error));
+            }
         }
     }, [thumbnail, targetHeight, maxWidth]);
 
@@ -111,8 +133,18 @@ const FeedCard = ({ feed })=>{
     const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-    const [aspectRatio, setAspectRatio] = useState(null);
-    const [mediaWidth, setMediaWidth] = useState(0);
+    
+    const isMultiMedia = feed.media && feed.media.length > 1;
+    const isVideo = feed.type === 'video' || feed.type === 'reel';
+    const mediaUrl = (feed.media && feed.media.length > 0) ? (isVideo ? feed.media[0].thumbnail : feed.media[0].url) : null;
+
+    const [aspectRatio, setAspectRatio] = useState(() => {
+        if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
+            return aspectRatioCache.get(mediaUrl);
+        }
+        return null;
+    });
+
     const iconRef = useRef(null);
 
     const screenWidth = Dimensions.get("window").width;
@@ -121,19 +153,19 @@ const FeedCard = ({ feed })=>{
     const rightOffset = 15;
     const imageWidth = screenWidth - leftOffset - rightOffset;
 
-    const isMultiMedia = feed.media && feed.media.length > 1;
-    const isVideo = feed.type === 'video' || feed.type === 'reel';
-
     useEffect(() => {
-        if (feed.media && feed.media.length > 0) {
-            const mediaUrl = isVideo ? feed.media[0].thumbnail : feed.media[0].url;
-            if (mediaUrl) {
+        if (mediaUrl) {
+            if (aspectRatioCache.has(mediaUrl)) {
+                setAspectRatio(aspectRatioCache.get(mediaUrl));
+            } else {
                 Image.getSize(mediaUrl, (width, height) => {
-                    setAspectRatio((width / height));
+                    const ratio = width / height;
+                    aspectRatioCache.set(mediaUrl, ratio);
+                    setAspectRatio(ratio);
                 }, (error) => console.log(error));
             }
         }
-    }, [feed.media, isVideo]);
+    }, [mediaUrl]);
 
     const handleOpenOptions = () => {
         iconRef.current?.measureInWindow((x, y, width, height) => {
@@ -231,9 +263,8 @@ const FeedCard = ({ feed })=>{
                                 { height: isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240) },
                                 { width: screenWidth, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
                             ]}
-                            onLayout={(event) => setMediaWidth(event.nativeEvent.layout.width)}
                         >
-                            {mediaWidth > 0 ? (
+                            {isMultiMedia ? (
                                 <ScrollView 
                                     horizontal 
                                     showsHorizontalScrollIndicator={false}
