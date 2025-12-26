@@ -131,6 +131,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     );
 });
 
+
 const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
@@ -366,8 +367,12 @@ const FeedCard = ({ feed })=>{
                         <View />
                 }
 
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
+                    <Ionicons name="eye-outline" size={16} style={{color:"#787878ff", marginRight: 4}} />
+                    <Text style={{ fontSize: 12, color: "#787878ff" }}>{feed.views}</Text>
+                </View>
 
-                <View style = {styles.engagementBar}>
+                <View style = {[styles.engagementBar, { marginTop: 5 }]}>
                     <TouchableOpacity style = {[styles.likeSection, styles.engagementBarViews]}>
                         <Ionicons name="heart-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>{feed.likes_count}</Text>
@@ -376,13 +381,12 @@ const FeedCard = ({ feed })=>{
                         <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>{feed.comments_count}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
-                        <Ionicons name="eye-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                        <Text style ={styles.engagementCount}>{feed.views}</Text>
-                    </TouchableOpacity>
                     <TouchableOpacity style = {[styles.shareSection, styles.engagementBarViews]}>
                         <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>29</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
+                        <Ionicons name="star-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                     </TouchableOpacity>
                 </View>
             </View>
