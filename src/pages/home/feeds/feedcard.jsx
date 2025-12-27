@@ -205,12 +205,18 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
 
 const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
     const isMultiMedia = media.length > 1;
-    const mediaUrl = media.length > 0 ? media[0].thumbnail : null;
-    const { cachedUri, isCaching } = useVideoCache(media.length > 0 && !isMultiMedia ? media[0].video_url : null);
+    const mediaItem = media.length > 0 ? media[0] : null;
+    const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
+    const { cachedUri, isCaching } = useVideoCache(media.length > 0 && !isMultiMedia ? mediaItem.video_url : null);
     
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
             return aspectRatioCache.get(mediaUrl);
+        }
+        if (mediaItem && mediaItem.width && mediaItem.height) {
+            const ratio = mediaItem.width / mediaItem.height;
+            if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
+            return ratio;
         }
         return null;
     });
@@ -271,9 +277,16 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         source={{ uri: cachedUri }}
                         useNativeControls
                         resizeMode={ResizeMode.CONTAIN}
-                        posterSource={{ uri: media[0].thumbnail }}
+                        posterSource={{ uri: mediaItem.thumbnail }}
                         posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}
                         usePoster={true}
+                        onLoad={(status) => {
+                            if (status.naturalSize && status.naturalSize.height > 0 && !aspectRatio) {
+                                const ratio = status.naturalSize.width / status.naturalSize.height;
+                                setAspectRatio(ratio);
+                                if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
+                            }
+                        }}
                         onPlaybackStatusUpdate={status => {
                             setIsSingleVideoPlaying(status.isPlaying);
                             setIsSingleVideoBuffering(status.isBuffering);
@@ -318,6 +331,11 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
             return aspectRatioCache.get(mediaUrl);
+        }
+        if (mediaItem && mediaItem.width && mediaItem.height) {
+            const ratio = mediaItem.width / mediaItem.height;
+            if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
+            return ratio;
         }
         return 16/9; // Default aspect ratio
     });
@@ -370,6 +388,13 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                             posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}
                             usePoster={true}
                             useNativeControls
+                            onLoad={(status) => {
+                                if (status.naturalSize && status.naturalSize.height > 0 && !aspectRatioCache.has(mediaUrl)) {
+                                    const ratio = status.naturalSize.width / status.naturalSize.height;
+                                    setAspectRatio(ratio);
+                                    if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
+                                }
+                            }}
                             onPlaybackStatusUpdate={status => {
                                 setIsPlaying(status.isPlaying);
                                 setIsBuffering(status.isBuffering);
