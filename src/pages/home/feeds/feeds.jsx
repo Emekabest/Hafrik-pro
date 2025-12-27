@@ -138,7 +138,7 @@ const Feeds = ()=>{
                 initialNumToRender={5}
                 maxToRenderPerBatch={5}
                 windowSize={5}
-                removeClippedSubviews={false}
+                removeClippedSubviews={true}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
