@@ -72,7 +72,7 @@ const Feeds = ()=>{
 
     const renderFooter = () => (
         <View style={styles.footerContainer}>
-            {loadingMore && <ActivityIndicator size="small" color="#000" />}
+            <ActivityIndicator size="small" color="#000" style={{ opacity: loadingMore ? 1 : 0 }} />
         </View>
     );
 
@@ -125,7 +125,7 @@ const Feeds = ()=>{
         <View style={styles.container}>
             <FlatList 
                 data={feeds}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => item.id.toString()}
                 renderItem={renderItem}
                 ListHeaderComponent={renderHeader}
                 ListFooterComponent={renderFooter}
@@ -133,7 +133,7 @@ const Feeds = ()=>{
                 onEndReachedThreshold={0.5}
                 initialNumToRender={5}
                 maxToRenderPerBatch={5}
-                windowSize={5}
+                windowSize={10}
                 removeClippedSubviews={true}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}

@@ -85,6 +85,8 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         }
     }, [currentPlayingId, uniqueId]);
 
+
+    
     return (
         <View style={{
             height: "100%",
@@ -104,7 +106,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 resizeMode={ResizeMode.CONTAIN}
                 isLooping={false}
                 posterSource={{ uri: thumbnail }}
-                posterStyle={{ resizeMode: 'cover', height: '100%', width: '100%' }}
+                posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}
                 usePoster={true}
                 onPlaybackStatusUpdate={status => {
                     setIsPlaying(status.isPlaying);
@@ -117,13 +119,11 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     }
                 }}
             />
-            {(isBuffering || isCaching) && (
-                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]}>
-                    <ActivityIndicator size="large" color="#fff" />
-                </View>
-            )}
-            {!isPlaying && !isBuffering && !isCaching && (
-                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
+            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering || isCaching) ? 1 : 0}]} pointerEvents="none">
+                <ActivityIndicator size="large" color="#fff" animating={isBuffering || isCaching} />
+            </View>
+            
+            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1, opacity: (!isPlaying && !isBuffering && !isCaching) ? 1 : 0}]} pointerEvents={(!isPlaying && !isBuffering && !isCaching) ? 'auto' : 'none'}>
                     <TouchableOpacity 
                         onPress={() => {
                             if (currentPlayingId === uniqueId) {
@@ -140,8 +140,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     >
                         <Ionicons name="play" size={30} color="white" />
                     </TouchableOpacity>
-                </View>
-            )}
+            </View>
         </View>
     );
 });
@@ -273,7 +272,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         useNativeControls
                         resizeMode={ResizeMode.CONTAIN}
                         posterSource={{ uri: media[0].thumbnail }}
-                        posterStyle={{ resizeMode: 'cover' }}
+                        posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}
                         usePoster={true}
                         onPlaybackStatusUpdate={status => {
                             setIsSingleVideoPlaying(status.isPlaying);
@@ -284,13 +283,11 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             }
                         }}
                     />
-                    {(isSingleVideoBuffering || isCaching) && (
-                        <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]}>
-                            <ActivityIndicator size="large" color="#fff" />
-                        </View>
-                    )}
-                    {!isSingleVideoPlaying && !isSingleVideoBuffering && !isCaching && (
-                        <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
+                    <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isSingleVideoBuffering || isCaching) ? 1 : 0}]} pointerEvents="none">
+                        <ActivityIndicator size="large" color="#fff" animating={isSingleVideoBuffering || isCaching} />
+                    </View>
+
+                    <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1, opacity: (!isSingleVideoPlaying && !isSingleVideoBuffering && !isCaching) ? 1 : 0}]} pointerEvents={(!isSingleVideoPlaying && !isSingleVideoBuffering && !isCaching) ? 'auto' : 'none'}>
                             <TouchableOpacity 
                                 onPress={() => {
                                     if (currentPlayingId === uniqueId) {
@@ -304,8 +301,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             >
                                 <Ionicons name="play" size={40} color="white" />
                             </TouchableOpacity>
-                        </View>
-                    )}
+                    </View>
                 </View>
             )}
         </View>
@@ -371,6 +367,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                             source={{ uri: cachedUri }}
                             resizeMode={ResizeMode.CONTAIN}
                             posterSource={{ uri: mediaItem.thumbnail }}
+                            posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}
                             usePoster={true}
                             useNativeControls
                             onPlaybackStatusUpdate={status => {
@@ -382,9 +379,11 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 }
                             }}
                         />
-                        {(isBuffering || isCaching) && <ActivityIndicator style={StyleSheet.absoluteFill} size="large" color="#fff" />}
-                        {!isPlaying && !isBuffering && !isCaching && (
-                            <View style={[StyleSheet.absoluteFill, styles.videoOverlay]}>
+                        <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering || isCaching) ? 1 : 0}]} pointerEvents="none">
+                            <ActivityIndicator size="large" color="#fff" animating={isBuffering || isCaching} />
+                        </View>
+
+                        <View style={[StyleSheet.absoluteFill, styles.videoOverlay, {opacity: (!isPlaying && !isBuffering && !isCaching) ? 1 : 0}]} pointerEvents={(!isPlaying && !isBuffering && !isCaching) ? 'auto' : 'none'}>
                                 <TouchableOpacity 
                                     onPress={() => {
                                         if (currentPlayingId === uniqueId) {
@@ -398,8 +397,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 >
                                     <Ionicons name="play" size={30} color="white" />
                                 </TouchableOpacity>
-                            </View>
-                        )}
+                        </View>
                     </View>
                 ) : (
                     <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} resizeMode="cover" />
