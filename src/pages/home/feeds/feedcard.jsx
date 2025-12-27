@@ -321,6 +321,67 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     );
 });
 
+const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) => {
+    const media = feed.media || [];
+    
+    return (
+        <View style={{ marginTop: 5 }}>
+            {media.length > 0 && (
+                <View style={{ 
+                    width: Dimensions.get("window").width, 
+                    marginLeft: -leftOffset, 
+                    marginBottom: 10 
+                }}>
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false} 
+                        contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}
+                        snapToInterval={imageWidth + 10}
+                        decelerationRate="fast"
+                    >
+                        {media.map((item, index) => (
+                            <View key={index} style={{ width: imageWidth, marginRight: 10 }}>
+                                <Image 
+                                    source={{ uri: item.url }} 
+                                    style={{ width: '100%', height: imageWidth, borderRadius: 10, backgroundColor: '#f0f0f0' }} 
+                                    resizeMode="cover" 
+                                />
+                                {media.length > 1 && (
+                                    <View style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{index + 1}/{media.length}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+
+            <View style={{ paddingRight: 5 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#333' }} numberOfLines={1}>{feed.title || 'Product Name'}</Text>
+                        <Text style={{ color: '#787878ff', fontSize: 13, marginTop: 2 }} numberOfLines={2}>{feed.description || 'No description available'}</Text>
+                    </View>
+                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: AppDetails.primaryColor || '#000' }}>{feed.currency || '$'}{feed.price || '0.00'}</Text>
+                </View>
+                
+                <TouchableOpacity style={{ 
+                    marginTop: 10, 
+                    backgroundColor: '#f8f8f8', 
+                    paddingVertical: 10, 
+                    borderRadius: 8, 
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: '#e0e0e0'
+                }}>
+                    <Text style={{ fontWeight: '600', fontSize: 13, color: '#333' }}>View Product</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+});
+
 const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
@@ -453,6 +514,10 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
         return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} />;
     }
 
+    if (feed.type === 'product') {
+        return <ProductPostContent feed={feed} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} />;
+    }
+
     if (feed.media && feed.media.length > 0) {
         if (isVideo) {
             return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} />;
@@ -498,6 +563,25 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
     const handleLike = () => {  
         setLiked(!liked);
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
+    };
+
+    const getActionText = () => {
+        if (feed.type === 'product') {
+            return " added product for sale";
+        }
+        if (feed.type === 'profile_picture') {
+            return " updated the profile picture";
+        }
+        if (feed.media && feed.media.length > 0) {
+            const isVideo = feed.type === 'video' || feed.type === 'reel';
+            if (!isVideo) {
+                const count = feed.media.length;
+                return ` added ${count} photo${count > 1 ? 's' : ''}`;
+            }
+        }
+        if (feed.type === 'video' || feed.type === 'reel') return " added a video";
+        if (feed.type === 'shared') return " shared a post";
+        return "";
     };
 
     return(
@@ -550,7 +634,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
                     <View style = {styles.usernameSection}>
                         <Text style={{marginBottom: 4, flexWrap: 'wrap'}}>
                             <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.username}</Text>
-                            <Text style={{color: "#333"}}> updated the profile picture</Text>
+                            <Text style={{color: "#333"}}>{getActionText()}</Text>
                         </Text>
                         <Text style = {{color:"#787878ff", fontSize: 12}}>{CalculateElapsedTime(feed.created)}</Text>
                     </View>
