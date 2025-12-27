@@ -9,6 +9,7 @@ import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
 const aspectRatioCache = new Map();
 
+// #region Media Item Components
 const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress }) => {
     const [width, setWidth] = useState(() => {
         if (aspectRatioCache.has(uri)) {
@@ -130,7 +131,152 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         </View>
     );
 });
+// #endregion
 
+
+
+// #region Post Content Components
+const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onImagePress }) => {
+    const isMultiMedia = media.length > 1;
+    const mediaUrl = media.length > 0 ? media[0].url : null;
+    const [aspectRatio, setAspectRatio] = useState(() => {
+        if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
+            return aspectRatioCache.get(mediaUrl);
+        }
+        return null;
+    });
+
+    useEffect(() => {
+        if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
+            Image.getSize(mediaUrl, (width, height) => {
+                const ratio = width / height;
+                aspectRatioCache.set(mediaUrl, ratio);
+                setAspectRatio(ratio);
+            }, (error) => console.log(error));
+        }
+    }, [mediaUrl]);
+
+    if (!media || media.length === 0) return null;
+
+    return (
+        <View style={[
+            styles.mediaSection,
+            { height: isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240) },
+            { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
+        ]}>
+            {isMultiMedia ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}>
+                    {media.map((item, index) => (
+                        <FeedImageItem
+                            key={index}
+                            uri={item.url}
+                            targetHeight={250}
+                            maxWidth={imageWidth}
+                            marginRight={10}
+                            onPress={() => onImagePress(item.url)}
+                        />
+                    ))}
+                </ScrollView>
+            ) : (
+                <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{flex: 1}}>
+                    <Image
+                        source={{uri: media[0].url}}
+                        style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
+                        resizeMode="cover"
+                    />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+});
+
+const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset }) => {
+    const isMultiMedia = media.length > 1;
+    const mediaUrl = media.length > 0 ? media[0].thumbnail : null;
+    const [aspectRatio, setAspectRatio] = useState(() => {
+        if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
+            return aspectRatioCache.get(mediaUrl);
+        }
+        return null;
+    });
+    
+    const singleVideoRef = useRef(null);
+    const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
+    const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
+    const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
+
+    useEffect(() => {
+        if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
+            Image.getSize(mediaUrl, (width, height) => {
+                const ratio = width / height;
+                aspectRatioCache.set(mediaUrl, ratio);
+                setAspectRatio(ratio);
+            }, (error) => console.log(error));
+        }
+    }, [mediaUrl]);
+
+    if (!media || media.length === 0) return null;
+
+    return (
+        <View style={[
+            styles.mediaSection,
+            { height: isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240) },
+            { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
+        ]}>
+            {isMultiMedia ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}>
+                    {media.map((item, index) => (
+                        <FeedVideoItem
+                            key={index}
+                            videoUrl={item.video_url}
+                            thumbnail={item.thumbnail}
+                            targetHeight={250}
+                            maxWidth={imageWidth}
+                            marginRight={10}
+                        />
+                    ))}
+                </ScrollView>
+            ) : (
+                <View style={{height: "100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
+                    <Video
+                        ref={singleVideoRef}
+                        style={{height:"100%", width: "100%"}}
+                        source={{ uri: media[0].video_url }}
+                        useNativeControls
+                        resizeMode={ResizeMode.CONTAIN}
+                        posterSource={{ uri: media[0].thumbnail }}
+                        posterStyle={{ resizeMode: 'cover' }}
+                        usePoster={true}
+                        onPlaybackStatusUpdate={status => {
+                            setIsSingleVideoPlaying(status.isPlaying);
+                            setIsSingleVideoBuffering(status.isBuffering);
+                            if (status.didJustFinish) setIsSingleVideoFinished(true);
+                            if (status.isPlaying) setIsSingleVideoFinished(false);
+                        }}
+                    />
+                    {isSingleVideoBuffering && (
+                        <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]}>
+                            <ActivityIndicator size="large" color="#fff" />
+                        </View>
+                    )}
+                    {!isSingleVideoPlaying && !isSingleVideoBuffering && (
+                        <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    if (isSingleVideoFinished) singleVideoRef.current?.replayAsync();
+                                    else singleVideoRef.current?.playAsync();
+                                }}
+                                style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 15}}
+                            >
+                                <Ionicons name="play" size={40} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            )}
+        </View>
+    );
+});
 
 const SharedPostCard = memo(({ post }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
@@ -172,31 +318,35 @@ const SharedPostCard = memo(({ post }) => {
     );
 });
 
+const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress }) => {
+    const isVideo = feed.type === 'video' || feed.type === 'reel';
+
+    if (feed.type === 'shared' && feed.shared_post) {
+        return <SharedPostCard post={feed.shared_post} />;
+    }
+
+    if (feed.media && feed.media.length > 0) {
+        if (isVideo) {
+            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} />;
+        }
+        return <PhotoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
+    }
+
+    return null; // Return null if there is no media and it's not a shared post
+});
+
+// #endregion
+
 
 const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
-    const singleVideoRef = useRef(null);
-    const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
-    const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
-    const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(parseInt(feed.likes_count) || 0);
     
-    const isMultiMedia = feed.media && feed.media.length > 1;
-    const isVideo = feed.type === 'video' || feed.type === 'reel';
-    const mediaUrl = (feed.media && feed.media.length > 0) ? (isVideo ? feed.media[0].thumbnail : feed.media[0].url) : null;
-
-    const [aspectRatio, setAspectRatio] = useState(() => {
-        if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
-            return aspectRatioCache.get(mediaUrl);
-        }
-        return null;
-    });
-
     const iconRef = useRef(null);
 
     const screenWidth = Dimensions.get("window").width;
@@ -205,20 +355,6 @@ const FeedCard = ({ feed })=>{
     const rightOffset = 15;
     const imageWidth = screenWidth - leftOffset - rightOffset;
 
-    useEffect(() => {
-        if (mediaUrl) {
-            if (aspectRatioCache.has(mediaUrl)) {
-                setAspectRatio(aspectRatioCache.get(mediaUrl));
-            } else {
-                Image.getSize(mediaUrl, (width, height) => {
-                    const ratio = width / height;
-                    aspectRatioCache.set(mediaUrl, ratio);
-                    setAspectRatio(ratio);
-                }, (error) => console.log(error));
-            }
-        }
-    }, [mediaUrl]);
-
     const handleOpenOptions = () => {
         iconRef.current?.measureInWindow((x, y, width, height) => {
             setMenuPosition({ top: y + height, left: x });
@@ -226,19 +362,15 @@ const FeedCard = ({ feed })=>{
         });
     };
 
-
     const handleSaveImage = () => {
         // To implement actual saving, you would typically use expo-media-library and expo-file-system
         Alert.alert("Save Image", "Image saved to gallery!");
-
     };
 
     const handleLike = () => {  
         setLiked(!liked);
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
     };
-
-    
 
     return(
         <View style = {styles.container}>
@@ -259,7 +391,6 @@ const FeedCard = ({ feed })=>{
                     >
                             <Ionicons name="add" size={16} style={{color:"#fff", fontWeight:"bold"}} />
                     </TouchableOpacity>
-
 
                     <Modal
                         visible={showProfileOptions}
@@ -303,112 +434,19 @@ const FeedCard = ({ feed })=>{
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.textSection}>
-                    <Text>{feed.text}</Text>
-                </View>
+                {feed.text ? (
+                    <View style={styles.textSection}>
+                        <Text>{feed.text}</Text>
+                    </View>
+                ) : null}
 
-
-                {feed.type === 'shared' && feed.shared_post ? (
-                    <SharedPostCard post={feed.shared_post} />
-                ) : (
-                    feed.media.length > 0 ? (
-                        <View 
-                            style = {[
-                                styles.mediaSection,
-                                { height: isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240) },
-                                { width: screenWidth, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
-                            ]}
-                        >
-                            {isMultiMedia ? (
-                                <ScrollView 
-                                    horizontal 
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}
-                                >
-                                    {feed.media.map((item, index) => {
-                                        if (isVideo) {
-                                            return (
-                                                <FeedVideoItem
-                                                    key={index}
-                                                    videoUrl={item.video_url}
-                                                    thumbnail={item.thumbnail}
-                                                    targetHeight={isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240)}
-                                                    maxWidth={imageWidth}
-                                                    marginRight={10}
-                                                />
-                                            );
-                                        } else {
-                                            return (
-                                                <FeedImageItem
-                                                    key={index}
-                                                    uri={item.url}
-                                                    targetHeight={isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240)}
-                                                    maxWidth={imageWidth}
-                                                    marginRight={10}
-                                                    onPress={() => setFullScreenImage(item.url)}
-                                                />
-                                            );
-                                        }
-                                    })}
-                                </ScrollView>
-                            ) : (
-                                isVideo ? (
-                                    <View style={{height: "100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
-                                        <Video
-                                            ref={singleVideoRef}
-                                            style={{height:"100%", width: "100%"}}
-                                            source={{ uri: feed.media[0].video_url }}
-                                            useNativeControls
-                                            resizeMode={ResizeMode.CONTAIN}
-                                            posterSource={{ uri: feed.media[0].thumbnail }}
-                                            posterStyle={{ resizeMode: 'cover' }}
-                                            usePoster={true}
-                                            onPlaybackStatusUpdate={status => {
-                                                setIsSingleVideoPlaying(status.isPlaying);
-                                                setIsSingleVideoBuffering(status.isBuffering);
-                                                if (status.didJustFinish) {
-                                                    setIsSingleVideoFinished(true);
-                                                }
-                                                if (status.isPlaying) {
-                                                    setIsSingleVideoFinished(false);
-                                                }
-                                            }}
-                                        />
-                                        {isSingleVideoBuffering && (
-                                            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]}>
-                                                <ActivityIndicator size="large" color="#fff" />
-                                            </View>
-                                        )}
-                                        {!isSingleVideoPlaying && !isSingleVideoBuffering && (
-                                            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
-                                                <TouchableOpacity 
-                                                    onPress={() => {
-                                                        if (isSingleVideoFinished) {
-                                                            singleVideoRef.current?.replayAsync();
-                                                        } else {
-                                                            singleVideoRef.current?.playAsync();
-                                                        }
-                                                    }}
-                                                    style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 15}}
-                                                >
-                                                    <Ionicons name="play" size={40} color="white" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        )}
-                                    </View>
-                                ) : (
-                                    <TouchableOpacity onPress={() => setFullScreenImage(feed.media[0].url)} activeOpacity={1} style={{flex: 1}}>
-                                        <Image
-                                            source={{uri:feed.media[0].url}}
-                                            style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
-                                            resizeMode="cover"
-                                        />
-                                    </TouchableOpacity>
-                                )
-                            )}
-                        </View>
-                    ) : <View />
-                )}
+                <PostContent 
+                    feed={feed}
+                    imageWidth={imageWidth}
+                    leftOffset={leftOffset}
+                    rightOffset={rightOffset}
+                    onImagePress={setFullScreenImage}
+                />
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
                     <Ionicons name="eye-outline" size={16} style={{color:"#787878ff", marginRight: 4}} />
