@@ -1,5 +1,5 @@
 // AuthContext.js
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AuthContext = createContext();
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (userData, authToken) => {
+  const login = useCallback(async (userData, authToken) => {
     try {
       console.log('🔐 Logging in user:', {
         userId: userData.id,
@@ -85,9 +85,9 @@ export const AuthProvider = ({ children }) => {
       console.error('❌ Error storing auth data:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       console.log('🔐 Logging out user');
       
@@ -100,9 +100,9 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Error during logout:', error);
     }
-  };
+  }, []);
 
-  const updateUser = async (updatedUserData) => {
+  const updateUser = useCallback(async (updatedUserData) => {
     try {
       setUser(updatedUserData);
       await AsyncStorage.setItem('hafrik_user', JSON.stringify(updatedUserData));
@@ -110,11 +110,11 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Error updating user data:', error);
     }
-  };
+  }, []);
 
   console.log(user)
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     token,
     login,
@@ -122,7 +122,7 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     loading,
     isAuthenticated: !!user && !!token,
-  };
+  }), [user, token, loading, login, logout, updateUser]);
 
   return (
     <AuthContext.Provider value={value}>

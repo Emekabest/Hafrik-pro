@@ -149,4 +149,4 @@ const styles = StyleSheet.create({
   quickLinksLoadingText: { marginTop: 8, color: '#666', fontSize: 12 },
 });
 
-export default QuickLinks;
+export default React.memo(QuickLinks);

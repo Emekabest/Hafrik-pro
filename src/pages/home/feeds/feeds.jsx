@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native"
 import FeedCard from "./feedcard.jsx";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import GetFeedsController from "../../../controllers/getfeedscontroller.js";
 import Banner from "../banner.jsx";
 import QuickLinks from "../quicklinks.jsx";
@@ -47,7 +47,7 @@ const Feeds = ()=>{
         setLoadingMore(false);
     };
 
-    const renderHeader = () => (
+    const memoizedHeader = useMemo(() => (
         <View>
             <Banner />
             <QuickLinks />
@@ -68,7 +68,7 @@ const Feeds = ()=>{
                 </View>
             </View>
         </View>
-    );
+    ), []);
 
     const renderFooter = () => (
         <View style={styles.footerContainer}>
@@ -127,7 +127,7 @@ const Feeds = ()=>{
                 data={feeds}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderItem}
-                ListHeaderComponent={renderHeader}
+                ListHeaderComponent={memoizedHeader}
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.5}
