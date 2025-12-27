@@ -47,6 +47,7 @@ const Feeds = ()=>{
         setLoadingMore(false);
     };
 
+    
     const memoizedHeader = useMemo(() => (
         <View>
             <Banner />
