@@ -548,13 +548,11 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
             <View style = {styles.containerRight}>
                 <View style = {styles.firstSection}>
                     <View style = {styles.usernameSection}>
-                        <View style = {styles.username}>
+                        <Text style={{marginBottom: 4, flexWrap: 'wrap'}}>
                             <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.username}</Text>
-                            
-                        </View>
-                        <View style = {styles.elapsed}>
-                            <Text style = {{color:"#787878ff"}}>{CalculateElapsedTime(feed.created)}</Text>
-                        </View>
+                            <Text style={{color: "#333"}}> updated the profile picture</Text>
+                        </Text>
+                        <Text style = {{color:"#787878ff", fontSize: 12}}>{CalculateElapsedTime(feed.created)}</Text>
                     </View>
 
 
@@ -692,13 +690,8 @@ const styles = StyleSheet.create({
     usernameSection:{
         width:"80%",
         display:"flex",
-        flexDirection:"row",
-        // alignItems:"center",
-
-    },
-
-    username:{
-        marginRight:5
+        flexDirection:"column",
+        justifyContent: "center",
     },
 
     options:{
