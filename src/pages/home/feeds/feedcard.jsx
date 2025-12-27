@@ -280,40 +280,92 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset }) =
 
 const SharedPostCard = memo(({ post }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
-    const mediaUrl = (post.media && post.media.length > 0) ? post.media[0].url : null;
-    const videoUrl = (post.media && post.media.length > 0 && isVideo) ? post.media[0].video_url : null;
-    const thumbnailUrl = (post.media && post.media.length > 0 && isVideo) ? post.media[0].thumbnail : null;
+    const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
+
+    const mediaUrl = mediaItem ? (isVideo ? mediaItem.thumbnail : mediaItem.url) : null;
+    const [aspectRatio, setAspectRatio] = useState(() => {
+        if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
+            return aspectRatioCache.get(mediaUrl);
+        }
+        return 16/9; // Default aspect ratio
+    });
+
+    useEffect(() => {
+        if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
+            Image.getSize(mediaUrl, (width, height) => {
+                if (height > 0) {
+                    const ratio = width / height;
+                    aspectRatioCache.set(mediaUrl, ratio);
+                    setAspectRatio(ratio);
+                }
+            }, (error) => console.log(error));
+        }
+    }, [mediaUrl]);
+
+    // Video specific state
+    const videoRef = useRef(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isFinished, setIsFinished] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
+
+    const screenWidth = Dimensions.get("window").width;
+    // containerRight padding (5*2) + shared post border (1*2) + shared post padding (10*2)
+    const mediaWidth = screenWidth * 0.87 - 10 - 2 - 20;
+
+    const renderMedia = () => {
+        if (!mediaItem) return null;
+
+        return (
+            <View style={{ width: '100%', height: mediaWidth / aspectRatio, marginTop: 10 }}>
+                {isVideo ? (
+                    <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
+                        <Video
+                            ref={videoRef}
+                            style={{ width: "100%", height: "100%" }}
+                            source={{ uri: mediaItem.video_url }}
+                            resizeMode={ResizeMode.CONTAIN}
+                            posterSource={{ uri: mediaItem.thumbnail }}
+                            usePoster={true}
+                            onPlaybackStatusUpdate={status => {
+                                setIsPlaying(status.isPlaying);
+                                setIsBuffering(status.isBuffering);
+                                if (status.didJustFinish) setIsFinished(true);
+                                if (status.isPlaying) setIsFinished(false);
+                            }}
+                        />
+                        {isBuffering && <ActivityIndicator style={StyleSheet.absoluteFill} size="large" color="#fff" />}
+                        {!isPlaying && !isBuffering && (
+                            <View style={[StyleSheet.absoluteFill, styles.videoOverlay]}>
+                                <TouchableOpacity 
+                                    onPress={() => {
+                                        if (isFinished) videoRef.current?.replayAsync();
+                                        else videoRef.current?.playAsync();
+                                    }}
+                                    style={styles.playButton}
+                                >
+                                    <Ionicons name="play" size={30} color="white" />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                ) : (
+                    <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} resizeMode="cover" />
+                )}
+            </View>
+        )
+    }
 
     return (
-        <View style={{ borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10, marginTop: 10, overflow: 'hidden' }}>
-            <View style={{ padding: 10 }}>
-                {/* User info */}
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
-                    <View style={{ marginLeft: 10 }}>
-                        <Text style={{ fontWeight: 'bold' }}>{post.user.username}</Text>
-                        <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
-                    </View>
+        <View style={styles.sharedPostContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
+                <View style={{ marginLeft: 10 }}>
+                    <Text style={{ fontWeight: 'bold' }}>{post.user.username}</Text>
+                    <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
                 </View>
-                {/* Post text */}
-                {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
             </View>
-            {/* Media */}
-            {mediaUrl && !isVideo && (
-                <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: 250 }} resizeMode="cover" />
-            )}
-            {videoUrl && isVideo && (
-                 <Video
-                    style={{ width: "100%", height: 250 }}
-                    source={{ uri: videoUrl }}
-                    useNativeControls
-                    resizeMode={ResizeMode.CONTAIN}
-                    isLooping={false}
-                    posterSource={{ uri: thumbnailUrl }}
-                    posterStyle={{ resizeMode: 'cover', height: '100%', width: '100%' }}
-                    usePoster={true}
-                />
-            )}
+            {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
+            {renderMedia()}
         </View>
     );
 });
@@ -741,6 +793,24 @@ const styles = StyleSheet.create({
         marginLeft: 15,
         color: '#333',
         fontWeight: '500',
+    },
+    sharedPostContainer: {
+        borderWidth: 1, 
+        borderColor: '#e0e0e0', 
+        borderRadius: 10, 
+        marginTop: 10, 
+        padding: 10,
+        overflow: 'hidden' 
+    },
+    videoOverlay: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1,
+    },
+    playButton: {
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        borderRadius: 30,
+        padding: 10,
     },
 
 })
