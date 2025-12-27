@@ -322,61 +322,105 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
 });
 
 const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) => {
-    const media = feed.media || [];
+    const navigation = useNavigation();
+    const products = feed.media || [];
+    
+    if (products.length === 0) return null;
     
     return (
         <View style={{ marginTop: 5 }}>
-            {media.length > 0 && (
-                <View style={{ 
-                    width: Dimensions.get("window").width, 
-                    marginLeft: -leftOffset, 
-                    marginBottom: 10 
-                }}>
-                    <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={false} 
-                        contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}
-                        snapToInterval={imageWidth + 10}
-                        decelerationRate="fast"
-                    >
-                        {media.map((item, index) => (
-                            <View key={index} style={{ width: imageWidth, marginRight: 10 }}>
+            <View style={{ 
+                width: Dimensions.get("window").width, 
+                marginLeft: -leftOffset, 
+                marginBottom: 10 
+            }}>
+                <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false} 
+                    contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}
+                    snapToInterval={imageWidth + 10}
+                    decelerationRate="fast"
+                >
+                    {products.map((product, index) => (
+                        <View key={index} style={{ width: imageWidth, marginRight: 10 }}>
+                            <View style={{ width: '100%', height: imageWidth, borderRadius: 10, backgroundColor: '#f0f0f0', overflow: 'hidden', marginBottom: 10 }}>
+                                {product.image ? (
                                 <Image 
-                                    source={{ uri: item.url }} 
-                                    style={{ width: '100%', height: imageWidth, borderRadius: 10, backgroundColor: '#f0f0f0' }} 
+                                    source={{ uri: product.image }} 
+                                    style={{ width: '100%', height: '100%' }} 
                                     resizeMode="cover" 
                                 />
-                                {media.length > 1 && (
+                                ) : (
+                                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f8f8' }}>
+                                        <Ionicons name="image-outline" size={40} color="#ccc" />
+                                    </View>
+                                )}
+                                {products.length > 1 && (
                                     <View style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-                                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{index + 1}/{media.length}</Text>
+                                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: 'bold' }}>{index + 1}/{products.length}</Text>
                                     </View>
                                 )}
                             </View>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
 
-            <View style={{ paddingRight: 5 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                        <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#333' }} numberOfLines={1}>{feed.title || 'Product Name'}</Text>
-                        <Text style={{ color: '#787878ff', fontSize: 13, marginTop: 2 }} numberOfLines={2}>{feed.description || 'No description available'}</Text>
-                    </View>
-                    <Text style={{ fontWeight: 'bold', fontSize: 16, color: AppDetails.primaryColor || '#000' }}>{feed.currency || '$'}{feed.price || '0.00'}</Text>
-                </View>
-                
-                <TouchableOpacity style={{ 
-                    marginTop: 10, 
-                    backgroundColor: '#f8f8f8', 
-                    paddingVertical: 10, 
-                    borderRadius: 8, 
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: '#e0e0e0'
-                }}>
-                    <Text style={{ fontWeight: '600', fontSize: 13, color: '#333' }}>View Product</Text>
-                </TouchableOpacity>
+                            <View style={{ paddingHorizontal: 2 }}>
+                                <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#333' }} numberOfLines={1}>{product.title || 'Product Name'}</Text>
+                                <Text style={{ fontWeight: 'bold', fontSize: 16, color: AppDetails.primaryColor || '#000', marginTop: 2 }}>
+                                    {feed.currency || '$'}{product.price || '0.00'}
+                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                        <Ionicons key={i} name="star" size={12} color="#FFD700" />
+                                    ))}
+                                    <Text style={{ fontSize: 12, color: '#787878ff', marginLeft: 5 }}>0.0 (0 Reviews)</Text>
+                                </View>
+                                {feed.text ? <Text style={{ color: '#787878ff', fontSize: 13, marginTop: 4 }} numberOfLines={2}>{feed.text}</Text> : null}
+                                
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 25 }}>
+                                    <TouchableOpacity style={{ 
+                                        flex: 1,
+                                        backgroundColor: AppDetails.primaryColor, 
+                                        paddingVertical: 10, 
+                                        borderRadius: 50, 
+                                        alignItems: 'center',
+                                        marginRight: 10
+                                    }}
+                                    activeOpacity={1}
+                                    >
+                                        <Text style={{ fontWeight: '600', fontSize: 13, color: '#ffffffff' }}>Buy</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity 
+                                        style={{ 
+                                            width: 50,
+                                            backgroundColor: '#f0f0f0', 
+                                            paddingVertical: 10, 
+                                            borderRadius: 50, 
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                    >
+                                        <Ionicons name="chatbubble-outline" size={20} color="#333" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={{ marginTop: 15 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                        <Ionicons name="cube-outline" size={16} color="#666" style={{ marginRight: 6 }} />
+                                        <Text style={{ fontSize: 13, color: '#555' }}>In stock • New</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                                        <Ionicons name="location-outline" size={16} color="#666" style={{ marginRight: 6 }} />
+                                        <Text style={{ fontSize: 13, color: '#555' }}>{feed.location || "Location, City"}</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Ionicons name="pricetag-outline" size={16} color="#666" style={{ marginRight: 6 }} />
+                                        <Text style={{ fontSize: 13, color: '#555' }}>{feed.category || "Category"}</Text>
+                                    </View>
+                                </View>
+                                
+                            </View>
+                        </View>
+                    ))}
+                </ScrollView>
             </View>
         </View>
     );
