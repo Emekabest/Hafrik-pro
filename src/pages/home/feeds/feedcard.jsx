@@ -405,7 +405,9 @@ const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
                                 <View style={{ marginTop: 15 }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                         <Ionicons name="cube-outline" size={16} color="#666" style={{ marginRight: 6 }} />
-                                        <Text style={{ fontSize: 13, color: '#555' }}>In stock • New</Text>
+                                        <Text style={{ fontSize: 13, color: '#555' }}>
+                                            <Text style={{ color: 'green', fontWeight: '600' }}>In stock</Text> • New
+                                        </Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                                         <Ionicons name="location-outline" size={16} color="#666" style={{ marginRight: 6 }} />
