@@ -78,7 +78,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     useEffect(() => {
         if (currentPlayingId === uniqueId) {
             video.current?.playAsync();
-        } else if (isPlaying) {
+        } else {
             video.current?.pauseAsync(); 
         }
     }, [currentPlayingId, uniqueId]);
@@ -112,9 +112,6 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     }
                     if (status.isPlaying) {
                         setIsFinished(false);
-                        if (currentPlayingId !== uniqueId) {
-                            setCurrentPlayingId(uniqueId);
-                        }
                     }
                 }}
             />
@@ -127,10 +124,14 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                     <TouchableOpacity 
                         onPress={() => {
-                            if (isFinished) {
-                                video.current?.replayAsync();
+                            if (currentPlayingId === uniqueId) {
+                                if (isFinished) {
+                                    video.current?.replayAsync();
+                                } else {
+                                    video.current?.playAsync();
+                                }
                             } else {
-                                video.current?.playAsync();
+                                setCurrentPlayingId(uniqueId);
                             }
                         }}
                         style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 10}}
@@ -220,7 +221,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     useEffect(() => {
         if (currentPlayingId === uniqueId) {
             singleVideoRef.current?.playAsync();
-        } else if (isSingleVideoPlaying) {
+        } else {
             singleVideoRef.current?.pauseAsync();
         }
     }, [currentPlayingId, uniqueId]);
@@ -276,9 +277,6 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             if (status.didJustFinish) setIsSingleVideoFinished(true);
                             if (status.isPlaying) {
                                 setIsSingleVideoFinished(false);
-                                if (currentPlayingId !== uniqueId) {
-                                    setCurrentPlayingId(uniqueId);
-                                }
                             }
                         }}
                     />
@@ -291,8 +289,12 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                             <TouchableOpacity 
                                 onPress={() => {
-                                    if (isSingleVideoFinished) singleVideoRef.current?.replayAsync();
-                                    else singleVideoRef.current?.playAsync();
+                                    if (currentPlayingId === uniqueId) {
+                                        if (isSingleVideoFinished) singleVideoRef.current?.replayAsync();
+                                        else singleVideoRef.current?.playAsync();
+                                    } else {
+                                        setCurrentPlayingId(uniqueId)
+                                    }
                                 }}
                                 style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 15}}
                             >
@@ -344,7 +346,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     useEffect(() => {
         if (currentPlayingId === uniqueId) {
             videoRef.current?.playAsync();
-        } else if (isPlaying) {
+        } else {
             videoRef.current?.pauseAsync();
         }
     }, [currentPlayingId, uniqueId]);
@@ -374,9 +376,6 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 if (status.didJustFinish) setIsFinished(true);
                                 if (status.isPlaying) {
                                     setIsFinished(false);
-                                    if (currentPlayingId !== uniqueId) {
-                                        setCurrentPlayingId(uniqueId);
-                                    }
                                 }
                             }}
                         />
@@ -385,8 +384,12 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                             <View style={[StyleSheet.absoluteFill, styles.videoOverlay]}>
                                 <TouchableOpacity 
                                     onPress={() => {
-                                        if (isFinished) videoRef.current?.replayAsync();
-                                        else videoRef.current?.playAsync();
+                                        if (currentPlayingId === uniqueId) {
+                                            if (isFinished) videoRef.current?.replayAsync();
+                                            else videoRef.current?.playAsync();
+                                        } else {
+                                            setCurrentPlayingId(uniqueId);
+                                        }
                                     }}
                                     style={styles.playButton}
                                 >

@@ -87,27 +87,44 @@ const Feeds = ()=>{
     }, [currentPlayingId]);
 
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
-        if (viewableItems.length > 0) {
-            // Get the most visible item (usually the first one in the list that meets the threshold)
-            const viewableItem = viewableItems[0];
-            const feed = viewableItem.item;
-            
-            let playId = null;
-            if (feed.type === 'shared' && feed.shared_post) {
-                if (feed.shared_post.type === 'video' || feed.shared_post.type === 'reel') {
-                    playId = `${feed.id}_shared`;
-                }
-            } else if (feed.type === 'video' || feed.type === 'reel') {
-                if (feed.media && feed.media.length > 0) {
-                    playId = `${feed.id}_video_0`;
+        const viewableVideoItem = viewableItems.find(item => {
+            const feed = item.item;
+            if (item.isViewable) {
+                if (feed.type === 'shared' && feed.shared_post) {
+                    if (feed.shared_post.type === 'video' || feed.shared_post.type === 'reel') {
+                        return true;
+                    }
+                } else if (feed.type === 'video' || feed.type === 'reel') {
+                    if (feed.media && feed.media.length > 0) {
+                        return true;
+                    }
                 }
             }
-            setCurrentPlayingId(playId);
+            return false;
+        });
+
+        let playId = null;
+        if (viewableVideoItem) {
+            const feed = viewableVideoItem.item;
+            if (feed.type === 'shared' && feed.shared_post) {
+                playId = `${feed.id}_shared`;
+            } else {
+                playId = `${feed.id}_video_0`;
+            }
         }
+        
+        setCurrentPlayingId(currentId => {
+            if (currentId !== playId) {
+                return playId;
+            }
+            return currentId;
+        });
+
     }).current;
 
     const viewabilityConfig = useRef({
-        itemVisiblePercentThreshold: 65 // Item must be 65% visible to be considered "viewable"
+        itemVisiblePercentThreshold: 75, // Item must be 75% visible to be considered "viewable"
+        waitForInteraction: true,
     }).current;
 
     return (
