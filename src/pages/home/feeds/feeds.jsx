@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native"
 import FeedCard from "./feedcard.jsx";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import GetFeedsController from "../../../controllers/getfeedscontroller.js";
 import Banner from "../banner.jsx";
 import QuickLinks from "../quicklinks.jsx";
@@ -15,6 +15,7 @@ const Feeds = ()=>{
     const [feeds, setFeeds] = useState([])
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [currentPlayingId, setCurrentPlayingId] = useState(null);
     const { token } = useAuth();
 
 
@@ -82,8 +83,32 @@ const Feeds = ()=>{
     );
 
     const renderItem = useCallback(({item}) => {
-        return <FeedCard feed={item} />
-    }, []);
+        return <FeedCard feed={item} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} />
+    }, [currentPlayingId]);
+
+    const onViewableItemsChanged = useRef(({ viewableItems }) => {
+        if (viewableItems.length > 0) {
+            // Get the most visible item (usually the first one in the list that meets the threshold)
+            const viewableItem = viewableItems[0];
+            const feed = viewableItem.item;
+            
+            let playId = null;
+            if (feed.type === 'shared' && feed.shared_post) {
+                if (feed.shared_post.type === 'video' || feed.shared_post.type === 'reel') {
+                    playId = `${feed.id}_shared`;
+                }
+            } else if (feed.type === 'video' || feed.type === 'reel') {
+                if (feed.media && feed.media.length > 0) {
+                    playId = `${feed.id}_video_0`;
+                }
+            }
+            setCurrentPlayingId(playId);
+        }
+    }).current;
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 65 // Item must be 65% visible to be considered "viewable"
+    }).current;
 
     return (
         <View style={styles.container}>
@@ -98,6 +123,8 @@ const Feeds = ()=>{
                 windowSize={5}
                 removeClippedSubviews={true}
                 contentContainerStyle={styles.containerFeeds}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
             />
         </View>
     )

@@ -48,7 +48,7 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
     );
 });
 
-const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight }) => {
+const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId }) => {
     const [width, setWidth] = useState(() => {
         if (thumbnail && aspectRatioCache.has(thumbnail)) {
             return Math.min(targetHeight * aspectRatioCache.get(thumbnail), maxWidth);
@@ -74,6 +74,14 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
             }
         }
     }, [thumbnail, targetHeight, maxWidth]);
+
+    useEffect(() => {
+        if (currentPlayingId === uniqueId) {
+            video.current?.playAsync();
+        } else if (isPlaying) {
+            video.current?.pauseAsync(); 
+        }
+    }, [currentPlayingId, uniqueId]);
 
     return (
         <View style={{
@@ -104,6 +112,9 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     }
                     if (status.isPlaying) {
                         setIsFinished(false);
+                        if (currentPlayingId !== uniqueId) {
+                            setCurrentPlayingId(uniqueId);
+                        }
                     }
                 }}
             />
@@ -135,7 +146,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
 
 
 
-// #region Post Content Components
+// #region Post Content Components...............................................................
 const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onImagePress }) => {
     const isMultiMedia = media.length > 1;
     const mediaUrl = media.length > 0 ? media[0].url : null;
@@ -190,7 +201,7 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
     );
 });
 
-const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset }) => {
+const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
     const isMultiMedia = media.length > 1;
     const mediaUrl = media.length > 0 ? media[0].thumbnail : null;
     const [aspectRatio, setAspectRatio] = useState(() => {
@@ -204,6 +215,15 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset }) =
     const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
+    const uniqueId = `${parentFeedId}_video_0`;
+
+    useEffect(() => {
+        if (currentPlayingId === uniqueId) {
+            singleVideoRef.current?.playAsync();
+        } else if (isSingleVideoPlaying) {
+            singleVideoRef.current?.pauseAsync();
+        }
+    }, [currentPlayingId, uniqueId]);
 
     useEffect(() => {
         if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
@@ -233,6 +253,9 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset }) =
                             targetHeight={250}
                             maxWidth={imageWidth}
                             marginRight={10}
+                            currentPlayingId={currentPlayingId}
+                            setCurrentPlayingId={setCurrentPlayingId}
+                            uniqueId={`${parentFeedId}_video_${index}`}
                         />
                     ))}
                 </ScrollView>
@@ -251,7 +274,12 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset }) =
                             setIsSingleVideoPlaying(status.isPlaying);
                             setIsSingleVideoBuffering(status.isBuffering);
                             if (status.didJustFinish) setIsSingleVideoFinished(true);
-                            if (status.isPlaying) setIsSingleVideoFinished(false);
+                            if (status.isPlaying) {
+                                setIsSingleVideoFinished(false);
+                                if (currentPlayingId !== uniqueId) {
+                                    setCurrentPlayingId(uniqueId);
+                                }
+                            }
                         }}
                     />
                     {isSingleVideoBuffering && (
@@ -278,7 +306,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset }) =
     );
 });
 
-const SharedPostCard = memo(({ post }) => {
+const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
 
@@ -311,6 +339,16 @@ const SharedPostCard = memo(({ post }) => {
     const [isFinished, setIsFinished] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
 
+    const uniqueId = `${parentFeedId}_shared`;
+
+    useEffect(() => {
+        if (currentPlayingId === uniqueId) {
+            videoRef.current?.playAsync();
+        } else if (isPlaying) {
+            videoRef.current?.pauseAsync();
+        }
+    }, [currentPlayingId, uniqueId]);
+
     const screenWidth = Dimensions.get("window").width;
     // containerRight padding (5*2) + shared post border (1*2) + shared post padding (10*2)
     const mediaWidth = screenWidth * 0.87 - 10 - 2 - 20;
@@ -334,7 +372,12 @@ const SharedPostCard = memo(({ post }) => {
                                 setIsPlaying(status.isPlaying);
                                 setIsBuffering(status.isBuffering);
                                 if (status.didJustFinish) setIsFinished(true);
-                                if (status.isPlaying) setIsFinished(false);
+                                if (status.isPlaying) {
+                                    setIsFinished(false);
+                                    if (currentPlayingId !== uniqueId) {
+                                        setCurrentPlayingId(uniqueId);
+                                    }
+                                }
                             }}
                         />
                         {isBuffering && <ActivityIndicator style={StyleSheet.absoluteFill} size="large" color="#fff" />}
@@ -374,16 +417,16 @@ const SharedPostCard = memo(({ post }) => {
     );
 });
 
-const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress }) => {
+const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId }) => {
     const isVideo = feed.type === 'video' || feed.type === 'reel';
 
     if (feed.type === 'shared' && feed.shared_post) {
-        return <SharedPostCard post={feed.shared_post} />;
+        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} />;
     }
 
     if (feed.media && feed.media.length > 0) {
         if (isVideo) {
-            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} />;
+            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} />;
         }
         return <PhotoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
     }
@@ -394,7 +437,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 // #endregion
 
 
-const FeedCard = ({ feed })=>{
+const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
@@ -502,6 +545,8 @@ const FeedCard = ({ feed })=>{
                     leftOffset={leftOffset}
                     rightOffset={rightOffset}
                     onImagePress={setFullScreenImage}
+                    currentPlayingId={currentPlayingId}
+                    setCurrentPlayingId={setCurrentPlayingId}
                 />
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
