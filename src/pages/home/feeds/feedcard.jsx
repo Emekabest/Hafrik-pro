@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithou
 import { Video, ResizeMode } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
+import { useVideoCache } from "../../../helpers/videocache";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
@@ -49,6 +50,7 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
 });
 
 const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId }) => {
+    const { cachedUri, isCaching } = useVideoCache(videoUrl);
     const [width, setWidth] = useState(() => {
         if (thumbnail && aspectRatioCache.has(thumbnail)) {
             return Math.min(targetHeight * aspectRatioCache.get(thumbnail), maxWidth);
@@ -96,7 +98,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 ref={video}
                 style={{ width: "100%", height: "100%" }}
                 source={{
-                    uri: videoUrl,
+                    uri: cachedUri,
                 }}
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}
@@ -115,12 +117,12 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     }
                 }}
             />
-            {isBuffering && (
+            {(isBuffering || isCaching) && (
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]}>
                     <ActivityIndicator size="large" color="#fff" />
                 </View>
             )}
-            {!isPlaying && !isBuffering && (
+            {!isPlaying && !isBuffering && !isCaching && (
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                     <TouchableOpacity 
                         onPress={() => {
@@ -205,6 +207,8 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
 const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
     const isMultiMedia = media.length > 1;
     const mediaUrl = media.length > 0 ? media[0].thumbnail : null;
+    const { cachedUri, isCaching } = useVideoCache(media.length > 0 && !isMultiMedia ? media[0].video_url : null);
+    
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
             return aspectRatioCache.get(mediaUrl);
@@ -265,7 +269,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     <Video
                         ref={singleVideoRef}
                         style={{height:"100%", width: "100%"}}
-                        source={{ uri: media[0].video_url }}
+                        source={{ uri: cachedUri }}
                         useNativeControls
                         resizeMode={ResizeMode.CONTAIN}
                         posterSource={{ uri: media[0].thumbnail }}
@@ -280,12 +284,12 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             }
                         }}
                     />
-                    {isSingleVideoBuffering && (
+                    {(isSingleVideoBuffering || isCaching) && (
                         <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]}>
                             <ActivityIndicator size="large" color="#fff" />
                         </View>
                     )}
-                    {!isSingleVideoPlaying && !isSingleVideoBuffering && (
+                    {!isSingleVideoPlaying && !isSingleVideoBuffering && !isCaching && (
                         <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                             <TouchableOpacity 
                                 onPress={() => {
@@ -312,6 +316,8 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
 
+    const { cachedUri, isCaching } = useVideoCache(isVideo && mediaItem ? mediaItem.video_url : null);
+
     const mediaUrl = mediaItem ? (isVideo ? mediaItem.thumbnail : mediaItem.url) : null;
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
@@ -331,9 +337,6 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             }, (error) => console.log(error));
         }
     }, [mediaUrl]);
-
-
-
     
     // Video specific state
     const videoRef = useRef(null);
@@ -365,7 +368,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                         <Video
                             ref={videoRef}
                             style={{ width: "100%", height: "100%" }}
-                            source={{ uri: mediaItem.video_url }}
+                            source={{ uri: cachedUri }}
                             resizeMode={ResizeMode.CONTAIN}
                             posterSource={{ uri: mediaItem.thumbnail }}
                             usePoster={true}
@@ -379,8 +382,8 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 }
                             }}
                         />
-                        {isBuffering && <ActivityIndicator style={StyleSheet.absoluteFill} size="large" color="#fff" />}
-                        {!isPlaying && !isBuffering && (
+                        {(isBuffering || isCaching) && <ActivityIndicator style={StyleSheet.absoluteFill} size="large" color="#fff" />}
+                        {!isPlaying && !isBuffering && !isCaching && (
                             <View style={[StyleSheet.absoluteFill, styles.videoOverlay]}>
                                 <TouchableOpacity 
                                     onPress={() => {
