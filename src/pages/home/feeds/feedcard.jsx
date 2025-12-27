@@ -213,7 +213,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
             return aspectRatioCache.get(mediaUrl);
         }
-        if (mediaItem && mediaItem.width && mediaItem.height) {
+        if (mediaItem && mediaItem.width && mediaItem.height){
             const ratio = mediaItem.width / mediaItem.height;
             if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
             return ratio;
