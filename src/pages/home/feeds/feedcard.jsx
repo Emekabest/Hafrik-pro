@@ -302,6 +302,9 @@ const SharedPostCard = memo(({ post }) => {
         }
     }, [mediaUrl]);
 
+
+
+    
     // Video specific state
     const videoRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -326,6 +329,7 @@ const SharedPostCard = memo(({ post }) => {
                             resizeMode={ResizeMode.CONTAIN}
                             posterSource={{ uri: mediaItem.thumbnail }}
                             usePoster={true}
+                            useNativeControls
                             onPlaybackStatusUpdate={status => {
                                 setIsPlaying(status.isPlaying);
                                 setIsBuffering(status.isBuffering);
