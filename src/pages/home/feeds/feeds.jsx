@@ -72,13 +72,7 @@ const Feeds = ()=>{
 
     const renderFooter = () => (
         <View style={styles.footerContainer}>
-            {loadingMore ? (
-                <ActivityIndicator size="small" color="#000" />
-            ) : (
-                <TouchableOpacity style={styles.moreStoriesButton} onPress={handleLoadMore}>
-                    <Text style={styles.moreStoriesText}>More Stories</Text>
-                </TouchableOpacity>
-            )}
+            {loadingMore && <ActivityIndicator size="small" color="#000" />}
         </View>
     );
 
@@ -135,6 +129,8 @@ const Feeds = ()=>{
                 renderItem={renderItem}
                 ListHeaderComponent={renderHeader}
                 ListFooterComponent={renderFooter}
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.5}
                 initialNumToRender={5}
                 maxToRenderPerBatch={5}
                 windowSize={5}
@@ -220,17 +216,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    moreStoriesButton: {
-        backgroundColor: '#e9e9e9',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 20,
-    },
-    moreStoriesText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#333',
-    }
 
 
 })
