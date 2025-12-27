@@ -465,7 +465,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 
 // #endregion
 
-
+//MAIN CARD......................................................
 const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
@@ -550,6 +550,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
                     <View style = {styles.usernameSection}>
                         <View style = {styles.username}>
                             <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.username}</Text>
+                            
                         </View>
                         <View style = {styles.elapsed}>
                             <Text style = {{color:"#787878ff"}}>{CalculateElapsedTime(feed.created)}</Text>
@@ -566,7 +567,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
                     <View style={styles.textSection}>
                         <Text>{feed.text}</Text>
                     </View>
-                ) : null}
+                ) : <View style = {styles.textSection} />}
 
                 <PostContent 
                     feed={feed}
