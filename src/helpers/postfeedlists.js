@@ -1,6 +1,6 @@
 
 
-const PostFeedLists ={
+const PostFeedLists = {
 
     videoCategory:[
         {
@@ -68,3 +68,6 @@ const PostFeedLists ={
 
 
 }
+
+export default PostFeedLists;
+
