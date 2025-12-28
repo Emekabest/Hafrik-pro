@@ -6,6 +6,8 @@ import { useState, useRef, useEffect, memo } from "react";
 import { useVideoCache } from "../../../helpers/videocache";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
+import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
+import { useAuth } from "../../../AuthContext";
 
 
 const aspectRatioCache = new Map();
@@ -428,6 +430,87 @@ const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
     );
 });
 
+const PollPostContent = memo(({ feed }) => {
+    const pollMedia = feed.media && feed.media.length > 0 ? feed.media[0] : null;
+    const options = pollMedia && pollMedia.options ? pollMedia.options : (feed.options || []);
+    const [votedId, setVotedId] = useState(feed.user_voted_id || null);
+    
+
+    // Calculate total votes
+    const totalVotes = options.reduce((acc, opt) => acc + (opt.votes || 0), 0) + (votedId && !feed.user_voted_id ? 1 : 0);
+
+    const handleVote = (id) => {
+        if (votedId) return;
+        setVotedId(id);
+        // API integration would happen here
+    };
+
+    if (!options || options.length === 0) return null;
+
+    return (
+        <View style={{ marginTop: 5, paddingRight: 5, width: '100%' }}>
+            {options.map((option, index) => {
+                const isSelected = votedId === option.id;
+                const votes = (option.votes || 0) + (isSelected && !feed.user_voted_id ? 1 : 0);
+                const percentage = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+                const primaryColor = AppDetails.primaryColor || '#000000';
+
+                return (
+                    <View key={option.id || index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                        <TouchableOpacity 
+                            onPress={() => handleVote(option.id)}
+                            disabled={!!votedId}
+                            activeOpacity={0.7}
+                            style={{
+                                flex: 1,
+                                height: 45,
+                                justifyContent: 'center',
+                                borderRadius: 50,
+                                borderWidth: 1,
+                                borderColor: isSelected ? primaryColor : '#e0e0e0',
+                                backgroundColor: '#fff',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {votedId && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    bottom: 0,
+                                    left: 0,
+                                    width: `${percentage}%`,
+                                    backgroundColor: isSelected ? (primaryColor + '33') : '#f5f5f5', 
+                                }} />
+                            )}
+                            
+                            <View style={{ paddingHorizontal: 12 }}>
+                                <Text style={{ fontWeight: isSelected ? '600' : '400', color: '#333', fontSize: 14 }}>{option.text}</Text>
+                            </View>
+                        </TouchableOpacity>
+                        {votedId && (
+                            <View style={{ 
+                                width: 30, 
+                                height: 30, 
+                                borderRadius: 15, 
+                                backgroundColor: '#f0f0f0', 
+                                justifyContent: 'center', 
+                                alignItems: 'center', 
+                                marginLeft: 8 
+                            }}>
+                                <Text style={{ fontSize: 12, color: '#666', fontWeight: 'bold' }}>{votes}</Text>
+                            </View>
+                        )}
+                    </View>
+                )
+            })}
+            <View style={{ flexDirection: 'row', marginTop: 4, paddingHorizontal: 2 }}>
+                <Text style={{ color: '#787878ff', fontSize: 12 }}>{totalVotes} votes</Text>
+                <Text style={{ color: '#787878ff', fontSize: 12 }}> • {feed.expires_at ? 'Ends soon' : 'Final results'}</Text>
+            </View>
+        </View>
+    );
+});
+
 const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
@@ -564,6 +647,10 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
         return <ProductPostContent feed={feed} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} />;
     }
 
+    if (feed.type === 'poll') {
+        return <PollPostContent feed={feed} />;
+    }
+
     if (feed.media && feed.media.length > 0) {
         if (isVideo) {
             return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} />;
@@ -585,6 +672,8 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(parseInt(feed.likes_count) || 0);
+
+    const { token } = useAuth();
     
     const iconRef = useRef(null);
 
@@ -606,14 +695,21 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
         Alert.alert("Save Image", "Image saved to gallery!");
     };
 
-    const handleLike = () => {  
+    const handleLike = async() => {  
         setLiked(!liked);
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
+
+        console.log(feed.id)
+
+        const response = await ToggleFeedController(feed.id, token)
     };
 
     const getActionText = () => {
         if (feed.type === 'product') {
             return " added product for sale";
+        }
+        if (feed.type === 'poll') {
+            return " created a poll";
         }
         if (feed.type === 'profile_picture') {
             return " updated the profile picture";
@@ -629,6 +725,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
         if (feed.type === 'shared') return " shared a post";
         return "";
     };
+
 
     return(
         <View style = {styles.container}>
@@ -717,7 +814,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
                         <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>{likeCount}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen')}>
+                    <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})}>
                         <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>{feed.comments_count}</Text>
                     </TouchableOpacity>

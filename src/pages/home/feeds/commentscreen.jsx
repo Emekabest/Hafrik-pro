@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
     StyleSheet, 
     View, 
@@ -15,11 +15,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from "../../../AuthContext";
 import AppDetails from "../../../helpers/appdetails";
+import GetCommentsController from '../../../controllers/getcommentscontroller';
 
-const CommentScreen = ()=>{
+const CommentScreen = ({route})=>{
     const navigation = useNavigation();
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [replyText, setReplyText] = useState("");
+    const { feedId } = route.params;
+
     
     // Mock Data for the post being viewed
     const originalPost = {
@@ -81,6 +84,18 @@ const CommentScreen = ()=>{
             likes: 200
         }
     ];
+
+
+    useEffect(()=>{
+
+        const getComments = async()=>{
+
+            const response = await GetCommentsController(feedId, token)
+        }
+
+        getComments()
+    },[])
+
 
     const renderHeader = () => (
         <View style={styles.header}>
