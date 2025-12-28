@@ -711,7 +711,7 @@ const PostFeed = () => {
 
             { /** Bottom Post Section...............................................................................................
              * ..................................................................................................................... */   }
-            <View style = {[styles.containerBottom, { borderTopWidth: !isFocused ? 0 : 0.5, borderTopColor:"#eeeeeeff", }]}>
+            <View style = {[styles.containerBottom, { borderTopWidth: !isFocused ? 0 : 0.5, borderTopColor:"#eeeeeeff", }]} pointerEvents={!isFocused ? "none" : "auto"}>
                 <View style={styles.containerBottomLeft}>
                     <FlatList
                         data={bottomContainerIcons}
@@ -764,7 +764,7 @@ const PostFeed = () => {
                     {renderContent()}
                 </TouchableOpacity>
             )}
-
+            
             <Modal
                 visible={isFocused}
                 transparent={true}
