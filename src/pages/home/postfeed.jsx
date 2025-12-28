@@ -9,6 +9,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 import PostFeedController from "../../controllers/postfeedcontroller";
 import UploadMediaController from "../../controllers/uploadmediacontroller";
+import PostFeedList from "../../helpers/postfeedlists"
 
 
 
@@ -150,6 +151,7 @@ const PostFeed = () => {
     const [middleIconStates, setMiddleIconStates] = useState({});
     const [selectedBackground, setSelectedBackground] = useState(null);
     const [postBackground, setPostBackground] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedImages, setSelectedImages] = useState([]);
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [selectedThumbnail, setSelectedThumbnail] = useState(null);
@@ -360,10 +362,10 @@ const PostFeed = () => {
             return;
         }
 
-        if (name === 'video') {
-            pickVideo();
-            return;
-        }
+        // if (name === 'video') {
+        //     pickVideo();
+        //     return;
+        // }
 
         if (name === 'reel') {
             handleClose();
@@ -375,6 +377,15 @@ const PostFeed = () => {
             const newState = !prevState[name];
             if (name === 'color' && !newState) {
                 setSelectedBackground(null);
+            }
+            if (name === 'video') {
+                if (!newState) {
+                    setSelectedCategory(null);
+                    setSelectedVideo(null);
+                    setSelectedThumbnail(null);
+                } else {
+                    setSelectedCategory(1);
+                }
             }
             if (name === 'location' && !newState) {
                 setLocationText("");
@@ -422,6 +433,9 @@ const PostFeed = () => {
             if(selectedThumbnail){
                 postData.thumbnail = selectedThumbnail.uri
             }
+            if (selectedCategory) {
+                postData.category_id = selectedCategory;
+            }
 
         }
         else if (postData != ""){
@@ -442,12 +456,14 @@ const PostFeed = () => {
             setSelectedVideo(null);
             setSelectedThumbnail(null);
             setSelectedBackground(null);
+            setSelectedCategory(null);
             setLocationText("");
             setMiddleIconStates({});
             handleClose();
 
         }
         else{
+            console.log(respose)
 
         }
     };
@@ -534,8 +550,9 @@ const PostFeed = () => {
                 </View>
             )}
 
-            {isFocused && selectedVideo && (
+            {isFocused && middleIconStates['video'] && (
                 <View style={styles.imagePreviewContainer}>
+                    {selectedVideo ? (
                     <View style={styles.singleImageWrapper}>
                         {selectedVideo.uploading ? (
                             <View style={[styles.videoPreview, styles.loadingContainer]}>
@@ -558,7 +575,14 @@ const PostFeed = () => {
                             <Ionicons name="close-circle" size={20} color="rgba(0,0,0,0.7)" />
                         </TouchableOpacity>
                     </View>
+                    ) : (
+                        <TouchableOpacity onPress={pickVideo} style={styles.videoPlaceholder}>
+                            <Ionicons name="videocam" size={40} color={AppDetails.primaryColor} />
+                            <Text style={{color: "#666", marginTop: 5, fontSize: 12}}>Select Video</Text>
+                        </TouchableOpacity>
+                    )}
 
+                    {selectedVideo && (
                     <View style={styles.singleImageWrapper}>
                         <Text style={styles.thumbnailLabel}>Thumbnail</Text>
                         <TouchableOpacity onPress={pickThumbnail} style={styles.thumbnailContainer}>
@@ -590,6 +614,7 @@ const PostFeed = () => {
                             </TouchableOpacity>
                          )}
                     </View>
+                    )}
                 </View>
             )}
 
@@ -603,6 +628,25 @@ const PostFeed = () => {
                         keyExtractor={(item) => `color-${item.id}`}
                         renderItem={({ item }) => (
                             <ColorPickerItem item={item} isSelected={selectedBackground === item.id} onSelect={handleBackgroundSelect} />
+                        )}
+                    />
+                </View>
+            )}
+
+            {isFocused && middleIconStates['video'] && (
+                <View style={[styles.colorPickerContainer, { marginTop: 'auto' }]}>
+                    <FlatList
+                        data={PostFeedList.videoCategory}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        keyExtractor={(item) => `cat-${item.id}`}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity 
+                                style={[styles.categoryPill, selectedCategory === item.id && styles.categoryPillSelected]} 
+                                onPress={() => setSelectedCategory(item.id)}
+                            >
+                                <Text style={[styles.categoryPillText, selectedCategory === item.id && styles.categoryPillTextSelected]}>{item.name}</Text>
+                            </TouchableOpacity>
                         )}
                     />
                 </View>
@@ -1020,6 +1064,36 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: "#999",
         marginTop: 4
+    },
+    videoPlaceholder: {
+        width: 100,
+        height: 150,
+        borderRadius: 10,
+        backgroundColor: '#f5f5f5',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderStyle: 'dashed',
+        marginRight: 10,
+    },
+    categoryPill: {
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#f5f5f5',
+        marginRight: 8,
+    },
+    categoryPillSelected: {
+        backgroundColor: AppDetails.primaryColor,
+    },
+    categoryPillText: {
+        color: '#333',
+        fontSize: 13,
+    },
+    categoryPillTextSelected: {
+        color: '#fff',
+        fontWeight: '600',
     }
 
 })
