@@ -160,46 +160,37 @@ const PostFeed = () => {
     const [bottomContainerIcons, setBottomContainerIcons] = useState([
     {
         id:1,
-        name: "location",
+        name: "photos",
     },
 
     {
         id:2,
-        name: "video",
+        name: "album",
     },
 
     {
         id:3,
-        name: "poll",
+        name: "music",
 
     },
     {
         id:4,
-        name: "music",
+        name: "poll",
 
     },
 
     {
         id:5,
-        name: "album",
+        name: "video",
 
     },
 
     {
         id:6,
-        name: "photos",
+        name: "location",
     }
 ])
 
-
-    useEffect(() => {
-        if (bottomContainerIcons[0].name === "location") {
-
-            
-            setBottomContainerIcons(bottomContainerIcons.reverse())
-
-        }
-    }, []);
 
     const bottomLeftIconsSize = 19
 
