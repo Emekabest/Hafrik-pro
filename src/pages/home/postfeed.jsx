@@ -743,7 +743,7 @@ const PostFeed = () => {
 
                 </View>
                 <View style={styles.containerBottomRight}>
-                    <TouchableOpacity onPress={handlePost} disabled={postButtonOpacity !== 1 || isPosting} activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity, height:!isFocused ? 30 : 40, width:!isFocused ? 80: 110}]}>
+                    <TouchableOpacity onPress={handlePost} disabled={postButtonOpacity !== 1 || isPosting} activeOpacity={postButtonOpacity} style={[styles.postButton, { opacity: postButtonOpacity }]}>
                         {isPosting ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
@@ -874,14 +874,14 @@ const styles = StyleSheet.create({
     containerBottomRight: {
         height:"100%",
         width:"30%",
-        justifyContent:"center"
-
+        justifyContent:"center",
+        alignItems:"center",
     },
 
     postButton: {
         backgroundColor: AppDetails.primaryColor,
-        height:43,
-        width:110,
+        height:45,
+        width:"95%",
         justifyContent: "center",
         alignItems: "center",
         borderRadius: 50,
