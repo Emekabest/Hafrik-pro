@@ -446,6 +446,7 @@ const PostFeed = () => {
         
 
         const respose = await PostFeedController(postData, token)
+        console.log(respose)
 
         setIsPosting(false);
 
