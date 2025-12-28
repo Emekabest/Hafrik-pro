@@ -511,6 +511,7 @@ const PollPostContent = memo(({ feed }) => {
     );
 });
 
+
 const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
