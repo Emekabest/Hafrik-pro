@@ -79,6 +79,93 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     );
 };
 
+const PollContent = ({ post }) => {
+    let options = [];
+
+    if (post.payload && Array.isArray(post.payload.options)) {
+        options = post.payload.options;
+    } else {
+        const pollMedia = (post.media && Array.isArray(post.media) && post.media.length > 0) ? post.media[0] : null;
+        options = (pollMedia && Array.isArray(pollMedia.options) && pollMedia.options.length > 0) 
+            ? pollMedia.options 
+            : (Array.isArray(post.options) ? post.options : []);
+    }
+
+    const [votedId, setVotedId] = useState(post.user_voted_id || null);
+    
+    if (!options || options.length === 0) return null;
+
+    const totalVotes = options.reduce((acc, opt) => acc + (opt.votes || 0), 0) + (votedId && !post.user_voted_id ? 1 : 0);
+
+    const handleVote = (id) => {
+        if (votedId) return;
+        setVotedId(id);
+    };
+
+    return (
+        <View style={{ marginTop: 5, paddingRight: 5, width: '100%' }}>
+            {options.map((option, index) => {
+                const isSelected = votedId === option.id;
+                const votes = (option.votes || 0) + (isSelected && !post.user_voted_id ? 1 : 0);
+                const percentage = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+                const primaryColor = AppDetails.primaryColor || '#000000';
+
+                return (
+                    <View key={option.id || index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                        <TouchableOpacity 
+                            onPress={() => handleVote(option.id)}
+                            disabled={!!votedId}
+                            activeOpacity={0.7}
+                            style={{
+                                flex: 1,
+                                height: 45,
+                                justifyContent: 'center',
+                                borderRadius: 50,
+                                borderWidth: 1,
+                                borderColor: isSelected ? primaryColor : '#e0e0e0',
+                                backgroundColor: '#fff',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {votedId && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    bottom: 0,
+                                    left: 0,
+                                    width: `${percentage}%`,
+                                    backgroundColor: isSelected ? (primaryColor + '33') : '#f5f5f5', 
+                                }} />
+                            )}
+                            
+                            <View style={{ paddingHorizontal: 12 }}>
+                                <Text style={{ fontWeight: isSelected ? '600' : '400', color: '#333', fontSize: 14 }}>{option.text}</Text>
+                            </View>
+                        </TouchableOpacity>
+                        {votedId && (
+                            <View style={{ 
+                                width: 30, 
+                                height: 30, 
+                                borderRadius: 15, 
+                                backgroundColor: '#f0f0f0', 
+                                justifyContent: 'center', 
+                                alignItems: 'center', 
+                                marginLeft: 8 
+                            }}>
+                                <Text style={{ fontSize: 12, color: '#666', fontWeight: 'bold' }}>{votes}</Text>
+                            </View>
+                        )}
+                    </View>
+                )
+            })}
+            <View style={{ flexDirection: 'row', marginTop: 4, paddingHorizontal: 2 }}>
+                <Text style={{ color: '#787878ff', fontSize: 12 }}>{totalVotes} votes</Text>
+                <Text style={{ color: '#787878ff', fontSize: 12 }}> • {post.expires_at ? 'Ends soon' : 'Final results'}</Text>
+            </View>
+        </View>
+    );
+};
+
 const SharedPostItem = ({ post }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
@@ -94,7 +181,9 @@ const SharedPostItem = ({ post }) => {
             </View>
             {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
             
-            {mediaItem && (
+            {post.type === 'poll' ? (
+                <PollContent post={post} />
+            ) : mediaItem && (
                 <View style={{ width: '100%', marginTop: 10 }}>
                     {isVideo ? (
                         <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} />
@@ -124,54 +213,7 @@ const CommentScreen = ({route})=>{
     const textInputRef = useRef(null);
     const { feedId } = route.params;
 
-    
-    // Mock Data for comments
-    const mockComments = [
-        {
-            id: '1',
-            user: {
-                name: "Pedri González",
-                username: "pedri",
-                avatar: "https://randomuser.me/api/portraits/men/2.jpg",
-            },
-            content: "Bro, that kit looks fire! 🔥",
-            time: "30m",
-            likes: 120
-        },
-        {
-            id: '2',
-            user: {
-                name: "Gavi",
-                username: "gavi",
-                avatar: "https://randomuser.me/api/portraits/men/3.jpg",
-            },
-            content: "Finally! Subscribed immediately. 😂",
-            time: "25m",
-            likes: 85
-        },
-        {
-            id: '3',
-            user: {
-                name: "Frenkie de Jong",
-                username: "frenkiedejong",
-                avatar: "https://randomuser.me/api/portraits/men/4.jpg",
-            },
-            content: "Nice setup! Can't wait to see more content.",
-            time: "10m",
-            likes: 40
-        },
-        {
-            id: '4',
-            user: {
-                name: "Robert Lewandowski",
-                username: "lewy",
-                avatar: "https://randomuser.me/api/portraits/men/5.jpg",
-            },
-            content: "Top class! ⚽️",
-            time: "5m",
-            likes: 200
-        }
-    ];
+
 
 
     useEffect(()=>{

@@ -725,7 +725,11 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                 </View>
             </View>
             {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
-            {renderMedia()}
+            {post.type === 'poll' ? (
+                <PollPostContent feed={post} />
+            ) : (
+                renderMedia()
+            )}
         </View>
     );
 });
