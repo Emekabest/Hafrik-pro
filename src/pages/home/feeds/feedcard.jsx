@@ -411,10 +411,20 @@ const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
 });
 
 const PollPostContent = memo(({ feed }) => {
-    const pollMedia = feed.media && feed.media.length > 0 ? feed.media[0] : null;
-    const options = pollMedia && pollMedia.options ? pollMedia.options : (feed.options || []);
+    let options = [];
+
+    if (feed.payload && Array.isArray(feed.payload.options)) {
+        options = feed.payload.options;
+    } else {
+        const pollMedia = (feed.media && Array.isArray(feed.media) && feed.media.length > 0) ? feed.media[0] : null;
+        options = (pollMedia && Array.isArray(pollMedia.options) && pollMedia.options.length > 0) 
+            ? pollMedia.options 
+            : (Array.isArray(feed.options) ? feed.options : []);
+    }
+
     const [votedId, setVotedId] = useState(feed.user_voted_id || null);
     
+    if (!options || options.length === 0) return null;
 
     // Calculate total votes
     const totalVotes = options.reduce((acc, opt) => acc + (opt.votes || 0), 0) + (votedId && !feed.user_voted_id ? 1 : 0);
@@ -422,10 +432,10 @@ const PollPostContent = memo(({ feed }) => {
     const handleVote = (id) => {
         if (votedId) return;
         setVotedId(id);
+
+
         // API integration would happen here
     };
-
-    if (!options || options.length === 0) return null;
 
     return (
         <View style={{ marginTop: 5, paddingRight: 5, width: '100%' }}>
@@ -607,6 +617,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     );
 });
 
+
 const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isFocused, isMuted, toggleMute }) => {
     const isVideo = feed.type === 'video' || feed.type === 'reel';
 
@@ -620,6 +631,8 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 
     if (feed.type === 'poll') {
         return <PollPostContent feed={feed} />;
+    }
+    else{
     }
 
     if (feed.media && feed.media.length > 0) {
