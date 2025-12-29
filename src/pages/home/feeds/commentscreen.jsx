@@ -33,14 +33,10 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
 
     useEffect(() => {
         const videoElement = videoRef.current;
-        if (!isFocused) {
-            videoElement?.pauseAsync();
-        }
-
         return () => {
             videoElement?.unloadAsync();
         }
-    }, [isFocused]);
+    }, []);
 
     if (hasError) {
         return (
@@ -60,6 +56,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
                 ref={videoRef}
                 style={{ width: "100%", height: "100%" }}
                 source={{ uri: videoUrl }}
+                shouldPlay={isFocused}
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}
                 usePoster={false}
@@ -74,6 +71,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
                     }
                 }}
                 onLoadStart={() => setIsBuffering(true)}
+                onLoad={() => setIsBuffering(false)}
                 onError={(error) => {
                     setHasError(true);
                     setIsBuffering(false);

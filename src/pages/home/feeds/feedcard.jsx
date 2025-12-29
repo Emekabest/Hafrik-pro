@@ -91,7 +91,8 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
     );
 });
 
-const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId, isFocused, isMuted, setIsMuted }) => {
+const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId, isFocused, isMuted, setIsMuted, feedId }) => {
+    const navigation = useNavigation();
     const [width, setWidth] = useState(() => {
         if (thumbnail && aspectRatioCache.has(thumbnail)) {
             return Math.min(targetHeight * aspectRatioCache.get(thumbnail), maxWidth);
@@ -103,6 +104,17 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [isBuffering, setIsBuffering] = useState(false);
     const video = useRef(null);
     const [hasError, setHasError] = useState(false);
+    const lastTap = useRef(null);
+
+    const handleDoubleTap = () => {
+        const now = Date.now();
+        const DOUBLE_PRESS_DELAY = 300;
+        if (lastTap.current && (now - lastTap.current) < DOUBLE_PRESS_DELAY) {
+            navigation.navigate('CommentScreen', {feedId: feedId});
+        } else {
+            lastTap.current = now;
+        }
+    };
 
     if (hasError) {
         return (
@@ -146,6 +158,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     };
 
     return (
+        <TouchableWithoutFeedback onPress={handleDoubleTap}>
         <View style={{
             height: "100%",
             width: width,
@@ -192,6 +205,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
             </TouchableOpacity>
         </View>
+        </TouchableWithoutFeedback>
     );
 });
 // #endregion
@@ -258,6 +272,7 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
 });
 
 const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused, isMuted, setIsMuted }) => {
+    const navigation = useNavigation();
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
     const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
@@ -280,6 +295,17 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const [isSingleVideoError, setIsSingleVideoError] = useState(false);
     const uniqueId = `${parentFeedId}_video_0`;
+    const lastTap = useRef(null);
+
+    const handleDoubleTap = () => {
+        const now = Date.now();
+        const DOUBLE_PRESS_DELAY = 300;
+        if (lastTap.current && (now - lastTap.current) < DOUBLE_PRESS_DELAY) {
+            navigation.navigate('CommentScreen', {feedId: parentFeedId});
+        } else {
+            lastTap.current = now;
+        }
+    };
 
     useEffect(() => {
         if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
@@ -315,6 +341,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             isFocused={isFocused}
                             isMuted={isMuted}
                             setIsMuted={setIsMuted}
+                            feedId={parentFeedId}
                         />
                     ))}
                 </ScrollView>
@@ -328,6 +355,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         </TouchableOpacity>
                     </View>
                 ) : (
+                <TouchableWithoutFeedback onPress={handleDoubleTap}>
                 <View style={{width: 300, height: 600, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
                     <Video
                         ref={singleVideoRef}
@@ -370,6 +398,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
                     </TouchableOpacity>
                 </View>
+                </TouchableWithoutFeedback>
                 )
             )}
         </View>
@@ -746,6 +775,7 @@ const PollPostContent = memo(({ feed }) => {
 
 
 const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused, isMuted, setIsMuted }) => {
+    const navigation = useNavigation();
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
 
@@ -781,6 +811,17 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isBuffering, setIsBuffering] = useState(false);
     const [hasError, setHasError] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(true);
+    const lastTap = useRef(null);
+
+    const handleDoubleTap = () => {
+        const now = Date.now();
+        const DOUBLE_PRESS_DELAY = 300;
+        if (lastTap.current && (now - lastTap.current) < DOUBLE_PRESS_DELAY) {
+            navigation.navigate('CommentScreen', {feedId: post.id});
+        } else {
+            lastTap.current = now;
+        }
+    };
 
     const uniqueId = `${parentFeedId}_shared`;
 
@@ -811,6 +852,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                             </TouchableOpacity>
                         </View>
                     ) : (
+                    <TouchableWithoutFeedback onPress={handleDoubleTap}>
                     <View style={{ width: 300, height: 600, marginTop: 10, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
                         {isVideo ? (
                             <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
@@ -862,6 +904,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                             </>
                         )}
                     </View>
+                    </TouchableWithoutFeedback>
                     )
                 ) : null
             )}
