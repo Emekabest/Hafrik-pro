@@ -91,7 +91,7 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
     );
 });
 
-const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId, isFocused }) => {
+const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId, isFocused, isMuted, setIsMuted }) => {
     const [width, setWidth] = useState(() => {
         if (thumbnail && aspectRatioCache.has(thumbnail)) {
             return Math.min(targetHeight * aspectRatioCache.get(thumbnail), maxWidth);
@@ -102,7 +102,6 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [isFinished, setIsFinished] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const video = useRef(null);
-    const [isMuted, setIsMuted] = useState(false);
     const [hasError, setHasError] = useState(false);
 
     if (hasError) {
@@ -258,11 +257,10 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
     );
 });
 
-const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused }) => {
+const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused, isMuted, setIsMuted }) => {
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
     const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
-    const [isMuted, setIsMuted] = useState(false);
     
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
@@ -315,6 +313,8 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             setCurrentPlayingId={setCurrentPlayingId}
                             uniqueId={`${parentFeedId}_video_${index}`}
                             isFocused={isFocused}
+                            isMuted={isMuted}
+                            setIsMuted={setIsMuted}
                         />
                     ))}
                 </ScrollView>
@@ -745,10 +745,9 @@ const PollPostContent = memo(({ feed }) => {
 });
 
 
-const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused }) => {
+const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused, isMuted, setIsMuted }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
-    const [isMuted, setIsMuted] = useState(false);
 
     const mediaUrl = mediaItem ? (isVideo ? mediaItem.thumbnail : mediaItem.url) : null;
     const [aspectRatio, setAspectRatio] = useState(() => {
@@ -871,11 +870,11 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
 });
 
 
-const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isFocused }) => {
+const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isFocused, isMuted, setIsMuted }) => {
     const isVideo = feed.type === 'video' || feed.type === 'reel';
 
     if (feed.type === 'shared' && feed.shared_post) {
-        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} />;
+        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} isMuted={isMuted} setIsMuted={setIsMuted} />;
     }
 
     if (feed.type === 'product') {
@@ -894,7 +893,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 
     if (feed.media && feed.media.length > 0) {
         if (isVideo) {
-            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} />;
+            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} isMuted={isMuted} setIsMuted={setIsMuted} />;
         }
         return <PhotoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
     }
@@ -905,7 +904,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 // #endregion
 
 //MAIN CARD.........................................................
-const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
+const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsMuted })=>{
     const navigation = useNavigation();
     const isFocused = useIsFocused();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
@@ -1068,6 +1067,8 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
                     currentPlayingId={currentPlayingId}
                     setCurrentPlayingId={setCurrentPlayingId}
                     isFocused={isFocused}
+                    isMuted={isMuted}
+                    setIsMuted={setIsMuted}
                 />
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>

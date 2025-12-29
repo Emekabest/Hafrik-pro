@@ -17,6 +17,7 @@ const Feeds = ()=>{
     const [loadingMore, setLoadingMore] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [currentPlayingId, setCurrentPlayingId] = useState(null);
+    const [isMuted, setIsMuted] = useState(false);
     const { token } = useAuth();
 
 
@@ -79,8 +80,8 @@ const Feeds = ()=>{
     );
 
     const renderItem = useCallback(({item}) => {
-        return <FeedCard feed={item} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} />
-    }, [currentPlayingId]);
+        return <FeedCard feed={item} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} isMuted={isMuted} setIsMuted={setIsMuted} />
+    }, [currentPlayingId, isMuted]);
 
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         const viewableVideoItem = viewableItems.find(item => {
