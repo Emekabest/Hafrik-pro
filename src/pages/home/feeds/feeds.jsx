@@ -34,7 +34,7 @@ const Feeds = ()=>{
         setIsMuted(prev => !prev);
     }, []);
 
-    console.log(page)
+    // console.log(page)
     const handleLoadMore = async () => {
         if (loadingMore) return;
         

@@ -11,9 +11,8 @@ const GetCommentsController = async(post_id, token)=>{
             }
         })
 
-        console.log(response.data)
 
-        // return {status:response.status, data:response.data.data.data}
+        return {status:response.status, data:response.data.data.data}
     }
     catch(error){
 

@@ -87,11 +87,12 @@ const CommentScreen = ({route})=>{
     const [loading, setLoading] = useState(true);
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
+    const [comments, setComments] = useState([])
     const { feedId } = route.params;
 
     
     // Mock Data for comments
-    const comments = [
+    const mockComments = [
         {
             id: '1',
             user: {
@@ -149,13 +150,30 @@ const CommentScreen = ({route})=>{
                 setLiked(!!response.data.liked);
                 setLikeCount(parseInt(response.data.likes_count) || 0);
             }
+            else{
+                console.log("Something went wrong")
+            }
             
-            // const commentsResponse = await GetCommentsController(feedId, token)
+            const commentsResponse = await GetCommentsController(feedId, token)
+            if(commentsResponse.status === 200){
+                const comments = commentsResponse.data
+                console.log(comments)
+
+                setComments(comments);
+            }
+            else{
+                console.log("Something went wrong")
+            }
+            
             setLoading(false);
         }
 
         getData()
     },[feedId, token])
+
+
+
+
 
     const handleLike = async() => {  
         setLiked(!liked);
@@ -258,15 +276,15 @@ const CommentScreen = ({route})=>{
             </View>
             <View style={styles.contentColumn}>
                 <View style={styles.headerRow}>
-                    <Text style={styles.username}>{item.user.name}</Text>
+                    <Text style={styles.username}>{item.user.full_name}</Text>
                     <View style={styles.spacer} />
-                    <Text style={styles.timeText}>{item.time}</Text>
+                    <Text style={styles.timeText}>{CalculateElapsedTime(item.created)}</Text>
                     <TouchableOpacity style={styles.moreButton}>
                         <Ionicons name="ellipsis-horizontal" size={18} color="#666" />
                     </TouchableOpacity>
                 </View>
                 
-                <Text style={styles.commentText}>{item.content}</Text>
+                <Text style={styles.commentText}>{item.text}</Text>
                 
                 <View style={styles.interactionRow}>
                     <TouchableOpacity style={styles.iconButton}>
