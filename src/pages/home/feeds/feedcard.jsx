@@ -64,7 +64,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [isFinished, setIsFinished] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const video = useRef(null);
-    const [isMuted, setIsMuted] = useState(true);
+    const [isMuted, setIsMuted] = useState(false);
 
     useEffect(() => {
         if (thumbnail) {
@@ -218,7 +218,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const mediaItem = media.length > 0 ? media[0] : null;
     const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
     const { cachedUri, isCaching } = useVideoCache(media.length > 0 && !isMultiMedia ? mediaItem.video_url : null);
-    const [isMuted, setIsMuted] = useState(true);
+    const [isMuted, setIsMuted] = useState(false);
     
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
@@ -712,7 +712,7 @@ const PollPostContent = memo(({ feed }) => {
 const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
-    const [isMuted, setIsMuted] = useState(true);
+    const [isMuted, setIsMuted] = useState(false);
 
     const { cachedUri, isCaching } = useVideoCache(isVideo && mediaItem ? mediaItem.video_url : null);
 
