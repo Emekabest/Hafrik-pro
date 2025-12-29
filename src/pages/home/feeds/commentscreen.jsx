@@ -9,34 +9,26 @@ import {
     Image, 
     KeyboardAvoidingView, 
     Platform,
-    Dimensions
+    Dimensions,
+    ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from "../../../AuthContext";
 import AppDetails from "../../../helpers/appdetails";
 import GetCommentsController from '../../../controllers/getcommentscontroller';
+import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
+import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 
 const CommentScreen = ({route})=>{
     const navigation = useNavigation();
     const { user, token } = useAuth();
     const [replyText, setReplyText] = useState("");
+    const [post, setPost] = useState(null);
+    const [loading, setLoading] = useState(true);
     const { feedId } = route.params;
 
     
-    // Mock Data for the post being viewed
-    const originalPost = {
-        user: {
-            name: "Lamine Yamal",
-            username: "lamineyamal",
-            avatar: "https://randomuser.me/api/portraits/men/1.jpg",
-            verified: true
-        },
-        content: "Lamine Yamal launched his YouTube channel and gave a tour of his house while wearing a Luis Diaz kit \n\n\"This is the most precious thing i have at home: the ball i scored the goal with against france at the EUROs\"",
-        time: "44m",
-        image: null
-    };
-
     // Mock Data for comments
     const comments = [
         {
@@ -88,14 +80,20 @@ const CommentScreen = ({route})=>{
 
     useEffect(()=>{
 
-        const getComments = async()=>{
-
-            const response = await GetCommentsController(feedId, token)
+        const getData = async()=>{
+            setLoading(true);
+            const response = await getUserPostInteractionController(feedId, token);
+            if(response.status === 200){
+                console.log(response.data);
+                setPost(response.data);
+            }
             
+            // const commentsResponse = await GetCommentsController(feedId, token)
+            setLoading(false);
         }
 
-        getComments()
-    },[])
+        getData()
+    },[feedId, token])
 
 
     const renderHeader = () => (
@@ -108,15 +106,17 @@ const CommentScreen = ({route})=>{
         </View>
     );
 
-    const renderOriginalPost = () => (
+    const renderOriginalPost = () => {
+        if (!post) return null;
+        return (
         <View style={[styles.postContainer, { flexDirection: 'column' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Image source={{ uri: originalPost.user.avatar }} style={styles.avatar} />
+                <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
                 <View style={{ marginLeft: 12, flex: 1 }}>
                     <View style={styles.headerRow}>
-                        <Text style={styles.username}>{originalPost.user.name}</Text>
-                        {originalPost.user.verified && <Ionicons name="checkmark-circle" size={14} color="#1DA1F2" style={{marginLeft: 4}} />}
-                        <Text style={[styles.timeText, { marginLeft: 5, marginRight: 0 }]}>• {originalPost.time}</Text>
+                        <Text style={styles.username}>{post.user.username}</Text>
+                        {post.user.verified && <Ionicons name="checkmark-circle" size={14} color="#1DA1F2" style={{marginLeft: 4}} />}
+                        <Text style={[styles.timeText, { marginLeft: 5, marginRight: 0 }]}>• {CalculateElapsedTime(post.created)}</Text>
                         <View style={styles.spacer} />
                         <TouchableOpacity style={{ backgroundColor: "#000", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 }}>
                             <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Follow</Text>
@@ -125,9 +125,9 @@ const CommentScreen = ({route})=>{
                 </View>
             </View>
             
-            <Text style={[styles.postText, { marginTop: 12 }]}>{originalPost.content}</Text>
+            <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
         </View>
-    );
+    )};
 
     const renderCommentItem = ({ item }) => (
         <View style={styles.commentContainer}>
@@ -167,6 +167,12 @@ const CommentScreen = ({route})=>{
     return(
         <View style={styles.container}>
             {renderHeader()}
+            {loading ? (
+                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                    <ActivityIndicator size="large" color={AppDetails.primaryColor} />
+                </View>
+            ) : (
+            <>
             <FlatList
                 data={comments}
                 keyExtractor={item => item.id}
@@ -187,10 +193,10 @@ const CommentScreen = ({route})=>{
                         style={styles.inputAvatar} 
                     />
                     <View style={styles.inputFieldContainer}>
-                        <Text style={styles.replyingTo}>Replying to {originalPost.user.name}</Text>
+                        <Text style={styles.replyingTo}>Replying to {post?.user?.full_name}</Text>
                         <TextInput
                             style={styles.textInput}
-                            placeholder={`Reply to ${originalPost.user.name}...`}
+                            placeholder={`Reply to ${post?.user?.full_name}...`}
                             placeholderTextColor="#999"
                             multiline
                             value={replyText}
@@ -202,6 +208,8 @@ const CommentScreen = ({route})=>{
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
+            </>
+            )}
         </View>
     )
 }
