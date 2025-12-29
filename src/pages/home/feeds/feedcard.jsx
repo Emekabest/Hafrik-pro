@@ -81,23 +81,6 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         }
     }, [thumbnail, targetHeight, maxWidth]);
 
-    const navigation = useNavigation();
-    useEffect(() => {
-        const unsubscribeBlur = navigation.addListener('blur', () => {
-            video.current?.unloadAsync();
-        });
-        const unsubscribeFocus = navigation.addListener('focus', () => {
-            if (video.current && cachedUri) {
-                video.current.loadAsync({ uri: cachedUri });
-            }
-        });
-
-        return () => {
-            unsubscribeBlur();
-            unsubscribeFocus();
-        };
-    }, [navigation, cachedUri]);
-
     useEffect(() => {
         if (currentPlayingId === uniqueId && isFocused) {
             video.current?.playAsync();
@@ -237,23 +220,6 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const uniqueId = `${parentFeedId}_video_0`;
-
-    const navigation = useNavigation();
-    useEffect(() => {
-        const unsubscribeBlur = navigation.addListener('blur', () => {
-            singleVideoRef.current?.unloadAsync();
-        });
-        const unsubscribeFocus = navigation.addListener('focus', () => {
-            if (singleVideoRef.current && cachedUri) {
-                singleVideoRef.current.loadAsync({ uri: cachedUri });
-            }
-        });
-
-        return () => {
-            unsubscribeBlur();
-            unsubscribeFocus();
-        };
-    }, [navigation, cachedUri]);
 
     useEffect(() => {
         if (currentPlayingId === uniqueId && isFocused) {
@@ -748,23 +714,6 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isBuffering, setIsBuffering] = useState(false);
 
     const uniqueId = `${parentFeedId}_shared`;
-
-    const navigation = useNavigation();
-    useEffect(() => {
-        const unsubscribeBlur = navigation.addListener('blur', () => {
-            videoRef.current?.unloadAsync();
-        });
-        const unsubscribeFocus = navigation.addListener('focus', () => {
-            if (videoRef.current && cachedUri) {
-                videoRef.current.loadAsync({ uri: cachedUri });
-            }
-        });
-
-        return () => {
-            unsubscribeBlur();
-            unsubscribeFocus();
-        };
-    }, [navigation, cachedUri]);
 
     useEffect(() => {
         if (currentPlayingId === uniqueId && isFocused) {
