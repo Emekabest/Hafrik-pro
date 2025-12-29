@@ -18,7 +18,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from "../../../AuthContext";
 import AppDetails from "../../../helpers/appdetails";
-import GetCommentsController from '../../../controllers/getcommentscontroller';
+import {AddCommentController, GetCommentsController} from '../../../controllers/commentscontroller';
 import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
