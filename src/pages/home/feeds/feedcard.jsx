@@ -3,7 +3,6 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithou
 import { Video, ResizeMode } from 'expo-av';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
-import { useVideoCache } from "../../../helpers/videocache";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
@@ -93,7 +92,6 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
 });
 
 const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId, isFocused }) => {
-    const { cachedUri, isCaching } = useVideoCache(videoUrl);
     const [width, setWidth] = useState(() => {
         if (thumbnail && aspectRatioCache.has(thumbnail)) {
             return Math.min(targetHeight * aspectRatioCache.get(thumbnail), maxWidth);
@@ -161,7 +159,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 ref={video}
                 style={{ width: "100%", height: "100%" }}
                 source={{
-                    uri: cachedUri,
+                    uri: videoUrl,
                 }}
                 shouldPlay={currentPlayingId === uniqueId && isFocused}
                 useNativeControls={false}
@@ -264,7 +262,6 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
     const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
-    const { cachedUri, isCaching } = useVideoCache(media.length > 0 && !isMultiMedia ? mediaItem.video_url : null);
     const [isMuted, setIsMuted] = useState(false);
     
     const [aspectRatio, setAspectRatio] = useState(() => {
@@ -335,7 +332,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     <Video
                         ref={singleVideoRef}
                         style={{height:"100%", width: "100%"}}
-                        source={{ uri: cachedUri }}
+                        source={{ uri: mediaItem ? mediaItem.video_url : null }}
                         shouldPlay={currentPlayingId === uniqueId && isFocused}
                         useNativeControls={false}
                         isMuted={isMuted}
@@ -753,8 +750,6 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
     const [isMuted, setIsMuted] = useState(false);
 
-    const { cachedUri, isCaching } = useVideoCache(isVideo && mediaItem ? mediaItem.video_url : null);
-
     const mediaUrl = mediaItem ? (isVideo ? mediaItem.thumbnail : mediaItem.url) : null;
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
@@ -823,7 +818,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 <Video
                                     ref={videoRef}
                                     style={{ width: "100%", height: "100%" }}
-                                    source={{ uri: cachedUri }}
+                                    source={{ uri: mediaItem ? mediaItem.video_url : null }}
                                     shouldPlay={currentPlayingId === uniqueId && isFocused}
                                     resizeMode={ResizeMode.CONTAIN}
                                     posterSource={{ uri: mediaItem.thumbnail }}

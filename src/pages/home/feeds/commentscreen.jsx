@@ -22,10 +22,8 @@ import {AddCommentController, GetCommentsController} from '../../../controllers/
 import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
-import { useVideoCache } from "../../../helpers/videocache";
 
 const CommentVideoItem = ({ videoUrl, thumbnail }) => {
-    const { cachedUri, isCaching } = useVideoCache(videoUrl);
     const videoRef = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
@@ -61,7 +59,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
             <Video
                 ref={videoRef}
                 style={{ width: "100%", height: "100%" }}
-                source={{ uri: cachedUri }}
+                source={{ uri: videoUrl }}
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}
                 usePoster={false}
