@@ -119,7 +119,7 @@ const Feeds = ()=>{
     }).current;
 
     const viewabilityConfig = useRef({
-        itemVisiblePercentThreshold: 75, // Item must be 75% visible to be considered "viewable"
+        itemVisiblePercentThreshold: 50, // Item must be 50% visible to be considered "viewable"
         waitForInteraction: true,
     }).current;
 

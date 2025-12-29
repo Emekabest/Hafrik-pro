@@ -727,55 +727,6 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     // containerRight padding (5*2) + shared post border (1*2) + shared post padding (10*2)
     const mediaWidth = screenWidth * 0.87 - 10 - 2 - 20;
 
-    const renderMedia = () => {
-        if (!mediaItem) return null;
-
-        return (
-            <View style={{ width: '100%', aspectRatio: aspectRatio, marginTop: 10 }}>
-                {isVideo ? (
-                    <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
-                        <Video
-                            ref={videoRef}
-                            style={{ width: "100%", height: "100%" }}
-                            source={{ uri: cachedUri }}
-                            resizeMode={ResizeMode.CONTAIN}
-                            posterSource={{ uri: mediaItem.thumbnail }}
-                            posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}
-                            usePoster={true}
-                            useNativeControls={false}
-                            isMuted={isMuted}
-                            isLooping={true}
-                            onLoad={(status) => {
-                                if (status.naturalSize && status.naturalSize.height > 0 && !aspectRatioCache.has(mediaUrl)) {
-                                    const ratio = status.naturalSize.width / status.naturalSize.height;
-                                    setAspectRatio(ratio);
-                                    if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
-                                }
-                            }}
-                            onPlaybackStatusUpdate={status => {
-                                setIsPlaying(status.isPlaying);
-                                setIsBuffering(status.isBuffering);
-                                if (status.didJustFinish) setIsFinished(true);
-                                if (status.isPlaying) {
-                                    setIsFinished(false);
-                                }
-                            }}
-                        />
-                        <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: ((isBuffering || isCaching) && !isPlaying) ? 1 : 0}]} pointerEvents="none">
-                            <ActivityIndicator size="large" color="#fff" animating={(isBuffering || isCaching) && !isPlaying} />
-                        </View>
-
-                        <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
-                            <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} resizeMode="cover" />
-                )}
-            </View>
-        )
-    }
-
     return (
         <View style={styles.sharedPostContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -789,7 +740,50 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             {post.type === 'poll' ? (
                 <PollPostContent feed={post} />
             ) : (
-                renderMedia()
+                mediaItem ? (
+                    <View style={{ width: 300, height: 600, marginTop: 10, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
+                        {isVideo ? (
+                            <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
+                                <Video
+                                    ref={videoRef}
+                                    style={{ width: "100%", height: "100%" }}
+                                    source={{ uri: cachedUri }}
+                                    resizeMode={ResizeMode.CONTAIN}
+                                    posterSource={{ uri: mediaItem.thumbnail }}
+                                    posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}
+                                    usePoster={true}
+                                    useNativeControls={false}
+                                    isMuted={isMuted}
+                                    isLooping={true}
+                                    onLoad={(status) => {
+                                        if (status.naturalSize && status.naturalSize.height > 0 && !aspectRatioCache.has(mediaUrl)) {
+                                            const ratio = status.naturalSize.width / status.naturalSize.height;
+                                            setAspectRatio(ratio);
+                                            if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
+                                        }
+                                    }}
+                                    onPlaybackStatusUpdate={status => {
+                                        setIsPlaying(status.isPlaying);
+                                        setIsBuffering(status.isBuffering);
+                                        if (status.didJustFinish) setIsFinished(true);
+                                        if (status.isPlaying) {
+                                            setIsFinished(false);
+                                        }
+                                    }}
+                                />
+                                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: ((isBuffering || isCaching) && !isPlaying) ? 1 : 0}]} pointerEvents="none">
+                                    <ActivityIndicator size="large" color="#fff" animating={(isBuffering || isCaching) && !isPlaying} />
+                                </View>
+
+                                <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
+                                    <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} resizeMode="contain" />
+                        )}
+                    </View>
+                ) : null
             )}
         </View>
     );
