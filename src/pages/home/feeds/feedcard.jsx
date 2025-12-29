@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator, Animated } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator, Animated, TextInput } from "react-native";
 import { Video, ResizeMode } from 'expo-av';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
@@ -8,6 +8,7 @@ import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import { useAuth } from "../../../AuthContext";
 import getUserPostInteractionController from "../../../controllers/getuserpostinteractioncontroller";
+import ShareModal from "./share";
 
 
 const aspectRatioCache = new Map();
@@ -952,6 +953,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
     const isFocused = useIsFocused();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
+    const [showShareOptions, setShowShareOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     const [liked, setLiked] = useState(false);
@@ -1128,9 +1130,8 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
                         <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>{feed.comments_count}</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style = {[styles.shareSection, styles.engagementBarViews]}>
-                        <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                        <Text style ={styles.engagementCount}>29</Text>
+                    <TouchableOpacity style = {[styles.shareSection, styles.engagementBarViews]} onPress={() => setShowShareOptions(true)}>
+                        <Ionicons name="share-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
                         <Ionicons name="star-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
@@ -1169,6 +1170,8 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
+
+            <ShareModal visible={showShareOptions} onClose={() => setShowShareOptions(false)} feed={feed} />
 
             <Modal visible={!!fullScreenImage} transparent={true} onRequestClose={() => setFullScreenImage(null)} animationType="fade">
                 <View style={styles.fullScreenContainer}>
@@ -1369,7 +1372,6 @@ const styles = StyleSheet.create({
     },
     bottomSheetContent: {
         backgroundColor: '#fff',
-        height: '50%',
         width: '100%',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
