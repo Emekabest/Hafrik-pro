@@ -15,18 +15,14 @@ const AddCommentController = async(post_id, comment, token)=>{
             }
         })
 
-        console.log(response.data)
 
-        return {status:response.status, data:response.data.data.data}
+        return {status:response.status, data:response.data.data}
     }
     catch(error){
 
         console.log(error.message)
         return {status:error.response.status, data:error.response.data}
     }
-
-
-
 }
     
 

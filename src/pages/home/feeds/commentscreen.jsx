@@ -192,29 +192,40 @@ const CommentScreen = ({route})=>{
         setReplyingTo(null);
     };
 
-    const handlePostComment = () => {
+    const handlePostComment = async () => {
         if (!replyText.trim()) return;
         
-        const newComment = {
-            id: Date.now().toString(),
-            user: user,
-            text: replyText,
-            created: new Date().toISOString(),
-            replies: []
-        };
-
-        if (replyingTo) {
-            setComments(prev => prev.map(c => {
-                if (c.id === replyingTo.id) {
-                    return { ...c, replies: [...(c.replies || []), newComment] };
-                }
-                return c;
-            }));
-            setReplyingTo(null);
-        } else {
-            setComments(prev => [newComment, ...prev]);
-        }
+        const text = replyText;
+        const parentId = replyingTo ? replyingTo.id : null;
+        
         setReplyText("");
+        setReplyingTo(null);
+
+        const response = await AddCommentController(feedId, text, token, parentId);
+
+
+        console.log(response.data)
+        if ((response.status === "success" || response.status === 200) && response.data) {
+            const responseData = response.data;
+            const newComment = {
+                id: responseData.comment_id ? String(responseData.comment_id) : Date.now().toString(),
+                user: user,
+                text: responseData.comment || text,
+                created: new Date().toISOString(),
+                replies: []
+            };
+
+            if (parentId) {
+                setComments(prev => prev.map(c => {
+                    if (c.id === parentId) {
+                        return { ...c, replies: [...(c.replies || []), newComment] };
+                    }
+                    return c;
+                }));
+            } else {
+                setComments(prev => [newComment, ...prev]);
+            }
+        }
     };
 
     const renderMedia = () => {
