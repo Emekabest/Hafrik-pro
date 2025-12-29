@@ -672,21 +672,24 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-    const [liked, setLiked] = useState();
+    const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(parseInt(feed.likes_count) || 0);
-
+    const { token } = useAuth();
 
     useEffect(()=>{
 
         const getUserPostInteraction = async()=>{
-            const response = await getUserPostInteractionController(feed.id, token)
-            setLiked(response.data.liked)
+            if(token){
+                const response = await getUserPostInteractionController(feed.id, token)
+                
+                if(response && response.data){
+                    setLiked(!!response.data.liked)
+                }
+            }
         }
 
         getUserPostInteraction()
-    },[])
-
-    const { token } = useAuth();
+    },[feed.id, token])
     
     const iconRef = useRef(null);
 

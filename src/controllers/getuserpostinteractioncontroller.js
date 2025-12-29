@@ -13,7 +13,7 @@ const getUserPostInteractionController = async(post_id, token)=>{
         })
 
     
-        return {status:response.status, data:response.data}
+        return {status:response.status, data:response.data.data}
     }
     catch(error){
 
