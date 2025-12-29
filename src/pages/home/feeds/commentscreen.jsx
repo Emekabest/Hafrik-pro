@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
     StyleSheet, 
     View, 
@@ -10,15 +10,74 @@ import {
     KeyboardAvoidingView, 
     Platform,
     Dimensions,
-    ActivityIndicator
+    ActivityIndicator,
+    ScrollView
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Video, ResizeMode } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from "../../../AuthContext";
 import AppDetails from "../../../helpers/appdetails";
 import GetCommentsController from '../../../controllers/getcommentscontroller';
 import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
+import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
+import { useVideoCache } from "../../../helpers/videocache";
+
+const CommentVideoItem = ({ videoUrl, thumbnail }) => {
+    const { cachedUri, isCaching } = useVideoCache(videoUrl);
+    const videoRef = useRef(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
+    const [isFinished, setIsFinished] = useState(false);
+
+    return (
+        <View style={{ height: 250, width: '100%', borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#000' }}>
+            <Video
+                ref={videoRef}
+                style={{ width: "100%", height: "100%" }}
+                source={{ uri: cachedUri }}
+                useNativeControls
+                resizeMode={ResizeMode.CONTAIN}
+                posterSource={{ uri: thumbnail }}
+                usePoster={true}
+                onPlaybackStatusUpdate={status => {
+                    setIsPlaying(status.isPlaying);
+                    setIsBuffering(status.isBuffering);
+                    if (status.didJustFinish) {
+                        setIsFinished(true);
+                    }
+                    if (status.isPlaying) {
+                        setIsFinished(false);
+                    }
+                }}
+            />
+            
+            {(isBuffering || isCaching) && (
+                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]} pointerEvents="none">
+                    <ActivityIndicator size="large" color="#fff" />
+                </View>
+            )}
+
+            {(!isPlaying && !isBuffering && !isCaching) && (
+                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
+                    <TouchableOpacity 
+                        onPress={() => {
+                            if (isFinished) {
+                                videoRef.current?.replayAsync();
+                            } else {
+                                videoRef.current?.playAsync();
+                            }
+                        }}
+                        style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 10}}
+                    >
+                        <Ionicons name="play" size={30} color="white" />
+                    </TouchableOpacity>
+                </View>
+            )}
+        </View>
+    );
+};
 
 const CommentScreen = ({route})=>{
     const navigation = useNavigation();
@@ -26,6 +85,8 @@ const CommentScreen = ({route})=>{
     const [replyText, setReplyText] = useState("");
     const [post, setPost] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [liked, setLiked] = useState(false);
+    const [likeCount, setLikeCount] = useState(0);
     const { feedId } = route.params;
 
     
@@ -84,8 +145,9 @@ const CommentScreen = ({route})=>{
             setLoading(true);
             const response = await getUserPostInteractionController(feedId, token);
             if(response.status === 200){
-                console.log(response.data);
                 setPost(response.data);
+                setLiked(!!response.data.liked);
+                setLikeCount(parseInt(response.data.likes_count) || 0);
             }
             
             // const commentsResponse = await GetCommentsController(feedId, token)
@@ -95,6 +157,47 @@ const CommentScreen = ({route})=>{
         getData()
     },[feedId, token])
 
+    const handleLike = async() => {  
+        setLiked(!liked);
+        setLikeCount(prev => liked ? prev - 1 : prev + 1);
+        await ToggleFeedController(feedId, token);
+    };
+
+    const renderMedia = () => {
+        if (!post || !post.media || post.media.length === 0) return null;
+        
+        const isVideo = post.type === 'video' || post.type === 'reel';
+        const screenWidth = Dimensions.get('window').width;
+        const contentWidth = screenWidth - 30; // 15 padding each side
+
+        if (isVideo) {
+            const mediaItem = post.media[0];
+            return <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} />;
+        }
+
+        if (post.media.length > 1) {
+            return (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                    {post.media.map((item, index) => (
+                        <Image 
+                            key={index}
+                            source={{ uri: item.url }}
+                            style={{ height: 250, width: contentWidth, borderRadius: 10, marginRight: 10 }}
+                            resizeMode="cover"
+                        />
+                    ))}
+                </ScrollView>
+            );
+        }
+
+        return (
+            <Image 
+                source={{ uri: post.media[0].url }}
+                style={{ height: 250, width: '100%', borderRadius: 10, marginTop: 10 }}
+                resizeMode="cover"
+            />
+        );
+    };
 
     const renderHeader = () => (
         <View style={styles.header}>
@@ -126,6 +229,25 @@ const CommentScreen = ({route})=>{
             </View>
             
             <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
+            {renderMedia()}
+
+            <View style={styles.engagementBar}>
+                <TouchableOpacity style={styles.engagementItem} onPress={handleLike}>
+                    <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
+                    <Text style={styles.engagementText}>{likeCount}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.engagementItem}>
+                    <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                    <Text style={styles.engagementText}>{post.comments_count}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.engagementItem}>
+                    <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                    <Text style={styles.engagementText}>29</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.engagementItem}>
+                    <Ionicons name="star-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                </TouchableOpacity>
+            </View>
         </View>
     )};
 
@@ -241,7 +363,22 @@ const styles = StyleSheet.create({
     replyingTo: { fontSize: 11, color: '#999', marginBottom: 4 },
     textInput: { fontSize: 15, color: '#000', maxHeight: 100, paddingTop: 0, paddingBottom: 0 },
     postButton: { color: AppDetails.primaryColor || '#0095f6', fontWeight: '600', fontSize: 15, marginTop: 10 },
-    disabledPostButton: { opacity: 0.4 }
+    disabledPostButton: { opacity: 0.4 },
+    engagementBar: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 15,
+        width: '90%',
+    },
+    engagementItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    engagementText: {
+        marginLeft: 5,
+        fontSize: 13,
+        color: '#333',
+    },
 })
 
 export default CommentScreen;
