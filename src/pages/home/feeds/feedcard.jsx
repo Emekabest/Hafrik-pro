@@ -842,6 +842,23 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
             {post.type === 'poll' ? (
                 <PollPostContent feed={post} />
+            ) : post.type === 'article' && post.payload ? (
+                <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: post.id})} activeOpacity={0.8} style={{ marginTop: 10 }}>
+                    {post.payload.cover && (
+                        <Image 
+                            source={{ uri: post.payload.cover }} 
+                            style={{ width: '100%', height: 160, borderRadius: 8, backgroundColor: '#f0f0f0' }} 
+                            resizeMode="cover" 
+                        />
+                    )}
+                    <View style={{ marginTop: 8 }}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#333' }} numberOfLines={2}>{post.payload.title}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                            <Text style={{ fontSize: 12, color: '#787878', fontWeight: '500' }}>Read article</Text>
+                            <Ionicons name="arrow-forward" size={12} color="#787878" style={{ marginLeft: 2 }} />
+                        </View>
+                    </View>
+                </TouchableOpacity>
             ) : (
                 mediaItem ? (
                     hasError ? (
