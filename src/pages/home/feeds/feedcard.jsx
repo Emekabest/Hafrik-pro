@@ -627,7 +627,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
                 <View style={{ marginLeft: 10 }}>
-                    <Text style={{ fontWeight: 'bold' }}>{post.user.username}</Text>
+                    <Text style={{ fontWeight: 'bold' }}>{post.user.full_name}</Text>
                     <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
                 </View>
             </View>
@@ -696,14 +696,18 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
         Alert.alert("Save Image", "Image saved to gallery!");
     };
 
+
+    /**Handles when the user likes a feed post */
     const handleLike = async() => {  
         setLiked(!liked);
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
 
-        console.log(feed.id)
-
         const response = await ToggleFeedController(feed.id, token)
+        console.log(response)
     };
+    /**.................................................................... */
+
+
 
     const getActionText = () => {
         if (feed.type === 'product') {
@@ -775,9 +779,9 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
 
             <View style = {styles.containerRight}>
                 <View style = {styles.firstSection}>
-                    <View style = {styles.usernameSection}>
+                    <View style = {styles.fullnameSection}>
                         <Text style={{marginBottom: 4, flexWrap: 'wrap'}}>
-                            <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.username}</Text>
+                            <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.full_name}</Text>
                             <Text style={{color: "#333"}}>{getActionText()}</Text>
                         </Text>
                         <Text style = {{color:"#787878ff", fontSize: 12}}>{CalculateElapsedTime(feed.created)}</Text>
@@ -915,7 +919,7 @@ const styles = StyleSheet.create({
         // alignItems:"center",
     },
 
-    usernameSection:{
+    fullnameSection:{
         width:"80%",
         display:"flex",
         flexDirection:"column",

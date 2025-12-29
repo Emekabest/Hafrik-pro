@@ -886,7 +886,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         borderRadius: 50,
         
-        
     },
 
     postButtonText: {
