@@ -8,6 +8,7 @@ import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import { useAuth } from "../../../AuthContext";
+import getUserPostInteractionController from "../../../controllers/getuserpostinteractioncontroller";
 
 
 const aspectRatioCache = new Map();
@@ -664,15 +665,26 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 
 // #endregion
 
-//MAIN CARD......................................................
+//MAIN CARD.........................................................
 const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
     const navigation = useNavigation();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-    const [liked, setLiked] = useState(false);
+    const [liked, setLiked] = useState();
     const [likeCount, setLikeCount] = useState(parseInt(feed.likes_count) || 0);
+
+
+    useEffect(()=>{
+
+        const getUserPostInteraction = async()=>{
+            const response = await getUserPostInteractionController(feed.id, token)
+            setLiked(response.data.liked)
+        }
+
+        getUserPostInteraction()
+    },[])
 
     const { token } = useAuth();
     
