@@ -167,7 +167,7 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
     return (
         <View style={[
             styles.mediaSection,
-            { height: isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240) },
+            { height: isMultiMedia ? 600 : undefined },
             { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
         ]}>
             {isMultiMedia ? (
@@ -176,19 +176,19 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
                         <FeedImageItem
                             key={index}
                             uri={item.url}
-                            targetHeight={250}
-                            maxWidth={imageWidth}
+                            targetHeight={600}
+                            maxWidth={300}
                             marginRight={10}
                             onPress={() => onImagePress(item.url)}
                         />
                     ))}
                 </ScrollView>
             ) : (
-                <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{flex: 1}}>
+                <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{marginLeft: leftOffset, width: 300, height: 600, borderRadius: 10, backgroundColor: '#000'}}>
                     <Image
                         source={{uri: media[0].url}}
-                        style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
-                        resizeMode="cover"
+                        style={{height:"100%", width: "100%", borderRadius: 10}}
+                        resizeMode="contain"
                     />
                 </TouchableOpacity>
             )}
@@ -244,7 +244,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     return (
         <View style={[
             styles.mediaSection,
-            { height: isMultiMedia ? 250 : (aspectRatio ? imageWidth / aspectRatio : 240) },
+            { height: isMultiMedia ? 600 : undefined },
             { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
         ]}>
             {isMultiMedia ? (
@@ -254,8 +254,8 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             key={index}
                             videoUrl={item.video_url}
                             thumbnail={item.thumbnail}
-                            targetHeight={250}
-                            maxWidth={imageWidth}
+                            targetHeight={600}
+                            maxWidth={300}
                             marginRight={10}
                             currentPlayingId={currentPlayingId}
                             setCurrentPlayingId={setCurrentPlayingId}
@@ -265,7 +265,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     ))}
                 </ScrollView>
             ) : (
-                <View style={{height: "100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
+                <View style={{width: 300, height: 600, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
                     <Video
                         ref={singleVideoRef}
                         style={{height:"100%", width: "100%"}}
@@ -731,7 +731,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
         if (!mediaItem) return null;
 
         return (
-            <View style={{ width: '100%', height: mediaWidth / aspectRatio, marginTop: 10 }}>
+            <View style={{ width: '100%', aspectRatio: aspectRatio, marginTop: 10 }}>
                 {isVideo ? (
                     <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
                         <Video
