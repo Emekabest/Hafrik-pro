@@ -15,21 +15,23 @@ const Feeds = ()=>{
     const [feeds, setFeeds] = useState([])
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
     const [currentPlayingId, setCurrentPlayingId] = useState(null);
     const { token } = useAuth();
 
 
     useEffect(()=>{
         const getFeeds = async()=>{
-
+            setInitialLoading(true);
             const response = await GetFeedsController(token, 1);   
             setFeeds(response.data);
+            setInitialLoading(false);
         }
         getFeeds()
     },[])
 
     const handleLoadMore = async () => {
-        if (loadingMore) return;
+        if (loadingMore || initialLoading) return;
         
         setLoadingMore(true);
         const nextPage = page + 1;
