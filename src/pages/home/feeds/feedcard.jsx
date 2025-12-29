@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator, Animated } from "react-native";
 import { Video, ResizeMode } from 'expo-av';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
@@ -13,6 +13,38 @@ import getUserPostInteractionController from "../../../controllers/getuserpostin
 
 const aspectRatioCache = new Map();
 
+const SkeletonLoader = ({ style }) => {
+    const animValue = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(animValue, {
+                    toValue: 1,
+                    duration: 800,
+                    useNativeDriver: false,
+                }),
+                Animated.timing(animValue, {
+                    toValue: 0,
+                    duration: 800,
+                    useNativeDriver: false,
+                }),
+            ])
+        );
+        animation.start();
+        return () => animation.stop();
+    }, []);
+
+    const backgroundColor = animValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['#f3f3f3', '#dddddd']
+    });
+
+    return (
+        <Animated.View style={[style, { backgroundColor }]} />
+    );
+};
+
 // #region Media Item Components
 const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress }) => {
     const [width, setWidth] = useState(() => {
@@ -21,6 +53,7 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
         }
         return maxWidth;
     });
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         if (aspectRatioCache.has(uri)) {
@@ -37,16 +70,23 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
 
 
     return (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.9} style={{
+            height: "100%",
+            width: width,
+            marginRight: marginRight,
+            borderRadius: 10,
+            overflow: 'hidden',
+        }}>
+            {isLoading && <SkeletonLoader style={StyleSheet.absoluteFill} />}
             <Image
                 source={{ uri: uri }}
                 style={{
                     height: "100%",
-                    width: width,
-                    marginRight: marginRight,
-                    borderRadius: 10,
+                    width: "100%",
                 }}
                 resizeMode="contain"
+                onLoadStart={() => setIsLoading(true)}
+                onLoadEnd={() => setIsLoading(false)}
             />
         </TouchableOpacity>
     );
@@ -165,6 +205,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
 const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onImagePress }) => {
     const isMultiMedia = media.length > 1;
     const mediaUrl = media.length > 0 ? media[0].url : null;
+    const [isLoading, setIsLoading] = useState(true);
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
             return aspectRatioCache.get(mediaUrl);
@@ -204,11 +245,14 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
                     ))}
                 </ScrollView>
             ) : (
-                <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{marginLeft: leftOffset, width: 300, height: 600, borderRadius: 10, backgroundColor: '#000'}}>
+                <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{marginLeft: leftOffset, width: 300, height: 600, borderRadius: 10, backgroundColor: '#000', overflow: 'hidden'}}>
+                    {isLoading && <SkeletonLoader style={StyleSheet.absoluteFill} />}
                     <Image
                         source={{uri: media[0].url}}
                         style={{height:"100%", width: "100%", borderRadius: 10}}
                         resizeMode="contain"
+                        onLoadStart={() => setIsLoading(true)}
+                        onLoadEnd={() => setIsLoading(false)}
                     />
                 </TouchableOpacity>
             )}
@@ -742,6 +786,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isFinished, setIsFinished] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [isImageLoading, setIsImageLoading] = useState(true);
 
     const uniqueId = `${parentFeedId}_shared`;
 
@@ -817,7 +862,10 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 </TouchableOpacity>
                             </View>
                         ) : (
-                            <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} resizeMode="contain" />
+                            <>
+                                {isImageLoading && <SkeletonLoader style={StyleSheet.absoluteFill} />}
+                                <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} resizeMode="contain" onLoadStart={() => setIsImageLoading(true)} onLoadEnd={() => setIsImageLoading(false)} />
+                            </>
                         )}
                     </View>
                     )
