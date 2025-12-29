@@ -523,6 +523,58 @@ const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
     );
 });
 
+const ArticlePostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress }) => {
+    const payload = feed.payload;
+    if (!payload) return null;
+    
+    const coverUrl = payload.cover;
+    const title = payload.title;
+
+    const [aspectRatio, setAspectRatio] = useState(() => {
+        if (coverUrl && aspectRatioCache.has(coverUrl)) {
+            return aspectRatioCache.get(coverUrl);
+        }
+        return null;
+    });
+
+    useEffect(() => {
+        if (coverUrl && !aspectRatioCache.has(coverUrl)) {
+            Image.getSize(coverUrl, (width, height) => {
+                const ratio = width / height;
+                aspectRatioCache.set(coverUrl, ratio);
+                setAspectRatio(ratio);
+            }, (error) => console.log(error));
+        }
+    }, [coverUrl]);
+
+    return (
+        <View style={{ marginTop: 5 }}>
+             <View style={[
+                styles.mediaSection,
+                { height: aspectRatio ? imageWidth / aspectRatio : 240 },
+                { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
+            ]}>
+                {coverUrl ? (
+                    <TouchableOpacity onPress={() => onImagePress(coverUrl)} activeOpacity={1} style={{flex: 1}}>
+                        <Image
+                            source={{uri: coverUrl}}
+                            style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
+                            resizeMode="cover"
+                        />
+                    </TouchableOpacity>
+                ) : null}
+            </View>
+            <View style={{ marginTop: 10, paddingRight: 5 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333', lineHeight: 22 }}>{title}</Text>
+                <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 5}}>
+                     <Text style={{ fontSize: 12, color: '#787878', fontWeight: '500' }}>Read article</Text>
+                     <Ionicons name="arrow-forward" size={12} color="#787878" style={{marginLeft: 2}} />
+                </View>
+            </View>
+        </View>
+    );
+});
+
 const PollPostContent = memo(({ feed }) => {
     let options = [];
 
@@ -746,6 +798,10 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
         return <ProductPostContent feed={feed} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} />;
     }
 
+    if (feed.type === 'article') {
+        return <ArticlePostContent feed={feed} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
+    }
+
     if (feed.type === 'poll') {
         return <PollPostContent feed={feed} />;
     }
@@ -826,6 +882,9 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, toggle
     const getActionText = () => {
         if (feed.type === 'product') {
             return " added product for sale";
+        }
+        if (feed.type === 'article') {
+            return " added a blog";
         }
         if (feed.type === 'poll') {
             return " created a poll";
