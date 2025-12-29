@@ -81,14 +81,6 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         }
     }, [thumbnail, targetHeight, maxWidth]);
 
-    useEffect(() => {
-        if (currentPlayingId === uniqueId && isFocused) {
-            video.current?.playAsync();
-        } else {
-            video.current?.pauseAsync(); 
-        }
-    }, [currentPlayingId, uniqueId, isFocused]);
-
     //Create a function that says hello world
     const sayHelloWorld = () => {
         console.log("Hello World");
@@ -109,6 +101,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 source={{
                     uri: cachedUri,
                 }}
+                shouldPlay={currentPlayingId === uniqueId && isFocused}
                 useNativeControls={false}
                 isMuted={isMuted}
                 resizeMode={ResizeMode.CONTAIN}
@@ -126,9 +119,10 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                         setIsFinished(false);
                     }
                 }}
+                onLoadStart={() => setIsBuffering(true)}
             />
-            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: ((isBuffering || isCaching) && !isPlaying) ? 1 : 0}]} pointerEvents="none">
-                <ActivityIndicator size="large" color="#fff" animating={(isBuffering || isCaching) && !isPlaying} />
+            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
+                <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
             </View>
             
             <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
@@ -222,14 +216,6 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const uniqueId = `${parentFeedId}_video_0`;
 
     useEffect(() => {
-        if (currentPlayingId === uniqueId && isFocused) {
-            singleVideoRef.current?.playAsync();
-        } else {
-            singleVideoRef.current?.pauseAsync();
-        }
-    }, [currentPlayingId, uniqueId, isFocused]);
-
-    useEffect(() => {
         if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
             Image.getSize(mediaUrl, (width, height) => {
                 const ratio = width / height;
@@ -270,6 +256,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         ref={singleVideoRef}
                         style={{height:"100%", width: "100%"}}
                         source={{ uri: cachedUri }}
+                        shouldPlay={currentPlayingId === uniqueId && isFocused}
                         useNativeControls={false}
                         isMuted={isMuted}
                         isLooping={true}
@@ -292,9 +279,10 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                                 setIsSingleVideoFinished(false);
                             }
                         }}
+                        onLoadStart={() => setIsSingleVideoBuffering(true)}
                     />
-                    <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: ((isSingleVideoBuffering || isCaching) && !isSingleVideoPlaying) ? 1 : 0}]} pointerEvents="none">
-                        <ActivityIndicator size="large" color="#fff" animating={(isSingleVideoBuffering || isCaching) && !isSingleVideoPlaying} />
+                    <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isSingleVideoBuffering && !isSingleVideoPlaying) ? 1 : 0}]} pointerEvents="none">
+                        <ActivityIndicator size="large" color="#fff" animating={isSingleVideoBuffering && !isSingleVideoPlaying} />
                     </View>
 
                     <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
@@ -715,14 +703,6 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
 
     const uniqueId = `${parentFeedId}_shared`;
 
-    useEffect(() => {
-        if (currentPlayingId === uniqueId && isFocused) {
-            videoRef.current?.playAsync();
-        } else {
-            videoRef.current?.pauseAsync();
-        }
-    }, [currentPlayingId, uniqueId, isFocused]);
-
     const screenWidth = Dimensions.get("window").width;
     // containerRight padding (5*2) + shared post border (1*2) + shared post padding (10*2)
     const mediaWidth = screenWidth * 0.87 - 10 - 2 - 20;
@@ -748,6 +728,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                     ref={videoRef}
                                     style={{ width: "100%", height: "100%" }}
                                     source={{ uri: cachedUri }}
+                                    shouldPlay={currentPlayingId === uniqueId && isFocused}
                                     resizeMode={ResizeMode.CONTAIN}
                                     posterSource={{ uri: mediaItem.thumbnail }}
                                     posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}
@@ -770,9 +751,10 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                             setIsFinished(false);
                                         }
                                     }}
+                                    onLoadStart={() => setIsBuffering(true)}
                                 />
-                                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: ((isBuffering || isCaching) && !isPlaying) ? 1 : 0}]} pointerEvents="none">
-                                    <ActivityIndicator size="large" color="#fff" animating={(isBuffering || isCaching) && !isPlaying} />
+                                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
+                                    <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
                                 </View>
 
                                 <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
