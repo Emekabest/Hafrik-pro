@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Video, ResizeMode } from 'expo-av';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuth } from "../../../AuthContext";
 import AppDetails from "../../../helpers/appdetails";
 import {AddCommentController, GetCommentsController} from '../../../controllers/commentscontroller';
@@ -30,6 +30,18 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
+    const isFocused = useIsFocused();
+
+    useEffect(() => {
+        const videoElement = videoRef.current;
+        if (!isFocused) {
+            videoElement?.pauseAsync();
+        }
+
+        return () => {
+            videoElement?.unloadAsync();
+        }
+    }, [isFocused]);
 
     return (
         <View style={{ height: 250, width: '100%', borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#000' }}>
@@ -297,9 +309,9 @@ const CommentScreen = ({route})=>{
         getData()
     },[feedId, token])
 
-
-
-
+    const sayHelloWorld = () => {
+        console.log("helloworld");
+    };
 
     const handleLike = async() => {  
         setLiked(!liked);
