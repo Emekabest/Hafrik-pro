@@ -109,24 +109,23 @@ const CommentScreen = ({route})=>{
     );
 
     const renderOriginalPost = () => (
-        <View style={styles.postContainer}>
-            <View style={styles.avatarColumn}>
+        <View style={[styles.postContainer, { flexDirection: 'column' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Image source={{ uri: originalPost.user.avatar }} style={styles.avatar} />
-                <View style={styles.threadLine} />
-            </View>
-            <View style={styles.contentColumn}>
-                <View style={styles.headerRow}>
-                    <Text style={styles.username}>{originalPost.user.name}</Text>
-                    {originalPost.user.verified && <Ionicons name="checkmark-circle" size={14} color="#1DA1F2" style={{marginLeft: 4}} />}
-                    <View style={styles.spacer} />
-                    <Text style={styles.timeText}>{originalPost.time}</Text>
-                    <TouchableOpacity style={styles.moreButton}>
-                        <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
-                    </TouchableOpacity>
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                    <View style={styles.headerRow}>
+                        <Text style={styles.username}>{originalPost.user.name}</Text>
+                        {originalPost.user.verified && <Ionicons name="checkmark-circle" size={14} color="#1DA1F2" style={{marginLeft: 4}} />}
+                        <Text style={[styles.timeText, { marginLeft: 5, marginRight: 0 }]}>• {originalPost.time}</Text>
+                        <View style={styles.spacer} />
+                        <TouchableOpacity style={{ backgroundColor: "#000", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Follow</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-                
-                <Text style={styles.postText}>{originalPost.content}</Text>
             </View>
+            
+            <Text style={[styles.postText, { marginTop: 12 }]}>{originalPost.content}</Text>
         </View>
     );
 
