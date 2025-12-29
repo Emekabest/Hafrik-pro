@@ -65,6 +65,28 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [isBuffering, setIsBuffering] = useState(false);
     const video = useRef(null);
     const [isMuted, setIsMuted] = useState(false);
+    const [hasError, setHasError] = useState(false);
+
+    if (hasError) {
+        return (
+            <View style={{
+                height: "100%",
+                width: width,
+                marginRight: marginRight,
+                borderRadius: 10,
+                overflow: 'hidden',
+                backgroundColor: '#202020',
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <Ionicons name="alert-circle-outline" size={24} color="#fff" />
+                <Text style={{color: '#fff', fontSize: 12, marginTop: 5, textAlign: 'center'}}>Something went wrong{'\n'}Please try again</Text>
+                <TouchableOpacity onPress={() => setHasError(false)} style={{marginTop: 10, padding: 5, backgroundColor: '#333', borderRadius: 5}}>
+                    <Text style={{color: '#fff', fontSize: 12}}>Retry</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     useEffect(() => {
         if (thumbnail) {
@@ -120,6 +142,10 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     }
                 }}
                 onLoadStart={() => setIsBuffering(true)}
+                onError={(error) => {
+                    setHasError(true);
+                    setIsBuffering(false);
+                }}
             />
             <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
                 <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
@@ -213,6 +239,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
+    const [isSingleVideoError, setIsSingleVideoError] = useState(false);
     const uniqueId = `${parentFeedId}_video_0`;
 
     useEffect(() => {
@@ -251,6 +278,15 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     ))}
                 </ScrollView>
             ) : (
+                isSingleVideoError ? (
+                    <View style={{width: 300, height: 600, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#202020', justifyContent: 'center', alignItems: 'center'}}>
+                        <Ionicons name="alert-circle-outline" size={30} color="#fff" />
+                        <Text style={{color: '#fff', fontSize: 14, marginTop: 10}}>Something went wrong</Text>
+                        <TouchableOpacity onPress={() => setIsSingleVideoError(false)} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#333', borderRadius: 20}}>
+                            <Text style={{color: '#fff', fontSize: 12}}>Try Again</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
                 <View style={{width: 300, height: 600, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
                     <Video
                         ref={singleVideoRef}
@@ -280,6 +316,10 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             }
                         }}
                         onLoadStart={() => setIsSingleVideoBuffering(true)}
+                        onError={(error) => {
+                            setIsSingleVideoError(true);
+                            setIsSingleVideoBuffering(false);
+                        }}
                     />
                     <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isSingleVideoBuffering && !isSingleVideoPlaying) ? 1 : 0}]} pointerEvents="none">
                         <ActivityIndicator size="large" color="#fff" animating={isSingleVideoBuffering && !isSingleVideoPlaying} />
@@ -289,6 +329,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
                     </TouchableOpacity>
                 </View>
+                )
             )}
         </View>
     );
@@ -700,6 +741,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isPlaying, setIsPlaying] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
+    const [hasError, setHasError] = useState(false);
 
     const uniqueId = `${parentFeedId}_shared`;
 
@@ -721,6 +763,15 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                 <PollPostContent feed={post} />
             ) : (
                 mediaItem ? (
+                    hasError ? (
+                        <View style={{ width: 300, height: 600, marginTop: 10, backgroundColor: '#202020', borderRadius: 10, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+                            <Ionicons name="alert-circle-outline" size={30} color="#fff" />
+                            <Text style={{color: '#fff', fontSize: 14, marginTop: 10}}>Something went wrong</Text>
+                            <TouchableOpacity onPress={() => setHasError(false)} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#333', borderRadius: 20}}>
+                                <Text style={{color: '#fff', fontSize: 12}}>Try Again</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
                     <View style={{ width: 300, height: 600, marginTop: 10, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
                         {isVideo ? (
                             <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
@@ -752,6 +803,10 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                         }
                                     }}
                                     onLoadStart={() => setIsBuffering(true)}
+                                    onError={(error) => {
+                                        setHasError(true);
+                                        setIsBuffering(false);
+                                    }}
                                 />
                                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
                                     <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
@@ -765,6 +820,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                             <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} resizeMode="contain" />
                         )}
                     </View>
+                    )
                 ) : null
             )}
         </View>

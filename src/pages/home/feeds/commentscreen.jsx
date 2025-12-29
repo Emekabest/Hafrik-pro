@@ -30,6 +30,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
+    const [hasError, setHasError] = useState(false);
     const isFocused = useIsFocused();
 
     useEffect(() => {
@@ -42,6 +43,18 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
             videoElement?.unloadAsync();
         }
     }, [isFocused]);
+
+    if (hasError) {
+        return (
+            <View style={{ height: 250, width: '100%', borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#202020', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="alert-circle-outline" size={30} color="#fff" />
+                <Text style={{color: '#fff', fontSize: 14, marginTop: 10}}>Something went wrong</Text>
+                <TouchableOpacity onPress={() => setHasError(false)} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#333', borderRadius: 20}}>
+                    <Text style={{color: '#fff', fontSize: 12}}>Try Again</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
         <View style={{ height: 250, width: '100%', borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#000' }}>
@@ -62,15 +75,20 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
                         setIsFinished(false);
                     }
                 }}
+                onLoadStart={() => setIsBuffering(true)}
+                onError={(error) => {
+                    setHasError(true);
+                    setIsBuffering(false);
+                }}
             />
             
-            {((isBuffering || isCaching) && !isPlaying) && (
+            {(isBuffering && !isPlaying) && (
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]} pointerEvents="none">
-                    <ActivityIndicator size="large" color="#fff" />
+                    <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
                 </View>
             )}
 
-            {(!isPlaying && !isBuffering && !isCaching) && (
+            {(!isPlaying && !isBuffering) && (
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                     <TouchableOpacity 
                         onPress={() => {
