@@ -53,7 +53,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
                 }}
             />
             
-            {(isBuffering || isCaching) && (
+            {((isBuffering || isCaching) && !isPlaying) && (
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]} pointerEvents="none">
                     <ActivityIndicator size="large" color="#fff" />
                 </View>

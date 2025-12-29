@@ -123,8 +123,8 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     }
                 }}
             />
-            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering || isCaching) ? 1 : 0}]} pointerEvents="none">
-                <ActivityIndicator size="large" color="#fff" animating={isBuffering || isCaching} />
+            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: ((isBuffering || isCaching) && !isPlaying) ? 1 : 0}]} pointerEvents="none">
+                <ActivityIndicator size="large" color="#fff" animating={(isBuffering || isCaching) && !isPlaying} />
             </View>
             
             <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
@@ -290,8 +290,8 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             }
                         }}
                     />
-                    <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isSingleVideoBuffering || isCaching) ? 1 : 0}]} pointerEvents="none">
-                        <ActivityIndicator size="large" color="#fff" animating={isSingleVideoBuffering || isCaching} />
+                    <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: ((isSingleVideoBuffering || isCaching) && !isSingleVideoPlaying) ? 1 : 0}]} pointerEvents="none">
+                        <ActivityIndicator size="large" color="#fff" animating={(isSingleVideoBuffering || isCaching) && !isSingleVideoPlaying} />
                     </View>
 
                     <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
@@ -577,8 +577,8 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 }
                             }}
                         />
-                        <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering || isCaching) ? 1 : 0}]} pointerEvents="none">
-                            <ActivityIndicator size="large" color="#fff" animating={isBuffering || isCaching} />
+                        <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: ((isBuffering || isCaching) && !isPlaying) ? 1 : 0}]} pointerEvents="none">
+                            <ActivityIndicator size="large" color="#fff" animating={(isBuffering || isCaching) && !isPlaying} />
                         </View>
 
                         <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
