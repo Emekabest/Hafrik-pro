@@ -52,7 +52,7 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
     );
 });
 
-const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId, isFocused, isMuted, toggleMute }) => {
+const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId, isFocused }) => {
     const { cachedUri, isCaching } = useVideoCache(videoUrl);
     const [width, setWidth] = useState(() => {
         if (thumbnail && aspectRatioCache.has(thumbnail)) {
@@ -64,6 +64,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [isFinished, setIsFinished] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const video = useRef(null);
+    const [isMuted, setIsMuted] = useState(true);
 
     useEffect(() => {
         if (thumbnail) {
@@ -86,7 +87,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
             video.current?.unloadAsync();
         });
         const unsubscribeFocus = navigation.addListener('focus', () => {
-            if (video.current) {
+            if (video.current && cachedUri) {
                 video.current.loadAsync({ uri: cachedUri });
             }
         });
@@ -147,7 +148,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 <ActivityIndicator size="large" color="#fff" animating={(isBuffering || isCaching) && !isPlaying} />
             </View>
             
-            <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
+            <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
                 <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
             </TouchableOpacity>
         </View>
@@ -212,11 +213,12 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
     );
 });
 
-const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused, isMuted, toggleMute }) => {
+const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused }) => {
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
     const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
     const { cachedUri, isCaching } = useVideoCache(media.length > 0 && !isMultiMedia ? mediaItem.video_url : null);
+    const [isMuted, setIsMuted] = useState(true);
     
     const [aspectRatio, setAspectRatio] = useState(() => {
         if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
@@ -242,7 +244,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
             singleVideoRef.current?.unloadAsync();
         });
         const unsubscribeFocus = navigation.addListener('focus', () => {
-            if (singleVideoRef.current) {
+            if (singleVideoRef.current && cachedUri) {
                 singleVideoRef.current.loadAsync({ uri: cachedUri });
             }
         });
@@ -293,8 +295,6 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             setCurrentPlayingId={setCurrentPlayingId}
                             uniqueId={`${parentFeedId}_video_${index}`}
                             isFocused={isFocused}
-                            isMuted={isMuted}
-                            toggleMute={toggleMute}
                         />
                     ))}
                 </ScrollView>
@@ -331,7 +331,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         <ActivityIndicator size="large" color="#fff" animating={(isSingleVideoBuffering || isCaching) && !isSingleVideoPlaying} />
                     </View>
 
-                    <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
+                    <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
                         <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
                     </TouchableOpacity>
                 </View>
@@ -709,9 +709,10 @@ const PollPostContent = memo(({ feed }) => {
 });
 
 
-const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused, isMuted, toggleMute }) => {
+const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
+    const [isMuted, setIsMuted] = useState(true);
 
     const { cachedUri, isCaching } = useVideoCache(isVideo && mediaItem ? mediaItem.video_url : null);
 
@@ -754,7 +755,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             videoRef.current?.unloadAsync();
         });
         const unsubscribeFocus = navigation.addListener('focus', () => {
-            if (videoRef.current) {
+            if (videoRef.current && cachedUri) {
                 videoRef.current.loadAsync({ uri: cachedUri });
             }
         });
@@ -815,7 +816,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                             <ActivityIndicator size="large" color="#fff" animating={(isBuffering || isCaching) && !isPlaying} />
                         </View>
 
-                        <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
+                        <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
                             <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
                         </TouchableOpacity>
                     </View>
@@ -846,11 +847,11 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
 });
 
 
-const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isFocused, isMuted, toggleMute }) => {
+const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isFocused }) => {
     const isVideo = feed.type === 'video' || feed.type === 'reel';
 
     if (feed.type === 'shared' && feed.shared_post) {
-        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} isMuted={isMuted} toggleMute={toggleMute} />;
+        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} />;
     }
 
     if (feed.type === 'product') {
@@ -869,7 +870,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 
     if (feed.media && feed.media.length > 0) {
         if (isVideo) {
-            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} isMuted={isMuted} toggleMute={toggleMute} />;
+            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} />;
         }
         return <PhotoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
     }
@@ -880,7 +881,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 // #endregion
 
 //MAIN CARD.........................................................
-const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, toggleMute })=>{
+const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
     const navigation = useNavigation();
     const isFocused = useIsFocused();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
@@ -1043,8 +1044,6 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, toggle
                     currentPlayingId={currentPlayingId}
                     setCurrentPlayingId={setCurrentPlayingId}
                     isFocused={isFocused}
-                    isMuted={isMuted}
-                    toggleMute={toggleMute}
                 />
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
