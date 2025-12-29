@@ -907,9 +907,9 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, toggle
                 </View>
 
                 {feed.text ? (
-                    <View style={styles.textSection}>
+                    <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})} activeOpacity={1} style={styles.textSection}>
                         <Text>{feed.text}</Text>
-                    </View>
+                    </TouchableOpacity>
                 ) : <View style = {styles.textSection} />}
 
                 <PostContent 

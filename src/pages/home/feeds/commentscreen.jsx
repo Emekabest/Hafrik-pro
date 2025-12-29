@@ -79,6 +79,38 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     );
 };
 
+const SharedPostItem = ({ post }) => {
+    const isVideo = post.type === 'video' || post.type === 'reel';
+    const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
+
+    return (
+        <View style={styles.sharedPostContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
+                <View style={{ marginLeft: 10 }}>
+                    <Text style={{ fontWeight: 'bold' }}>{post.user.full_name}</Text>
+                    <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
+                </View>
+            </View>
+            {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
+            
+            {mediaItem && (
+                <View style={{ width: '100%', marginTop: 10 }}>
+                    {isVideo ? (
+                        <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} />
+                    ) : (
+                        <Image 
+                            source={{ uri: mediaItem.url || mediaItem.thumbnail }} 
+                            style={{ width: '100%', height: 250, borderRadius: 10 }} 
+                            resizeMode="cover" 
+                        />
+                    )}
+                </View>
+            )}
+        </View>
+    );
+};
+
 const CommentScreen = ({route})=>{
     const navigation = useNavigation();
     const { user, token } = useAuth();
@@ -294,7 +326,11 @@ const CommentScreen = ({route})=>{
             </View>
             
             <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
-            {renderMedia()}
+            {post.type === 'shared' && post.shared_post ? (
+                <SharedPostItem post={post.shared_post} />
+            ) : (
+                renderMedia()
+            )}
 
             <View style={styles.engagementBar}>
                 <TouchableOpacity style={styles.engagementItem} onPress={handleLike}>
@@ -461,6 +497,14 @@ const styles = StyleSheet.create({
         marginLeft: 5,
         fontSize: 13,
         color: '#333',
+    },
+    sharedPostContainer: {
+        borderWidth: 1, 
+        borderColor: '#e0e0e0', 
+        borderRadius: 10, 
+        marginTop: 10, 
+        padding: 10,
+        overflow: 'hidden' 
     },
 })
 
