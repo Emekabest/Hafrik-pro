@@ -708,7 +708,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
 
     const handleSaveImage = () => {
         // To implement actual saving, you would typically use expo-media-library and expo-file-system
-        Alert.alert("Save Image", "Image saved to gallery!");
+        // Alert.alert("Save Image", "Image saved to gallery!");
     };
 
 
@@ -718,7 +718,6 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
 
         const response = await ToggleFeedController(feed.id, token)
-        console.log(response)
     };
     /**.................................................................... */
 

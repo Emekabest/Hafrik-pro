@@ -91,6 +91,7 @@ const CommentScreen = ({route})=>{
         const getComments = async()=>{
 
             const response = await GetCommentsController(feedId, token)
+            
         }
 
         getComments()
