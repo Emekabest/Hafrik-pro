@@ -523,7 +523,8 @@ const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
     );
 });
 
-const ArticlePostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress }) => {
+const ArticlePostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) => {
+    const navigation = useNavigation();
     const payload = feed.payload;
     if (!payload) return null;
     
@@ -547,6 +548,10 @@ const ArticlePostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, on
         }
     }, [coverUrl]);
 
+    const handlePress = () => {
+        navigation.navigate('CommentScreen', {feedId: feed.id});
+    };
+
     return (
         <View style={{ marginTop: 5 }}>
              <View style={[
@@ -555,7 +560,7 @@ const ArticlePostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, on
                 { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
             ]}>
                 {coverUrl ? (
-                    <TouchableOpacity onPress={() => onImagePress(coverUrl)} activeOpacity={1} style={{flex: 1}}>
+                    <TouchableOpacity onPress={handlePress} activeOpacity={1} style={{flex: 1}}>
                         <Image
                             source={{uri: coverUrl}}
                             style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
@@ -564,13 +569,13 @@ const ArticlePostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, on
                     </TouchableOpacity>
                 ) : null}
             </View>
-            <View style={{ marginTop: 10, paddingRight: 5 }}>
+            <TouchableOpacity onPress={handlePress} activeOpacity={0.7} style={{ marginTop: 10, paddingRight: 5 }}>
                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#333', lineHeight: 22 }}>{title}</Text>
                 <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 5}}>
                      <Text style={{ fontSize: 12, color: '#787878', fontWeight: '500' }}>Read article</Text>
                      <Ionicons name="arrow-forward" size={12} color="#787878" style={{marginLeft: 2}} />
                 </View>
-            </View>
+            </TouchableOpacity>
         </View>
     );
 });

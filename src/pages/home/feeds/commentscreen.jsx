@@ -166,6 +166,56 @@ const PollContent = ({ post }) => {
     );
 };
 
+const ArticleContent = ({ post }) => {
+    let payload = post.payload;
+
+    console.log(post)
+
+    if (typeof payload === 'string') {
+        try {
+            payload = JSON.parse(payload);
+        } catch (e) {
+            payload = {};
+        }
+    }
+    payload = payload || {};
+    const { title, cover, text } = payload;
+    console.log(payload)
+    
+    // Basic HTML stripping and entity replacement for display
+    const cleanText = text ? text
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&rsquo;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .trim() : '';
+
+    return (
+        <View style={{ marginTop: 10, width: '100%', paddingBottom: 10 }}>
+             {cover ? (
+                <Image 
+                    source={{ uri: cover }} 
+                    style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 15 }} 
+                    resizeMode="cover" 
+                />
+            ) : null}
+            
+            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#000', marginBottom: 10, lineHeight: 28 }}>
+                {title}
+            </Text>
+            
+            <Text style={{ fontSize: 16, color: '#333', lineHeight: 24 }}>
+                {cleanText}
+            </Text>
+        </View>
+    );
+};
+
 const SharedPostItem = ({ post }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
@@ -370,6 +420,8 @@ const CommentScreen = ({route})=>{
             <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
             {post.type === 'shared' && post.shared_post ? (
                 <SharedPostItem post={post.shared_post} />
+            ) : post.type === 'article' ? (
+                <ArticleContent post={post} />
             ) : (
                 renderMedia()
             )}
