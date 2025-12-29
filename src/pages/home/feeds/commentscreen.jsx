@@ -88,6 +88,8 @@ const CommentScreen = ({route})=>{
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
     const [comments, setComments] = useState([])
+    const [replyingTo, setReplyingTo] = useState(null);
+    const textInputRef = useRef(null);
     const { feedId } = route.params;
 
     
@@ -181,6 +183,40 @@ const CommentScreen = ({route})=>{
         await ToggleFeedController(feedId, token);
     };
 
+    const handleReplyToComment = (comment) => {
+        setReplyingTo(comment);
+        textInputRef.current?.focus();
+    };
+
+    const handleCancelReply = () => {
+        setReplyingTo(null);
+    };
+
+    const handlePostComment = () => {
+        if (!replyText.trim()) return;
+        
+        const newComment = {
+            id: Date.now().toString(),
+            user: user,
+            text: replyText,
+            created: new Date().toISOString(),
+            replies: []
+        };
+
+        if (replyingTo) {
+            setComments(prev => prev.map(c => {
+                if (c.id === replyingTo.id) {
+                    return { ...c, replies: [...(c.replies || []), newComment] };
+                }
+                return c;
+            }));
+            setReplyingTo(null);
+        } else {
+            setComments(prev => [newComment, ...prev]);
+        }
+        setReplyText("");
+    };
+
     const renderMedia = () => {
         if (!post || !post.media || post.media.length === 0) return null;
         
@@ -254,7 +290,7 @@ const CommentScreen = ({route})=>{
                     <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
                     <Text style={styles.engagementText}>{likeCount}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.engagementItem}>
+                <TouchableOpacity style={styles.engagementItem} onPress={() => textInputRef.current?.focus()}>
                     <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
                     <Text style={styles.engagementText}>{post.comments_count}</Text>
                 </TouchableOpacity>
@@ -290,16 +326,24 @@ const CommentScreen = ({route})=>{
                     <TouchableOpacity style={styles.iconButton}>
                         <Ionicons name="heart-outline" size={22} color="#333" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
+                    <TouchableOpacity style={styles.iconButton} onPress={() => handleReplyToComment(item)}>
                         <Ionicons name="chatbubble-outline" size={21} color="#333" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
-                        <Ionicons name="repeat-outline" size={24} color="#333" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
-                        <Ionicons name="paper-plane-outline" size={22} color="#333" />
-                    </TouchableOpacity>
                 </View>
+
+                {item.replies && item.replies.length > 0 && (
+                    <View style={{marginTop: 10, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: '#f0f0f0'}}>
+                        {item.replies.map((reply, index) => (
+                            <View key={index} style={{flexDirection: 'row', marginTop: 8}}>
+                                <Image source={{ uri: reply.user.avatar }} style={{width: 24, height: 24, borderRadius: 12, marginRight: 8}} />
+                                <View style={{flex: 1}}>
+                                    <Text style={{fontWeight: '600', fontSize: 13}}>{reply.user.full_name || reply.user.username}</Text>
+                                    <Text style={{fontSize: 13, color: '#333'}}>{reply.text}</Text>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -333,17 +377,27 @@ const CommentScreen = ({route})=>{
                         style={styles.inputAvatar} 
                     />
                     <View style={styles.inputFieldContainer}>
-                        <Text style={styles.replyingTo}>Replying to {post?.user?.full_name}</Text>
+                        <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <Text style={styles.replyingTo}>
+                                Replying to {replyingTo ? (replyingTo.user.full_name || replyingTo.user.username) : post?.user?.full_name}
+                            </Text>
+                            {replyingTo && (
+                                <TouchableOpacity onPress={handleCancelReply} style={{padding: 2}}>
+                                    <Ionicons name="close" size={14} color="#999" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                         <TextInput
+                            ref={textInputRef}
                             style={styles.textInput}
-                            placeholder={`Reply to ${post?.user?.full_name}...`}
+                            placeholder={`Reply to ${replyingTo ? (replyingTo.user.full_name || replyingTo.user.username) : post?.user?.full_name}...`}
                             placeholderTextColor="#999"
                             multiline
                             value={replyText}
                             onChangeText={setReplyText}
                         />
                     </View>
-                    <TouchableOpacity disabled={!replyText.trim()}>
+                    <TouchableOpacity disabled={!replyText.trim()} onPress={handlePostComment}>
                         <Text style={[styles.postButton, !replyText.trim() && styles.disabledPostButton]}>Post</Text>
                     </TouchableOpacity>
                 </View>
