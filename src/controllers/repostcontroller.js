@@ -2,17 +2,17 @@ import axios from "axios"
 
 const RepostController = async(post_id, token)=>{
 
-    const API_URL = `https://hafrik.com//api/v1/feed/repost.php`;
+    const API_URL = `https://hafrik.com/api/v1/feed/repost.php`;
 
     const formData = new FormData();
     formData.append('post_id', post_id);
 
 
     try{
-        const response = await axios.post(API_URL , formData, {
+        const response = await axios.post(API_URL , {post_id}, {
             headers:{
                     Authorization: `Bearer ${token}`,
-                    "Content-Type": "multipart/form-data",
+                    "Content-Type": "application/json",
             }
         })
 

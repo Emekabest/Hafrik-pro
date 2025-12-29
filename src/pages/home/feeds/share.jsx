@@ -1,16 +1,30 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, TextInput, StyleSheet } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import AppDetails from "../../../helpers/appdetails";
 import RepostController from '../../../controllers/repostcontroller';
+import { useAuth } from '../../../AuthContext';
 
 const ShareModal = ({ visible, onClose, feed }) => {
     const [selectedShareTarget, setSelectedShareTarget] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const { token } = useAuth();
 
-
-    const handleShareToTimeline = async() => {
-
-        // const response = await RepostController(feed.id, token);
+    const handleShareToTimeline = async () => {
+        setLoading(true);
+        try {
+            const response = await RepostController(feed.id, token);
+            if (response.status === 200) {
+                onClose();
+            } else {
+                console.error("Error sharing post:", response.data);
+            }
+        } catch (error) {
+            console.error("Error sharing post:", error);
+            // Handle error, e.g., show a toast message
+        } finally {
+            setLoading(false);
+        }
     }
 
 
@@ -89,11 +103,15 @@ const ShareModal = ({ visible, onClose, feed }) => {
                             />
 
                             <TouchableOpacity 
-                                style={[styles.mainShareButton, !selectedShareTarget && { opacity: 0.5 }]}
-                                disabled={!selectedShareTarget}
+                                style={[styles.mainShareButton, (!selectedShareTarget || loading) && { opacity: 0.5 }]}
+                                disabled={!selectedShareTarget || loading}
                                 onPress={handleShareToTimeline}
                             >
-                                <Text style={styles.mainShareButtonText}>Share</Text>
+                                {loading ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.mainShareButtonText}>Share</Text>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </TouchableWithoutFeedback>
