@@ -829,6 +829,9 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, toggle
         if (feed.type === 'profile_picture') {
             return " updated the profile picture";
         }
+        if (feed.type === 'profile_cover') {
+            return " updated the cover photo";
+        }
         if (feed.media && feed.media.length > 0) {
             const isVideo = feed.type === 'video' || feed.type === 'reel';
             if (!isVideo) {
