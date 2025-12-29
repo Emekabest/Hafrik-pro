@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator } from "react-native";
 import { Video, ResizeMode } from 'expo-av';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
 import { useVideoCache } from "../../../helpers/videocache";
 import AppDetails from "../../../helpers/appdetails";
@@ -52,7 +52,7 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
     );
 });
 
-const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId }) => {
+const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, marginRight, currentPlayingId, setCurrentPlayingId, uniqueId, isFocused }) => {
     const { cachedUri, isCaching } = useVideoCache(videoUrl);
     const [width, setWidth] = useState(() => {
         if (thumbnail && aspectRatioCache.has(thumbnail)) {
@@ -81,12 +81,12 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     }, [thumbnail, targetHeight, maxWidth]);
 
     useEffect(() => {
-        if (currentPlayingId === uniqueId) {
+        if (currentPlayingId === uniqueId && isFocused) {
             video.current?.playAsync();
         } else {
             video.current?.pauseAsync(); 
         }
-    }, [currentPlayingId, uniqueId]);
+    }, [currentPlayingId, uniqueId, isFocused]);
 
 
     
@@ -206,7 +206,7 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
     );
 });
 
-const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
+const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused }) => {
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
     const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
@@ -231,12 +231,12 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const uniqueId = `${parentFeedId}_video_0`;
 
     useEffect(() => {
-        if (currentPlayingId === uniqueId) {
+        if (currentPlayingId === uniqueId && isFocused) {
             singleVideoRef.current?.playAsync();
         } else {
             singleVideoRef.current?.pauseAsync();
         }
-    }, [currentPlayingId, uniqueId]);
+    }, [currentPlayingId, uniqueId, isFocused]);
 
     useEffect(() => {
         if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
@@ -269,6 +269,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             currentPlayingId={currentPlayingId}
                             setCurrentPlayingId={setCurrentPlayingId}
                             uniqueId={`${parentFeedId}_video_${index}`}
+                            isFocused={isFocused}
                         />
                     ))}
                 </ScrollView>
@@ -513,7 +514,7 @@ const PollPostContent = memo(({ feed }) => {
 });
 
 
-const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId }) => {
+const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
 
@@ -553,12 +554,12 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const uniqueId = `${parentFeedId}_shared`;
 
     useEffect(() => {
-        if (currentPlayingId === uniqueId) {
+        if (currentPlayingId === uniqueId && isFocused) {
             videoRef.current?.playAsync();
         } else {
             videoRef.current?.pauseAsync();
         }
-    }, [currentPlayingId, uniqueId]);
+    }, [currentPlayingId, uniqueId, isFocused]);
 
     const screenWidth = Dimensions.get("window").width;
     // containerRight padding (5*2) + shared post border (1*2) + shared post padding (10*2)
@@ -638,11 +639,11 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     );
 });
 
-const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId }) => {
+const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isFocused }) => {
     const isVideo = feed.type === 'video' || feed.type === 'reel';
 
     if (feed.type === 'shared' && feed.shared_post) {
-        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} />;
+        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} />;
     }
 
     if (feed.type === 'product') {
@@ -655,7 +656,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 
     if (feed.media && feed.media.length > 0) {
         if (isVideo) {
-            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} />;
+            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} />;
         }
         return <PhotoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
     }
@@ -668,6 +669,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 //MAIN CARD.........................................................
 const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
     const navigation = useNavigation();
+    const isFocused = useIsFocused();
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
@@ -821,6 +823,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId })=>{
                     onImagePress={setFullScreenImage}
                     currentPlayingId={currentPlayingId}
                     setCurrentPlayingId={setCurrentPlayingId}
+                    isFocused={isFocused}
                 />
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
