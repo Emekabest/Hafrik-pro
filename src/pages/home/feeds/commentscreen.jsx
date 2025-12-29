@@ -51,8 +51,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
                 source={{ uri: cachedUri }}
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}
-                posterSource={{ uri: thumbnail }}
-                usePoster={true}
+                usePoster={false}
                 onPlaybackStatusUpdate={status => {
                     setIsPlaying(status.isPlaying);
                     setIsBuffering(status.isBuffering);
