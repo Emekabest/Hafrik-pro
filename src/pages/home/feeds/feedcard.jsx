@@ -10,7 +10,8 @@ import { useAuth } from "../../../AuthContext";
 import getUserPostInteractionController from "../../../controllers/getuserpostinteractioncontroller";
 import ShareModal from "./share";
 import { Image as RemoteImage } from "expo-image";
- 
+import cacheVideo from '../../../services/cachemedia';
+
 
 
 const aspectRatioCache = new Map();
@@ -107,6 +108,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [isBuffering, setIsBuffering] = useState(false);
     const video = useRef(null);
     const [hasError, setHasError] = useState(false);
+    const [source, setSource] = useState(videoUrl);
     const lastTap = useRef(null);
 
     const handleDoubleTap = () => {
@@ -155,6 +157,15 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         }
     }, [thumbnail, targetHeight, maxWidth]);
 
+    useEffect(() => {
+        const prepareVideo = async () => {
+            const cachedSource = await cacheVideo(videoUrl);
+            setSource(cachedSource);
+        };
+
+        prepareVideo();
+    }, [videoUrl]);
+
     //Create a function that says hello world
     const sayHelloWorld = () => {
         console.log("Hello World");
@@ -174,7 +185,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 ref={video}
                 style={{ width: "100%", height: "100%" }}
                 source={{
-                    uri: videoUrl,
+                    uri: source,
                 }}
                 shouldPlay={currentPlayingId === uniqueId && isFocused}
                 useNativeControls={false}
