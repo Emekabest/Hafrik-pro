@@ -204,18 +204,18 @@ const PollContent = ({ post }) => {
 const ArticleContent = ({ post }) => {
     let payload = post.payload;
 
-    console.log(post)
-
     if (typeof payload === 'string') {
         try {
             payload = JSON.parse(payload);
         } catch (e) {
+            console.warn("Failed to parse article payload", e);
             payload = {};
         }
     }
-    payload = payload || {};
+    
+    if (!payload) return null;
+
     const { title, cover, text } = payload;
-    console.log(payload)
     
     // Basic HTML stripping and entity replacement for display
     const cleanText = text ? text
@@ -235,18 +235,27 @@ const ArticleContent = ({ post }) => {
              {cover ? (
                 <Image 
                     source={{ uri: cover }} 
-                    style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 15 }} 
+                    style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 15, backgroundColor: '#f0f0f0' }} 
                     resizeMode="cover" 
                 />
             ) : null}
             
-            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#000', marginBottom: 10, lineHeight: 28 }}>
-                {title}
-            </Text>
+            {title ? (
+                <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#000', marginBottom: 10, lineHeight: 28 }}>
+                    {title}
+                </Text>
+            ) : null}
             
-            <Text style={{ fontSize: 16, color: '#333', lineHeight: 24 }}>
-                {cleanText}
-            </Text>
+            {cleanText ? (
+                <Text style={{ fontSize: 16, color: '#333', lineHeight: 24 }}>
+                    {cleanText}
+                </Text>
+            ) : (
+                <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 5}}>
+                     <Text style={{ fontSize: 14, color: '#787878', fontWeight: '500' }}>Read full article</Text>
+                     <Ionicons name="arrow-forward" size={14} color="#787878" style={{marginLeft: 4}} />
+                </View>
+            )}
         </View>
     );
 };
