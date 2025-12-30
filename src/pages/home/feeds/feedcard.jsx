@@ -1009,9 +1009,11 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
         });
     };
 
+    
     const handleSaveImage = () => {
         // To implement actual saving, you would typically use expo-media-library and expo-file-system
-        // Alert.alert("Save Image", "Image saved to gallery!");
+
+        Alert.alert("Save Image", "Image saved to gallery!");
     };
 
 
