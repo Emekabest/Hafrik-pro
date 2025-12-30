@@ -22,7 +22,7 @@ import {AddCommentController, GetCommentsController} from '../../../controllers/
 import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
-import cacheVideo from '../../../services/cachemedia';
+import cacheVideo from '../../../helpers/cachemedia';
 
 const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const videoRef = useRef(null);

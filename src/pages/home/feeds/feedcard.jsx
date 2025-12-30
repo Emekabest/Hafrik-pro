@@ -10,7 +10,9 @@ import { useAuth } from "../../../AuthContext";
 import getUserPostInteractionController from "../../../controllers/getuserpostinteractioncontroller";
 import ShareModal from "./share";
 import { Image as RemoteImage } from "expo-image";
-import cacheVideo from '../../../services/cachemedia';
+import cacheVideo from '../../../helpers/cachemedia';
+import OptionsModal from "./options";
+import SvgIcon from "../../../assl.js/svg/svg";
 
 
 
@@ -1001,6 +1003,24 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 
 // #endregion
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //MAIN CARD.........................................................
 const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const navigation = useNavigation();
@@ -1179,53 +1199,23 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
 
                 <View style = {[styles.engagementBar, { marginTop: 5 }]}>
                     <TouchableOpacity style = {[styles.likeSection, styles.engagementBarViews]} onPress={handleLike}>
-                        <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
+                        <Ionicons name={liked ? "heart" : "heart-outline"} size={22} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
                         <Text style ={styles.engagementCount}>{likeCount}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})}>
-                        <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                        <SvgIcon name="comment" width={20} height={20} color="#333" />
                         <Text style ={styles.engagementCount}>{feed.comments_count}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.shareSection, styles.engagementBarViews]} onPress={() => setShowShareOptions(true)}>
-                        <Ionicons name="share-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                        <SvgIcon name="share" width={20} height={20} color="#333" />
                     </TouchableOpacity>
                     <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
-                        <Ionicons name="star-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                        <SvgIcon name="favourite" width={20} height={20} color="#333" />
                     </TouchableOpacity>
                 </View>
             </View>
 
-
-            <Modal
-                visible={showPostOptions}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowPostOptions(false)}
-            >
-                <TouchableWithoutFeedback onPress={() => setShowPostOptions(false)}>
-                    <View style={styles.bottomSheetContainer}>
-                        <TouchableWithoutFeedback onPress={() => {}}>
-                            <View style={styles.bottomSheetContent}>
-                                <View style={styles.bottomSheetHandle} />
-                                <Text style={styles.bottomSheetTitle}>Options</Text>
-                                
-                                <TouchableOpacity style={styles.bottomSheetOption}>
-                                    <Ionicons name="bookmark-outline" size={24} color="#333" />
-                                    <Text style={styles.bottomSheetOptionText}>Save Post</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.bottomSheetOption}>
-                                    <Ionicons name="eye-off-outline" size={24} color="#333" />
-                                    <Text style={styles.bottomSheetOptionText}>Hide Post</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.bottomSheetOption}>
-                                    <Ionicons name="alert-circle-outline" size={24} color="#ff4444" />
-                                    <Text style={[styles.bottomSheetOptionText, {color: '#ff4444'}]}>Report Post</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </TouchableWithoutFeedback>
-                    </View>
-                </TouchableWithoutFeedback>
-            </Modal>
+            <OptionsModal visible={showPostOptions} postId={feed.id} onClose={() => setShowPostOptions(false)} />
 
             <ShareModal visible={showShareOptions} onClose={() => setShowShareOptions(false)} feed={feed} />
 
@@ -1420,46 +1410,6 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'transparent',
-    },
-    bottomSheetContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-    },
-    bottomSheetContent: {
-        backgroundColor: '#fff',
-        width: '100%',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        padding: 20,
-    },
-    bottomSheetHandle: {
-        width: 40,
-        height: 5,
-        backgroundColor: '#e0e0e0',
-        borderRadius: 2.5,
-        alignSelf: 'center',
-        marginBottom: 15,
-    },
-    bottomSheetTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        textAlign: 'center',
-        color: '#333',
-    },
-    bottomSheetOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
-    },
-    bottomSheetOptionText: {
-        fontSize: 16,
-        marginLeft: 15,
-        color: '#333',
-        fontWeight: '500',
     },
     sharedPostContainer: {
         borderWidth: 1, 
