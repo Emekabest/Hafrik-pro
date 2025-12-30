@@ -982,7 +982,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 //MAIN CARD.........................................................
 const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const navigation = useNavigation();
-    const [isMuted, setIsMuted] = useState(true);
+    const [isMuted, setIsMuted] = useState(false);
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [showShareOptions, setShowShareOptions] = useState(false);
