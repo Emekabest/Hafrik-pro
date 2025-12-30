@@ -1161,7 +1161,14 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                 <View style = {styles.firstSection}>
                     <View style = {styles.fullnameSection}>
                         <Text style={{marginBottom: 4, flexWrap: 'wrap'}}>
-                            <Text style = {{color:"#333", fontFamily:"WorkSans_600SemiBold"}}>{feed.user.full_name}</Text>
+                            <Text numberOfLines={1} ellipsizeMode="tail" style = { {color:"#333", fontFamily:"WorkSans_600SemiBold"}}>{feed.user.full_name}</Text>
+                            {
+                                feed.user.verified ? (
+                                    <View style={{ transform: [{ translateY: 6}, { translateX: 2 }], marginHorizontal: 3 }}>
+                                        <SvgIcon name="verified" width={16} height={16} color={AppDetails.primaryColor} />
+                                    </View>
+                                ) : null
+                            }
                             <Text style={{color: "#333", fontFamily:"WorkSans_400Regular"}}>{getActionText()}</Text>
                         </Text>
                         <Text style = {{color:"#787878ff", fontSize: 12, fontFamily:"WorkSans_400Regular"}}>{CalculateElapsedTime(feed.created)}</Text>
