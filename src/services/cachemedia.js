@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 
 /**
@@ -8,10 +8,17 @@ import * as FileSystem from "expo-file-system";
  */
 const cacheVideo = async (videoUrl) => {
     try {
-        const fileName = videoUrl.split('/').pop();
-        const filePath = `${FileSystem.cacheDirectory}${fileName}`;
 
-        consolelog('Caching video from URL');
+        const FILE_SIZE_LIMIT_MB = 20;
+
+        const cacheDirectory = FileSystem.cacheDirectory;
+        const fileName = videoUrl.split('/').pop().replace(/[^a-zA-Z0-9_.-]/g, '_');
+
+        if (!cacheDirectory) throw new Error('Cache directory is undefined');
+
+        const filePath = `${cacheDirectory}${fileName}`;
+
+        
 
         // Check if the file already exists
         const fileInfo = await FileSystem.getInfoAsync(filePath);
@@ -19,18 +26,22 @@ const cacheVideo = async (videoUrl) => {
             return filePath;
         }
 
+
         // Fetch the video size
         const response = await fetch(videoUrl, { method: 'HEAD' });
         const contentLength = response.headers.get('Content-Length');
         const sizeInMB = contentLength / (1024 * 1024);
 
         // Cache the video if it's less than 20MB
-        console.log('Video size (MB):', sizeInMB);
-        if (sizeInMB <= 20) {
+        console.log({filename: fileName, size: sizeInMB});
+        if (sizeInMB <= FILE_SIZE_LIMIT_MB) {
             
+            console.log(`I downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);
             const downloadResult = await FileSystem.downloadAsync(videoUrl, filePath);
             return downloadResult.uri;
         }
+
+            console.log(`I did NOT downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);
 
         // Return the original URL if the video is larger than 15MB
         return videoUrl;

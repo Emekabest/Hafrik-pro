@@ -22,6 +22,7 @@ import {AddCommentController, GetCommentsController} from '../../../controllers/
 import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
+import cacheVideo from '../../../services/cachemedia';
 
 const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const videoRef = useRef(null);
@@ -30,6 +31,15 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const [isFinished, setIsFinished] = useState(false);
     const [hasError, setHasError] = useState(false);
     const isFocused = useIsFocused();
+    const [source, setSource] = useState(videoUrl);
+
+    useEffect(() => {
+        const prepareVideo = async () => {
+            const cachedSource = await cacheVideo(videoUrl);
+            setSource(cachedSource);
+        };
+        prepareVideo();
+    }, [videoUrl]);
 
     useEffect(() => {
         const videoElement = videoRef.current;
@@ -55,7 +65,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
             <Video
                 ref={videoRef}
                 style={{ width: "100%", height: "100%" }}
-                source={{ uri: videoUrl }}
+                source={{ uri: source }}
                 shouldPlay={isFocused}
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}

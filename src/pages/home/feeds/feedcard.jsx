@@ -216,7 +216,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
             </View>
             
             <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
-                <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
+                <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="blue" />
             </TouchableOpacity>
         </View>
         </TouchableWithoutFeedback>
@@ -311,6 +311,17 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const [isSingleVideoError, setIsSingleVideoError] = useState(false);
     const uniqueId = `${parentFeedId}_video_0`;
     const lastTap = useRef(null);
+    const [source, setSource] = useState(mediaItem ? mediaItem.video_url : null);
+
+    useEffect(() => {
+        if (!isMultiMedia && mediaItem && mediaItem.video_url) {
+            const prepareVideo = async () => {
+                const cachedSource = await cacheVideo(mediaItem.video_url);
+                setSource(cachedSource);
+            };
+            prepareVideo();
+        }
+    }, [isMultiMedia, mediaItem]);
 
     const handleDoubleTap = () => {
         const now = Date.now();
@@ -375,7 +386,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     <Video
                         ref={singleVideoRef}
                         style={{height:"100%", width: "100%"}}
-                        source={{ uri: mediaItem ? mediaItem.video_url : null }}
+                        source={{ uri: source }}
                         shouldPlay={currentPlayingId === uniqueId && isFocused}
                         useNativeControls={false}
                         isMuted={isMuted}
@@ -828,6 +839,17 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [hasError, setHasError] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(true);
     const lastTap = useRef(null);
+    const [source, setSource] = useState(mediaItem ? mediaItem.video_url : null);
+
+    useEffect(() => {
+        if (isVideo && mediaItem && mediaItem.video_url) {
+            const prepareVideo = async () => {
+                const cachedSource = await cacheVideo(mediaItem.video_url);
+                setSource(cachedSource);
+            };
+            prepareVideo();
+        }
+    }, [isVideo, mediaItem]);
 
     const handleDoubleTap = () => {
         const now = Date.now();
@@ -892,7 +914,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 <Video
                                     ref={videoRef}
                                     style={{ width: "100%", height: "100%" }}
-                                    source={{ uri: mediaItem ? mediaItem.video_url : null }}
+                                    source={{ uri: source }}
                                     shouldPlay={currentPlayingId === uniqueId && isFocused}
                                     resizeMode={ResizeMode.CONTAIN}
                                     posterSource={{ uri: mediaItem.thumbnail }}
