@@ -241,6 +241,8 @@ const ArticleContent = ({ post }) => {
     );
 };
 
+
+/**Shared Post Main Item............................................................................. */
 const SharedPostItem = ({ post }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
@@ -254,7 +256,7 @@ const SharedPostItem = ({ post }) => {
                     <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
                 </View>
             </View>
-            {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
+            {post.text ? <Text style={{ marginTop: 10, fontFamily: "WorkSans_400Regular" }}>{post.text}</Text> : null}
             
             {post.type === 'poll' ? (
                 <PollContent post={post} />
@@ -274,6 +276,8 @@ const SharedPostItem = ({ post }) => {
         </View>
     );
 };
+
+
 
 const CommentScreen = ({route})=>{
     const navigation = useNavigation();

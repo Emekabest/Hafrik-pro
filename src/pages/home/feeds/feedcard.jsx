@@ -792,7 +792,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
             return ratio;
         }
-        return 16/9; // Default aspect ratio
+        return 16 / 9; // Default aspect ratio
     });
 
     useEffect(() => {
@@ -841,7 +841,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                     <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
                 </View>
             </View>
-            {post.text ? <Text style={{ marginTop: 10 }}>{post.text}</Text> : null}
+            {post.text ? <Text style={{ marginTop: 10, fontFamily: "WorkSans_400Regular" }}>{post.text}</Text> : null}
             {post.type === 'poll' ? (
                 <PollPostContent feed={post} />
             ) : post.type === 'article' && post.payload ? (
