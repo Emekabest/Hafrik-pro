@@ -5,15 +5,33 @@ import AppDetails from "../../../helpers/appdetails";
 import RepostController from '../../../controllers/repostcontroller';
 import { useAuth } from '../../../AuthContext';
 
+
 const ShareModal = ({ visible, onClose, feed }) => {
     const [selectedShareTarget, setSelectedShareTarget] = useState(null);
     const [loading, setLoading] = useState(false);
     const { token } = useAuth();
 
-    const handleShareToTimeline = async () => {
+
+    const handleShare = async () => {
         setLoading(true);
+        let postData;
+
+        if (selectedShareTarget === "timeline"){
+            postData = {post_id:feed.id}
+        }
+        else if (selectedShareTarget === "group"){
+            postData ={
+                post_id: 18019,
+                message: "Sharing to event",
+                target: "group",
+                target_id: 40
+            }
+        }
+
+
+
         try {
-            const response = await RepostController(feed.id, token);
+            const response = await RepostController(postData, token);
             if (response.status === 200) {
                 onClose();
             } else {
@@ -27,6 +45,9 @@ const ShareModal = ({ visible, onClose, feed }) => {
         }
     }
 
+    
+
+    
 
     return (
         <Modal
@@ -105,7 +126,7 @@ const ShareModal = ({ visible, onClose, feed }) => {
                             <TouchableOpacity 
                                 style={[styles.mainShareButton, (!selectedShareTarget || loading) && { opacity: 0.5 }]}
                                 disabled={!selectedShareTarget || loading}
-                                onPress={handleShareToTimeline}
+                                onPress={handleShare}
                             >
                                 {loading ? (
                                     <ActivityIndicator color="#fff" />
