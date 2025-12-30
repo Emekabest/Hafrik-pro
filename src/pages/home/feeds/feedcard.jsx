@@ -1169,6 +1169,8 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                                     </View>
                                 ) : null
                             }
+                
+
                             <Text style={{color: "#333", fontFamily:"WorkSans_400Regular"}}>{getActionText()}</Text>
                         </Text>
                         <Text style = {{color:"#787878ff", fontSize: 12, fontFamily:"WorkSans_400Regular"}}>{CalculateElapsedTime(feed.created)}</Text>
