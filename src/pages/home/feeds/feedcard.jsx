@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator, Animated, TextInput } from "react-native";
+import {Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator, Animated, TextInput } from "react-native";
 import { Video, ResizeMode } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
@@ -9,8 +9,8 @@ import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import { useAuth } from "../../../AuthContext";
 import getUserPostInteractionController from "../../../controllers/getuserpostinteractioncontroller";
 import ShareModal from "./share";
-
-
+import { Image as RemoteImage } from "expo-image";
+ 
 
 
 const aspectRatioCache = new Map();
@@ -261,10 +261,11 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
             ) : (
                 <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{marginLeft: leftOffset, width: 300, height: 600, borderRadius: 10, backgroundColor: '#000', overflow: 'hidden'}}>
                     {isLoading && <SkeletonLoader style={StyleSheet.absoluteFill} />}
-                    <Image
+                    <RemoteImage
                         source={{uri: media[0].url}}
                         style={{height:"100%", width: "100%", borderRadius: 10}}
-                        resizeMode="contain"
+                        contentFit="contain"
+                        cachePolicy="memory-disk"
                         onLoadStart={() => setIsLoading(true)}
                         onLoadEnd={() => setIsLoading(false)}
                     />
@@ -436,10 +437,11 @@ const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
                         {images.length > 0 ? images.map((img, index) => (
                             <View key={index} style={{ width: imageWidth, marginRight: 10 }}>
                                 <View style={{ width: '100%', height: imageWidth, borderRadius: 10, backgroundColor: '#f0f0f0', overflow: 'hidden' }}>
-                                    <Image 
+                                    <RemoteImage 
                                         source={{ uri: img }} 
                                         style={{ width: '100%', height: '100%' }} 
-                                        resizeMode="cover" 
+                                        contentFit="cover" 
+                                        cachePolicy="memory-disk"
                                     />
                                     {images.length > 1 && (
                                         <View style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
