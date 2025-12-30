@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
 
   quickLinkImage: { width: '100%', height: '100%' },
   quickLinkPlaceholder: { width: '100%', height: '100%', backgroundColor: '#f8f9fa', justifyContent: 'center', alignItems: 'center' },
-  quickLinkText: { fontSize: 10, color: '#214f53ff', textAlign: 'center', fontWeight: '500', lineHeight: 12 },
+  quickLinkText: { fontSize: 10, color: '#214f53ff', textAlign: 'center', fontFamily: "WorkSans_500Medium", lineHeight: 12 },
   quickLinksLoading: { height: 80, justifyContent: 'center', alignItems: 'center' },
   quickLinksLoadingText: { marginTop: 8, color: '#666', fontSize: 12 },
 });

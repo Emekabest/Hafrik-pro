@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import AppDetails from '../../helpers/appdetails';
+import { useFonts } from 'expo-font';
+import useSharedStore from "../../repository/store"
+
+
 
 const QuickActions = ({ activeTab, onTabChange }) => {
+
 
   return (
     <View style={styles.quickActionsContainer}>
@@ -79,10 +84,11 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
     fontSize:13,
+    fontFamily: "ReadexPro_400Regular",
   },
   activeQuickActionButtonText: {
     color: '#0C3F44',
-    fontWeight: '500',
+    fontFamily: "ReadexPro_600SemiBold",
   },
 });
 

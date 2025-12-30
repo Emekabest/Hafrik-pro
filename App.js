@@ -10,11 +10,18 @@ import WebViewScreen from './src/pages/WebViewScreen';
 import CategoriesScreen from './src/pages/CategoriesScreen';
 import EventsScreen from './src/pages/EventsScreen';
 import GroupsScreen from './src/pages/GroupsScreen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppDetails from './src/helpers/appdetails';
 import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
 import CommentScreen from './src/pages/home/feeds/commentscreen';
+import useSharedStore from './src/repository/store';
+import { useFonts } from 'expo-font';
+import { WorkSans_300Light, WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold, WorkSans_700Bold, WorkSans_800ExtraBold} from '@expo-google-fonts/work-sans';
+import { ReadexPro_200ExtraLight,  ReadexPro_300Light, ReadexPro_400Regular, ReadexPro_500Medium, ReadexPro_600SemiBold, ReadexPro_700Bold, } from "@expo-google-fonts/readex-pro"
+
+
+
 
 const Stack = createStackNavigator();
 
@@ -38,11 +45,39 @@ function AppNavigator() {
   /**................................................................................................*/
 
 
+  
+    const [fontsLoaded] = useFonts({
+  
+          WorkSans_300Light,
+          WorkSans_400Regular,
+          WorkSans_500Medium,
+          WorkSans_600SemiBold, 
+          WorkSans_700Bold,
 
+          ReadexPro_200ExtraLight,
+          ReadexPro_300Light,
+          ReadexPro_400Regular,
+          ReadexPro_500Medium,
+          ReadexPro_600SemiBold,
+          ReadexPro_700Bold,
+    })
+  
+  
 
+  const [isFontStored, setIsFontStored] = useState(false);
   const { user, token, loading } = useAuth();
 
-  console.log(token)
+
+
+
+
+
+  if (!fontsLoaded) {
+    
+
+    return null;
+  }
+ 
 
   // Show a loading screen while checking authentication
   if (loading) {

@@ -11,6 +11,8 @@ import getUserPostInteractionController from "../../../controllers/getuserpostin
 import ShareModal from "./share";
 
 
+
+
 const aspectRatioCache = new Map();
 
 const SkeletonLoader = ({ style }) => {
@@ -1102,10 +1104,10 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
                 <View style = {styles.firstSection}>
                     <View style = {styles.fullnameSection}>
                         <Text style={{marginBottom: 4, flexWrap: 'wrap'}}>
-                            <Text style = {{color:"#333", fontWeight:"bold"}}>{feed.user.full_name}</Text>
-                            <Text style={{color: "#333"}}>{getActionText()}</Text>
+                            <Text style = {{color:"#333", fontFamily:"WorkSans_600SemiBold"}}>{feed.user.full_name}</Text>
+                            <Text style={{color: "#333", fontFamily:"WorkSans_400Regular"}}>{getActionText()}</Text>
                         </Text>
-                        <Text style = {{color:"#787878ff", fontSize: 12}}>{CalculateElapsedTime(feed.created)}</Text>
+                        <Text style = {{color:"#787878ff", fontSize: 12, fontFamily:"WorkSans_400Regular"}}>{CalculateElapsedTime(feed.created)}</Text>
                     </View>
 
 
@@ -1116,7 +1118,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
 
                 {feed.text ? (
                     <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})} activeOpacity={1} style={styles.textSection}>
-                        <Text>{feed.text}</Text>
+                        <Text style = {{fontSize:14, color:"#333", fontFamily:"WorkSans_400Regular"}}>{feed.text}</Text>
                     </TouchableOpacity>
                 ) : <View style = {styles.textSection} />}
 
@@ -1135,7 +1137,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
                     <Ionicons name="eye-outline" size={16} style={{color:"#787878ff", marginRight: 4}} />
-                    <Text style={{ fontSize: 12, color: "#787878ff" }}>{feed.views}</Text>
+                    <Text style={{ fontSize: 12, color: "#787878ff", fontFamily:"WorkSans_400Regular" }}>{feed.views}</Text>
                 </View>
 
                 <View style = {[styles.engagementBar, { marginTop: 5 }]}>
@@ -1291,7 +1293,7 @@ const styles = StyleSheet.create({
 
     engagementCount:{
         fontSize:13,
-        // fontWeight:"bold",
+        fontFamily:"WorkSans_400Regular",
         color:"#333",
         marginLeft: 3
     },

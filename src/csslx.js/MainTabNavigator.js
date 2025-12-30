@@ -173,6 +173,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 14,
+    fontFamily:"ReadexPro_500Medium",
     includeFontPadding: false,
   },
 });

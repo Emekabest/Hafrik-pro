@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     },
     bottomSheetTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontFamily:"WorkSans_600SemiBold",
         marginBottom: 20,
         textAlign: 'center',
         color: '#333',
@@ -162,6 +162,7 @@ const styles = StyleSheet.create({
         color: '#666',
         fontSize: 13,
         flex: 1,
+        fontFamily:"WorkSans_400Regular",
         marginRight: 10,
     },
     socialRow: {
@@ -193,8 +194,8 @@ const styles = StyleSheet.create({
     },
     shareTargetText: {
         color: '#333',
-        fontWeight: '500',
         fontSize: 14,
+        fontFamily:"WorkSans_500Medium",
     },
     shareInput: {
         backgroundColor: '#f9f9f9',
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
     },
     mainShareButtonText: {
         color: '#fff',
-        fontWeight: 'bold',
+        fontFamily:"WorkSans_600SemiBold",
         fontSize: 16,
     },
 });

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../helpers/appdetails';
 import { useAuth } from '../AuthContext';
 
+
 const { width: screenWidth } = Dimensions.get('window');
 
 const Header = ({ onOpenDrawer }) => {
@@ -41,6 +42,10 @@ const Header = ({ onOpenDrawer }) => {
     inputRange: [0, 1],
     outputRange: [searchBarFinalWidth * 0.4, searchBarFinalWidth],
   });
+
+
+
+    
 
   return (
     <View style={styles.header}>

@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { TouchableOpacity } from "react-native";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -8,16 +9,16 @@ const FeedsHeader = ()=>{
     return(
         <View style = {styles.containerHeader} >
             <View style = {styles.containerHeaderLeft}>
-                <Text style ={{fontSize:17, fontWeight:"500"}}>Recent Updates</Text>
+                <Text style ={{fontSize:17, fontFamily:"ReadexPro_500Medium"}}>Recent Updates</Text>
             </View>
             <View style = {styles.containerHeaderRight}>
                 <TouchableOpacity style = {styles.containerHeaderRightExplore}>  
                     <Ionicons name="globe-outline" size={20} color="#000" />
-                    <Text style = {{fontSize:12, fontWeight:"500"}}>Explore by cities</Text>
+                    <Text style = {{fontSize:12, fontFamily:"ReadexPro_500Medium"}}>Explore by cities</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style = {styles.containerHeaderRightAll}>
                     <Ionicons name="apps" size={15} />
-                    <Text style ={{fontSize:12, fontWeight:"500"}}>All</Text>
+                    <Text style ={{fontSize:12, fontFamily:"ReadexPro_500Medium"}}>All</Text>
                 </TouchableOpacity>
             </View>
         </View>
