@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator, Animated, TextInput } from "react-native";
 import { Video, ResizeMode } from 'expo-av';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useState, useRef, useEffect, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
@@ -274,7 +274,7 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
     );
 });
 
-const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused, isMuted, setIsMuted }) => {
+const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
     const navigation = useNavigation();
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
@@ -777,7 +777,7 @@ const PollPostContent = memo(({ feed }) => {
 });
 
 
-const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isFocused, isMuted, setIsMuted }) => {
+const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
     const navigation = useNavigation();
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
@@ -933,11 +933,11 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
 });
 
 
-const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isFocused, isMuted, setIsMuted }) => {
+const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isMuted, setIsMuted, isFocused }) => {
     const isVideo = feed.type === 'video' || feed.type === 'reel';
 
     if (feed.type === 'shared' && feed.shared_post) {
-        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} isMuted={isMuted} setIsMuted={setIsMuted} />;
+        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isMuted={isMuted} setIsMuted={setIsMuted} isFocused={isFocused} />;
     }
 
     if (feed.type === 'product') {
@@ -956,7 +956,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 
     if (feed.media && feed.media.length > 0) {
         if (isVideo) {
-            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isFocused={isFocused} isMuted={isMuted} setIsMuted={setIsMuted} />;
+            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isMuted={isMuted} setIsMuted={setIsMuted} isFocused={isFocused} />;
         }
         return <PhotoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
     }
@@ -967,9 +967,9 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 // #endregion
 
 //MAIN CARD.........................................................
-const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsMuted })=>{
+const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const navigation = useNavigation();
-    const isFocused = useIsFocused();
+    const [isMuted, setIsMuted] = useState(true);
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false);
     const [showShareOptions, setShowShareOptions] = useState(false);
@@ -1009,11 +1009,11 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
         });
     };
 
-    
+
     const handleSaveImage = () => {
         // To implement actual saving, you would typically use expo-media-library and expo-file-system
 
-        Alert.alert("Save Image", "Image saved to gallery!");
+        // Alert.alert("Save Image", "Image saved to gallery!");
     };
 
 
@@ -1132,9 +1132,9 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isMuted, setIsM
                     onImagePress={setFullScreenImage}
                     currentPlayingId={currentPlayingId}
                     setCurrentPlayingId={setCurrentPlayingId}
-                    isFocused={isFocused}
                     isMuted={isMuted}
                     setIsMuted={setIsMuted}
+                    isFocused={isFocused}
                 />
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>

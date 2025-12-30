@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native"
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform } from "react-native"
 import FeedCard from "./feedcard.jsx";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import GetFeedsController from "../../../controllers/getfeedscontroller.js";
@@ -8,6 +8,7 @@ import QuickLinks from "../quicklinks.jsx";
 import PostFeed from "../postfeed.jsx";
 import { useAuth } from "../../../AuthContext.js";
 import FeedsHeader from "../feedsheader.jsx";
+import { useIsFocused } from '@react-navigation/native';
 
 
 
@@ -18,9 +19,20 @@ const Feeds = ()=>{
     const [loadingMore, setLoadingMore] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [currentPlayingId, setCurrentPlayingId] = useState(null);
-    const [isMuted, setIsMuted] = useState(false);
+    const isFocused = useIsFocused();
+    const [delayedFocus, setDelayedFocus] = useState(false);
     const { token } = useAuth();
 
+    useEffect(() => {
+        if (isFocused) {
+            // Delay setting focus to true to allow navigation transition to complete
+            const timer = setTimeout(() => setDelayedFocus(true), 300);
+            return () => clearTimeout(timer);
+        } else {
+            // Immediately set to false when leaving
+            setDelayedFocus(false);
+        }
+    }, [isFocused]);
 
     useEffect(()=>{
         const getFeeds = async()=>{
@@ -67,8 +79,8 @@ const Feeds = ()=>{
     );
 
     const renderItem = useCallback(({item}) => {
-        return <FeedCard feed={item} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} isMuted={isMuted} setIsMuted={setIsMuted} />
-    }, [currentPlayingId, isMuted]);
+        return <FeedCard feed={item} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} isFocused={delayedFocus} />
+    }, [currentPlayingId, delayedFocus]);
 
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         const viewableVideoItem = viewableItems.find(item => {
@@ -124,7 +136,7 @@ const Feeds = ()=>{
                 initialNumToRender={5}
                 maxToRenderPerBatch={5}
                 windowSize={10}
-                removeClippedSubviews={true}
+                removeClippedSubviews={Platform.OS === 'android'}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
@@ -140,6 +152,7 @@ const styles = StyleSheet.create({
 
     container:{
         flex: 1,
+        backgroundColor: '#fff',
     },
 
     containerHeader:{
