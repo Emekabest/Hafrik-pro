@@ -20,7 +20,7 @@ const CreateReelsController = async(postData, token) => {
     }
     catch (error) {
         console.log(error)
-        return {status:error.response?.status || 500, message:error.message + "oo" || "Error", data:null};
+        return {status:error.response?.status || 500, message:error.message || "Error", data:null};
     }
 
 

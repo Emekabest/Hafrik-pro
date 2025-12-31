@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, Dimensions, KeyboardAvoidingView, Platform, FlatList, Image, AppState } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, Dimensions, KeyboardAvoidingView, Platform, FlatList, Image, AppState, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
@@ -229,24 +229,44 @@ const CreateReels = ({ navigation, route }) => {
         }
 
         setPosting(true);
-        const postData = {
-            type: 'reel',
+        
+        let postData = {
             text: caption,
             location: location,
-            media: [{
-                video_url: selectedVideo.serverUrl,
-                thumbnail: selectedVideo.thumbnailUrl,
-                duration: selectedVideo.duration
-            }]
         };
+
+        if (selectedVideo != null) {
+            postData.type = "reel";
+            postData.video_url = selectedVideo.serverUrl;
+            if (selectedVideo.thumbnailUrl) {
+                postData.thumbnail = selectedVideo.thumbnailUrl;
+            }
+        }
 
         const response = await CreateReelsController(postData, token);
         setPosting(false);
 
         if (response.status === 200 || response.status === 201) {
-            navigation.goBack();
+            Alert.alert("Success", "Reel uploaded Succesfully", [
+                { 
+                    text: "OK", 
+                    onPress: () => {
+                        setCaption('');
+                        setLocation('');
+                        setSelectedVideo(null);
+                        setStep('gallery');
+                        setGalleryVideos([]);
+                        setEndCursor(null);
+                        setHasNextPage(true);
+                        setUploadProgress(0);
+                        setVideoMounted(false);
+                        uploadIdRef.current = 0;
+                        navigation.navigate('Home');
+                    } 
+                }
+            ]);
         } else {
-            Alert.alert("Error", "Failed to create reel.");
+            Alert.alert("Error", "Unable to upload reel please try again");
         }
     };
 
@@ -405,6 +425,20 @@ const CreateReels = ({ navigation, route }) => {
                     </TouchableOpacity>
                 </View>
             </View>
+
+            <Modal
+                transparent={true}
+                animationType="fade"
+                visible={posting}
+                onRequestClose={() => {}}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.loadingBox}>
+                        <ActivityIndicator size="large" color={AppDetails.primaryColor} />
+                        <Text style={{marginTop: 10, color: '#333', fontWeight: '600'}}>Posting Reel...</Text>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -576,6 +610,19 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: 'bold',
         fontSize: 16,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingBox: {
+        backgroundColor: 'white',
+        padding: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+        elevation: 5,
     },
 });
 
