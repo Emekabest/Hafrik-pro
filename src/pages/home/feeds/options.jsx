@@ -22,8 +22,6 @@ const OptionsModal = ({ visible, postId, onClose }) => {
 
 
 
-
-
     return (
         <Modal
             visible={visible}
@@ -85,10 +83,10 @@ const styles = StyleSheet.create({
     },
     bottomSheetTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
         marginBottom: 20,
         textAlign: 'center',
         color: '#333',
+        fontFamily:"ReadexPro_600SemiBold",
     },
     bottomSheetOption: {
         flexDirection: 'row',
@@ -101,7 +99,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginLeft: 15,
         color: '#333',
-        fontWeight: '500',
+        fontFamily:'WorkSans_500Medium',
     },
 });
 
