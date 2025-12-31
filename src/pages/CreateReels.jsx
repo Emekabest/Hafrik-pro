@@ -80,6 +80,39 @@ const CreateReels = ({ navigation }) => {
         }
     };
 
+
+     const processVideo = async (videoAsset) => {
+        try {
+            setLoading(true);
+            setVideoUri(videoAsset.uri);
+            
+            // Get video duration
+            console.log('Video duration:', videoAsset.duration);
+            setVideoDuration(videoAsset.duration || 0);
+
+            // Generate thumbnail
+            const { uri } = await VideoThumbnails.getThumbnailAsync(videoAsset.uri, {
+                time: videoAsset.duration ? videoAsset.duration / 2 : 0,
+            });
+            setThumbnailUri(uri);
+
+            // Play video briefly to get duration
+            setTimeout(() => {
+                setIsPaused(false);
+                setTimeout(() => {
+                    setIsPaused(true);
+                }, 1000);
+            }, 500);
+
+        } catch (error) {
+            console.error('Error processing video:', error);
+            Alert.alert('Error', 'Failed to process video');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
     
     const pickVideo = async () => {
         try {
@@ -119,37 +152,7 @@ const CreateReels = ({ navigation }) => {
         }
     };
 
-    const processVideo = async (videoAsset) => {
-        try {
-            setLoading(true);
-            setVideoUri(videoAsset.uri);
-            
-            // Get video duration
-            console.log('Video duration:', videoAsset.duration);
-            setVideoDuration(videoAsset.duration || 0);
-
-            // Generate thumbnail
-            const { uri } = await VideoThumbnails.getThumbnailAsync(videoAsset.uri, {
-                time: videoAsset.duration ? videoAsset.duration / 2 : 0,
-            });
-            setThumbnailUri(uri);
-
-            // Play video briefly to get duration
-            setTimeout(() => {
-                setIsPaused(false);
-                setTimeout(() => {
-                    setIsPaused(true);
-                }, 1000);
-            }, 500);
-
-        } catch (error) {
-            console.error('Error processing video:', error);
-            Alert.alert('Error', 'Failed to process video');
-        } finally {
-            setLoading(false);
-        }
-    };
-
+   
     const togglePlayPause = () => {
         setIsPaused(!isPaused);
     };

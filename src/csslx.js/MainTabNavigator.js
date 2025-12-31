@@ -99,6 +99,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 };
 
 const MainTabNavigator = () => {
+  
   return (
     <Tab.Navigator
       initialRouteName="Home"
