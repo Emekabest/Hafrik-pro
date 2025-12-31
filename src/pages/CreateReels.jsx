@@ -24,6 +24,7 @@ import { Video } from 'expo-av';
 
 import { useAuth } from '../AuthContext';
 import CreateReelsController from '../controllers/createreelscontroller';
+import UploadMediaController from '../controllers/uploadmediacontroller';
 
 const { width, height } = Dimensions.get('window');
 
@@ -43,6 +44,8 @@ const CreateReels = ({ navigation }) => {
     const videoRef = useRef(null);
     const [showControls, setShowControls] = useState(false);
     const controlsTimeout = useRef(null);
+    const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [uploadedData, setUploadedData] = useState({ video: null, thumbnail: null });
 
     // Pause video when app goes to background
     useEffect(() => {
@@ -108,6 +111,42 @@ const CreateReels = ({ navigation }) => {
             });
             setThumbnailUri(uri);
 
+            // START UPLOAD LOGIC
+            setUploadingMedia(true);
+            
+            // 1. Upload Video
+            const videoFile = {
+                uri: videoAsset.uri,
+                type: getMimeType(videoAsset.uri),
+                fileName: videoAsset.uri.split('/').pop() || `video_${Date.now()}.mp4`,
+                fileType: 'video'
+            };
+            
+            const videoResponse = await UploadMediaController(videoFile, token);
+            
+            // 2. Upload Thumbnail
+            const thumbFile = {
+                uri: uri,
+                type: 'image/jpeg',
+                fileName: `thumbnail_${Date.now()}.jpg`,
+                fileType: 'image'
+            };
+            
+            const thumbResponse = await UploadMediaController(thumbFile, token);
+
+            if ((videoResponse.status === 200 || videoResponse.status === 'success') && 
+                (thumbResponse.status === 200 || thumbResponse.status === 'success')) {
+                 setUploadedData({
+                     video: videoResponse.data, 
+                     thumbnail: thumbResponse.data
+                 });
+                 console.log("Media uploaded successfully", videoResponse.data, thumbResponse.data);
+            } else {
+                Alert.alert("Upload Failed", "Could not upload video media to server.");
+            }
+            
+            setUploadingMedia(false);
+
             // Play video briefly to get duration
             setTimeout(() => {
                 setIsPaused(false);
@@ -119,6 +158,7 @@ const CreateReels = ({ navigation }) => {
         } catch (error) {
             console.error('Error processing video:', error);
             Alert.alert('Error', 'Failed to process video');
+            setUploadingMedia(false);
         } finally {
             setLoading(false);
         }
@@ -231,40 +271,6 @@ const CreateReels = ({ navigation }) => {
         }
     };
 
-    const generateFormData = () => {
-        const formData = new FormData();
-
-        // Add text data
-        // formData.append('user_id', userId);
-        formData.append("type", "reel");
-        formData.append('text', caption);
-        formData.append('location', location);
-
-        // Add video file
-        if (videoUri) {
-            const videoFilename = videoUri.split('/').pop() || `video_${Date.now()}.mp4`;
-            const videoType = getMimeType(videoFilename);
-
-            formData.append('video', {
-                uri: videoUri,
-                type: videoType,
-                name: videoFilename,
-            });
-        }
-
-        // Add thumbnail file
-        if (thumbnailUri) {
-            const thumbnailFilename = thumbnailUri.split('/').pop() || `thumbnail_${Date.now()}.jpg`;
-
-            formData.append('thumbnail', {
-                uri: thumbnailUri,
-                type: 'image/jpeg',
-                name: thumbnailFilename,
-            });
-        }
-
-        return formData;
-    };
 
     const uploadReel = async () => {
         // Check authentication first
@@ -291,24 +297,35 @@ const CreateReels = ({ navigation }) => {
             Alert.alert('Error', 'Please add a caption for your reel');
             return;
         }
+        
+        if (uploadingMedia) {
+            Alert.alert('Please wait', 'Video is still uploading to server...');
+            return;
+        }
+
+        if (!uploadedData.video) {
+            Alert.alert('Error', 'Video upload failed. Please try selecting the video again.');
+            return;
+        }
 
         try {
             setLoading(true);
 
-            const formData = generateFormData();
+            const postData = {
+                type: 'reel',
+                text: caption,
+                location: location,
+                media: [
+                    {
+                        // Use the URL/path returned from the upload controller
+                        video_url: uploadedData.video.url || uploadedData.video.path || uploadedData.video, 
+                        thumbnail: uploadedData.thumbnail.url || uploadedData.thumbnail.path || uploadedData.thumbnail,
+                        duration: videoDuration
+                    }
+                ]
+            };
 
-            console.log('Uploading reel...', {
-                userId,
-                caption,
-                location,
-                videoDuration,
-                hasVideo: !!videoUri,
-                hasThumbnail: !!thumbnailUri
-            });
-
-            
-
-            const response = await CreateReelsController(formData, token);
+            const response = await CreateReelsController(postData, token);
 
             console.log('Upload response:', response);
 
@@ -353,6 +370,8 @@ const CreateReels = ({ navigation }) => {
         setIsPaused(true);
         setVideoProgress(0);
         setVideoDurationSeconds(0);
+        setUploadingMedia(false);
+        setUploadedData({ video: null, thumbnail: null });
     };
 
     const handleBack = () => {
@@ -386,14 +405,14 @@ const CreateReels = ({ navigation }) => {
                 <Text style={styles.headerTitle}>Create Reel</Text>
                 <TouchableOpacity
                     onPress={uploadReel}
-                    disabled={loading || !videoUri || !caption.trim()}
+                    disabled={loading || uploadingMedia || !videoUri || !caption.trim()}
                     style={styles.postButtonContainer}
                 >
                     <Text style={[
                         styles.postButton,
-                        { opacity: (loading || !videoUri || !caption.trim()) ? 0.5 : 1 }
+                        { opacity: (loading || uploadingMedia || !videoUri || !caption.trim()) ? 0.5 : 1 }
                     ]}>
-                        {loading ? 'Posting...' : 'Post'}
+                        {loading ? 'Posting...' : uploadingMedia ? 'Uploading...' : 'Post'}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -464,7 +483,7 @@ const CreateReels = ({ navigation }) => {
                                 />
 
                                 {/* Loading Overlay */}
-                                {loading && (
+                                {(loading || uploadingMedia) && (
                                     <View style={styles.loadingOverlay}>
                                         <ActivityIndicator size="large" color="#fff" />
                                     </View>
@@ -524,7 +543,7 @@ const CreateReels = ({ navigation }) => {
                             </Text>
 
                             <TouchableOpacity
-                                style={styles.removeButton}
+                                style={[styles.removeButton, { opacity: uploadingMedia ? 0.5 : 1 }]}
                                 onPress={() => {
                                     setVideoUri(null);
                                     setThumbnailUri(null);
@@ -532,7 +551,7 @@ const CreateReels = ({ navigation }) => {
                                     setVideoProgress(0);
                                     setVideoDurationSeconds(0);
                                 }}
-                                disabled={loading}
+                                disabled={loading || uploadingMedia}
                             >
                                 <Ionicons name="close-circle" size={24} color="#ff4444" />
                                 <Text style={styles.removeButtonText}>Remove Video</Text>
