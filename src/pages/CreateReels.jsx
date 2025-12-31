@@ -235,7 +235,8 @@ const CreateReels = ({ navigation }) => {
         const formData = new FormData();
 
         // Add text data
-        formData.append('user_id', userId);
+        // formData.append('user_id', userId);
+        formData.append("type", "reel");
         formData.append('text', caption);
         formData.append('location', location);
 

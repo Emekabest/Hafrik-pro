@@ -405,8 +405,8 @@ const PostFeed = () => {
         
         const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
 
-        
-        let postData ={
+
+        let postData = {
             text:postText,
             location:locationText,
         };
@@ -416,7 +416,6 @@ const PostFeed = () => {
 
             postData.type = "photos",
             postData.media = selectedImages.map(images => images.uri)
-
         }
         else if(selectedVideo != null){
             postData.type = "video",

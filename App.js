@@ -91,6 +91,7 @@ function AppNavigator() {
     );
   }
 
+  
 
   return (
     <NavigationContainer>
