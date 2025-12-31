@@ -795,8 +795,8 @@ const PollPostContent = memo(({ feed }) => {
                 )
             })}
             <View style={{ flexDirection: 'row', marginTop: 4, paddingHorizontal: 2 }}>
-                <Text style={{ color: '#787878ff', fontSize: 12 }}>{totalVotes} votes</Text>
-                <Text style={{ color: '#787878ff', fontSize: 12 }}> • {feed.expires_at ? 'Ends soon' : 'Final results'}</Text>
+                <Text style={{ color: '#787878ff', fontSize: 12, fontFamily:"WorkSans_400Regular" }}>{totalVotes} votes</Text>
+                <Text style={{ color: '#787878ff', fontSize: 12, fontFamily:"WorkSans_400Regular" }}> • {feed.expires_at ? 'Ends soon' : 'Final results'}</Text>
             </View>
         </View>
     );
@@ -874,8 +874,8 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
                 <View style={{ marginLeft: 10 }}>
-                    <Text style={{ fontWeight: 'bold' }}>{post.user.full_name}</Text>
-                    <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
+                    <Text style={{ fontFamily:"WorkSans_600SemiBold" }}>{post.user.full_name}</Text>
+                    <Text style={{ color: '#787878ff', fontFamily:"WorkSans_400Regular" }}>{CalculateElapsedTime(post.created)}</Text>
                 </View>
             </View>
             {post.text ? <Text style={{ marginTop: 10, fontFamily: "WorkSans_400Regular" }}>{post.text}</Text> : null}
@@ -1161,7 +1161,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                 <View style = {styles.firstSection}>
                     <View style = {styles.fullnameSection}>
                         <Text style={{marginBottom: 4, flexWrap: 'wrap'}}>
-                            <Text numberOfLines={1} ellipsizeMode="tail" style = { {color:"#333", fontFamily:"WorkSans_600SemiBold"}}>{feed.user.full_name}</Text>
+                            <Text numberOfLines={1} ellipsizeMode="tail" style = { {color:"#000", fontFamily:"WorkSans_600SemiBold"}}>{feed.user.full_name}</Text>
                             {
                                 feed.user.verified ? (
                                     <View style={{ transform: [{ translateY: 6}, { translateX: 2 }], marginHorizontal: 3 }}>
@@ -1184,7 +1184,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
 
                 {feed.text ? (
                     <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})} activeOpacity={1} style={styles.textSection}>
-                        <Text style = {{fontSize:14, color:"#333", fontFamily:"WorkSans_400Regular"}}>{feed.text}</Text>
+                        <Text style = {{fontSize:14, color:"#000", fontFamily:"WorkSans_400Regular"}}>{feed.text}</Text>
                     </TouchableOpacity>
                 ) : <View style = {styles.textSection} />}
 

@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
 
     postButtonText: {
         color: "#fff",
-        fontWeight: "bold",
+        fontFamily:"WorkSans_600SemiBold",
     },
 
     middleButton: {
