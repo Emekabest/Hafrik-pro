@@ -403,7 +403,7 @@ const PostFeed = () => {
     const handlePost = async() => {
         setIsPosting(true);
         
-        const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
+        // const backgroundDetails = selectedBackground ? colorPickerBackground.find(item => item.id === selectedBackground) : null;
 
 
         let postData = {

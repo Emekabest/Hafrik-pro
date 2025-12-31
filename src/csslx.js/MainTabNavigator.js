@@ -22,6 +22,11 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
   const { bottom } = useSafeAreaInsets();
 
+  const focusedOptions = descriptors[state.routes[state.index].key].options;
+
+  if (focusedOptions.tabBarStyle?.display === 'none') {
+    return null;
+  }
   
 
   return (
@@ -36,19 +41,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             target: route.key,
             canPreventDefault: true,
           });
-
-          if (route.name === 'CreatePost') {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-                allowsEditing: true,
-                quality: 1,
-            });
-
-            if (!result.canceled) {
-                navigation.navigate('CreatePost', { videoAsset: result.assets[0] });
-            }
-            return;
-          }
 
           if (!isFocused && !event.defaultPrevented) {
             navigation.navigate(route.name);
