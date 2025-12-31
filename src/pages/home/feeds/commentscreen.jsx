@@ -42,6 +42,8 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
         return () => subscription.remove();
     }, []);
 
+
+
     useEffect(() => {
         const prepareVideo = async () => {
             const cachedSource = await cacheVideo(videoUrl);
