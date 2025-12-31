@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform } from "react-native"
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform, AppState } from "react-native"
 import FeedCard from "./feedcard.jsx";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import GetFeedsController from "../../../controllers/getfeedscontroller.js";
@@ -20,19 +20,30 @@ const Feeds = ()=>{
     const [initialLoading, setInitialLoading] = useState(true);
     const [currentPlayingId, setCurrentPlayingId] = useState(null);
     const isFocused = useIsFocused();
+    const [appState, setAppState] = useState(AppState.currentState);
     const [delayedFocus, setDelayedFocus] = useState(false);
     const { token } = useAuth();
 
     useEffect(() => {
-        if (isFocused) {
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            console.log("App State changed to", nextAppState);
+            setAppState(nextAppState);
+        });
+        return () => {
+            subscription.remove();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (isFocused && appState === 'active') {
             // Delay setting focus to true to allow navigation transition to complete
-            const timer = setTimeout(() => setDelayedFocus(true), 300);
+            const timer = setTimeout(() => setDelayedFocus(true), 500);
             return () => clearTimeout(timer);
         } else {
             // Immediately set to false when leaving
             setDelayedFocus(false);
         }
-    }, [isFocused]);
+    }, [isFocused, appState]);
 
     useEffect(()=>{
         const getFeeds = async()=>{
@@ -63,6 +74,7 @@ const Feeds = ()=>{
     };
 
     
+    
     const memoizedHeader = useMemo(() => (
         <View>
             <Banner />
@@ -81,6 +93,7 @@ const Feeds = ()=>{
     const renderItem = useCallback(({item}) => {
         return <FeedCard feed={item} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} isFocused={delayedFocus} />
     }, [currentPlayingId, delayedFocus]);
+
 
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         const viewableVideoItem = viewableItems.find(item => {

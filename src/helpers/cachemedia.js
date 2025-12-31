@@ -33,7 +33,7 @@ const cacheVideo = async (videoUrl) => {
         const sizeInMB = contentLength / (1024 * 1024);
 
         // Cache the video if it's less than 20MB
-        console.log({filename: fileName, size: sizeInMB});
+        // console.log({filename: fileName, size: sizeInMB});
         if (sizeInMB <= FILE_SIZE_LIMIT_MB) {
             
             // console.log(`I downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);

@@ -14,6 +14,7 @@ import {
     Dimensions,
     KeyboardAvoidingView,
     Platform,
+    AppState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -42,6 +43,16 @@ const CreateReels = ({ navigation }) => {
     const videoRef = useRef(null);
     const [showControls, setShowControls] = useState(false);
     const controlsTimeout = useRef(null);
+
+    // Pause video when app goes to background
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            if (nextAppState.match(/inactive|background/)) {
+                setIsPaused(true);
+            }
+        });
+        return () => subscription.remove();
+    }, []);
 
     // Get user ID from auth context
     const userId = user?.id || user?.user_id;
@@ -298,8 +309,9 @@ const CreateReels = ({ navigation }) => {
 
             const response = await CreateReelsController(formData, token);
 
+            console.log('Upload response:', response);
+
             const responseData = response.data;
-            console.log('Upload response:', responseData);
 
             if (responseData.message === 'success') {
                 Alert.alert(

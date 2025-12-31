@@ -11,7 +11,8 @@ import {
     Platform,
     Dimensions,
     ActivityIndicator,
-    ScrollView
+    ScrollView,
+    AppState
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Video, ResizeMode } from 'expo-av';
@@ -31,7 +32,15 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const [isFinished, setIsFinished] = useState(false);
     const [hasError, setHasError] = useState(false);
     const isFocused = useIsFocused();
+    const [appState, setAppState] = useState(AppState.currentState);
     const [source, setSource] = useState(videoUrl);
+
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', nextAppState => {
+            setAppState(nextAppState);
+        });
+        return () => subscription.remove();
+    }, []);
 
     useEffect(() => {
         const prepareVideo = async () => {
@@ -66,7 +75,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
                 ref={videoRef}
                 style={{ width: "100%", height: "100%" }}
                 source={{ uri: source }}
-                shouldPlay={isFocused}
+                shouldPlay={isFocused && appState === 'active'}
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}
                 usePoster={false}
