@@ -36,12 +36,12 @@ const cacheVideo = async (videoUrl) => {
         console.log({filename: fileName, size: sizeInMB});
         if (sizeInMB <= FILE_SIZE_LIMIT_MB) {
             
-            console.log(`I downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);
+            // console.log(`I downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);
             const downloadResult = await FileSystem.downloadAsync(videoUrl, filePath);
             return downloadResult.uri;
         }
 
-            console.log(`I did NOT downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);
+            // console.log(`I did NOT downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);
 
         // Return the original URL if the video is larger than 15MB
         return videoUrl;

@@ -820,8 +820,9 @@ const styles = StyleSheet.create({
     },
 
     containerTopTextContainer_Input:{
-        fontSize:16,
+        fontSize:15,
         color:"#000",
+        fontFamily:"WorkSans_400Regular",
         textAlignVertical: "center",
     },
 
