@@ -1,6 +1,6 @@
 // App.js
 // import { StatusBar } from 'expo-status-bar';
-import { AppState, StyleSheet, View, StatusBar } from 'react-native';
+import { AppState, StyleSheet, View, StatusBar, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import Login from './src/pages/Login';
@@ -95,8 +95,7 @@ function AppNavigator() {
   return (
     <NavigationContainer>
       
-      
-        <StatusBar barStyle="light-content"  backgroundColor={AppDetails.primaryColor} />
+        <StatusBar barStyle="light-content"  backgroundColor={Platform.OS === "android" ? AppDetails.primaryColor : "transparent"} translucent={Platform.OS === "android" ? false : true} />
 
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']} >
 
@@ -105,7 +104,6 @@ function AppNavigator() {
               <Stack.Screen name="Login" component={Login} />
               <Stack.Screen name="MainTabs" component={MainTabNavigator} options={{ gestureEnabled: false, }} />
               
-
               {/* Add your new screens here */}
               <Stack.Screen name="Categories" component={CategoriesScreen} />
               <Stack.Screen name="Events" component={EventsScreen} />
