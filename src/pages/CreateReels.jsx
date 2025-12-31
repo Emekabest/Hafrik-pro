@@ -27,7 +27,7 @@ const { width, height } = Dimensions.get('window');
 
 const API_BASE_URL = 'https://hafrik.com/api/v1';
 
-const CreatePost = ({ navigation }) => {
+const CreateReels = ({ navigation }) => {
     const { user, token, isAuthenticated } = useAuth();
     const [caption, setCaption] = useState('');
     const [location, setLocation] = useState('');
@@ -80,6 +80,7 @@ const CreatePost = ({ navigation }) => {
         }
     };
 
+    
     const pickVideo = async () => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
@@ -811,4 +812,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default CreatePost;
+export default CreateReels;

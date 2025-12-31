@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import HomePage from '../pages/home/Home'; // Make sure this is the correct path
 import Reels from '../pages/reels';
 import Profile from '../pages/Profile';
-import CreatePost from '../pages/CreatePost'; // Add this import
+import CreateReels from '../pages/CreateReels'; // Add this import
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -125,7 +125,7 @@ const MainTabNavigator = () => {
       
       <Tab.Screen 
         name="CreatePost" 
-        component={CreatePost}
+        component={CreateReels}
         options={{
           tabBarLabel: 'Create',
         }}

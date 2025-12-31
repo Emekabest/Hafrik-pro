@@ -1099,6 +1099,12 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
         if (feed.type === 'profile_cover') {
             return " updated the cover photo";
         }
+        if (feed.type === 'video'){
+            return " added a video";
+        }
+        if (feed.type === 'reel'){
+            return " added a reel";
+        } 
         if (feed.media && feed.media.length > 0) {
             const isVideo = feed.type === 'video' || feed.type === 'reel';
             if (!isVideo) {
@@ -1106,7 +1112,6 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                 return ` added ${count} photo${count > 1 ? 's' : ''}`;
             }
         }
-        if (feed.type === 'video' || feed.type === 'reel') return " added a video";
         if (feed.type === 'shared') return " shared a post";
         return "";
     };
