@@ -13,6 +13,7 @@ import { Image as RemoteImage } from "expo-image";
 import cacheVideo from '../../../helpers/cachemedia';
 import OptionsModal from "./options";
 import SvgIcon from "../../../assl.js/svg/svg";
+import useStore from "../../../repository/store";
 
 
 
@@ -1030,8 +1031,14 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const [showShareOptions, setShowShareOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-    const [liked, setLiked] = useState(false);
-    const [likeCount, setLikeCount] = useState(parseInt(feed.likes_count) || 0);
+    
+    const toggleLikeStore = useStore(state => state.toggleLike);
+    const syncFeedData = useStore(state => state.syncFeedData);
+    const storedLiked = useStore(state => state.likedPosts[feed.id]);
+    const storedCount = useStore(state => state.likeCounts[feed.id]);
+
+    const [liked, setLiked] = useState(storedLiked !== undefined ? storedLiked : false);
+    const [likeCount, setLikeCount] = useState(storedCount !== undefined ? storedCount : (parseInt(feed.likes_count) || 0));
     const { token } = useAuth();
 
     useEffect(()=>{
@@ -1042,6 +1049,11 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                 
                 if(response && response.data){
                     setLiked(!!response.data.liked)
+                    syncFeedData({
+                        id: feed.id,
+                        liked: !!response.data.liked,
+                        likes_count: parseInt(feed.likes_count) || 0
+                    });
                 }
             }
         }
@@ -1078,6 +1090,10 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
         setLikeCount(prev => liked ? prev - 1 : prev + 1);
 
         const response = await ToggleFeedController(feed.id, token)
+        
+        if(response && response.status === 200){
+            toggleLikeStore(feed.id);
+        }
     };
     /**.................................................................... */
 

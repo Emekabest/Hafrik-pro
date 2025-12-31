@@ -9,6 +9,7 @@ import PostFeed from "../postfeed.jsx";
 import { useAuth } from "../../../AuthContext.js";
 import FeedsHeader from "../feedsheader.jsx";
 import { useIsFocused } from '@react-navigation/native';
+import useStore from "../../../repository/store.js";
 
 
 
@@ -23,10 +24,10 @@ const Feeds = ()=>{
     const [appState, setAppState] = useState(AppState.currentState);
     const [delayedFocus, setDelayedFocus] = useState(false);
     const { token } = useAuth();
+    const syncFeedData = useStore(state => state.syncFeedData);
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
-            console.log("App State changed to", nextAppState);
             setAppState(nextAppState);
         });
         return () => {
@@ -50,6 +51,7 @@ const Feeds = ()=>{
             setInitialLoading(true);
             const response = await GetFeedsController(token, 1);   
             setFeeds(response.data);
+            syncFeedData(response.data);
             setInitialLoading(false);
         }
         getFeeds()
@@ -68,6 +70,7 @@ const Feeds = ()=>{
                 const newFeeds = response.data.filter(feed => feed && !existingIds.has(feed.id));
                 return [...prevFeeds, ...newFeeds];
             });
+            syncFeedData(response.data);
             setPage(nextPage);
         }
         setLoadingMore(false);

@@ -24,6 +24,7 @@ import getUserPostInteractionController from '../../../controllers/getuserpostin
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 import cacheVideo from '../../../helpers/cachemedia';
+import useStore from "../../../repository/store";
 
 const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const videoRef = useRef(null);
@@ -314,13 +315,15 @@ const CommentScreen = ({route})=>{
     const [replyText, setReplyText] = useState("");
     const [post, setPost] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [liked, setLiked] = useState(false);
-    const [likeCount, setLikeCount] = useState(0);
     const [comments, setComments] = useState([])
     const [replyingTo, setReplyingTo] = useState(null);
     const textInputRef = useRef(null);
     const { feedId } = route.params;
 
+    const likedPosts = useStore(state => state.likedPosts);
+    const likeCounts = useStore(state => state.likeCounts);
+    const toggleLike = useStore(state => state.toggleLike);
+    const syncFeedData = useStore(state => state.syncFeedData);
 
 
 
@@ -331,8 +334,7 @@ const CommentScreen = ({route})=>{
             const response = await getUserPostInteractionController(feedId, token);
             if(response.status === 200){
                 setPost(response.data);
-                setLiked(!!response.data.liked);
-                setLikeCount(parseInt(response.data.likes_count) || 0);
+                syncFeedData(response.data);
             }
             else{
                 console.log("Something went wrong")
@@ -360,8 +362,7 @@ const CommentScreen = ({route})=>{
     };
 
     const handleLike = async() => {  
-        setLiked(!liked);
-        setLikeCount(prev => liked ? prev - 1 : prev + 1);
+        toggleLike(feedId);
         await ToggleFeedController(feedId, token);
     };
 
@@ -458,6 +459,10 @@ const CommentScreen = ({route})=>{
 
     const renderOriginalPost = () => {
         if (!post) return null;
+
+        const liked = likedPosts[feedId] ?? !!post.liked;
+        const likeCount = likeCounts[feedId] ?? (parseInt(post.likes_count) || 0);
+
         return (
         <View style={[styles.postContainer, { flexDirection: 'column' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
