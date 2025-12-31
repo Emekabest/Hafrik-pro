@@ -43,7 +43,6 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     }, []);
 
 
-
     useEffect(() => {
         const prepareVideo = async () => {
             const cachedSource = await cacheVideo(videoUrl);
