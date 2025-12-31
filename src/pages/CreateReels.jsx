@@ -22,6 +22,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { Video } from 'expo-av';
 
 import { useAuth } from '../AuthContext';
+import CreateReelsController from '../controllers/createreelscontroller';
 
 const { width, height } = Dimensions.get('window');
 
@@ -132,6 +133,7 @@ const CreateReels = ({ navigation }) => {
             Alert.alert('Error', 'Failed to pick video');
         }
     };
+    
 
     const recordVideo = async () => {
         try {
@@ -292,27 +294,14 @@ const CreateReels = ({ navigation }) => {
                 hasThumbnail: !!thumbnailUri
             });
 
-            // Add authorization header if token exists
-            const headers = {
-                'Accept': 'application/json',
-            };
+            
 
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
+            const response = await CreateReelsController(formData, token);
 
-            console.log(token)
+            const responseData = response.data;
+            console.log('Upload response:', responseData);
 
-            const response = await fetch(`${API_BASE_URL}/reels/upload.php`, {
-                method: 'POST',
-                body: formData,
-                headers: headers,
-            });
-
-            const result = await response.json();
-            console.log('Upload response:', result);
-
-            if (response.ok && result.status === 'success') {
+            if (responseData.message === 'success') {
                 Alert.alert(
                     'Success',
                     'Reel uploaded successfully!',
@@ -322,7 +311,7 @@ const CreateReels = ({ navigation }) => {
                             onPress: () => {
                                 resetForm();
                                 navigation.navigate('Reels', {
-                                    initialReelId: result.data?.post_id,
+                                    initialReelId: responseData.data?.post_id,
                                     initialIndex: 0
                                 });
                             }
@@ -330,7 +319,7 @@ const CreateReels = ({ navigation }) => {
                     ]
                 );
             } else {
-                throw new Error(result.message || 'Upload failed');
+                throw new Error(responseData.message || 'Upload failed');
             }
         } catch (error) {
             console.error('Upload error:', error);
