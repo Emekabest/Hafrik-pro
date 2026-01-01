@@ -111,7 +111,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [isBuffering, setIsBuffering] = useState(false);
     const video = useRef(null);
     const [hasError, setHasError] = useState(false);
-    const [source, setSource] = useState(videoUrl);
+    const [source, setSource] = useState(null);
     const [shouldPlay, setShouldPlay] = useState(false);
 
     useEffect(() => {
@@ -176,6 +176,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
 
     /**Prepare video before display......................................... */
     useEffect(() => {
+        setSource(null);
         const prepareVideo = async () => {
             let finalUrl = videoUrl;
             try {
@@ -207,6 +208,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
             overflow: 'hidden',
             backgroundColor: '#000',
         }}>
+            {source ? (
             <Video
                 ref={video}
                 style={{ width: "100%", height: "100%" }}
@@ -237,6 +239,13 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     setIsBuffering(false);
                 }}
             />
+            ) : (
+                <Image
+                    source={{ uri: thumbnail }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="contain"
+                />
+            )}
             <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
                 <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
             </View>
@@ -336,7 +345,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const [isSingleVideoError, setIsSingleVideoError] = useState(false);
     const uniqueId = `${parentFeedId}_video_0`;
-    const [source, setSource] = useState(mediaItem ? mediaItem.video_url : null);
+    const [source, setSource] = useState(null);
     const [shouldPlay, setShouldPlay] = useState(false);
 
 
@@ -364,6 +373,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
 
 
     useEffect(() => {
+        setSource(null);
         if (!isMultiMedia && mediaItem && mediaItem.video_url) {
             const prepareVideo = async () => {
                 let finalUrl = mediaItem.video_url;
@@ -440,6 +450,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                 ) : (
                 <TouchableWithoutFeedback onPress={handlePress}>
                 <View style={{width: 300, height: 600, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
+                    {source ? (
                     <Video
                         ref={singleVideoRef}
                         style={{height:"100%", width: "100%"}}
@@ -473,6 +484,13 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             setIsSingleVideoBuffering(false);
                         }}
                     />
+                    ) : (
+                        <Image
+                            source={{ uri: mediaItem.thumbnail }}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="contain"
+                        />
+                    )}
                     <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isSingleVideoBuffering && !isSingleVideoPlaying) ? 1 : 0}]} pointerEvents="none">
                         <ActivityIndicator size="large" color="#fff" animating={isSingleVideoBuffering && !isSingleVideoPlaying} />
                     </View>
@@ -895,7 +913,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isBuffering, setIsBuffering] = useState(false);
     const [hasError, setHasError] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(true);
-    const [source, setSource] = useState(mediaItem ? mediaItem.video_url : null);
+    const [source, setSource] = useState(null);
     const [shouldPlay, setShouldPlay] = useState(false);
 
     useEffect(() => {
@@ -911,6 +929,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     }, [currentPlayingId, uniqueId, isFocused]);
 
     useEffect(() => {
+        setSource(null);
         if (isVideo && mediaItem && mediaItem.video_url) {
             const prepareVideo = async () => {
                 let finalUrl = mediaItem.video_url;
@@ -981,6 +1000,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                     <View style={{ width: 300, height: 600, marginTop: 10, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
                         {isVideo ? (
                             <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
+                                {source ? (
                                 <Video
                                     ref={videoRef}
                                     style={{ width: "100%", height: "100%" }}
@@ -1014,6 +1034,13 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                         setIsBuffering(false);
                                     }}
                                 />
+                                ) : (
+                                    <Image
+                                        source={{ uri: mediaItem.thumbnail }}
+                                        style={{ width: "100%", height: "100%" }}
+                                        resizeMode="contain"
+                                    />
+                                )}
                                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
                                     <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
                                 </View>
