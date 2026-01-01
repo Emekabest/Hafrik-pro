@@ -1,0 +1,94 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
+
+const Preview = ({ videoUri, onBack, onNext, isFocused, appState, primaryColor }) => {
+    const [videoMounted, setVideoMounted] = useState(false);
+
+    useEffect(() => {
+        setVideoMounted(false);
+        const timer = setTimeout(() => {
+            setVideoMounted(true);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [videoUri]);
+
+    return (
+        <View style={styles.fullScreenContainer}>
+            <View style={[styles.fullScreenPreview, { marginTop: 0 }]}>
+                {videoMounted ? (
+                    <Video
+                        key={videoUri}
+                        source={{ uri: videoUri }}
+                        style={styles.fullScreenVideo}
+                        resizeMode={ResizeMode.COVER}
+                        shouldPlay={isFocused && appState === 'active'}
+                        isLooping
+                        useNativeControls={false}
+                    />
+                ) : (
+                    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                        <ActivityIndicator size="large" color="#fff" />
+                    </View>
+                )}
+                
+                <TouchableOpacity style={styles.backButtonOverlay} onPress={onBack}>
+                    <Ionicons name="arrow-back" size={28} color="white" />
+                </TouchableOpacity>
+
+                <View style={styles.previewBottomBar}>
+                    <TouchableOpacity 
+                        style={[styles.nextButton, { backgroundColor: primaryColor }]} 
+                        onPress={onNext}
+                    >
+                        <Text style={styles.nextButtonText}>Next</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    fullScreenContainer: {
+        flex: 1,
+        backgroundColor: 'black',
+    },
+    fullScreenPreview: {
+        flex: 1,
+        backgroundColor: 'black',
+    },
+    fullScreenVideo: {
+        width: '100%',
+        height: '100%',
+    },
+    backButtonOverlay: {
+        position: 'absolute',
+        top: Platform.OS === 'android' ? 40 : 20,
+        left: 20,
+        zIndex: 10,
+        padding: 8,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        borderRadius: 20,
+    },
+    previewBottomBar: {
+        position: 'absolute',
+        bottom: 30,
+        right: 20,
+        left: 20,
+        alignItems: 'flex-end',
+    },
+    nextButton: {
+        paddingHorizontal: 30,
+        paddingVertical: 12,
+        borderRadius: 25,
+    },
+    nextButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+});
+
+export default Preview;

@@ -1,17 +1,15 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, Dimensions, KeyboardAvoidingView, Platform, FlatList, Image, AppState, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, KeyboardAvoidingView, Platform, Image, AppState, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
-import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import * as MediaLibrary from 'expo-media-library';
 import { useAuth } from '../../AuthContext';
 import CreateReelsController from '../../controllers/createreelscontroller';
 import UploadMediaController from '../../controllers/uploadmediacontroller';
 import { useIsFocused } from '@react-navigation/native';
 import AppDetails from '../../helpers/appdetails';
-
-const { width } = Dimensions.get('window');
+import Gallery from './gallery';
+import Preview from './preview';
 
 const CreateReels = ({ navigation, route }) => {
     const { token } = useAuth();
@@ -21,13 +19,7 @@ const CreateReels = ({ navigation, route }) => {
     const [uploading, setUploading] = useState(false);
     const [posting, setPosting] = useState(false);
     const [step, setStep] = useState('gallery'); // 'gallery' | 'preview' | 'details'
-    const [galleryVideos, setGalleryVideos] = useState([]);
-    const [permissionResponse, requestPermission] = MediaLibrary.usePermissions();
-    const [endCursor, setEndCursor] = useState(null);
-    const [hasNextPage, setHasNextPage] = useState(true);
-    const [loadingGallery, setLoadingGallery] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
-    const [videoMounted, setVideoMounted] = useState(false);
     
     const isFocused = useIsFocused();
     const [appState, setAppState] = useState(AppState.currentState);
@@ -57,70 +49,6 @@ const CreateReels = ({ navigation, route }) => {
             navigation.setOptions({ tabBarStyle: { display: 'flex' } });
         }
     }, [navigation, step]);
-
-    useEffect(() => {
-        if (step === 'preview' && selectedVideo?.uri) {
-            setVideoMounted(false);
-            const timer = setTimeout(() => {
-                setVideoMounted(true);
-            }, 300);
-            return () => clearTimeout(timer);
-        }
-    }, [step, selectedVideo?.uri]);
-
-    const fetchGalleryVideos = async (cursor = null) => {
-        if (loadingGallery) return;
-        setLoadingGallery(true);
-
-        try {
-            if (!permissionResponse?.granted) {
-                const { granted } = await requestPermission();
-                if (!granted) {
-                    setLoadingGallery(false);
-                    return;
-                }
-            }
-
-            const { assets, endCursor: newCursor, hasNextPage: next } = await MediaLibrary.getAssetsAsync({
-                mediaType: 'video',
-                sortBy: ['creationTime'],
-                first: 50,
-                after: cursor,
-            });
-
-            setGalleryVideos(prev => cursor ? [...prev, ...assets] : assets);
-            setEndCursor(newCursor);
-            setHasNextPage(next);
-        } catch (error) {
-            console.error("Error fetching gallery videos:", error);
-        } finally {
-            setLoadingGallery(false);
-        }
-    };
-
-    useEffect(() => {
-        if (step === 'gallery' && galleryVideos.length === 0) {
-            fetchGalleryVideos(null);
-        }
-    }, [step, permissionResponse]);
-
-    const pickVideo = async () => {
-        try {
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-                allowsEditing: true,
-                quality: 1,
-            });
-
-            if (!result.canceled) {
-                const asset = result.assets[0];
-                setStep('preview');
-                processVideoSelection(asset);
-            }
-        } catch (error) {
-            Alert.alert("Error", "Failed to pick video");
-        }
-    };
 
     const processVideoSelection = async (asset) => {
         setUploading(false);
@@ -255,11 +183,7 @@ const CreateReels = ({ navigation, route }) => {
                         setLocation('');
                         setSelectedVideo(null);
                         setStep('gallery');
-                        setGalleryVideos([]);
-                        setEndCursor(null);
-                        setHasNextPage(true);
                         setUploadProgress(0);
-                        setVideoMounted(false);
                         uploadIdRef.current = 0;
                         navigation.navigate('Home');
                     } 
@@ -273,41 +197,10 @@ const CreateReels = ({ navigation, route }) => {
     // Render Custom Gallery Step
     if (step === 'gallery') {
         return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons name="close" size={28} color="black" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Select Video</Text>
-                    <TouchableOpacity onPress={pickVideo}>
-                        <Ionicons name="folder-open-outline" size={28} color="black" />
-                    </TouchableOpacity>
-                </View>
-                <FlatList
-                    data={galleryVideos}
-                    numColumns={3}
-                    keyExtractor={(item) => item.id}
-                    onEndReached={() => { if (hasNextPage) fetchGalleryVideos(endCursor); }}
-                    onEndReachedThreshold={0.5}
-                    ListFooterComponent={loadingGallery && galleryVideos.length > 0 ? <ActivityIndicator size="small" color="#000" style={{margin: 20}} /> : null}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity 
-                            style={styles.galleryItem} 
-                            onPress={() => {
-                                setStep('preview');
-                                processVideoSelection(item);
-                            }}
-                        >
-                            <Image 
-                                source={{ uri: item.uri }} 
-                                style={styles.galleryImage} 
-                                resizeMode="cover"
-                            />
-                            <Text style={styles.durationText}>{Math.round(item.duration)}s</Text>
-                        </TouchableOpacity>
-                    )}
-                />
-            </SafeAreaView>
+            <Gallery onSelect={(asset) => {
+                setStep('preview');
+                processVideoSelection(asset);
+            }} navigation={navigation} />
         );
     }
 
@@ -315,46 +208,22 @@ const CreateReels = ({ navigation, route }) => {
     // Render Preview Step
     if (step === 'preview' && selectedVideo) {
         return (
-            <View style={styles.fullScreenContainer}>
-                <View style={[styles.fullScreenPreview, { marginTop: 0 }]}>
-                    {videoMounted ? (
-                        <Video
-                            key={selectedVideo.uri}
-                            source={{ uri: selectedVideo.uri }}
-                            style={styles.fullScreenVideo}
-                            resizeMode={ResizeMode.COVER}
-                            shouldPlay={isFocused && appState === 'active'}
-                            isLooping
-                            useNativeControls={false}
-                        />
-                    ) : (
-                        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-                            <ActivityIndicator size="large" color="#fff" />
-                        </View>
-                    )}
-                    
-                    <TouchableOpacity style={styles.backButtonOverlay} onPress={() => {
-                        uploadIdRef.current = 0;
-                        setUploading(false);
-                        setStep('gallery');
-                        setSelectedVideo(null);
-                    }}>
-                        <Ionicons name="arrow-back" size={28} color="white" />
-                    </TouchableOpacity>
-
-                    <View style={styles.previewBottomBar}>
-                        <TouchableOpacity 
-                            style={[styles.nextButton, { backgroundColor: AppDetails.primaryColor }]} 
-                            onPress={() => {
-                                startUpload();
-                                setStep('details');
-                            }}
-                        >
-                            <Text style={styles.nextButtonText}>Next</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
+            <Preview 
+                videoUri={selectedVideo.uri}
+                onBack={() => {
+                    uploadIdRef.current = 0;
+                    setUploading(false);
+                    setStep('gallery');
+                    setSelectedVideo(null);
+                }}
+                onNext={() => {
+                    startUpload();
+                    setStep('details');
+                }}
+                isFocused={isFocused}
+                appState={appState}
+                primaryColor={AppDetails.primaryColor}
+            />
         );
     }
 
@@ -411,7 +280,7 @@ const CreateReels = ({ navigation, route }) => {
                     
                     </View>
                 ) : (
-                    <TouchableOpacity style={styles.uploadButton} onPress={pickVideo}>
+                    <TouchableOpacity style={styles.uploadButton} onPress={() => setStep('gallery')}>
                         <Ionicons name="videocam-outline" size={40} color="#666" />
                         <Text style={styles.uploadText}>Select Video</Text>
                     </TouchableOpacity>
@@ -538,64 +407,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.5)',
         padding: 8,
         borderRadius: 20,
-    },
-    fullScreenContainer: {
-        flex: 1,
-        backgroundColor: 'black',
-    },
-    fullScreenPreview: {
-        flex: 1,
-        backgroundColor: 'black',
-    },
-    fullScreenVideo: {
-        width: '100%',
-        height: '100%',
-    },
-    backButtonOverlay: {
-        position: 'absolute',
-        top: Platform.OS === 'android' ? 40 : 20,
-        left: 20,
-        zIndex: 10,
-        padding: 8,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        borderRadius: 20,
-    },
-    previewBottomBar: {
-        position: 'absolute',
-        bottom: 30,
-        right: 20,
-        left: 20,
-        alignItems: 'flex-end',
-    },
-    nextButton: {
-        paddingHorizontal: 30,
-        paddingVertical: 12,
-        borderRadius: 25,
-    },
-    nextButtonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    galleryItem: {
-        width: width / 3,
-        height: width / 3,
-        padding: 1,
-    },
-    galleryImage: {
-        width: '100%',
-        height: '100%',
-    },
-    durationText: {
-        position: 'absolute',
-        bottom: 5,
-        right: 5,
-        color: 'white',
-        fontSize: 12,
-        fontWeight: 'bold',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        paddingHorizontal: 4,
-        borderRadius: 4,
     },
     bottomActionContainer: {
         marginTop: 'auto',
