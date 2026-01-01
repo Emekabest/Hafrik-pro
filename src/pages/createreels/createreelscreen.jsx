@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator,
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../AuthContext';
 import CreateReelsController from '../../controllers/createreelscontroller';
 import UploadMediaController from '../../controllers/uploadmediacontroller';
@@ -194,6 +195,37 @@ const CreateReels = ({ navigation, route }) => {
         }
     };
 
+    const handleChangeThumbnail = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [9, 16],
+                quality: 1,
+            });
+
+            if (!result.canceled) {
+                const asset = result.assets[0];
+                setSelectedVideo(prev => ({ ...prev, localThumbnailUri: asset.uri }));
+
+                if (!uploading && selectedVideo?.serverUrl) {
+                     const thumbFile = {
+                        uri: asset.uri,
+                        type: 'image/jpeg',
+                        fileName: 'thumbnail.jpg',
+                        fileType: 'photo'
+                    };
+                    const thumbResponse = await UploadMediaController(thumbFile, token);
+                    if (thumbResponse.status === "success") {
+                        setSelectedVideo(prev => ({ ...prev, thumbnailUrl: thumbResponse.data.url }));
+                    }
+                }
+            }
+        } catch (error) {
+            console.log("Error picking thumbnail", error);
+        }
+    };
+
     // Render Custom Gallery Step
     if (step === 'gallery') {
         return (
@@ -262,19 +294,26 @@ const CreateReels = ({ navigation, route }) => {
                 </View>
                 
                 {selectedVideo ? (
-                    <View style={styles.videoContainer}>
-                        <Image
-                            source={{ uri: selectedVideo.localThumbnailUri || selectedVideo.thumbnailUrl }}
-                            style={styles.video}
-                            resizeMode="cover"
-                        />
-                        {uploading && (
-                            <View style={styles.uploadingOverlay}>
-                                <Text style={{color:'white', marginBottom: 10, fontWeight: '600'}}>Uploading Media...</Text>
+                    <View style={styles.selectedMediaContainer}>
+                        <View style={styles.thumbnailRow}>
+                            <Image
+                                source={{ uri: selectedVideo.localThumbnailUri || selectedVideo.thumbnailUrl }}
+                                style={styles.smallThumbnail}
+                                resizeMode="cover"
+                            />
+                            <TouchableOpacity onPress={handleChangeThumbnail} style={styles.changeThumbnailButton} disabled={uploading}>
+                                <Ionicons name="image-outline" size={24} color={uploading ? "#ccc" : "#333"} />
+                                <Text style={[styles.changeThumbnailText, uploading && {color: '#ccc'}]}>Change Cover</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {(uploading || uploadProgress === 100) && (
+                            <View style={styles.uploadStatusContainer}>
+                                <Text style={styles.uploadTextLabel}>{uploading ? "Uploading Media..." : "Upload Complete"}</Text>
                                 <View style={styles.progressBarContainer}>
                                     <View style={[styles.progressBarFill, { width: `${uploadProgress}%` }]} />
                                 </View>
-                                <Text style={{color:'white', marginTop: 5, fontSize: 12}}>{Math.round(uploadProgress)}%</Text>
+                                <Text style={styles.uploadPercentage}>{Math.round(uploadProgress)}%</Text>
                             </View>
                         )}
                     
@@ -313,6 +352,7 @@ const CreateReels = ({ navigation, route }) => {
         </SafeAreaView>
     );
 };
+
 
 const styles = StyleSheet.create({
     container: {
@@ -372,42 +412,56 @@ const styles = StyleSheet.create({
         color: '#666',
         fontSize: 16,
     },
-    videoContainer: {
-        height: 400,
-        borderRadius: 12,
-        overflow: 'hidden',
-        backgroundColor: 'black',
-        position: 'relative',
-    },
-    video: {
-        width: '100%',
-        height: '100%',
-    },
-    uploadingOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+    selectedMediaContainer: {
+        alignItems: 'center',
         justifyContent: 'center',
+        marginVertical: 20,
+    },
+    smallThumbnail: {
+        width: 100,
+        height: 100,
+        borderRadius: 10,
+        backgroundColor: '#eee',
+    },
+    thumbnailRow: {
+        flexDirection: 'row',
         alignItems: 'center',
     },
+    changeThumbnailButton: {
+        marginLeft: 20,
+        alignItems: 'center',
+    },
+    changeThumbnailText: {
+        fontSize: 12,
+        marginTop: 5,
+        color: '#333',
+    },
+    uploadStatusContainer: {
+        width: '100%',
+        alignItems: 'center',
+        marginTop: 15,
+    },
+    uploadTextLabel: {
+        color: '#333',
+        marginBottom: 8,
+        fontWeight: '500',
+        fontSize: 14,
+    },
     progressBarContainer: {
-        width: '60%',
-        height: 6,
-        backgroundColor: 'rgba(255,255,255,0.3)',
-        borderRadius: 3,
+        width: '80%',
+        height: 12,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 10,
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        backgroundColor: '#0095f6',
         backgroundColor: AppDetails.primaryColor,
     },
-    removeButton: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        padding: 8,
-        borderRadius: 20,
+    uploadPercentage: {
+        color: '#666',
+        marginTop: 5,
+        fontSize: 12,
     },
     bottomActionContainer: {
         marginTop: 'auto',
