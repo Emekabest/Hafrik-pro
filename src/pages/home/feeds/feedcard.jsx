@@ -405,7 +405,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
         if (currentPlayingId === uniqueId && isFocused) {
             timer = setTimeout(() => {
                 setShouldPlay(true);
-            }, 500);
+            }, 200);
         } else {
             setShouldPlay(false);
         }

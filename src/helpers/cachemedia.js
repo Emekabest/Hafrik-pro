@@ -126,6 +126,7 @@ export const invalidateCache = async (videoUrl) => {
         if (typeof videoUrl !== 'string') return false;
         const filePath = getCacheFilePath(videoUrl);
         const info = await FileSystem.getInfoAsync(filePath);
+        console.log("File redownloaded:", filePath);
         if (info.exists) {
             await FileSystem.deleteAsync(filePath, { idempotent: true });
             return true;
@@ -135,6 +136,7 @@ export const invalidateCache = async (videoUrl) => {
         return false;
     }
 };
+
 
 export const clearCache = async () => {
     // try {
