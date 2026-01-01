@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode, Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
 const Preview = ({ videoUri, onBack, onNext, isFocused, appState, primaryColor }) => {
     const [videoMounted, setVideoMounted] = useState(false);
+    const videoRef = useRef(null);
 
     useEffect(() => {
         setVideoMounted(false);
@@ -14,11 +15,39 @@ const Preview = ({ videoUri, onBack, onNext, isFocused, appState, primaryColor }
         return () => clearTimeout(timer);
     }, [videoUri]);
 
+    useEffect(() => {
+        // Configure audio to pause background music (DoNotMix)
+        Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: false,
+            interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+            staysActiveInBackground: false,
+        }).catch(error => console.log("Audio mode setup error", error));
+
+        return () => {
+            if (videoRef.current) {
+                videoRef.current.unloadAsync();
+            }
+            // Reset audio mode to ensure background music returns to normal volume
+            Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+                interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+                playsInSilentModeIOS: false,
+                shouldDuckAndroid: true,
+                interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+                staysActiveInBackground: false,
+            }).catch(error => console.log("Audio mode reset error", error));
+        };
+    }, []);
+
     return (
         <View style={styles.fullScreenContainer}>
             <View style={[styles.fullScreenPreview, { marginTop: 0 }]}>
                 {videoMounted ? (
                     <Video
+                        ref={videoRef}
                         key={videoUri}
                         source={{ uri: videoUri }}
                         style={styles.fullScreenVideo}
