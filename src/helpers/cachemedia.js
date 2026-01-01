@@ -37,8 +37,8 @@ const cacheVideo = async (videoUrl) => {
         const contentLength = response.headers.get('Content-Length');
         const fileSize = parseInt(contentLength, 10);
 
-        const FILE_SIZE_CACHEABLE_MAX = 20; // 20MB
         const FILE_SIZE_CACHEABLE_MIN = 1.5; // 1MB
+        const FILE_SIZE_CACHEABLE_MAX = 20; // 20MB
 
         const sizeInMB = fileSize / (1024 * 1024);
 
