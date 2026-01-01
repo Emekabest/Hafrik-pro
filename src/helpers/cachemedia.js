@@ -33,13 +33,17 @@ const validateCachedFile = async (videoUrl, filePath) => {
                 return false;
             }
         } catch (e) {
-            // HEAD may fail; fall back to checking file size > 0
-            if (typeof info.size === 'number' && info.size > 100) return true;
+            // HEAD may fail; treat unknown remote size as invalid to avoid
+            // returning partially downloaded or corrupted files. Caller will
+            // re-download below.
             await FileSystem.deleteAsync(filePath, { idempotent: true });
             return false;
         }
 
         // If no content-length header, consider non-empty file valid
+        // We already deleted files when HEAD failed; reaching here implies
+        // content-length header was present and handled above. As a fallback
+        // be conservative and require a non-empty file.
         return typeof info.size === 'number' && info.size > 100;
     } catch (err) {
         return false;
@@ -80,8 +84,9 @@ const cacheVideo = async (videoUrl) => {
             (fileSize === null || (fileSize >= CACHE_MIN_MB * 1024 * 1024 && fileSize <= CACHE_MAX_MB * 1024 * 1024));
 
         if (isCacheable) {
+            const tempPath = `${filePath}.download`;
             try {
-                const downloadResult = await FileSystem.downloadAsync(videoUrl, filePath);
+                const downloadResult = await FileSystem.downloadAsync(videoUrl, tempPath);
                 // verify downloaded file matches expected size when possible
                 if (fileSize) {
                     const info = await FileSystem.getInfoAsync(downloadResult.uri);
@@ -90,9 +95,18 @@ const cacheVideo = async (videoUrl) => {
                         return videoUrl;
                     }
                 }
-                return downloadResult.uri;
+
+                // Move temp file into final location atomically
+                try {
+                    await FileSystem.moveAsync({ from: downloadResult.uri, to: filePath });
+                    return filePath;
+                } catch (moveErr) {
+                    // If move fails, try to return downloaded uri (still usable)
+                    return downloadResult.uri || videoUrl;
+                }
             } catch (err) {
-                // Download failed, ensure no partial file remains
+                // Download failed, ensure no partial or temp file remains
+                try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch(e){}
                 try { await FileSystem.deleteAsync(filePath, { idempotent: true }); } catch(e){}
                 return videoUrl;
             }
