@@ -288,6 +288,7 @@ const CreateReels = ({ navigation, route }) => {
 
                 <View style={styles.bottomActionContainer}>
                     <TouchableOpacity 
+                        activeOpacity={1}
                         onPress={handlePost} 
                         disabled={posting || uploading || !selectedVideo}
                         style={[styles.bottomPostButton, { backgroundColor: AppDetails.primaryColor }, (posting || uploading || !selectedVideo) && { opacity: 0.5 }]}>
@@ -414,14 +415,16 @@ const styles = StyleSheet.create({
         paddingBottom: 10,
     },
     bottomPostButton: {
-        paddingHorizontal: 30,
-        paddingVertical: 12,
-        borderRadius: 25,
+        height:60,
+        width:"50%",
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 10,
     },
     bottomPostButtonText: {
         color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
+        fontFamily:"WorkSans_600SemiBold",
+        fontSize: 18,
     },
     modalOverlay: {
         flex: 1,

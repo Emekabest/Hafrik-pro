@@ -12,6 +12,7 @@ const QuickActions = ({ activeTab, onTabChange }) => {
   return (
     <View style={styles.quickActionsContainer}>
       <TouchableOpacity
+        activeOpacity={1}
         style={styles.quickActionButton}
         onPress={() => onTabChange(0)}
       >
@@ -24,6 +25,7 @@ const QuickActions = ({ activeTab, onTabChange }) => {
       </TouchableOpacity>
 
       <TouchableOpacity
+        activeOpacity={1}
         style={styles.quickActionButton}
         onPress={() => onTabChange(1)}
       >
@@ -36,6 +38,7 @@ const QuickActions = ({ activeTab, onTabChange }) => {
       </TouchableOpacity>
 
       <TouchableOpacity
+        activeOpacity={1}
         style={styles.quickActionButton}
         onPress={() => onTabChange(2)}
       >

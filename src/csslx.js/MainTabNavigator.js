@@ -80,6 +80,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             onPress={onPress}
             onLongPress={onLongPress}
             style={styles.tabItem}
+            activeOpacity={1}
           >
             <View style={styles.iconContainer}>
               <Ionicons

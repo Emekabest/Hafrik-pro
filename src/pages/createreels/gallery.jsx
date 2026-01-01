@@ -66,14 +66,47 @@ const Gallery = ({ onSelect, navigation }) => {
         }
     };
 
+    const recordVideo = async () => {
+        try {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert("Permission needed", "Camera permission is required to record videos.");
+                return;
+            }
+
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                allowsEditing: true,
+                quality: 1,
+            });
+
+            if (!result.canceled) {
+                const asset = result.assets[0];
+                onSelect(asset);
+            }
+        } catch (error) {
+            Alert.alert("Error", "Failed to open camera");
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Select Video</Text>
-                <TouchableOpacity onPress={pickVideo}>
+                <TouchableOpacity onPress={pickVideo}activeOpacity={1}>
                     <Ionicons name="folder-open-outline" size={28} color="black" />
                 </TouchableOpacity>
             </View>
+
+            <View style={styles.cameraButtonContainer}>
+                <TouchableOpacity style={styles.cameraButton}  onPress={recordVideo}>
+                    <View style={styles.cameraIconContainer}>
+                        <Ionicons name="camera" size={24} color="#fff" />
+                    </View>                  
+                    <Text style={styles.cameraButtonText}>Record a Video</Text>
+                </TouchableOpacity>
+            </View>
+            
             <FlatList
                 data={galleryVideos}
                 numColumns={3}
@@ -136,6 +169,34 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.5)',
         paddingHorizontal: 4,
         borderRadius: 4,
+    },
+
+    cameraButtonContainer:{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent:"center",
+        padding: 10,
+        paddingHorizontal: 16,
+        paddingVertical:50
+    },
+
+    cameraButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    cameraIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#333',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    cameraButtonText: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
     },
 });
 

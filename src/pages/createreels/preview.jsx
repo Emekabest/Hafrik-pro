@@ -68,6 +68,7 @@ const Preview = ({ videoUri, onBack, onNext, isFocused, appState, primaryColor }
 
                 <View style={styles.previewBottomBar}>
                     <TouchableOpacity 
+                        activeOpacity={1}
                         style={[styles.nextButton, { backgroundColor: primaryColor }]} 
                         onPress={onNext}
                     >
@@ -109,9 +110,11 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     nextButton: {
-        paddingHorizontal: 30,
-        paddingVertical: 12,
-        borderRadius: 25,
+        height:60,
+        width:"50%",
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 10,
     },
     nextButtonText: {
         color: 'white',
