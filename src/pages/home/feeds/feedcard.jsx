@@ -108,6 +108,9 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [hasError, setHasError] = useState(false);
     const [source, setSource] = useState(null);
     const [shouldPlay, setShouldPlay] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [retryKey, setRetryKey] = useState(0);
+    const bufferTimeoutRef = useRef(null);
 
     useEffect(() => {
         let timer;
@@ -126,6 +129,10 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         return () => {
             if (video.current) {
                 video.current.unloadAsync();
+            }
+            if (bufferTimeoutRef.current) {
+                clearTimeout(bufferTimeoutRef.current);
+                bufferTimeoutRef.current = null;
             }
         };
     }, []);
@@ -183,6 +190,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
             let finalUrl = videoUrl;
             try {
                 if (typeof videoUrl === "string" && videoUrl.includes(".mp4") && !videoUrl.includes(".m3u8")) {
+                    setIsDownloading(true);
                     console.log("caching video now::"+videoUrl);
                     finalUrl = await cacheVideo(videoUrl);
                 }
@@ -192,6 +200,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 finalUrl = videoUrl;
             }
             setSource(finalUrl);
+            setIsDownloading(false);
         };
 
         prepareVideo();
@@ -213,6 +222,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
             {source ? (
             <Video
                 ref={video}
+                key={`${source || videoUrl}-${retryKey}`}
                 style={{ width: "100%", height: "100%" }}
                 source={{
                     uri: source,
@@ -234,11 +244,42 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                     if (status.isPlaying) {
                         setIsFinished(false);
                     }
+
+                    // Start a buffer-stall timer when buffering but not playing
+                    if (status.isBuffering && !status.isPlaying) {
+                        if (!bufferTimeoutRef.current) {
+                            bufferTimeoutRef.current = setTimeout(() => {
+                                // try a recovery: force a remount and fallback to network URL
+                                if (retryKey < 2) {
+                                    setRetryKey(prev => prev + 1);
+                                    setSource(null);
+                                    setTimeout(() => setSource(videoUrl), 250);
+                                } else {
+                                    setHasError(true);
+                                    setIsBuffering(false);
+                                }
+                                bufferTimeoutRef.current = null;
+                            }, 6000);
+                        }
+                    } else {
+                        if (bufferTimeoutRef.current) {
+                            clearTimeout(bufferTimeoutRef.current);
+                            bufferTimeoutRef.current = null;
+                        }
+                    }
                 }}
                 onLoadStart={() => setIsBuffering(true)}
                 onError={(error) => {
-                    setHasError(true);
-                    setIsBuffering(false);
+                    console.log('FeedVideoItem onError', error);
+                    // attempt limited recoveries: remount and try streaming from network
+                    if (retryKey < 2) {
+                        setRetryKey(prev => prev + 1);
+                        setSource(null);
+                        setTimeout(() => setSource(videoUrl), 300);
+                    } else {
+                        setHasError(true);
+                        setIsBuffering(false);
+                    }
                 }}
             />
             ) : (
@@ -250,6 +291,9 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
             )}
             <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
                 <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
+            </View>
+            <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 3, opacity: isDownloading ? 1 : 0}]} pointerEvents="none">
+                <ActivityIndicator size="large" color="#fff" animating={isDownloading} />
             </View>
             
             <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
@@ -349,6 +393,9 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const uniqueId = `${parentFeedId}_video_0`;
     const [source, setSource] = useState(null);
     const [shouldPlay, setShouldPlay] = useState(false);
+    const [isDownloadingSingle, setIsDownloadingSingle] = useState(false);
+    const [retryKeySingle, setRetryKeySingle] = useState(0);
+    const bufferTimeoutSingleRef = useRef(null);
 
 
 
@@ -370,6 +417,10 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
             if (singleVideoRef.current) {
                 singleVideoRef.current.unloadAsync();
             }
+            if (bufferTimeoutSingleRef.current) {
+                clearTimeout(bufferTimeoutSingleRef.current);
+                bufferTimeoutSingleRef.current = null;
+            }
         };
     }, []);
 
@@ -382,6 +433,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                 let finalUrl = mediaItem.video_url;
                 try {
                     if (typeof finalUrl === "string" && finalUrl.includes(".mp4") && !finalUrl.includes(".m3u8")) {
+                        setIsDownloadingSingle(true);
                         // console.log("caching single video now::"+mediaItem.video_url);
                         finalUrl = await cacheVideo(mediaItem.video_url);
                     }
@@ -390,6 +442,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     finalUrl = mediaItem.video_url;
                 }
                 setSource(finalUrl);
+                setIsDownloadingSingle(false);
             };
             prepareVideo();
         }
@@ -456,6 +509,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     {source ? (
                     <Video
                         ref={singleVideoRef}
+                        key={`${source || mediaItem.video_url}-${retryKeySingle}`}
                         style={{height:"100%", width: "100%"}}
                         source={{ uri: source }}
                         shouldPlay={shouldPlay}
@@ -480,11 +534,39 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             if (status.isPlaying) {
                                 setIsSingleVideoFinished(false);
                             }
+
+                            if (status.isBuffering && !status.isPlaying) {
+                                if (!bufferTimeoutSingleRef.current) {
+                                    bufferTimeoutSingleRef.current = setTimeout(() => {
+                                        if (retryKeySingle < 2) {
+                                            setRetryKeySingle(prev => prev + 1);
+                                            setSource(null);
+                                            setTimeout(() => setSource(mediaItem.video_url), 250);
+                                        } else {
+                                            setIsSingleVideoError(true);
+                                            setIsSingleVideoBuffering(false);
+                                        }
+                                        bufferTimeoutSingleRef.current = null;
+                                    }, 6000);
+                                }
+                            } else {
+                                if (bufferTimeoutSingleRef.current) {
+                                    clearTimeout(bufferTimeoutSingleRef.current);
+                                    bufferTimeoutSingleRef.current = null;
+                                }
+                            }
                         }}
                         onLoadStart={() => setIsSingleVideoBuffering(true)}
                         onError={(error) => {
-                            setIsSingleVideoError(true);
-                            setIsSingleVideoBuffering(false);
+                            console.log('Single video onError', error);
+                            if (retryKeySingle < 2) {
+                                setRetryKeySingle(prev => prev + 1);
+                                setSource(null);
+                                setTimeout(() => setSource(mediaItem.video_url), 300);
+                            } else {
+                                setIsSingleVideoError(true);
+                                setIsSingleVideoBuffering(false);
+                            }
                         }}
                     />
                     ) : (
@@ -496,6 +578,10 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     )}
                     <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isSingleVideoBuffering && !isSingleVideoPlaying) ? 1 : 0}]} pointerEvents="none">
                         <ActivityIndicator size="large" color="#fff" animating={isSingleVideoBuffering && !isSingleVideoPlaying} />
+                    </View>
+
+                    <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 3, opacity: isDownloadingSingle ? 1 : 0}]} pointerEvents="none">
+                        <ActivityIndicator size="large" color="#fff" animating={isDownloadingSingle} />
                     </View>
 
                     <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
@@ -918,6 +1004,9 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isImageLoading, setIsImageLoading] = useState(true);
     const [source, setSource] = useState(null);
     const [shouldPlay, setShouldPlay] = useState(false);
+    const [isDownloadingShared, setIsDownloadingShared] = useState(false);
+    const [retryKeyShared, setRetryKeyShared] = useState(0);
+    const bufferTimeoutSharedRef = useRef(null);
 
     useEffect(() => {
         let timer;
@@ -936,6 +1025,10 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             if (videoRef.current) {
                 videoRef.current.unloadAsync();
             }
+            if (bufferTimeoutSharedRef.current) {
+                clearTimeout(bufferTimeoutSharedRef.current);
+                bufferTimeoutSharedRef.current = null;
+            }
         };
     }, []);
 
@@ -946,12 +1039,14 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                 let finalUrl = mediaItem.video_url;
                 try {
                     if (typeof finalUrl === "string" && finalUrl.includes(".mp4") && !finalUrl.includes(".m3u8")) {
+                        setIsDownloadingShared(true);
                         finalUrl = await cacheVideo(mediaItem.video_url);
                     }
                 } catch (e) {
                     finalUrl = mediaItem.video_url;
                 }
                 setSource(finalUrl);
+                setIsDownloadingShared(false);
             };
             prepareVideo();
         }
@@ -1014,6 +1109,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 {source ? (
                                 <Video
                                     ref={videoRef}
+                                    key={`${source || mediaItem.video_url}-${retryKeyShared}`}
                                     style={{ width: "100%", height: "100%" }}
                                     source={{ uri: source }}
                                     shouldPlay={shouldPlay}
@@ -1038,11 +1134,39 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                         if (status.isPlaying) {
                                             setIsFinished(false);
                                         }
+
+                                        if (status.isBuffering && !status.isPlaying) {
+                                            if (!bufferTimeoutSharedRef.current) {
+                                                bufferTimeoutSharedRef.current = setTimeout(() => {
+                                                    if (retryKeyShared < 2) {
+                                                        setRetryKeyShared(prev => prev + 1);
+                                                        setSource(null);
+                                                        setTimeout(() => setSource(mediaItem.video_url), 250);
+                                                    } else {
+                                                        setHasError(true);
+                                                        setIsBuffering(false);
+                                                    }
+                                                    bufferTimeoutSharedRef.current = null;
+                                                }, 6000);
+                                            }
+                                        } else {
+                                            if (bufferTimeoutSharedRef.current) {
+                                                clearTimeout(bufferTimeoutSharedRef.current);
+                                                bufferTimeoutSharedRef.current = null;
+                                            }
+                                        }
                                     }}
                                     onLoadStart={() => setIsBuffering(true)}
                                     onError={(error) => {
-                                        setHasError(true);
-                                        setIsBuffering(false);
+                                        console.log('Shared video onError', error);
+                                        if (retryKeyShared < 2) {
+                                            setRetryKeyShared(prev => prev + 1);
+                                            setSource(null);
+                                            setTimeout(() => setSource(mediaItem.video_url), 300);
+                                        } else {
+                                            setHasError(true);
+                                            setIsBuffering(false);
+                                        }
                                     }}
                                 />
                                 ) : (
@@ -1059,6 +1183,9 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                 <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
                                     <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
                                 </TouchableOpacity>
+                                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 3, opacity: isDownloadingShared ? 1 : 0}]} pointerEvents="none">
+                                    <ActivityIndicator size="large" color="#fff" animating={isDownloadingShared} />
+                                </View>
                             </View>
                         ) : (
                             <>
