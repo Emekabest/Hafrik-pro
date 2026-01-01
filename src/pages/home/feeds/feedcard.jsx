@@ -122,6 +122,13 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         return () => clearTimeout(timer);
     }, [currentPlayingId, uniqueId, isFocused]);
 
+    useEffect(() => {
+        return () => {
+            if (video.current) {
+                video.current.unloadAsync();
+            }
+        };
+    }, []);
 
 
 
@@ -347,23 +354,24 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
 
     /** Delay video playback */
     useEffect(() => {
-        const delayVideo = ()=>{
-
-            let timer;
-            if (currentPlayingId === uniqueId && isFocused) {
-                timer = setTimeout(() => {
-                    setShouldPlay(true);
-                }, 500);
-            } else {
-                setShouldPlay(false);
-            }
-            return () => clearTimeout(timer);
-
+        let timer;
+        if (currentPlayingId === uniqueId && isFocused) {
+            timer = setTimeout(() => {
+                setShouldPlay(true);
+            }, 500);
+        } else {
+            setShouldPlay(false);
         }
-
-        delayVideo();
+        return () => clearTimeout(timer);
     }, [currentPlayingId, uniqueId, isFocused]);
 
+    useEffect(() => {
+        return () => {
+            if (singleVideoRef.current) {
+                singleVideoRef.current.unloadAsync();
+            }
+        };
+    }, []);
 
 
 
@@ -922,6 +930,14 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
         }
         return () => clearTimeout(timer);
     }, [currentPlayingId, uniqueId, isFocused]);
+
+    useEffect(() => {
+        return () => {
+            if (videoRef.current) {
+                videoRef.current.unloadAsync();
+            }
+        };
+    }, []);
 
     useEffect(() => {
         setSource(null);
