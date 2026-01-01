@@ -155,9 +155,9 @@ const Feeds = ()=>{
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.5}
-                initialNumToRender={5}
-                maxToRenderPerBatch={5}
-                windowSize={10}
+                initialNumToRender={3}
+                maxToRenderPerBatch={3}
+                windowSize={5}
                 removeClippedSubviews={Platform.OS === 'android'}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}

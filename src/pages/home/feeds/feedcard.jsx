@@ -20,7 +20,7 @@ import useStore from "../../../repository/store";
 const aspectRatioCache = new Map();
 
 const SkeletonLoader = ({ style }) => {
-    const animValue = useRef(new Animated.Value(0)).current;
+    const animValue = useRef(new Animated.Value(0.3)).current;
 
     useEffect(() => {
         const animation = Animated.loop(
@@ -28,12 +28,12 @@ const SkeletonLoader = ({ style }) => {
                 Animated.timing(animValue, {
                     toValue: 1,
                     duration: 800,
-                    useNativeDriver: false,
+                    useNativeDriver: true,
                 }),
                 Animated.timing(animValue, {
-                    toValue: 0,
+                    toValue: 0.3,
                     duration: 800,
-                    useNativeDriver: false,
+                    useNativeDriver: true,
                 }),
             ])
         );
@@ -41,13 +41,8 @@ const SkeletonLoader = ({ style }) => {
         return () => animation.stop();
     }, []);
 
-    const backgroundColor = animValue.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['#f3f3f3', '#dddddd']
-    });
-
     return (
-        <Animated.View style={[style, { backgroundColor }]} />
+        <Animated.View style={[style, { opacity: animValue, backgroundColor: '#dddddd' }]} />
     );
 };
 
@@ -1137,22 +1132,25 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
 
     useEffect(()=>{
 
-        const getUserPostInteraction = async()=>{
-            if(token){
-                const response = await getUserPostInteractionController(feed.id, token)
-                
-                if(response && response.data){
-                    setLiked(!!response.data.liked)
-                    syncFeedData({
-                        id: feed.id,
-                        liked: !!response.data.liked,
-                        likes_count: parseInt(feed.likes_count) || 0
-                    });
+        const timer = setTimeout(() => {
+            const getUserPostInteraction = async()=>{
+                if(token){
+                    const response = await getUserPostInteractionController(feed.id, token)
+                    
+                    if(response && response.data){
+                        setLiked(!!response.data.liked)
+                        syncFeedData({
+                            id: feed.id,
+                            liked: !!response.data.liked,
+                            likes_count: parseInt(feed.likes_count) || 0
+                        });
+                    }
                 }
             }
-        }
+            getUserPostInteraction()
+        }, 500);
 
-        getUserPostInteraction()
+        return () => clearTimeout(timer);
     },[feed.id, token])
     
     const iconRef = useRef(null);
