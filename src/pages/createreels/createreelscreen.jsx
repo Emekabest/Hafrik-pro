@@ -5,11 +5,11 @@ import { Video, ResizeMode } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as MediaLibrary from 'expo-media-library';
-import { useAuth } from '../AuthContext';
-import CreateReelsController from '../controllers/createreelscontroller';
-import UploadMediaController from '../controllers/uploadmediacontroller';
+import { useAuth } from '../../AuthContext';
+import CreateReelsController from '../../controllers/createreelscontroller';
+import UploadMediaController from '../../controllers/uploadmediacontroller';
 import { useIsFocused } from '@react-navigation/native';
-import AppDetails from '../helpers/appdetails';
+import AppDetails from '../../helpers/appdetails';
 
 const { width } = Dimensions.get('window');
 
@@ -311,6 +311,7 @@ const CreateReels = ({ navigation, route }) => {
         );
     }
 
+    
     // Render Preview Step
     if (step === 'preview' && selectedVideo) {
         return (

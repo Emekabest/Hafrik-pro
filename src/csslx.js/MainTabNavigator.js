@@ -9,12 +9,11 @@ import * as ImagePicker from 'expo-image-picker';
 import HomePage from '../pages/home/Home'; // Make sure this is the correct path
 import Reels from '../pages/reels';
 import Profile from '../pages/Profile';
-import CreateReels from '../pages/CreateReels'; // Add this import
+import CreateReels from '../pages/createreels/createreelscreen'; // Add this import
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator();
-
 
 
 // Custom Tab Bar Component
