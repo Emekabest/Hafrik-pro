@@ -8,8 +8,12 @@ import * as FileSystem from "expo-file-system/legacy";
  */
 const cacheVideo = async (videoUrl) => {
     try {
+        if (typeof videoUrl !== "string"){
 
-        const FILE_SIZE_LIMIT_MB = 20;
+            console.log("omo")
+
+            return videoUrl
+        };
 
         const cacheDirectory = FileSystem.cacheDirectory;
         const fileName = videoUrl.split('/').pop().replace(/[^a-zA-Z0-9_.-]/g, '_');
@@ -23,6 +27,7 @@ const cacheVideo = async (videoUrl) => {
         // Check if the file already exists
         const fileInfo = await FileSystem.getInfoAsync(filePath);
         if (fileInfo.exists) {
+            console.log(`File already cached: ${fileName}, videoUrl: ${videoUrl}\n`);
             return filePath;
         }
 
@@ -30,18 +35,29 @@ const cacheVideo = async (videoUrl) => {
         // Fetch the video size
         const response = await fetch(videoUrl, { method: 'HEAD' });
         const contentLength = response.headers.get('Content-Length');
-        const sizeInMB = contentLength / (1024 * 1024);
+        const fileSize = parseInt(contentLength, 10);
 
-        // Cache the video if it's less than 20MB
-        // console.log({filename: fileName, size: sizeInMB});
-        if (sizeInMB <= FILE_SIZE_LIMIT_MB) {
+        const FILE_SIZE_CACHEABLE_MAX = 20; // 20MB
+        const FILE_SIZE_CACHEABLE_MIN = 1; // 1MB
+
+        const sizeInMB = fileSize / (1024 * 1024);
+
+        const isCacheable =
+            videoUrl.includes(".mp4") &&
+            !videoUrl.includes(".m3u8") &&
+            fileSize >= FILE_SIZE_CACHEABLE_MIN * 1024 * 1024 && // >= 1MB
+            fileSize <= FILE_SIZE_CACHEABLE_MAX * 1024 * 1024;
+
+        // Cache the video if it's valid size and less than limit
+        if (isCacheable) {
             
-            // console.log(`I downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);
+            console.log(`I downloaded file:${videoUrl} of size: ${sizeInMB} MB to cache.\n`);
             const downloadResult = await FileSystem.downloadAsync(videoUrl, filePath);
             return downloadResult.uri;
         }
 
-            // console.log(`I did NOT downloaded file:${fileName} of size: ${sizeInMB} MB to cache.`);
+
+            console.log(`I did NOT downloaded file:${videoUrl} of size: ${sizeInMB} MB to cache.\n`);
 
         // Return the original URL if the video is larger than 15MB
         return videoUrl;
@@ -52,3 +68,15 @@ const cacheVideo = async (videoUrl) => {
 };
 
 export default cacheVideo;
+
+export const clearCache = async () => {
+    // try {
+    //     const files = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory);
+    //     for (const file of files) {
+    //         await FileSystem.deleteAsync(FileSystem.cacheDirectory + file, { idempotent: true });
+    //     }
+    //     console.log("Cache cleared successfully");
+    // } catch (error) {
+    //     console.error("Error clearing cache:", error);
+    // }
+};

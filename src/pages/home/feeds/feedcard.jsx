@@ -113,6 +113,23 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const [hasError, setHasError] = useState(false);
     const [source, setSource] = useState(videoUrl);
     const lastTap = useRef(null);
+    const [shouldPlay, setShouldPlay] = useState(false);
+
+    useEffect(() => {
+        let timer;
+        if (currentPlayingId === uniqueId && isFocused) {
+            timer = setTimeout(() => {
+                console.log("Logging")
+                setShouldPlay(true);
+            }, 2000);
+        } else {
+            setShouldPlay(false);
+        }
+        return () => clearTimeout(timer);
+    }, [currentPlayingId, uniqueId, isFocused]);
+
+
+
 
     const handleDoubleTap = () => {
         const now = Date.now();
@@ -160,19 +177,32 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         }
     }, [thumbnail, targetHeight, maxWidth]);
 
+
+
+
+
+    /**Prepare video before display......................................... */
     useEffect(() => {
         const prepareVideo = async () => {
-            const cachedSource = await cacheVideo(videoUrl);
-            setSource(cachedSource);
+            let finalUrl = videoUrl;
+            try {
+                if (typeof videoUrl === "string" && videoUrl.includes(".mp4") && !videoUrl.includes(".m3u8")) {
+                    console.log("caching video now::"+videoUrl);
+                    finalUrl = await cacheVideo(videoUrl);
+                }
+            } catch (e) {
+
+                console.log("error caching video::"+videoUrl);
+                finalUrl = videoUrl;
+            }
+            setSource(finalUrl);
         };
 
         prepareVideo();
     }, [videoUrl]);
 
-    //Create a function that says hello world
-    const sayHelloWorld = () => {
-        console.log("Hello World");
-    };
+
+
 
     return (
         <TouchableWithoutFeedback onPress={handleDoubleTap}>
@@ -190,7 +220,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                 source={{
                     uri: source,
                 }}
-                shouldPlay={currentPlayingId === uniqueId && isFocused}
+                shouldPlay={shouldPlay}
                 useNativeControls={false}
                 isMuted={isMuted}
                 resizeMode={ResizeMode.CONTAIN}
@@ -315,16 +345,54 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const uniqueId = `${parentFeedId}_video_0`;
     const lastTap = useRef(null);
     const [source, setSource] = useState(mediaItem ? mediaItem.video_url : null);
+    const [shouldPlay, setShouldPlay] = useState(false);
+
+
+
+    /** Delay video playback */
+    useEffect(() => {
+        const delayVideo = ()=>{
+
+            let timer;
+            if (currentPlayingId === uniqueId && isFocused) {
+                timer = setTimeout(() => {
+                    setShouldPlay(true);
+                }, 500);
+            } else {
+                setShouldPlay(false);
+            }
+            return () => clearTimeout(timer);
+
+        }
+
+        delayVideo();
+    }, [currentPlayingId, uniqueId, isFocused]);
+
+
+
 
     useEffect(() => {
         if (!isMultiMedia && mediaItem && mediaItem.video_url) {
             const prepareVideo = async () => {
-                const cachedSource = await cacheVideo(mediaItem.video_url);
-                setSource(cachedSource);
+                let finalUrl = mediaItem.video_url;
+                try {
+                    if (typeof finalUrl === "string" && finalUrl.includes(".mp4") && !finalUrl.includes(".m3u8")) {
+                        // console.log("caching single video now::"+mediaItem.video_url);
+                        finalUrl = await cacheVideo(mediaItem.video_url);
+                    }
+                } catch (e) {
+                    console.log("error caching single video::"+mediaItem.video_url);
+                    finalUrl = mediaItem.video_url;
+                }
+                setSource(finalUrl);
             };
             prepareVideo();
         }
     }, [isMultiMedia, mediaItem]);
+
+
+
+
 
     const handleDoubleTap = () => {
         const now = Date.now();
@@ -390,7 +458,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         ref={singleVideoRef}
                         style={{height:"100%", width: "100%"}}
                         source={{ uri: source }}
-                        shouldPlay={currentPlayingId === uniqueId && isFocused}
+                        shouldPlay={shouldPlay}
                         useNativeControls={false}
                         isMuted={isMuted}
                         isLooping={true}
@@ -843,12 +911,32 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isImageLoading, setIsImageLoading] = useState(true);
     const lastTap = useRef(null);
     const [source, setSource] = useState(mediaItem ? mediaItem.video_url : null);
+    const [shouldPlay, setShouldPlay] = useState(false);
+
+    useEffect(() => {
+        let timer;
+        if (currentPlayingId === uniqueId && isFocused) {
+            timer = setTimeout(() => {
+                setShouldPlay(true);
+            }, 600);
+        } else {
+            setShouldPlay(false);
+        }
+        return () => clearTimeout(timer);
+    }, [currentPlayingId, uniqueId, isFocused]);
 
     useEffect(() => {
         if (isVideo && mediaItem && mediaItem.video_url) {
             const prepareVideo = async () => {
-                const cachedSource = await cacheVideo(mediaItem.video_url);
-                setSource(cachedSource);
+                let finalUrl = mediaItem.video_url;
+                try {
+                    if (typeof finalUrl === "string" && finalUrl.includes(".mp4") && !finalUrl.includes(".m3u8")) {
+                        finalUrl = await cacheVideo(mediaItem.video_url);
+                    }
+                } catch (e) {
+                    finalUrl = mediaItem.video_url;
+                }
+                setSource(finalUrl);
             };
             prepareVideo();
         }
@@ -918,7 +1006,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                     ref={videoRef}
                                     style={{ width: "100%", height: "100%" }}
                                     source={{ uri: source }}
-                                    shouldPlay={currentPlayingId === uniqueId && isFocused}
+                                    shouldPlay={shouldPlay}
                                     resizeMode={ResizeMode.CONTAIN}
                                     posterSource={{ uri: mediaItem.thumbnail }}
                                     posterStyle={{ resizeMode: 'contain', height: '100%', width: '100%' }}

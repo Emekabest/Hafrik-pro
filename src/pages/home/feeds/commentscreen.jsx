@@ -48,6 +48,15 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
         const prepareVideo = async () => {
             const cachedSource = await cacheVideo(videoUrl);
             setSource(cachedSource);
+            let finalUrl = videoUrl;
+            try {
+                if (typeof videoUrl === "string" && videoUrl.includes(".mp4") && !videoUrl.includes(".m3u8")) {
+                    finalUrl = await cacheVideo(videoUrl);
+                }
+            } catch (e) {
+                finalUrl = videoUrl;
+            }
+            setSource(finalUrl);
         };
         prepareVideo();
     }, [videoUrl]);

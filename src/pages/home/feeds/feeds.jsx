@@ -10,6 +10,7 @@ import { useAuth } from "../../../AuthContext.js";
 import FeedsHeader from "../feedsheader.jsx";
 import { useIsFocused } from '@react-navigation/native';
 import useStore from "../../../repository/store.js";
+import { clearCache } from "../../../helpers/cachemedia.js";
 
 
 
@@ -25,6 +26,11 @@ const Feeds = ()=>{
     const [delayedFocus, setDelayedFocus] = useState(false);
     const { token } = useAuth();
     const syncFeedData = useStore(state => state.syncFeedData);
+
+    useEffect(() => {
+        // console.log("Whats wrong here")
+        clearCache();
+    }, []);
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
