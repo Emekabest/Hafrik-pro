@@ -112,7 +112,6 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const video = useRef(null);
     const [hasError, setHasError] = useState(false);
     const [source, setSource] = useState(videoUrl);
-    const lastTap = useRef(null);
     const [shouldPlay, setShouldPlay] = useState(false);
 
     useEffect(() => {
@@ -131,14 +130,8 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
 
 
 
-    const handleDoubleTap = () => {
-        const now = Date.now();
-        const DOUBLE_PRESS_DELAY = 300;
-        if (lastTap.current && (now - lastTap.current) < DOUBLE_PRESS_DELAY) {
-            navigation.navigate('CommentScreen', {feedId: feedId});
-        } else {
-            lastTap.current = now;
-        }
+    const handlePress = () => {
+        navigation.navigate('CommentScreen', {feedId: feedId});
     };
 
     if (hasError) {
@@ -205,7 +198,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
 
 
     return (
-        <TouchableWithoutFeedback onPress={handleDoubleTap}>
+        <TouchableWithoutFeedback onPress={handlePress}>
         <View style={{
             height: "100%",
             width: width,
@@ -343,7 +336,6 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const [isSingleVideoError, setIsSingleVideoError] = useState(false);
     const uniqueId = `${parentFeedId}_video_0`;
-    const lastTap = useRef(null);
     const [source, setSource] = useState(mediaItem ? mediaItem.video_url : null);
     const [shouldPlay, setShouldPlay] = useState(false);
 
@@ -394,14 +386,8 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
 
 
 
-    const handleDoubleTap = () => {
-        const now = Date.now();
-        const DOUBLE_PRESS_DELAY = 300;
-        if (lastTap.current && (now - lastTap.current) < DOUBLE_PRESS_DELAY) {
-            navigation.navigate('CommentScreen', {feedId: parentFeedId});
-        } else {
-            lastTap.current = now;
-        }
+    const handlePress = () => {
+        navigation.navigate('CommentScreen', {feedId: parentFeedId});
     };
 
     useEffect(() => {
@@ -452,7 +438,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                         </TouchableOpacity>
                     </View>
                 ) : (
-                <TouchableWithoutFeedback onPress={handleDoubleTap}>
+                <TouchableWithoutFeedback onPress={handlePress}>
                 <View style={{width: 300, height: 600, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
                     <Video
                         ref={singleVideoRef}
@@ -909,7 +895,6 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isBuffering, setIsBuffering] = useState(false);
     const [hasError, setHasError] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(true);
-    const lastTap = useRef(null);
     const [source, setSource] = useState(mediaItem ? mediaItem.video_url : null);
     const [shouldPlay, setShouldPlay] = useState(false);
 
@@ -942,14 +927,8 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
         }
     }, [isVideo, mediaItem]);
 
-    const handleDoubleTap = () => {
-        const now = Date.now();
-        const DOUBLE_PRESS_DELAY = 300;
-        if (lastTap.current && (now - lastTap.current) < DOUBLE_PRESS_DELAY) {
-            navigation.navigate('CommentScreen', {feedId: post.id});
-        } else {
-            lastTap.current = now;
-        }
+    const handlePress = () => {
+        navigation.navigate('CommentScreen', {feedId: post.id});
     };
 
     const uniqueId = `${parentFeedId}_shared`;
@@ -998,7 +977,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                             </TouchableOpacity>
                         </View>
                     ) : (
-                    <TouchableWithoutFeedback onPress={handleDoubleTap}>
+                    <TouchableWithoutFeedback onPress={handlePress}>
                     <View style={{ width: 300, height: 600, marginTop: 10, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
                         {isVideo ? (
                             <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
