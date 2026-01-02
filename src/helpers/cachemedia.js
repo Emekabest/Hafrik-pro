@@ -149,3 +149,82 @@ export const clearCache = async () => {
     //     console.error("Error clearing cache:", error);
     // }
 };
+
+/**
+ * Prefetch up to `limit` cacheable videos from the provided array of URLs.
+ * Downloads to a temp file then moves into final cache path upon success.
+ * Usage: `prefetchVideos(['https://.../a.mp4','https://.../b.mp4'], { limit: 3 })`
+ */
+export const prefetchVideos = async (videoUrls = [], { limit = 4, delayBetween = 300 } = {}) => {
+    if (!Array.isArray(videoUrls) || videoUrls.length === 0) return;
+
+    const list = videoUrls.slice(0, limit);
+
+    for (const url of list) {
+        if (typeof url !== 'string') continue;
+        const filePath = getCacheFilePath(url);
+        try {
+            // perform HEAD to determine cacheability (same rules as cacheVideo)
+            let contentLength = null;
+            try {
+                const head = await fetch(url, { method: 'HEAD' });
+                const cl = head.headers.get('Content-Length');
+                if (cl) contentLength = parseInt(cl, 10);
+            } catch (e) {
+                console.log(`prefetchVideos: HEAD failed for ${url}, skipping prefetch`);
+                // skip if HEAD fails — don't attempt to prefetch unknown-size resources
+                continue;
+            }
+
+            const isCacheable = url.includes('.mp4') && !url.includes('.m3u8') &&
+                contentLength >= CACHE_MIN_MB * 1024 * 1024 &&
+                contentLength <= CACHE_MAX_MB * 1024 * 1024;
+
+            if (!isCacheable) {
+                console.log(`prefetchVideos: not cacheable (size/format) ${url}`);
+                continue;
+            }
+
+            const info = await FileSystem.getInfoAsync(filePath);
+            if (info.exists) {
+                const ok = await validateCachedFile(url, filePath);
+                if (ok) continue;
+                // otherwise fall through to re-download
+            }
+
+            const tempPath = `${filePath}.download`;
+            try {
+                console.log(`prefetchVideos: starting download ${url}`);
+                const downloadResult = await FileSystem.downloadAsync(url, tempPath);
+                console.log(`prefetchVideos: downloaded temp ${downloadResult.uri}`);
+                // verify size when possible
+                if (contentLength) {
+                    const downloadedInfo = await FileSystem.getInfoAsync(downloadResult.uri);
+                    if (!downloadedInfo.exists || downloadedInfo.size !== contentLength) {
+                        await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
+                        console.log(`prefetchVideos: downloaded size mismatch, deleted temp ${downloadResult.uri}`);
+                        continue;
+                    }
+                }
+
+                // move into final cache location
+                try {
+                    await FileSystem.moveAsync({ from: downloadResult.uri, to: filePath });
+                    console.log(`prefetchVideos: moved to cache ${filePath}`);
+                } catch (moveErr) {
+                    // if move fails, keep the downloaded file (player may still use it)
+                    console.log(`prefetchVideos: move failed, keeping temp ${downloadResult.uri}`, moveErr);
+                }
+            } catch (dlErr) {
+                // cleanup partial download
+                try { await FileSystem.deleteAsync(tempPath, { idempotent: true }); } catch (e) {}
+                console.log(`prefetchVideos: download failed for ${url}`, dlErr);
+            }
+        } catch (err) {
+            console.log(`prefetchVideos: unexpected error for ${url}`, err);
+            // ignore single failures and continue
+        }
+
+        if (delayBetween) await new Promise(res => setTimeout(res, delayBetween));
+    }
+};

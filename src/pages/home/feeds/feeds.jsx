@@ -10,7 +10,7 @@ import { useAuth } from "../../../AuthContext.js";
 import FeedsHeader from "../feedsheader.jsx";
 import { useIsFocused } from '@react-navigation/native';
 import useStore from "../../../repository/store.js";
-import { clearCache } from "../../../helpers/cachemedia.js";
+import { clearCache, prefetchVideos } from "../../../helpers/cachemedia.js";
 
 
 
@@ -26,6 +26,11 @@ const Feeds = ()=>{
     const [delayedFocus, setDelayedFocus] = useState(false);
     const { token } = useAuth();
     const syncFeedData = useStore(state => state.syncFeedData);
+    const feedsRef = useRef(feeds);
+
+    useEffect(() => {
+        feedsRef.current = feeds;
+    }, [feeds]);
 
     useEffect(() => {
         // console.log("Whats wrong here")
@@ -137,6 +142,30 @@ const Feeds = ()=>{
             }
             return currentId;
         });
+
+        // Prefetch next cachable videos after the currently viewable item
+        try {
+            const startIndex = (viewableVideoItem && typeof viewableVideoItem.index === 'number') ? viewableVideoItem.index : null;
+            if (startIndex !== null) {
+                const upcoming = feedsRef.current.slice(startIndex + 1, startIndex + 1 + 10);
+                const urls = upcoming.map(f => {
+                    if (!f) return null;
+                    if (f.type === 'shared' && f.shared_post && (f.shared_post.type === 'video' || f.shared_post.type === 'reel')) {
+                        return f.shared_post.media && f.shared_post.media[0] ? f.shared_post.media[0].video_url : null;
+                    }
+                    if ((f.type === 'video' || f.type === 'reel') && f.media && f.media[0]) {
+                        return f.media[0].video_url;
+                    }
+                    return null;
+                }).filter(Boolean);
+
+                if (urls.length > 0) {
+                    prefetchVideos(urls, { limit: 3 });
+                }
+            }
+        } catch (e) {
+            // ignore prefetch errors
+        }
 
     }).current;
 
