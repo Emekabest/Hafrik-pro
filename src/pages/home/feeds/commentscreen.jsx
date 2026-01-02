@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { 
     StyleSheet, 
     View, 
@@ -316,6 +316,87 @@ const SharedPostItem = ({ post }) => {
     );
 };
 
+const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
+    if (!post) return null;
+
+    return (
+        <View style={[styles.postContainer, { flexDirection: 'column' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                    <View style={styles.headerRow}>
+                        <Text style={styles.username}>{post.user.username}</Text>
+                        {post.user.verified && <Ionicons name="checkmark-circle" size={14} color="#1DA1F2" style={{marginLeft: 4}} />}
+                        <Text style={[styles.timeText, { marginLeft: 5, marginRight: 0 }]}>• {CalculateElapsedTime(post.created)}</Text>
+                        <View style={styles.spacer} />
+                        <TouchableOpacity style={{ backgroundColor: "#000", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Follow</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+            
+            <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
+            {post.type === 'shared' && post.shared_post ? (
+                <SharedPostItem post={post.shared_post} />
+            ) : post.type === 'article' ? (
+                <ArticleContent post={post} />
+            ) : (
+                (() => {
+                    const isVideo = post.type === 'video' || post.type === 'reel';
+                    if (isVideo) {
+                        const mediaItem = post.media && post.media[0];
+                        return mediaItem ? <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} /> : null;
+                    }
+                    if (post.media && post.media.length > 1) {
+                        const screenWidth = Dimensions.get('window').width;
+                        const contentWidth = screenWidth - 30;
+                        return (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                                {post.media.map((item, index) => (
+                                    <Image
+                                        key={index}
+                                        source={{ uri: item.url }}
+                                        style={{ height: 250, width: contentWidth, borderRadius: 10, marginRight: 10 }}
+                                        resizeMode="cover"
+                                    />
+                                ))}
+                            </ScrollView>
+                        );
+                    }
+                    return (
+                        <Image
+                            source={{ uri: post.media[0].url }}
+                            style={{ height: 250, width: '100%', borderRadius: 10, marginTop: 10 }}
+                            resizeMode="cover"
+                        />
+                    );
+                })()
+            )}
+
+            <View style={styles.engagementBar}>
+                <TouchableOpacity style={styles.engagementItem} onPress={onLike}>
+                    <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
+                    <Text style={styles.engagementText}>{likeCount}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.engagementItem} onPress={() => textInputRef.current?.focus()}>
+                    <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                    <Text style={styles.engagementText}>{post.comments_count}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.engagementItem}>
+                    <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                    <Text style={styles.engagementText}>29</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.engagementItem}>
+                    <Ionicons name="star-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
+
+const OriginalPostMemo = React.memo(OriginalPost);
+
 
 
 const CommentScreen = ({route})=>{
@@ -375,10 +456,10 @@ const CommentScreen = ({route})=>{
         await ToggleFeedController(feedId, token);
     };
 
-    const handleReplyToComment = (comment) => {
+    const handleReplyToComment = useCallback((comment) => {
         setReplyingTo(comment);
         textInputRef.current?.focus();
-    };
+    }, []);
 
     const handleCancelReply = () => {
         setReplyingTo(null);
@@ -419,6 +500,23 @@ const CommentScreen = ({route})=>{
             }
         }
     };
+
+    const liked = useMemo(() => (likedPosts ? (likedPosts[feedId] ?? !!post?.liked) : !!post?.liked), [likedPosts, feedId, post?.liked]);
+    const likeCount = useMemo(() => (likeCounts ? (likeCounts[feedId] ?? (parseInt(post?.likes_count) || 0)) : (parseInt(post?.likes_count) || 0)), [likeCounts, feedId, post?.likes_count]);
+
+    const handleLikeCb = useCallback(async () => {
+        toggleLike(feedId);
+        await ToggleFeedController(feedId, token);
+    }, [feedId, token, toggleLike]);
+
+    const handleReplyCb = useCallback((comment) => {
+        setReplyingTo(comment);
+        textInputRef.current?.focus();
+    }, []);
+
+    const headerElement = useMemo(() => (
+        <OriginalPostMemo post={post} liked={liked} likeCount={likeCount} onLike={handleLikeCb} onReply={handleReplyCb} textInputRef={textInputRef} />
+    ), [post, liked, likeCount, handleLikeCb, handleReplyCb, textInputRef]);
 
     const renderMedia = () => {
         if (!post || !post.media || post.media.length === 0) return null;
@@ -466,59 +564,9 @@ const CommentScreen = ({route})=>{
         </View>
     );
 
-    const renderOriginalPost = () => {
-        if (!post) return null;
+    
 
-        const liked = likedPosts[feedId] ?? !!post.liked;
-        const likeCount = likeCounts[feedId] ?? (parseInt(post.likes_count) || 0);
-
-        return (
-        <View style={[styles.postContainer, { flexDirection: 'column' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                    <View style={styles.headerRow}>
-                        <Text style={styles.username}>{post.user.username}</Text>
-                        {post.user.verified && <Ionicons name="checkmark-circle" size={14} color="#1DA1F2" style={{marginLeft: 4}} />}
-                        <Text style={[styles.timeText, { marginLeft: 5, marginRight: 0 }]}>• {CalculateElapsedTime(post.created)}</Text>
-                        <View style={styles.spacer} />
-                        <TouchableOpacity style={{ backgroundColor: "#000", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 }}>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Follow</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-            
-            <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
-            {post.type === 'shared' && post.shared_post ? (
-                <SharedPostItem post={post.shared_post} />
-            ) : post.type === 'article' ? (
-                <ArticleContent post={post} />
-            ) : (
-                renderMedia()
-            )}
-
-            <View style={styles.engagementBar}>
-                <TouchableOpacity style={styles.engagementItem} onPress={handleLike}>
-                    <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
-                    <Text style={styles.engagementText}>{likeCount}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.engagementItem} onPress={() => textInputRef.current?.focus()}>
-                    <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                    <Text style={styles.engagementText}>{post.comments_count}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.engagementItem}>
-                    <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                    <Text style={styles.engagementText}>29</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.engagementItem}>
-                    <Ionicons name="star-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
-                </TouchableOpacity>
-            </View>
-        </View>
-    )};
-
-    const renderCommentItem = ({ item }) => (
+    const renderCommentItem = useCallback(({ item }) => (
         <View style={styles.commentContainer}>
              <View style={styles.avatarColumn}>
                 <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
@@ -559,7 +607,7 @@ const CommentScreen = ({route})=>{
                 )}
             </View>
         </View>
-    );
+    ), [handleReplyToComment]);
     
     return(
         <View style={styles.container}>
@@ -574,7 +622,7 @@ const CommentScreen = ({route})=>{
                 data={comments}
                 keyExtractor={item => item.id}
                 renderItem={renderCommentItem}
-                ListHeaderComponent={renderOriginalPost}
+                ListHeaderComponent={headerElement}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
             />
