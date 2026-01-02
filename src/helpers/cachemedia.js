@@ -201,6 +201,7 @@ export const prefetchVideos = async (videoUrls = [], { limit = 4, delayBetween =
                 if (contentLength) {
                     const downloadedInfo = await FileSystem.getInfoAsync(downloadResult.uri);
                     if (!downloadedInfo.exists || downloadedInfo.size !== contentLength) {
+                        console.log("Does this file exist?", downloadedInfo.exists, "Size:", downloadedInfo.size, "Expected:", contentLength);
                         await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
                         console.log(`prefetchVideos: downloaded size mismatch, deleted temp ${downloadResult.uri}`);
                         continue;
