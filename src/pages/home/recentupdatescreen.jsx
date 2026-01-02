@@ -17,6 +17,8 @@ import { Video } from 'expo-av';
 
 import { useAuth } from '../../AuthContext';
 import Feeds from "./feeds/feeds.jsx"
+import Quicklinks from './quicklinks.jsx';
+import Banner from './banner.jsx';
 
 
 const RecentUpdatesScreen = () => {
@@ -27,6 +29,8 @@ const RecentUpdatesScreen = () => {
 
   return (
       <View style={styles.container}>
+            <Banner />
+          <Quicklinks />
           <Feeds />
       </View>
   );

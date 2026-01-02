@@ -77,12 +77,14 @@ const QuickLinks = () => {
   useEffect(() => { fetchQuickLinks(); }, []);
 
   if (quickLinksLoading) {
+    
     return (
       <View style={styles.quickLinksSection}>
         <View style={styles.quickLinksLoading}><ActivityIndicator size="small" color="#0C3F44" /><Text style={styles.quickLinksLoadingText}>Loading categories...</Text></View>
       </View>
     );
   }
+
 
   if (quickLinks.length === 0) return null;
 
