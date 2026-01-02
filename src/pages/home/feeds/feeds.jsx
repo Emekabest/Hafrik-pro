@@ -31,6 +31,7 @@ const Feeds = ()=>{
     useEffect(() => {
         feedsRef.current = feeds;
     }, [feeds]);
+    const prefetchTimerRef = useRef(null);
 
     useEffect(() => {
         // console.log("Whats wrong here")
@@ -143,10 +144,11 @@ const Feeds = ()=>{
             return currentId;
         });
 
-        // Prefetch next cachable videos after the currently viewable item
+        // Debounced prefetch: wait for scrolling to settle before starting downloads
         try {
             const startIndex = (viewableVideoItem && typeof viewableVideoItem.index === 'number') ? viewableVideoItem.index : null;
             if (startIndex !== null) {
+                // collect up to 10 upcoming candidates, we'll let prefetch filter cacheable ones
                 const upcoming = feedsRef.current.slice(startIndex + 1, startIndex + 1 + 10);
                 const urls = upcoming.map(f => {
                     if (!f) return null;
@@ -160,7 +162,11 @@ const Feeds = ()=>{
                 }).filter(Boolean);
 
                 if (urls.length > 0) {
-                    prefetchVideos(urls, { limit: 3 });
+                    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+                    prefetchTimerRef.current = setTimeout(() => {
+                        prefetchVideos(urls, { limit: 3, delayBetween: 500 });
+                        prefetchTimerRef.current = null;
+                    }, 700);
                 }
             }
         } catch (e) {
