@@ -94,7 +94,7 @@ const Feeds = ()=>{
     const memoizedHeader = useMemo(() => (
             <View>
                 <Banner />
-                <Quicklinks />
+                {/* <Quicklinks /> */}
                 <PostFeed />
                 <FeedsHeader />
             </View>
