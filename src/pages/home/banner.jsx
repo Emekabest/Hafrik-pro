@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
@@ -122,13 +122,14 @@ const Banner = () => {
             <FlatList
                 ref={flatListRef}
                 data={banners}
+                scrollEventThrottle={13} // Adjust the throttle rate (16ms for ~60fps)
+                decelerationRate={Platform.OS === 'ios' ? 0.6 : 0.65} // 
                 renderItem={renderBannerItem}
                 keyExtractor={(item) => `banner-${item.id}`}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 pagingEnabled
                 snapToAlignment="center"
-                decelerationRate="fast"
                 contentContainerStyle={{ paddingHorizontal: SLIDE_MARGIN }}
                 snapToInterval={SLIDE_WIDTH}
                 onViewableItemsChanged={onViewableItemsChanged}

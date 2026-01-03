@@ -234,6 +234,11 @@ const Feeds = ()=>{
         return data;
     }, [feeds]);
 
+    const handleScroll = useCallback(() => {
+        // Throttle or debounce logic can be added here if needed
+        // console.log("Scrolling...");
+    }, []);
+
     return (
         <View style={styles.container}>
 
@@ -255,6 +260,9 @@ const Feeds = ()=>{
                     return `${item.type}-${index}`;
                 }}
                 renderItem={renderCombinedItem}
+                onScroll={handleScroll}
+                scrollEventThrottle={14} // Adjust the throttle rate (16ms for ~60fps)
+                decelerationRate={Platform.OS === 'ios' ? 0.75 : 0.8} // Slows down the scroll momentum
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.5}
