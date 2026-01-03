@@ -224,7 +224,7 @@ const Feeds = ()=>{
             quickLinksItem,
             postFeedItem,
             ...uniqueFeeds.map(feed => {
-                if (feed.shared_post) {
+                if (feed.type === 'shared' && feed.shared_post) {
                     return { type: 'feed', data: feed.shared_post, parentId: feed.id };
                 }
                 return { type: 'feed', data: feed };
@@ -242,9 +242,17 @@ const Feeds = ()=>{
             <FlatList 
                 data={combinedData}
                 keyExtractor={(item, index) => {
+                    
                     if (item.type === 'feed') {
+                            console.log(item)
+
+                        if (item.data.type === 'shared' && item.data.shared_post) {
+                            // Use parentId for shared posts to ensure uniqueness
+                            return `${item.type}-${item.data.id}-parent-${item.parentId}`;
+                        }
                         return `${item.type}-${item.data.id}`;
                     }
+                    // Ensure unique keys for non-feed items
                     return `${item.type}-${index}`;
                 }}
                 renderItem={renderCombinedItem}
