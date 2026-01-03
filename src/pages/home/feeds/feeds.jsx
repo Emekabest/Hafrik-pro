@@ -11,6 +11,7 @@ import FeedsHeader from "../feedsheader.jsx";
 import { useIsFocused } from '@react-navigation/native';
 import useStore from "../../../repository/store.js";
 import { clearCache, prefetchVideos } from "../../../helpers/cachemedia.js";
+import Quicklinks from "../quicklinks.jsx";
 
 
 
@@ -91,10 +92,12 @@ const Feeds = ()=>{
     
     
     const memoizedHeader = useMemo(() => (
-        <View>
-            <PostFeed />
-            <FeedsHeader />
-        </View>
+            <View>
+                <Banner />
+                <Quicklinks />
+                <PostFeed />
+                <FeedsHeader />
+            </View>
     ), []);
 
     const renderFooter = () => (
@@ -180,6 +183,9 @@ const Feeds = ()=>{
 
     return (
         <View style={styles.container}>
+
+
+              
             <FlatList 
                 data={feeds}
                 keyExtractor={(item) => item.id.toString()}

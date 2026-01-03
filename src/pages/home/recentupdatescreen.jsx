@@ -29,8 +29,7 @@ const RecentUpdatesScreen = () => {
 
   return (
       <View style={styles.container}>
-            <Banner />
-          <Quicklinks />
+         
           <Feeds />
       </View>
   );
