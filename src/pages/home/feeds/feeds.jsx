@@ -217,16 +217,16 @@ const Feeds = ()=>{
         const postFeedItem = { type: 'postfeed' };
 
         // Ensure unique feed items and handle shared_post correctly
-        const uniqueFeeds = Array.from(new Map(feeds.map(feed => [feed.id, feed])).values());
+        
 
         const data = [
             bannerItem,
             quickLinksItem,
             postFeedItem,
-            ...uniqueFeeds.map(feed => {
-                if (feed.type === 'shared' && feed.shared_post) {
-                    return { type: 'feed', data: feed.shared_post, parentId: feed.id };
-                }
+            ...feeds.map(feed => {
+                // if (feed.type === 'shared' && feed.shared_post) {
+                //     return { type: 'feed', data: feed.shared_post, parentId: feed.id };
+                // }
                 return { type: 'feed', data: feed };
             }),
         ];
@@ -244,7 +244,6 @@ const Feeds = ()=>{
                 keyExtractor={(item, index) => {
                     
                     if (item.type === 'feed') {
-                            console.log(item)
 
                         if (item.data.type === 'shared' && item.data.shared_post) {
                             // Use parentId for shared posts to ensure uniqueness
