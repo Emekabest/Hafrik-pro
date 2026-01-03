@@ -89,17 +89,6 @@ const Feeds = ()=>{
         setLoadingMore(false);
     };
 
-    
-    
-    const memoizedHeader = useMemo(() => (
-            <View>
-                <Banner />
-                <Quicklinks />
-                <PostFeed />
-                <FeedsHeader />
-            </View>
-    ), []);
-
     const renderFooter = () => (
         <View style={styles.footerContainer}>
             <ActivityIndicator size="small" color="#000" style={{ opacity: loadingMore ? 1 : 0 }} />
@@ -110,17 +99,49 @@ const Feeds = ()=>{
         return <FeedCard feed={item} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} isFocused={delayedFocus} />
     }, [currentPlayingId, delayedFocus]);
 
+    const renderCombinedItem = useCallback(({ item }) => {
+        switch (item.type) {
+          case 'banner':
+            return <Banner />;
+          case 'quicklinks':
+            return <QuickLinks />;
+          case 'postfeed':
+            return <PostFeed />;
+          case 'feed':
+            const shouldPlay = currentPlayingId === item.data.id && delayedFocus;
+
+            // console.log(currentPlayingId, item.data.id, shouldPlay);
+         
+            return (
+              <FeedCard
+                feed={item.data}
+                currentPlayingId={currentPlayingId}
+                setCurrentPlayingId={setCurrentPlayingId}
+                isFocused={delayedFocus}
+                shouldPlay={shouldPlay}
+              />
+            );
+          default:
+            return null;
+        }
+    }, [currentPlayingId, delayedFocus]);
+
+
 
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
+        // console.log("Viewable Items Changed:", viewableItems);
         const viewableVideoItem = viewableItems.find(item => {
             const feed = item.item;
+                // console.log( item);
+
             if (item.isViewable) {
-                if (feed.type === 'shared' && feed.shared_post) {
-                    if (feed.shared_post.type === 'video' || feed.shared_post.type === 'reel') {
+                if (feed.data?.type === 'shared' && feed.data?.shared_post) {
+                    if (feed.data.shared_post.type === 'video' || feed.data.shared_post.type === 'reel') {
                         return true;
                     }
-                } else if (feed.type === 'video' || feed.type === 'reel') {
-                    if (feed.media && feed.media.length > 0) {
+                } else if (feed.data?.type === 'video' || feed.data?.type === 'reel') {
+                    if (feed.data.media && feed.data.media.length > 0) {
+
                         return true;
                     }
                 }
@@ -129,16 +150,21 @@ const Feeds = ()=>{
         });
 
         let playId = null;
+
         if (viewableVideoItem) {
-            const feed = viewableVideoItem.item;
+            const feed = viewableVideoItem.item.data;
             if (feed.type === 'shared' && feed.shared_post) {
                 playId = `${feed.id}_shared`;
             } else {
                 playId = `${feed.id}_video_0`;
+                console.log("Playing video for feed ID:", playId);
+
+
             }
         }
         
         setCurrentPlayingId(currentId => {
+            
             if (currentId !== playId) {
                 return playId;
             }
@@ -181,16 +207,47 @@ const Feeds = ()=>{
         waitForInteraction: true,
     }).current;
 
+
+
+
+
+    const combinedData = useMemo(() => {
+        const bannerItem = { type: 'banner' };
+        const quickLinksItem = { type: 'quicklinks' };
+        const postFeedItem = { type: 'postfeed' };
+
+        // Ensure unique feed items and handle shared_post correctly
+        const uniqueFeeds = Array.from(new Map(feeds.map(feed => [feed.id, feed])).values());
+
+        const data = [
+            bannerItem,
+            quickLinksItem,
+            postFeedItem,
+            ...uniqueFeeds.map(feed => {
+                if (feed.shared_post) {
+                    return { type: 'feed', data: feed.shared_post, parentId: feed.id };
+                }
+                return { type: 'feed', data: feed };
+            }),
+        ];
+
+        return data;
+    }, [feeds]);
+
     return (
         <View style={styles.container}>
 
 
               
             <FlatList 
-                data={feeds}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={renderItem}
-                ListHeaderComponent={memoizedHeader}
+                data={combinedData}
+                keyExtractor={(item, index) => {
+                    if (item.type === 'feed') {
+                        return `${item.type}-${item.data.id}`;
+                    }
+                    return `${item.type}-${index}`;
+                }}
+                renderItem={renderCombinedItem}
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.5}
