@@ -1,6 +1,7 @@
 // App.js
 // import { StatusBar } from 'expo-status-bar';
-import { AppState, StyleSheet, View, StatusBar, Platform } from 'react-native';
+import { AppState, StyleSheet, View,  Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import Login from './src/pages/Login';
@@ -30,8 +31,8 @@ function AppNavigator() {
 
   /** Ensures that the status bar style remains the same even after the state of the app is changed */
       const handleAppStateChange = () => {
-      StatusBar.setBarStyle('light-content', true);
-      StatusBar.setBackgroundColor(AppDetails.primaryColor, true);
+      // StatusBar.setBarStyle('light-content', true);
+      // StatusBar.setBackgroundColor(AppDetails.primaryColor, true);
 
     };
 
@@ -96,9 +97,9 @@ function AppNavigator() {
   return (
     <NavigationContainer>
       
-        <StatusBar barStyle="light-content"  backgroundColor={Platform.OS === "android" ? AppDetails.primaryColor : "transparent"} translucent={Platform.OS === "android" ? false : true} />
+        <StatusBar style="light" translucent={Platform.OS === "android" ? false : true} />
 
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']} >
+        <SafeAreaView style={[styles.container, { backgroundColor: AppDetails.primaryColor }]} edges={['top', 'left', 'right', 'bottom']} >
 
             <Stack.Navigator initialRouteName={user && token ? "MainTabs" : "Login"} screenOptions={{ headerShown: false }}>
 
@@ -133,7 +134,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     height: 20,
   },
   loadingContainer: {
