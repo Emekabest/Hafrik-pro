@@ -15,7 +15,8 @@ import {
     AppState
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Video, ResizeMode } from 'expo-av';
+import { useEvent } from 'expo';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuth } from "../../../AuthContext";
 import AppDetails from "../../../helpers/appdetails";
@@ -23,50 +24,34 @@ import {AddCommentController, GetCommentsController} from '../../../controllers/
 import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
-import cacheVideo from '../../../helpers/cachemedia';
+// no caching for comment video as requested
 import useStore from "../../../repository/store";
 
 const CommentVideoItem = ({ videoUrl, thumbnail }) => {
-    const videoRef = useRef(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [isBuffering, setIsBuffering] = useState(false);
-    const [isFinished, setIsFinished] = useState(false);
-    const [hasError, setHasError] = useState(false);
     const isFocused = useIsFocused();
-    const [appState, setAppState] = useState(AppState.currentState);
-    const [source, setSource] = useState(videoUrl);
+    const [hasError, setHasError] = useState(false);
 
-    useEffect(() => {
-        const subscription = AppState.addEventListener('change', nextAppState => {
-            setAppState(nextAppState);
-        });
-        return () => subscription.remove();
-    }, []);
+    // No caching as requested; use URL directly
+    const source = videoUrl || null;
 
-
-    useEffect(() => {
-        const prepareVideo = async () => {
-            const cachedSource = await cacheVideo(videoUrl);
-            setSource(cachedSource);
-            let finalUrl = videoUrl;
-            try {
-                if (typeof videoUrl === "string" && videoUrl.includes(".mp4") && !videoUrl.includes(".m3u8")) {
-                    finalUrl = await cacheVideo(videoUrl);
-                }
-            } catch (e) {
-                finalUrl = videoUrl;
+    // Create the player (hooks must be called unconditionally)
+    const player = useVideoPlayer(source, (p) => {
+        if (p && source) {
+            try { p.loop = true; } catch (e) { /* ignore */ }
+            if (isFocused) {
+                try { p.play(); } catch (e) { /* ignore */ }
             }
-            setSource(finalUrl);
-        };
-        prepareVideo();
-    }, [videoUrl]);
+        }
+    });
+
+    const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });
+    const { status } = useEvent(player, 'statusChange', { status: player?.status ?? {} });
 
     useEffect(() => {
-        const videoElement = videoRef.current;
         return () => {
-            videoElement?.unloadAsync();
-        }
-    }, []);
+            try { player?.release(); } catch (e) { /* ignore */ }
+        };
+    }, [player]);
 
     if (hasError) {
         return (
@@ -80,37 +65,28 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
         );
     }
 
+    const isBuffering = status?.isBuffering;
+    const isFinished = status?.didJustFinish;
+
     return (
         <View style={{ height: 250, width: '100%', borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#000' }}>
-            <Video
-                ref={videoRef}
-                style={{ width: "100%", height: "100%" }}
-                source={{ uri: source }}
-                shouldPlay={isFocused && appState === 'active'}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-                usePoster={false}
-                onPlaybackStatusUpdate={status => {
-                    setIsPlaying(status.isPlaying);
-                    setIsBuffering(status.isBuffering);
-                    if (status.didJustFinish) {
-                        setIsFinished(true);
-                    }
-                    if (status.isPlaying) {
-                        setIsFinished(false);
-                    }
-                }}
-                onLoadStart={() => setIsBuffering(true)}
-                onLoad={() => setIsBuffering(false)}
-                onError={(error) => {
-                    setHasError(true);
-                    setIsBuffering(false);
-                }}
-            />
-            
+            {player ? (
+                <VideoView
+                    style={{ width: '100%', height: '100%' }}
+                    player={player}
+                    nativeControls={true}
+                    contentFit="contain"
+                    posterSource={{ uri: thumbnail }}
+                    usePoster={false}
+                    onError={(e) => { console.log('VideoView error', e); setHasError(true); }}
+                />
+            ) : (
+                <Image source={{ uri: thumbnail }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+            )}
+
             {(isBuffering && !isPlaying) && (
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]} pointerEvents="none">
-                    <ActivityIndicator size="large" color="#fff" animating={isBuffering && !isPlaying} />
+                    <ActivityIndicator size="large" color="#fff" />
                 </View>
             )}
 
@@ -118,11 +94,10 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
                     <TouchableOpacity 
                         onPress={() => {
-                            if (isFinished) {
-                                videoRef.current?.replayAsync();
-                            } else {
-                                videoRef.current?.playAsync();
-                            }
+                            try {
+                                if (!player) return;
+                                if (isFinished) player.replay(); else player.play();
+                            } catch (e) { console.log('player control error', e); }
                         }}
                         style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 10}}
                     >

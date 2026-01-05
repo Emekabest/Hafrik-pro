@@ -45,8 +45,8 @@ function AppNavigator() {
   }, []);
   /**................................................................................................*/
 
-
   
+
     const [fontsLoaded] = useFonts({
   
           WorkSans_300Light,
@@ -71,8 +71,6 @@ function AppNavigator() {
 
 
 
-
-
   if (!fontsLoaded) {
     
 
@@ -82,7 +80,6 @@ function AppNavigator() {
 
   // Show a loading screen while checking authentication
   if (loading) {
-
     
     return (
       <View style={styles.loadingContainer}>

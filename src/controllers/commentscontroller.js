@@ -4,12 +4,12 @@ import axios from "axios"
 
 const AddCommentController = async(post_id, comment, token)=>{
 
-    const API_URL = `https://hafrik.com/api/v1/feed/add_comment.php`
+        const API_URL = `https://hafrik.com/api/v1/feed/add_comment.php`
 
-
-
+        
         try{
-        const response = await axios.post(API_URL , { post_id, comment }, {
+
+            const response = await axios.post(API_URL , { post_id, comment }, {
             headers: {
                 Authorization: `Bearer ${token}`,
             }

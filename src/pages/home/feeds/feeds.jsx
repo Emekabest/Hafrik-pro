@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform, AppState } from "react-native"
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform, AppState, Button } from "react-native"
 import FeedCard from "./feedcard.jsx";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import GetFeedsController from "../../../controllers/getfeedscontroller.js";
@@ -12,6 +12,8 @@ import { useIsFocused } from '@react-navigation/native';
 import useStore from "../../../repository/store.js";
 import { clearCache, prefetchVideos } from "../../../helpers/cachemedia.js";
 import Quicklinks from "../quicklinks.jsx";
+import { useEvent } from 'expo';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 
 
@@ -159,7 +161,6 @@ const Feeds = ()=>{
                 playId = `${feed.id}_video_0`;
                 console.log("Playing video for feed ID:", playId);
 
-
             }
         }
         
@@ -239,11 +240,20 @@ const Feeds = ()=>{
         // console.log("Scrolling...");
     }, []);
 
+
+        const videoSource = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+
+
+        // const player = useVideoPlayer(videoSource, player => {
+        //     player.loop = true;
+        //     player.play();
+        //  });
+
+        //    const { isPlaying } = useEvent(player, "playingChange", { isPlaying: player.playing });
+
     return (
         <View style={styles.container}>
 
-
-              
             <FlatList 
                 data={combinedData}
                 keyExtractor={(item, index) => {
@@ -282,6 +292,21 @@ const Feeds = ()=>{
 
 
 const styles = StyleSheet.create({
+
+      contentContainer: {
+    flex: 1,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 50,
+  },
+  video: {
+    width: 350,
+    height: 275,
+  },
+  controlsContainer: {
+    padding: 10,
+  },
 
     container:{
         flex: 1,
