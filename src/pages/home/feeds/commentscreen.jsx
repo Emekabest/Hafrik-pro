@@ -365,11 +365,13 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                         );
                     }
                     return (
+                        post.media && post.media.length > 0 &&
                         <Image
                             source={{ uri: post.media[0].url }}
                             style={{ height: 250, width: '100%', borderRadius: 10, marginTop: 10 }}
-                            resizeMode="cover"
+                            resizeMode="contain"
                         />
+                        // <View style={{ width: '100%', marginTop: 10 }} />
                     );
                 })()
             )}
@@ -519,7 +521,17 @@ const CommentScreen = ({route})=>{
     ), [post, liked, likeCount, handleLikeCb, handleReplyCb, textInputRef]);
 
     const renderMedia = () => {
-        if (!post || !post.media || post.media.length === 0) return null;
+        console.log('Post object:', post);
+        console.log('Post media:', post?.media);
+
+        if (!post || !post.media || post.media.length === 0) {
+            // Handle text feed without media
+            return (
+                <View style={{ marginTop: 10, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 10 }}>
+                    <Text style={{ fontSize: 16, color: '#333' }}>{post?.text || 'No content available'}</Text>
+                </View>
+            );
+        }
         
         const isVideo = post.type === 'video' || post.type === 'reel';
         const screenWidth = Dimensions.get('window').width;
@@ -527,31 +539,38 @@ const CommentScreen = ({route})=>{
 
         if (isVideo) {
             const mediaItem = post.media[0];
-            return <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} />;
+            console.log('First media item:', mediaItem);
+            return mediaItem && mediaItem.video_url ? (
+                <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} />
+            ) : null;
         }
 
         if (post.media.length > 1) {
             return (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                     {post.media.map((item, index) => (
-                        <Image 
-                            key={index}
-                            source={{ uri: item.url }}
-                            style={{ height: 250, width: contentWidth, borderRadius: 10, marginRight: 10 }}
-                            resizeMode="cover"
-                        />
+                        item && item.url ? (
+                            <Image
+                                key={index}
+                                source={{ uri: item.url }}
+                                style={{ height: 250, width: contentWidth, borderRadius: 10, marginRight: 10 }}
+                                resizeMode="cover"
+                            />
+                        ) : null
                     ))}
                 </ScrollView>
             );
         }
 
-        return (
-            <Image 
-                source={{ uri: post.media[0].url }}
+        const firstMediaItem = post.media[0];
+        console.log('First media item for single media:', firstMediaItem);
+        return firstMediaItem && firstMediaItem.url ? (
+            <Image
+                source={{ uri: firstMediaItem.url }}
                 style={{ height: 250, width: '100%', borderRadius: 10, marginTop: 10 }}
                 resizeMode="cover"
             />
-        );
+        ) : null;
     };
 
     const renderHeader = () => (
