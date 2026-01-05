@@ -10,6 +10,7 @@ import Header from '../../pages/header.jsx';
 import QuickActions from './quickactions.jsx';
 import RecentUpdatesScreen from './recentupdatescreen.jsx';
 import WhatsNearbyScreen from './whatsnearbyscreen.jsx';
+import TrendingOnHafrikScreen from './trendingonhafrikscreen.jsx';
 
 const HomePage = () => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
@@ -34,9 +35,7 @@ const HomePage = () => {
 
       {activeTab === 0 && <WhatsNearbyScreen />}
       {activeTab === 1 && (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>Trending on Hafrik - Coming Soon</Text>
-        </View>
+        <TrendingOnHafrikScreen />
       )}
       {activeTab === 2 && <RecentUpdatesScreen />}
     </SafeAreaView>
