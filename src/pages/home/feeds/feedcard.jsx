@@ -1068,6 +1068,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                 <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
                 <View style={{ marginLeft: 10 }}>
                     <Text style={{ fontFamily:"WorkSans_600SemiBold" }}>{post.user.full_name}</Text>
+                    <Text style={{ marginLeft: 5, fontSize: 12, color: 'lightgray' }}>@{post.user.username}</Text>
                     <Text style={{ color: '#787878ff', fontFamily:"WorkSans_400Regular" }}>{CalculateElapsedTime(post.created)}</Text>
                 </View>
             </View>
@@ -1319,6 +1320,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     };
 
 
+
     /**Handles when the user likes a feed post */
     const handleLike = async() => {  
         setLiked(!liked);
@@ -1415,18 +1417,17 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
 
             <View style = {styles.containerRight}>
                 <View style = {styles.firstSection}>
-                    <View style = {styles.fullnameSection}>
+                    <View style = {styles.nameSection}>
                         <Text style={{marginBottom: 4, flexWrap: 'wrap'}}>
                             <Text numberOfLines={1} ellipsizeMode="tail" style = { {color:"#000", fontFamily:"WorkSans_600SemiBold"}}>{feed.user.full_name}</Text>
                             {
                                 feed.user.verified ? (
-                                    <View style={{ transform: [{ translateY: 6}, { translateX: 2 }], marginHorizontal: 3 }}>
+                                    <View style={{ transform: [{ translateY: 6}, { translateX: 2 }], marginHorizontal: 3, marginRight:5 }}>
                                         <SvgIcon name="verified" width={16} height={16} color={AppDetails.primaryColor} />
                                     </View>
                                 ) : null
                             }
-                
-
+                            <Text style={{fontSize: 12, color: 'gray', fontFamily:"WorkSans_400Regular" }}> @{feed.user.username}</Text>
                             <Text style={{color: "#333", fontFamily:"WorkSans_400Regular"}}>{getActionText()}</Text>
                         </Text>
                         <Text style = {{color:"#787878ff", fontSize: 12, fontFamily:"WorkSans_400Regular"}}>{CalculateElapsedTime(feed.created)}</Text>
@@ -1538,7 +1539,7 @@ const styles = StyleSheet.create({
         // alignItems:"center",
     },
 
-    fullnameSection:{
+    nameSection:{
         width:"80%",
         display:"flex",
         flexDirection:"column",

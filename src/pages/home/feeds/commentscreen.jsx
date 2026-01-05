@@ -369,9 +369,8 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                         <Image
                             source={{ uri: post.media[0].url }}
                             style={{ height: 250, width: '100%', borderRadius: 10, marginTop: 10 }}
-                            resizeMode="contain"
+                            resizeMode="cover"
                         />
-                        // <View style={{ width: '100%', marginTop: 10 }} />
                     );
                 })()
             )}
