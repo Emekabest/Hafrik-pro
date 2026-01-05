@@ -14,6 +14,9 @@ import { clearCache, prefetchVideos } from "../../../helpers/cachemedia.js";
 import Quicklinks from "../quicklinks.jsx";
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import VideoPreloader from './VideoPreloader';
+import { clearRegistry } from './videoRegistry';
+import AppDetails from "../../../helpers/appdetails.js";
 
 
 
@@ -51,6 +54,13 @@ const Feeds = ()=>{
     }, []);
 
     useEffect(() => {
+        // When app goes to background, clear prewarmed players to avoid native Activity issues
+        if (appState !== 'active') {
+            try { clearRegistry(); } catch (e) {}
+        }
+    }, [appState]);
+
+    useEffect(() => {
         if (isFocused && appState === 'active') {
             // Delay setting focus to true to allow navigation transition to complete
             const timer = setTimeout(() => setDelayedFocus(true), 500);
@@ -60,6 +70,16 @@ const Feeds = ()=>{
             setDelayedFocus(false);
         }
     }, [isFocused, appState]);
+
+    useEffect(() => {
+        // Clear registry when screen loses focus or on unmount to free native resources
+        if (!isFocused) {
+            try { clearRegistry(); } catch (e) {}
+        }
+        return () => {
+            try { clearRegistry(); } catch (e) {}
+        };
+    }, [isFocused]);
 
     useEffect(()=>{
         const getFeeds = async()=>{
@@ -127,6 +147,19 @@ const Feeds = ()=>{
             return null;
         }
     }, [currentPlayingId, delayedFocus]);
+                        {/* Preload next videos (non-blocking) */}
+                        {delayedFocus && appState === 'active' && (
+                            <VideoPreloader urls={feeds.map(f => {
+                                if (!f) return null;
+                                if (f.type === 'shared' && f.shared_post && (f.shared_post.type === 'video' || f.shared_post.type === 'reel')) {
+                                        return f.shared_post.media && f.shared_post.media[0] ? f.shared_post.media[0].video_url : null;
+                                }
+                                if ((f.type === 'video' || f.type === 'reel') && f.media && f.media[0]) {
+                                        return f.media[0].video_url;
+                                }
+                                return null;
+                        }).filter(Boolean)} limit={3} />
+                        )}
 
 
 
@@ -241,15 +274,6 @@ const Feeds = ()=>{
     }, []);
 
 
-        const videoSource = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-
-
-        // const player = useVideoPlayer(videoSource, player => {
-        //     player.loop = true;
-        //     player.play();
-        //  });
-
-        //    const { isPlaying } = useEvent(player, "playingChange", { isPlaying: player.playing });
 
     return (
         <View style={styles.container}>
@@ -271,8 +295,8 @@ const Feeds = ()=>{
                 }}
                 renderItem={renderCombinedItem}
                 onScroll={handleScroll}
-                scrollEventThrottle={16} // Adjust the throttle rate (16ms for ~60fps)
-                decelerationRate={Platform.OS === 'ios' ? 0.75 : 0.8} // Slows down the scroll momentum
+                scrollEventThrottle={AppDetails.flatList.scrollEventThrottle} // Adjust the throttle rate (16ms for ~60fps)
+                decelerationRate={AppDetails.flatList.decelerationRate} // Slows down the scroll momentum
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.5}

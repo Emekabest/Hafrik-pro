@@ -11,7 +11,7 @@ import { useAuth } from "../../../AuthContext";
 import getUserPostInteractionController from "../../../controllers/getuserpostinteractioncontroller";
 import ShareModal from "./share";
 import { Image as RemoteImage } from "expo-image";
-import cacheVideo from '../../../helpers/cachemedia';
+import { getPlayer } from './videoRegistry';
 import OptionsModal from "./options";
 import SvgIcon from "../../../assl.js/svg/svg";
 import useStore from "../../../repository/store";
@@ -42,10 +42,13 @@ const SkeletonLoader = ({ style }) => {
         return () => animation.stop();
     }, []);
 
+
     return (
         <Animated.View style={[style, { opacity: animValue, backgroundColor: '#dddddd' }]} />
     );
 };
+
+
 
 // #region Media Item Components
 const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress }) => {
@@ -105,7 +108,7 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
 
     // Always call hooks in the same order. Create a player with `null` source
     // when `videoUrl` is not available to avoid breaking the hooks rules.
-    const player = useVideoPlayer(videoUrl || null, (p) => {
+    const hookPlayer = useVideoPlayer(videoUrl || null, (p) => {
         if (videoUrl && p) {
             try {
                 p.play();
@@ -115,8 +118,27 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
         }
     });
 
+
+    
+    const preloaded = getPlayer(videoUrl);
+    const player = preloaded || hookPlayer;
+
+    const [showPoster, setShowPoster] = useState(true);
+
+    useEffect(() => {
+        if (preloaded) setShowPoster(false);
+    }, [preloaded]);
+
+    useEffect(() => {
+        if (isPlaying) setShowPoster(false);
+    }, [isPlaying]);
+
     // Call useEvent unconditionally; provide a safe default for isPlaying
     const { isPlaying } = useEvent(player, "playingChange", { isPlaying: player?.playing ?? false });
+
+    useEffect(() => {
+        if (isPlaying) setShowPoster(false);
+    }, [isPlaying]);
 
     useEffect(() => {
         if (thumbnail) {
@@ -157,8 +179,8 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                         player={player}
                         allowsFullscreen
                         allowsPictureInPicture
-                        posterSource={{ uri: thumbnail }}
-                        usePoster
+                            posterSource={{ uri: thumbnail }}
+                            usePoster={false}
                         onError={(error) => {
                             console.log('VideoView error:', error);
                         }}
@@ -168,6 +190,14 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
                         source={{ uri: thumbnail }}
                         style={{ width: '100%', height: '100%' }}
                         resizeMode="contain"
+                    />
+                )}
+                {showPoster && (
+                    <Image
+                        source={{ uri: thumbnail }}
+                        style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+                        resizeMode="cover"
+                        pointerEvents="none"
                     />
                 )}
                 <TouchableOpacity
@@ -273,6 +303,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const [isSingleVideoError, setIsSingleVideoError] = useState(false);
+    const [showSinglePoster, setShowSinglePoster] = useState(true);
     const uniqueId = `${parentFeedId}_video_0`;
     const [source, setSource] = useState(null);
     const [shouldPlay, setShouldPlay] = useState(false);
@@ -281,11 +312,14 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const bufferTimeoutSingleRef = useRef(null);
 
     // Player hooks for the single video (always call hooks in component body)
-    const singlePlayer = useVideoPlayer(source || null, (p) => {
+    const hookSinglePlayer = useVideoPlayer(source || null, (p) => {
         if (p && source) {
             try { p.loop = true; } catch (e) {}
         }
     });
+
+    const preloadedSingle = getPlayer(source) || getPlayer(mediaItem?.video_url);
+    const singlePlayer = preloadedSingle || hookSinglePlayer;
 
     const { isPlaying: singlePlaying } = useEvent(singlePlayer, 'playingChange', { isPlaying: singlePlayer?.playing ?? false });
     const { status: singleStatus } = useEvent(singlePlayer, 'statusChange', { status: singlePlayer?.status ?? {} });
@@ -303,6 +337,14 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
         if (singleStatus?.didJustFinish) setIsSingleVideoFinished(true);
         if (singleStatus?.isPlaying) setIsSingleVideoFinished(false);
     }, [singleStatus]);
+
+    useEffect(() => {
+        if (singlePlaying) setShowSinglePoster(false);
+    }, [singlePlaying]);
+
+    useEffect(() => {
+        if (preloadedSingle) setShowSinglePoster(false);
+    }, [preloadedSingle]);
 
 
 
@@ -407,7 +449,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             isLooping={true}
                             contentFit="contain"
                             posterSource={{ uri: mediaItem.thumbnail }}
-                            usePoster={true}
+                            usePoster={false}
                             onError={(error) => {
                                 console.log('Single VideoView onError', error);
                             }}
@@ -417,6 +459,14 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             source={{ uri: mediaItem.thumbnail }}
                             style={{ width: "100%", height: "100%" }}
                             resizeMode="contain"
+                        />
+                    )}
+                    {showSinglePoster && (
+                        <Image
+                            source={{ uri: mediaItem.thumbnail }}
+                            style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+                            resizeMode="cover"
+                            pointerEvents="none"
                         />
                     )}
                     <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isSingleVideoBuffering && !isSingleVideoPlaying) ? 1 : 0}]} pointerEvents="none">
@@ -843,6 +893,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const [isFinished, setIsFinished] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [showSharedPoster, setShowSharedPoster] = useState(true);
     const [isImageLoading, setIsImageLoading] = useState(true);
     const [source, setSource] = useState(null);
     const [shouldPlay, setShouldPlay] = useState(false);
@@ -881,11 +932,14 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     }, [isVideo, mediaItem]);
 
     // Create player for shared post video (hooks called unconditionally)
-    const sharedPlayer = useVideoPlayer(source || null, (p) => {
+    const hookSharedPlayer = useVideoPlayer(source || null, (p) => {
         if (p && source) {
             try { p.loop = true; } catch (e) {}
         }
     });
+
+    const preloadedShared = getPlayer(source) || getPlayer(mediaItem?.video_url);
+    const sharedPlayer = preloadedShared || hookSharedPlayer;
 
     const { isPlaying: sharedPlaying } = useEvent(sharedPlayer, 'playingChange', { isPlaying: sharedPlayer?.playing ?? false });
     const { status: sharedStatus } = useEvent(sharedPlayer, 'statusChange', { status: sharedPlayer?.status ?? {} });
@@ -922,6 +976,14 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             bufferTimeoutSharedRef.current = null;
         }
     }, [sharedStatus]);
+
+    useEffect(() => {
+        if (sharedPlaying) setShowSharedPoster(false);
+    }, [sharedPlaying]);
+
+    useEffect(() => {
+        if (preloadedShared) setShowSharedPoster(false);
+    }, [preloadedShared]);
 
     const handlePress = () => {
         navigation.navigate('CommentScreen', {feedId: post.id});
@@ -985,7 +1047,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                     player={sharedPlayer}
                                     contentFit="contain"
                                     posterSource={{ uri: mediaItem.thumbnail }}
-                                    usePoster={true}
+                                    usePoster={false}
                                     nativeControls={false}
                                     isMuted={isMuted}
                                     isLooping={true}
@@ -1006,6 +1068,14 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                         source={{ uri: mediaItem.thumbnail }}
                                         style={{ width: "100%", height: "100%" }}
                                         resizeMode="contain"
+                                    />
+                                )}
+                                {showSharedPoster && (
+                                    <Image
+                                        source={{ uri: mediaItem.thumbnail }}
+                                        style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
+                                        resizeMode="cover"
+                                        pointerEvents="none"
                                     />
                                 )}
                                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
@@ -1113,6 +1183,10 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     const response = await getUserPostInteractionController(feed.id, token)
                     
                     if(response && response.data){
+
+    useEffect(() => {
+        if (preloaded) setShowPoster(false);
+    }, [preloaded]);
                         setLiked(!!response.data.liked)
                         syncFeedData({
                             id: feed.id,
