@@ -261,7 +261,7 @@ const Feeds = ()=>{
                 }}
                 renderItem={renderCombinedItem}
                 onScroll={handleScroll}
-                scrollEventThrottle={14} // Adjust the throttle rate (16ms for ~60fps)
+                scrollEventThrottle={15} // Adjust the throttle rate (16ms for ~60fps)
                 decelerationRate={Platform.OS === 'ios' ? 0.75 : 0.8} // Slows down the scroll momentum
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}
