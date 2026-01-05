@@ -29,7 +29,21 @@ const useStore = create((set) => ({
             likedPosts: { ...state.likedPosts, [postId]: !isLiked },
             likeCounts: { ...state.likeCounts, [postId]: isLiked ? currentCount - 1 : currentCount + 1 }
         };
-    })
+    }),
+
+
+
+
+    /**Feeds Section............................................... */
+
+    trendingFeeds: [],
+    setTrendingFeeds: (state)=> set({trendingFeeds: state}),
+
+
+
+
+
+
 
 }));
 

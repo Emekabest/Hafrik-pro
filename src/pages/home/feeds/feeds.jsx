@@ -92,6 +92,7 @@ const Feeds = ()=>{
         getFeeds()
     },[])
 
+    
     const handleLoadMore = async () => {
         if (loadingMore || initialLoading) return;
         
@@ -129,6 +130,8 @@ const Feeds = ()=>{
             return <QuickLinks />;
           case 'postfeed':
             return <PostFeed />;
+          case 'feedsheader':
+            return <FeedsHeader />
           case 'feed':
             const shouldPlay = currentPlayingId === item.data.id && delayedFocus;
 
@@ -248,7 +251,8 @@ const Feeds = ()=>{
     const combinedData = useMemo(() => {
         const bannerItem = { type: 'banner' };
         const quickLinksItem = { type: 'quicklinks' };
-        const postFeedItem = { type: 'postfeed' };
+        const postFeedItem = { type: 'postfeed' }
+        const feedsheader = { type: 'feedsheader' }
 
         // Ensure unique feed items and handle shared_post correctly
         
@@ -257,6 +261,7 @@ const Feeds = ()=>{
             bannerItem,
             quickLinksItem,
             postFeedItem,
+            feedsheader,
             ...feeds.map(feed => {
                 // if (feed.type === 'shared' && feed.shared_post) {
                 //     return { type: 'feed', data: feed.shared_post, parentId: feed.id };
@@ -267,6 +272,8 @@ const Feeds = ()=>{
 
         return data;
     }, [feeds]);
+
+
 
     const handleScroll = useCallback(() => {
         // Throttle or debounce logic can be added here if needed
