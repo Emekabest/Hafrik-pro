@@ -123,6 +123,12 @@ const FeedVideoItem = memo(({ videoUrl, thumbnail, targetHeight, maxWidth, margi
     const preloaded = getPlayer(videoUrl);
     const player = preloaded || hookPlayer;
 
+    useEffect(() => {
+        if (player) {
+            player.muted = isMuted;
+        }
+    }, [player, isMuted]);
+
     const [showPoster, setShowPoster] = useState(true);
 
     useEffect(() => {
@@ -321,6 +327,12 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     const preloadedSingle = getPlayer(source) || getPlayer(mediaItem?.video_url);
     const singlePlayer = preloadedSingle || hookSinglePlayer;
 
+    useEffect(() => {
+        if (singlePlayer) {
+            singlePlayer.muted = isMuted;
+        }
+    }, [singlePlayer, isMuted]);
+
     const { isPlaying: singlePlaying } = useEvent(singlePlayer, 'playingChange', { isPlaying: singlePlayer?.playing ?? false });
     const { status: singleStatus } = useEvent(singlePlayer, 'statusChange', { status: singlePlayer?.status ?? {} });
 
@@ -445,8 +457,6 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             style={{height:"100%", width: "100%"}}
                             player={singlePlayer}
                             nativeControls={false}
-                            isMuted={isMuted}
-                            isLooping={true}
                             contentFit="contain"
                             posterSource={{ uri: mediaItem.thumbnail }}
                             usePoster={false}
@@ -941,6 +951,12 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     const preloadedShared = getPlayer(source) || getPlayer(mediaItem?.video_url);
     const sharedPlayer = preloadedShared || hookSharedPlayer;
 
+    useEffect(() => {
+        if (sharedPlayer) {
+            sharedPlayer.muted = isMuted;
+        }
+    }, [sharedPlayer, isMuted]);
+
     const { isPlaying: sharedPlaying } = useEvent(sharedPlayer, 'playingChange', { isPlaying: sharedPlayer?.playing ?? false });
     const { status: sharedStatus } = useEvent(sharedPlayer, 'statusChange', { status: sharedPlayer?.status ?? {} });
 
@@ -1058,8 +1074,6 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                                     posterSource={{ uri: mediaItem.thumbnail }}
                                     usePoster={false}
                                     nativeControls={false}
-                                    isMuted={isMuted}
-                                    isLooping={true}
                                     onError={(error) => {
                                         console.log('Shared VideoView onError', error);
                                         if (retryKeyShared < 2) {
