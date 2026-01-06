@@ -9,6 +9,7 @@ const GetFeedsController = async(url, token, page = 1)=>{
                     Authorization: `Bearer ${token}`
             }
         })
+
     
         return {status:response.status, data:response.data.data.data}
     }

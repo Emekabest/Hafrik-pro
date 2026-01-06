@@ -995,6 +995,10 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
     // containerRight padding (5*2) + shared post border (1*2) + shared post padding (10*2)
     const mediaWidth = screenWidth * 0.87 - 10 - 2 - 20;
 
+    const [isExpanded, setIsExpanded] = useState(false);
+    const hasMedia = (post.media && post.media.length > 0) || ['video', 'reel', 'poll', 'article'].includes(post.type);
+    const shouldTruncate = hasMedia && post.text && post.text.length > 50 && !isExpanded;
+
     return (
         <View style={styles.sharedPostContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1005,7 +1009,12 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                     <Text style={{ color: '#787878ff', fontFamily:"WorkSans_400Regular" }}>{CalculateElapsedTime(post.created)}</Text>
                 </View>
             </View>
-            {post.text ? <Text style={{ marginTop: 10, fontFamily: "WorkSans_400Regular" }}>{post.text}</Text> : null}
+            {post.text ? (
+                <Text style={{ marginTop: 10, fontFamily: "WorkSans_400Regular" }}>
+                    {shouldTruncate ? `${post.text.substring(0, 50)}...` : post.text}
+                    {shouldTruncate && <Text onPress={() => setIsExpanded(true)} style={{ color: '#787878', fontWeight: '600' }}> See more</Text>}
+                </Text>
+            ) : null}
             {post.type === 'poll' ? (
                 <PollPostContent feed={post} />
             ) : post.type === 'article' && post.payload ? (
@@ -1174,6 +1183,10 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const [liked, setLiked] = useState(storedLiked !== undefined ? storedLiked : false);
     const [likeCount, setLikeCount] = useState(storedCount !== undefined ? storedCount : (parseInt(feed.likes_count) || 0));
     const { token } = useAuth();
+
+    const [isExpanded, setIsExpanded] = useState(false);
+    const hasMedia = (feed.media && feed.media.length > 0) || ['video', 'reel', 'shared', 'product', 'article', 'poll'].includes(feed.type);
+    const shouldTruncate = hasMedia && feed.text && feed.text.length > 50 && !isExpanded;
 
     useEffect(()=>{
 
@@ -1346,7 +1359,10 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
 
                 {feed.text ? (
                     <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})} activeOpacity={1} style={styles.textSection}>
-                        <Text style = {{fontSize:14, color:"#000", fontFamily:"WorkSans_400Regular"}}>{feed.text}</Text>
+                        <Text style = {{fontSize:14, color:"#000", fontFamily:"WorkSans_400Regular"}}>
+                            {shouldTruncate ? `${feed.text.substring(0, 50)}...` : feed.text}
+                            {shouldTruncate && <Text onPress={() => setIsExpanded(true)} style={{ color: '#787878', fontWeight: '600' }}> See more</Text>}
+                        </Text>
                     </TouchableOpacity>
                 ) : <View style = {styles.textSection} />}
 

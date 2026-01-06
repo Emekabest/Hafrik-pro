@@ -30,12 +30,13 @@ const RecentUpdatesScreen = () => {
 
   const API_URL = `https://hafrik.com/api/v1/feed/list.php`;
 
-
+  
  
 
     useEffect(()=>{
         const getFeeds = async()=>{
             const response = await GetFeedsController(API_URL, token, 1);  
+            // console.log(response.data)
             setFeeds(response.data);
         }
         getFeeds()

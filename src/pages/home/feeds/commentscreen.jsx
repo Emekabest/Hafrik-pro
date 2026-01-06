@@ -294,6 +294,10 @@ const SharedPostItem = ({ post }) => {
 const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
     if (!post) return null;
 
+    const [isExpanded, setIsExpanded] = useState(false);
+    const hasMedia = post.media && post.media.length > 0;
+    const shouldTruncate = hasMedia && post.text && post.text.length > 50 && !isExpanded;
+
     return (
         <View style={[styles.postContainer, { flexDirection: 'column' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -311,7 +315,12 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                 </View>
             </View>
             
-            <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
+            <Text style={[styles.postText, { marginTop: 12 }]}>
+                {shouldTruncate ? `${post.text.substring(0, 70)}...` : post.text}
+                {shouldTruncate && (
+                    <Text onPress={() => setIsExpanded(true)} style={{ color: '#787878', fontWeight: '600' }}> See more</Text>
+                )}
+            </Text>
             {post.type === 'shared' && post.shared_post ? (
                 <SharedPostItem post={post.shared_post} />
             ) : post.type === 'article' ? (
@@ -324,6 +333,8 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                         return mediaItem ? <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} /> : null;
                     }
                     if (post.media && post.media.length > 1) {
+                        const screenWidth = Dimensions.get('window').width;
+                        const contentWidth = screenWidth - 30;
                         return (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                                 {post.media.map((item, index) => (
@@ -331,7 +342,7 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                                         key={index}
                                         source={{ uri: item.url }}
                                         style={{ height: 600, width: 300, borderRadius: 10, marginRight: 10 }}
-                                        resizeMode="contain"
+                                        resizeMode="cover"
                                     />
                                 ))}
                             </ScrollView>
@@ -347,6 +358,7 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                     );
                 })()
             )}
+
 
             <View style={styles.engagementBar}>
                 <TouchableOpacity style={styles.engagementItem} onPress={onLike}>
