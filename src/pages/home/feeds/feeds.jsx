@@ -188,7 +188,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
     )}
     
     
-
+    
     
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         // console.log("Viewable Items Changed:", viewableItems);

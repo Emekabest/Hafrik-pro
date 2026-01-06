@@ -324,16 +324,14 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                         return mediaItem ? <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} /> : null;
                     }
                     if (post.media && post.media.length > 1) {
-                        const screenWidth = Dimensions.get('window').width;
-                        const contentWidth = screenWidth - 30;
                         return (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                                 {post.media.map((item, index) => (
                                     <Image
                                         key={index}
                                         source={{ uri: item.url }}
-                                        style={{ height: 250, width: contentWidth, borderRadius: 10, marginRight: 10 }}
-                                        resizeMode="cover"
+                                        style={{ height: 600, width: 300, borderRadius: 10, marginRight: 10 }}
+                                        resizeMode="contain"
                                     />
                                 ))}
                             </ScrollView>
@@ -343,7 +341,7 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                         post.media && post.media.length > 0 &&
                         <Image
                             source={{ uri: post.media[0].url }}
-                            style={{ height: 250, width: '100%', borderRadius: 10, marginTop: 10 }}
+                            style={{ height: 600, width: 300, borderRadius: 10, marginTop: 10 }}
                             resizeMode="cover"
                         />
                     );

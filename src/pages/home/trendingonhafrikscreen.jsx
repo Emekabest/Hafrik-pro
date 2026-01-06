@@ -1,10 +1,6 @@
-import { ActivityIndicator, Button, FlatList, Platform, StyleSheet, Text, View } from "react-native";
-import FeedsHeader from "./feedsheader";
-import GetTrendingController from "../../controllers/gettrendingcontroller";
+import { StyleSheet, View } from "react-native";
 import { useAuth } from "../../AuthContext";
-import { useEffect, useMemo, useRef, useState } from "react";
-import useSharedStore from "../../repository/store";
-import AppDetails from "../../helpers/appdetails";
+import { useEffect, useMemo, useState } from "react";
 import Feeds from "./feeds/feeds";
 import GetFeedsController from "../../controllers/getfeedscontroller";
 
@@ -51,7 +47,6 @@ const TrendingOnHafrikScreen = () => {
 
     return (
       <View style={styles.container}>
-     
           <Feeds combinedData={combinedData} feeds={feeds} setFeeds={setFeeds} API_URL={API_URL} />
       </View>
   );
