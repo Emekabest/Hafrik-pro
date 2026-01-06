@@ -22,14 +22,24 @@ import Banner from './banner.jsx';
 
 
 const RecentUpdatesScreen = () => {
-  const navigation = useNavigation();
-  const { token, user } = useAuth();
+  
+  const bannerItem = { type: 'banner' };
+  const quickLinksItem = { type: 'quicklinks' };
+  const postFeedItem = { type: 'postfeed' }
+  const feedsheader = { type: 'feedsheader' }
+
+  const data =[
+    bannerItem,
+    quickLinksItem,
+    postFeedItem,
+    feedsheader,
+
+  ]
 
 
 
   return (
       <View style={styles.container}>
-         
           <Feeds />
       </View>
   );

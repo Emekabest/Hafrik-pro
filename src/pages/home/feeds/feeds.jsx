@@ -34,6 +34,8 @@ const Feeds = ()=>{
     const syncFeedData = useStore(state => state.syncFeedData);
     const feedsRef = useRef(feeds);
 
+    
+
     useEffect(() => {
         feedsRef.current = feeds;
     }, [feeds]);
@@ -59,6 +61,7 @@ const Feeds = ()=>{
             try { clearRegistry(); } catch (e) {}
         }
     }, [appState]);
+
 
     useEffect(() => {
         if (isFocused && appState === 'active') {
@@ -92,7 +95,6 @@ const Feeds = ()=>{
         getFeeds()
     },[])
 
-    
     const handleLoadMore = async () => {
         if (loadingMore || initialLoading) return;
         
@@ -117,10 +119,7 @@ const Feeds = ()=>{
             <ActivityIndicator size="small" color="#000" style={{ opacity: loadingMore ? 1 : 0 }} />
         </View>
     );
-
-    const renderItem = useCallback(({item}) => {
-        return <FeedCard feed={item} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} isFocused={delayedFocus} />
-    }, [currentPlayingId, delayedFocus]);
+    
 
     const renderCombinedItem = useCallback(({ item }) => {
         switch (item.type) {
@@ -163,9 +162,9 @@ const Feeds = ()=>{
                                 return null;
                         }).filter(Boolean)} limit={3} />
                         )}
-
-
-
+    
+    
+    
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         // console.log("Viewable Items Changed:", viewableItems);
         const viewableVideoItem = viewableItems.find(item => {
@@ -263,9 +262,7 @@ const Feeds = ()=>{
             postFeedItem,
             feedsheader,
             ...feeds.map(feed => {
-                // if (feed.type === 'shared' && feed.shared_post) {
-                //     return { type: 'feed', data: feed.shared_post, parentId: feed.id };
-                // }
+                
                 return { type: 'feed', data: feed };
             }),
         ];
@@ -273,7 +270,7 @@ const Feeds = ()=>{
         return data;
     }, [feeds]);
 
-
+    
 
     const handleScroll = useCallback(() => {
         // Throttle or debounce logic can be added here if needed
