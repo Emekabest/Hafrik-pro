@@ -34,6 +34,7 @@ const Banner = () => {
                 const data = JSON.parse(responseText);
                 if (data.status === 'success') {
                     if (Array.isArray(data.data)) {
+                        
                         bannersData = data.data;
                     } else if (data.data && Array.isArray(data.data.data)) {
                         bannersData = data.data.data;

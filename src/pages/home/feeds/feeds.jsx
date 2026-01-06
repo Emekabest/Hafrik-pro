@@ -20,9 +20,8 @@ import AppDetails from "../../../helpers/appdetails.js";
 
 
 
-const Feeds = ()=>{
+const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
 
-    const [feeds, setFeeds] = useState([])
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
@@ -34,7 +33,24 @@ const Feeds = ()=>{
     const syncFeedData = useStore(state => state.syncFeedData);
     const feedsRef = useRef(feeds);
 
+
+
+
+    useEffect(()=>{
+        const getFeeds = async()=>{
+            setInitialLoading(true);
+            
+             if (feeds.length > 0) { 
+                setInitialLoading(false);
+                return;
+              }   
+        
+        }
+        getFeeds()
+    },[feeds])
     
+
+
 
     useEffect(() => {
         feedsRef.current = feeds;
@@ -55,12 +71,16 @@ const Feeds = ()=>{
         };
     }, []);
 
+
+
     useEffect(() => {
         // When app goes to background, clear prewarmed players to avoid native Activity issues
         if (appState !== 'active') {
             try { clearRegistry(); } catch (e) {}
         }
     }, [appState]);
+
+
 
 
     useEffect(() => {
@@ -84,23 +104,20 @@ const Feeds = ()=>{
         };
     }, [isFocused]);
 
-    useEffect(()=>{
-        const getFeeds = async()=>{
-            setInitialLoading(true);
-            const response = await GetFeedsController(token, 1);   
-            setFeeds(response.data);
-            syncFeedData(response.data);
-            setInitialLoading(false);
-        }
-        getFeeds()
-    },[])
+
+
 
     const handleLoadMore = async () => {
         if (loadingMore || initialLoading) return;
+
         
         setLoadingMore(true);
         const nextPage = page + 1;
-        const response = await GetFeedsController(token, nextPage);
+
+        console.log("OMOoo")
+
+        const response = await GetFeedsController(API_URL, token, nextPage);
+
         
         if (response.data && Array.isArray(response.data)) {
             setFeeds(prevFeeds => {
@@ -108,10 +125,14 @@ const Feeds = ()=>{
                 const newFeeds = response.data.filter(feed => feed && !existingIds.has(feed.id));
                 return [...prevFeeds, ...newFeeds];
             });
-            syncFeedData(response.data);
+          
+
+
             setPage(nextPage);
         }
         setLoadingMore(false);
+
+
     };
 
     const renderFooter = () => (
@@ -119,6 +140,7 @@ const Feeds = ()=>{
             <ActivityIndicator size="small" color="#000" style={{ opacity: loadingMore ? 1 : 0 }} />
         </View>
     );
+
     
 
     const renderCombinedItem = useCallback(({ item }) => {
@@ -135,7 +157,7 @@ const Feeds = ()=>{
             const shouldPlay = currentPlayingId === item.data.id && delayedFocus;
 
             // console.log(currentPlayingId, item.data.id, shouldPlay);
-         
+            
             return (
               <FeedCard
                 feed={item.data}
@@ -149,21 +171,24 @@ const Feeds = ()=>{
             return null;
         }
     }, [currentPlayingId, delayedFocus]);
-                        {/* Preload next videos (non-blocking) */}
-                        {delayedFocus && appState === 'active' && (
-                            <VideoPreloader urls={feeds.map(f => {
-                                if (!f) return null;
-                                if (f.type === 'shared' && f.shared_post && (f.shared_post.type === 'video' || f.shared_post.type === 'reel')) {
-                                        return f.shared_post.media && f.shared_post.media[0] ? f.shared_post.media[0].video_url : null;
-                                }
-                                if ((f.type === 'video' || f.type === 'reel') && f.media && f.media[0]) {
-                                        return f.media[0].video_url;
-                                }
-                                return null;
-                        }).filter(Boolean)} limit={3} />
-                        )}
+
+
+    {/* Preload next videos (non-blocking) */}
+    {delayedFocus && appState === 'active' && (
+        <VideoPreloader urls={feeds.map(f => {
+            if (!f) return null;
+            if (f.type === 'shared' && f.shared_post && (f.shared_post.type === 'video' || f.shared_post.type === 'reel')) {
+                    return f.shared_post.media && f.shared_post.media[0] ? f.shared_post.media[0].video_url : null;
+            }
+            if ((f.type === 'video' || f.type === 'reel') && f.media && f.media[0]) {
+                    return f.media[0].video_url;
+            }
+            return null;
+    }).filter(Boolean)} limit={3} />
+    )}
     
     
+
     
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         // console.log("Viewable Items Changed:", viewableItems);
@@ -194,8 +219,6 @@ const Feeds = ()=>{
                 playId = `${feed.id}_shared`;
             } else {
                 playId = `${feed.id}_video_0`;
-                console.log("Playing video for feed ID:", playId);
-
             }
         }
         
@@ -206,6 +229,10 @@ const Feeds = ()=>{
             }
             return currentId;
         });
+
+
+
+
 
         // Debounced prefetch: wait for scrolling to settle before starting downloads
         try {
@@ -221,6 +248,7 @@ const Feeds = ()=>{
                     if ((f.type === 'video' || f.type === 'reel') && f.media && f.media[0]) {
                         return f.media[0].video_url;
                     }
+
                     return null;
                 }).filter(Boolean);
 
@@ -233,42 +261,15 @@ const Feeds = ()=>{
                 }
             }
         } catch (e) {
-            // ignore prefetch errors
+            
         }
-
     }).current;
+
 
     const viewabilityConfig = useRef({
         itemVisiblePercentThreshold: 50, // Item must be 50% visible to be considered "viewable"
         waitForInteraction: true,
     }).current;
-
-
-
-
-
-    const combinedData = useMemo(() => {
-        const bannerItem = { type: 'banner' };
-        const quickLinksItem = { type: 'quicklinks' };
-        const postFeedItem = { type: 'postfeed' }
-        const feedsheader = { type: 'feedsheader' }
-
-        // Ensure unique feed items and handle shared_post correctly
-        
-
-        const data = [
-            bannerItem,
-            quickLinksItem,
-            postFeedItem,
-            feedsheader,
-            ...feeds.map(feed => {
-                
-                return { type: 'feed', data: feed };
-            }),
-        ];
-
-        return data;
-    }, [feeds]);
 
     
 
@@ -277,7 +278,7 @@ const Feeds = ()=>{
         // console.log("Scrolling...");
     }, []);
 
-
+    
 
     return (
         <View style={styles.container}>

@@ -2,19 +2,57 @@ import { ActivityIndicator, Button, FlatList, Platform, StyleSheet, Text, View }
 import FeedsHeader from "./feedsheader";
 import GetTrendingController from "../../controllers/gettrendingcontroller";
 import { useAuth } from "../../AuthContext";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useSharedStore from "../../repository/store";
 import AppDetails from "../../helpers/appdetails";
+import Feeds from "./feeds/feeds";
+import GetFeedsController from "../../controllers/getfeedscontroller";
 
 
 
 const TrendingOnHafrikScreen = () => {
 
 
+  const [feeds, setFeeds] = useState([])
+
+  const { token } = useAuth();
+
+  const API_URL = `https://hafrik.com/api/v1/feed/list.php`;
+
+
+  useEffect(()=>{
+        const getFeeds = async()=>{
+            const response = await GetFeedsController(API_URL, token, 1);  
+            setFeeds(response.data);
+        }
+        getFeeds()
+  },[])
+
+
+
+
+    const combinedData = useMemo(() => {
+        const feedsheader = { type: 'feedsheader' }
+
+        // console.log(feeds)
+        // Ensure unique feed items and handle shared_post correctly
+        
+        const data = [
+            feedsheader,
+            ...feeds.map(feed => {
+                
+                return { type: 'feed', data: feed };
+            }),
+        ];
+        return data;
+    }, [feeds]);
+
+
+
     return (
       <View style={styles.container}>
-          <FeedsHeader />
-          <Feeds />
+     
+          <Feeds combinedData={combinedData} feeds={feeds} setFeeds={setFeeds} API_URL={API_URL} />
       </View>
   );
 };

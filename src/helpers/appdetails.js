@@ -8,10 +8,9 @@ const AppDetails = {
     flatList:{
         scrollEventThrottle: 16,
 
-        decelerationRate: Platform.OS === 'ios' ? 0.8 : 0.9,
+        decelerationRate: Platform.OS === 'ios' ? 0.92 : 0.90,
     }
 
-    
 
 
 }

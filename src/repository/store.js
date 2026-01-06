@@ -32,18 +32,20 @@ const useStore = create((set) => ({
     }),
 
 
-
+    
 
     /**Feeds Section............................................... */
 
     trendingFeeds: [],
-    setTrendingFeeds: (state)=> set({trendingFeeds: state}),
+    setTrendingFeeds: (state)=> set({
+        trendingFeeds: state
+    }),
+    
 
-
-
-
-
-
+    recentUpdateFeeds: [],
+    setRecentUpdateFeeds: (state)=> set({
+        recentUpdateFeeds: state
+    }),
 
 }));
 
