@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, StyleSheet, TextInput, TouchableOpacity, Modal } from "react-native";
+import React, { useState, useMemo } from "react";
+import { View, StyleSheet, TextInput, TouchableOpacity, Modal, SectionList, Image, Text, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AppDetails from "../../helpers/appdetails";
@@ -12,16 +12,31 @@ const SearchModal = ()=>{
     const setSearchVisible = useStore((state) => state.setSearchVisible);
     const [searchText, setSearchText] = useState("");
     const { token } = useAuth();
+    const [searchSuggestions, setSearchSuggestions] = useState([]);
 
-
+    
     const handleSearchSuggestions = async (text)=>{
         setSearchText(text)
 
         const response = await SearchSuggestionController(text, token);
 
-        console.log(response.data.results.length);
- 
+        const suggestions = response.data.results;
+        setSearchSuggestions(suggestions);
     }
+
+    const sections = useMemo(() => {
+        const grouped = searchSuggestions.reduce((acc, item) => {
+            const type = item.type || 'Result';
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(item);
+            return acc;
+        }, {});
+
+        return Object.keys(grouped).map(key => ({
+            title: key.charAt(0).toUpperCase() + key.slice(1) + 's',
+            data: grouped[key]
+        }));
+    }, [searchSuggestions]);
 
     return(
         <Modal
@@ -46,6 +61,32 @@ const SearchModal = ()=>{
                     <Ionicons name="close" size={28} color={AppDetails.primaryColor} />
                 </TouchableOpacity>
             </View>
+
+            <SectionList
+                sections={sections}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
+                renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.resultItem}>
+                        <Image source={{ uri: item.thumbnail }} style={styles.resultImage} />
+                        <View style={styles.resultTextContainer}>
+                            <Text style={styles.resultTitle}>{item.title}</Text>
+                            <Text style={styles.resultSubtitle}>{item.subtitle}</Text>
+                        </View>
+                    </TouchableOpacity>
+                )}
+                renderSectionHeader={({ section: { title } }) => (
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionHeaderText}>{title}</Text>
+                    </View>
+                )}
+                style={styles.resultsContainer}
+                keyboardShouldPersistTaps="handled"
+                initialNumToRender={3}
+                maxToRenderPerBatch={3}
+                windowSize={3}
+                removeClippedSubviews={Platform.OS === 'android'}
+            />
+            
             </SafeAreaView>
         </Modal>
     )
@@ -86,6 +127,47 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         marginLeft: 10,
+    },
+    resultsContainer: {
+        flex: 1,
+    },
+    resultItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f5f5f5',
+    },
+    resultImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#eee',
+    },
+    resultTextContainer: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    resultTitle: {
+        fontSize: 15,
+        color: '#333',
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    resultSubtitle: {
+        fontSize: 13,
+        color: '#888',
+    },
+    sectionHeader: {
+        backgroundColor: '#f7f7f7',
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+    },
+    sectionHeaderText: {
+        fontSize: 13,
+        fontWeight: 'bold',
+        color: '#666',
     },
 })
 
