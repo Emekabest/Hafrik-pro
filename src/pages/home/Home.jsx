@@ -13,6 +13,7 @@ import WhatsNearbyScreen from './whatsnearbyscreen.jsx';
 import TrendingOnHafrikScreen from './trendingonhafrikscreen.jsx';
 import SearchModal from '../search/searchmodal.jsx';
 import useStore from '../../repository/store.js';
+import SearchScreen from '../search/searchscreen.jsx';
 
 
 
@@ -21,6 +22,7 @@ const HomePage = () => {
   const [activeTab, setActiveTab] = useState(2);
   
   const isSearchVisible = useStore((state) => state.isSearchVisible);
+  const isSearchResultsVisible = useStore((state) => state.isSearchResultsVisible);
 
   const openDrawer = useCallback(() => {
     setIsDrawerVisible(true);
@@ -35,15 +37,21 @@ const HomePage = () => {
 
       <Header onOpenDrawer={openDrawer} />
 
-      <QuickActions activeTab={activeTab} onTabChange={setActiveTab} />
+      {isSearchResultsVisible ? (
+        <SearchScreen />
+      ) : (
+        <>
+          <QuickActions activeTab={activeTab} onTabChange={setActiveTab} />
+
+          {activeTab === 0 && <WhatsNearbyScreen />}
+          {activeTab === 1 && (
+            <TrendingOnHafrikScreen />
+          )}
+          {activeTab === 2 && <RecentUpdatesScreen />}
+        </>
+      )}
 
       <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
-
-      {activeTab === 0 && <WhatsNearbyScreen />}
-      {activeTab === 1 && (
-        <TrendingOnHafrikScreen />
-      )}
-      {activeTab === 2 && <RecentUpdatesScreen />}
       {isSearchVisible && <SearchModal />}
     </SafeAreaView>
   );

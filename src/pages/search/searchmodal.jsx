@@ -11,6 +11,8 @@ import { useNavigation } from "@react-navigation/native";
 
 const SearchModal = ()=>{
     const setSearchVisible = useStore((state) => state.setSearchVisible);
+    const setSearchQuery = useStore((state) => state.setSearchQuery);
+    const setSearchResultsVisible = useStore((state) => state.setSearchResultsVisible);
     const [searchText, setSearchText] = useState("");
     const { token } = useAuth();
     const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -55,7 +57,8 @@ const SearchModal = ()=>{
 
     const handleSeeAllResults = () => {
         setSearchVisible(false);
-        navigation.navigate('SearchScreen', { query: searchText });
+        setSearchQuery(searchText);
+        setSearchResultsVisible(true);
     }
 
     

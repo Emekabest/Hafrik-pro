@@ -32,7 +32,15 @@ const useStore = create((set) => ({
     }),
 
 
-    
+
+    isSearchVisible: false,
+    setSearchVisible: (visible) => set({ isSearchVisible: visible }),
+
+    searchQuery: "",
+    setSearchQuery: (query) => set({ searchQuery: query }),
+
+    isSearchResultsVisible: false,
+    setSearchResultsVisible: (visible) => set({ isSearchResultsVisible: visible }),
 
     /**Feeds Section............................................... */
 
@@ -47,8 +55,7 @@ const useStore = create((set) => ({
         recentUpdateFeeds: state
     }),
 
-    isSearchVisible: false,
-    setSearchVisible: (visible) => set({ isSearchVisible: visible }),
+
 
 }));
 
