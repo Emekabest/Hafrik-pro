@@ -1,16 +1,27 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, TextInput, TouchableOpacity, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AppDetails from "../../helpers/appdetails";
 import useStore from "../../repository/store";
+import SearchSuggestionController from "../../controllers/searchsuggestioncontroller";
+import { useAuth } from "../../AuthContext";
 
 
 const SearchModal = ()=>{
     const setSearchVisible = useStore((state) => state.setSearchVisible);
+    const [searchText, setSearchText] = useState("");
+    const { token } = useAuth();
 
 
+    const handleSearchSuggestions = async (text)=>{
+        setSearchText(text)
 
+        const response = await SearchSuggestionController(text, token);
+
+        console.log(response.data.results.length);
+ 
+    }
 
     return(
         <Modal
@@ -27,7 +38,8 @@ const SearchModal = ()=>{
                         placeholder="Search"
                         placeholderTextColor="#999"
                         autoFocus={true}
-                        onKeyPress={(v)=> console.log(v)}
+                        value={searchText}
+                        onChangeText={handleSearchSuggestions}
                     />
                 </View>
                 <TouchableOpacity onPress={() => setSearchVisible(false)} style={styles.closeButton} activeOpacity={1}>
