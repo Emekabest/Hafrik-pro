@@ -36,7 +36,7 @@ const SearchModal = ()=>{
         const suggestions = response?.data?.results || [];
         setSearchSuggestions(suggestions);
     }
-
+    
     
 
     /**Section list grouping................................................ */
