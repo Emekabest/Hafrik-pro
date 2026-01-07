@@ -20,6 +20,7 @@ import useSharedStore from './src/repository/store';
 import { useFonts } from 'expo-font';
 import { WorkSans_300Light, WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold, WorkSans_700Bold, WorkSans_800ExtraBold} from '@expo-google-fonts/work-sans';
 import { ReadexPro_200ExtraLight,  ReadexPro_300Light, ReadexPro_400Regular, ReadexPro_500Medium, ReadexPro_600SemiBold, ReadexPro_700Bold, } from "@expo-google-fonts/readex-pro"
+import SearchScreen from './src/pages/search/searchscreen';
 
 
 
@@ -110,6 +111,7 @@ function AppNavigator() {
               <Stack.Screen name="WebView" component={WebViewScreen} />
               <Stack.Screen name="WhatsNearby" component={WhatsNearbyScreen} />
               <Stack.Screen name="CommentScreen" component={CommentScreen} />
+              <Stack.Screen name="SearchScreen" component={SearchScreen} />
 
             </Stack.Navigator>
         </SafeAreaView>

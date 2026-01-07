@@ -19,6 +19,7 @@ import useStore from '../../repository/store.js';
 const HomePage = () => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState(2);
+  
   const isSearchVisible = useStore((state) => state.isSearchVisible);
 
   const openDrawer = useCallback(() => {

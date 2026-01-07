@@ -6,6 +6,7 @@ import AppDetails from "../../helpers/appdetails";
 import useStore from "../../repository/store";
 import SearchSuggestionController from "../../controllers/searchsuggestioncontroller";
 import { useAuth } from "../../AuthContext";
+import { useNavigation } from "@react-navigation/native";
 
 
 const SearchModal = ()=>{
@@ -14,6 +15,7 @@ const SearchModal = ()=>{
     const { token } = useAuth();
     const [searchSuggestions, setSearchSuggestions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const navigation = useNavigation();
 
     
     const handleSearchSuggestions = async (text)=>{
@@ -51,7 +53,12 @@ const SearchModal = ()=>{
     }, [searchSuggestions]);
     /**..................................................................... */
 
+    const handleSeeAllResults = () => {
+        setSearchVisible(false);
+        navigation.navigate('SearchScreen', { query: searchText });
+    }
 
+    
 
     return(
         <Modal
@@ -70,6 +77,8 @@ const SearchModal = ()=>{
                         autoFocus={true}
                         value={searchText}
                         onChangeText={handleSearchSuggestions}
+                        onSubmitEditing={handleSeeAllResults}
+                        returnKeyType="search"
                     />
                     {isLoading && <ActivityIndicator size="small" color={AppDetails.primaryColor} style={{ marginLeft: 5 }} />}
                 </View>
@@ -101,7 +110,18 @@ const SearchModal = ()=>{
                 maxToRenderPerBatch={3}
                 windowSize={2}
                 removeClippedSubviews={Platform.OS === 'android'}
+                scrollEventThrottle={AppDetails.flatList.scrollEventThrottle} // Adjust the throttle rate (16ms for ~60fps)
+                decelerationRate={AppDetails.flatList.decelerationRate}
             />
+
+            {searchText.trim().length > 0 && (
+                <View style={styles.seeAllButton}>
+                <TouchableOpacity onPress={handleSeeAllResults} >
+                    <Text style={styles.seeAllText}>See all results</Text>
+                </TouchableOpacity>
+                </View>
+
+            )}
             
             </SafeAreaView>
         </Modal>
@@ -184,6 +204,18 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: 'bold',
         color: '#666',
+    },
+    seeAllButton: {
+        padding: 15,
+        borderTopWidth: 1,
+        borderTopColor: '#efefef',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    seeAllText: {
+        color: AppDetails.primaryColor,
+        fontWeight: '600',
+        fontSize: 15,
     },
 })
 
