@@ -11,10 +11,15 @@ import QuickActions from './quickactions.jsx';
 import RecentUpdatesScreen from './recentupdatescreen.jsx';
 import WhatsNearbyScreen from './whatsnearbyscreen.jsx';
 import TrendingOnHafrikScreen from './trendingonhafrikscreen.jsx';
+import SearchModal from '../search/searchmodal.jsx';
+import useStore from '../../repository/store.js';
+
+
 
 const HomePage = () => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState(2);
+  const isSearchVisible = useStore((state) => state.isSearchVisible);
 
   const openDrawer = useCallback(() => {
     setIsDrawerVisible(true);
@@ -38,6 +43,7 @@ const HomePage = () => {
         <TrendingOnHafrikScreen />
       )}
       {activeTab === 2 && <RecentUpdatesScreen />}
+      {isSearchVisible && <SearchModal />}
     </SafeAreaView>
   );
 };

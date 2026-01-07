@@ -47,6 +47,9 @@ const useStore = create((set) => ({
         recentUpdateFeeds: state
     }),
 
+    isSearchVisible: false,
+    setSearchVisible: (visible) => set({ isSearchVisible: visible }),
+
 }));
 
 
