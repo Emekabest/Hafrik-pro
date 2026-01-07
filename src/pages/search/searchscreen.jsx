@@ -8,6 +8,7 @@ import AppDetails from "../../helpers/appdetails";
 const SearchScreen = ()=>{
     const setSearchResultsVisible = useStore((state) => state.setSearchResultsVisible);
     const searchQuery = useStore((state) => state.searchQuery);
+    const setSearchQuery = useStore((state) => state.setSearchQuery);
     const [activeTab, setActiveTab] = useState("Posts");
     const tabs = ["Posts", "Blogs", "Users", "Pages", "Groups", "Events"];
 
@@ -37,8 +38,18 @@ const SearchScreen = ()=>{
                 </ScrollView>
             </View>
 
+            
             <View style={styles.content}>
-                <TextInput />
+                <View style={styles.searchInputWrapper}>
+                    <Ionicons name="search" size={20} color="#999" />
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search"
+                        placeholderTextColor="#999"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                </View>
                 <FlatList
                     data={randomData}
                     keyExtractor={(item, index) => `${item}-${index}`}
@@ -116,7 +127,26 @@ const styles = StyleSheet.create({
         backgroundColor: AppDetails.primaryColor,
         borderTopLeftRadius: 3,
         borderTopRightRadius: 3,
-    }
+    },
+    searchInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#edededff',
+        borderRadius: 50,
+        height: 35,
+        paddingHorizontal: 10,
+        marginBottom: 15,
+    },
+    searchInput: {
+        flex: 1,
+        height:50,
+        marginLeft: 5,
+        fontSize: 15,
+        color: '#333',
+        fontFamily: "ReadexPro_400Regular",
+        paddingVertical: 0,
+        textAlignVertical: 'center',
+    },
 })
 
 export default SearchScreen;
