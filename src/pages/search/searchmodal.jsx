@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { View, StyleSheet, TextInput, TouchableOpacity, Modal, SectionList, Image, Text, Platform } from "react-native";
+import { View, StyleSheet, TextInput, TouchableOpacity, Modal, SectionList, Image, Text, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AppDetails from "../../helpers/appdetails";
@@ -13,17 +13,29 @@ const SearchModal = ()=>{
     const [searchText, setSearchText] = useState("");
     const { token } = useAuth();
     const [searchSuggestions, setSearchSuggestions] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     
     const handleSearchSuggestions = async (text)=>{
         setSearchText(text)
 
-        const response = await SearchSuggestionController(text, token);
+        if (text.trim().length === 0) {
+            setSearchSuggestions([]);
+            setIsLoading(false);
+            return;
+        }
 
-        const suggestions = response.data.results;
+        setIsLoading(true);
+        const response = await SearchSuggestionController(text, token);
+        setIsLoading(false);
+
+        const suggestions = response?.data?.results || [];
         setSearchSuggestions(suggestions);
     }
 
+    
+
+    /**Section list grouping................................................ */
     const sections = useMemo(() => {
         const grouped = searchSuggestions.reduce((acc, item) => {
             const type = item.type || 'Result';
@@ -37,6 +49,9 @@ const SearchModal = ()=>{
             data: grouped[key]
         }));
     }, [searchSuggestions]);
+    /**..................................................................... */
+
+
 
     return(
         <Modal
@@ -56,6 +71,7 @@ const SearchModal = ()=>{
                         value={searchText}
                         onChangeText={handleSearchSuggestions}
                     />
+                    {isLoading && <ActivityIndicator size="small" color={AppDetails.primaryColor} style={{ marginLeft: 5 }} />}
                 </View>
                 <TouchableOpacity onPress={() => setSearchVisible(false)} style={styles.closeButton} activeOpacity={1}>
                     <Ionicons name="close" size={28} color={AppDetails.primaryColor} />
@@ -83,7 +99,7 @@ const SearchModal = ()=>{
                 keyboardShouldPersistTaps="handled"
                 initialNumToRender={3}
                 maxToRenderPerBatch={3}
-                windowSize={3}
+                windowSize={2}
                 removeClippedSubviews={Platform.OS === 'android'}
             />
             
