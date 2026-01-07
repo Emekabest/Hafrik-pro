@@ -19,6 +19,8 @@ import useStore from "../../../repository/store";
 
 
 const aspectRatioCache = new Map();
+const MEDIA_HEIGHT = 470;
+const MEDIA_WIDTH = 240;
 
 const SkeletonLoader = ({ style }) => {
     const animValue = useRef(new Animated.Value(0.3)).current;
@@ -254,7 +256,7 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
     return (
         <View style={[
             styles.mediaSection,
-            { height: isMultiMedia ? 600 : undefined },
+            { height: isMultiMedia ? MEDIA_HEIGHT : undefined },
             { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
         ]}>
             {isMultiMedia ? (
@@ -263,15 +265,15 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
                         <FeedImageItem
                             key={index}
                             uri={item.url}
-                            targetHeight={600}
-                            maxWidth={300}
+                            targetHeight={MEDIA_HEIGHT}
+                            maxWidth={MEDIA_WIDTH}
                             marginRight={10}
                             onPress={() => onImagePress(item.url)}
                         />
                     ))}
                 </ScrollView>
             ) : (
-                <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{marginLeft: leftOffset, width: 300, height: 600, borderRadius: 10, backgroundColor: '#000', overflow: 'hidden'}}>
+                <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{marginLeft: leftOffset, width: MEDIA_WIDTH, height: MEDIA_HEIGHT, borderRadius: 10, backgroundColor: '#000', overflow: 'hidden'}}>
                     {isLoading && <SkeletonLoader style={StyleSheet.absoluteFill} />}
                     <RemoteImage
                         source={{uri: media[0].url}}
@@ -417,7 +419,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
     return (
         <View style={[
             styles.mediaSection,
-            { height: isMultiMedia ? 600 : undefined },
+            { height: isMultiMedia ? MEDIA_HEIGHT : undefined },
             { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
         ]}>
             {isMultiMedia ? (
@@ -427,8 +429,8 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                             key={index}
                             videoUrl={item.video_url}
                             thumbnail={item.thumbnail}
-                            targetHeight={600}
-                            maxWidth={300}
+                            targetHeight={MEDIA_HEIGHT}
+                            maxWidth={MEDIA_WIDTH}
                             marginRight={10}
                             currentPlayingId={currentPlayingId}
                             setCurrentPlayingId={setCurrentPlayingId}
@@ -442,7 +444,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                 </ScrollView>
             ) : (
                 isSingleVideoError ? (
-                    <View style={{width: 300, height: 600, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#202020', justifyContent: 'center', alignItems: 'center'}}>
+                    <View style={{width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#202020', justifyContent: 'center', alignItems: 'center'}}>
                         <Ionicons name="alert-circle-outline" size={30} color="#fff" />
                         <Text style={{color: '#fff', fontSize: 14, marginTop: 10}}>Something went wrong</Text>
                         <TouchableOpacity onPress={() => setIsSingleVideoError(false)} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#333', borderRadius: 20}}>
@@ -451,7 +453,7 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
                     </View>
                 ) : (
                 <TouchableWithoutFeedback onPress={handlePress}>
-                <View style={{width: 300, height: 600, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
+                <View style={{width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
                     {source ? (
                         <VideoView
                             style={{height:"100%", width: "100%"}}
@@ -1053,7 +1055,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             ) : (
                 mediaItem ? (
                     hasError ? (
-                        <View style={{ width: 300, height: 600, marginTop: 10, backgroundColor: '#202020', borderRadius: 10, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+                        <View style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginTop: 10, backgroundColor: '#202020', borderRadius: 10, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
                             <Ionicons name="alert-circle-outline" size={30} color="#fff" />
                             <Text style={{color: '#fff', fontSize: 14, marginTop: 10}}>Something went wrong</Text>
                             <TouchableOpacity onPress={() => setHasError(false)} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#333', borderRadius: 20}}>
@@ -1062,7 +1064,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
                         </View>
                     ) : (
                     <TouchableWithoutFeedback onPress={handlePress}>
-                    <View style={{ width: 300, height: 600, marginTop: 10, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
+                    <View style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginTop: 10, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
                         {isVideo ? (
                             <View style={{flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden'}}>
                                 {source ? (
@@ -1371,6 +1373,8 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     </TouchableOpacity>
                 </View>
 
+
+
                 {feed.text ? (
                     <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})} activeOpacity={1} style={styles.textSection}>
                         <Text style = {{fontSize:14, color:"#000", fontFamily:"WorkSans_400Regular"}}>
@@ -1393,10 +1397,14 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     isFocused={isFocused}
                 />
 
+
+
+
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
                     <Ionicons name="eye-outline" size={16} style={{color:"#787878ff", marginRight: 4}} />
                     <Text style={{ fontSize: 12, color: "#787878ff", fontFamily:"WorkSans_400Regular" }}>{feed.views}</Text>
                 </View>
+
 
                 <View style = {[styles.engagementBar, { marginTop: 5 }]}>
                     <TouchableOpacity style = {[styles.likeSection, styles.engagementBarViews]} onPress={handleLike}>
