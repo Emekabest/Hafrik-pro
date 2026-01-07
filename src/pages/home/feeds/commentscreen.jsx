@@ -26,6 +26,10 @@ import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 // no caching for comment video as requested
 import useStore from "../../../repository/store";
+import SvgIcon from '../../../assl.js/svg/svg';
+
+const MEDIA_HEIGHT = 520;
+const MEDIA_WIDTH = 270;
 
 const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const isFocused = useIsFocused();
@@ -55,7 +59,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
 
     if (hasError) {
         return (
-            <View style={{ height: 250, width: '100%', borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#202020', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ height: MEDIA_HEIGHT, width: MEDIA_WIDTH, borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#202020', justifyContent: 'center', alignItems: 'center' }}>
                 <Ionicons name="alert-circle-outline" size={30} color="#fff" />
                 <Text style={{color: '#fff', fontSize: 14, marginTop: 10}}>Something went wrong</Text>
                 <TouchableOpacity onPress={() => setHasError(false)} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#333', borderRadius: 20}}>
@@ -69,7 +73,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const isFinished = status?.didJustFinish;
 
     return (
-        <View style={{ height: 250, width: '100%', borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#000' }}>
+        <View style={{ height: MEDIA_HEIGHT, width: MEDIA_WIDTH, borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#000' }}>
             {player ? (
                 <VideoView
                     style={{ width: '100%', height: '100%' }}
@@ -281,7 +285,7 @@ const SharedPostItem = ({ post }) => {
                     ) : (
                         <Image 
                             source={{ uri: mediaItem.url || mediaItem.thumbnail }} 
-                            style={{ width: '100%', height: 250, borderRadius: 10 }} 
+                            style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, borderRadius: 10 }} 
                             resizeMode="cover" 
                         />
                     )}
@@ -294,33 +298,33 @@ const SharedPostItem = ({ post }) => {
 const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
     if (!post) return null;
 
-    const [isExpanded, setIsExpanded] = useState(false);
-    const hasMedia = post.media && post.media.length > 0;
-    const shouldTruncate = hasMedia && post.text && post.text.length > 50 && !isExpanded;
-
     return (
         <View style={[styles.postContainer, { flexDirection: 'column' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
+
+                <TouchableOpacity>
+                    <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
+                </TouchableOpacity>
+
                 <View style={{ marginLeft: 12, flex: 1 }}>
                     <View style={styles.headerRow}>
-                        <Text style={styles.username}>{post.user.username}</Text>
-                        {post.user.verified && <Ionicons name="checkmark-circle" size={14} color="#1DA1F2" style={{marginLeft: 4}} />}
+                        <TouchableOpacity>
+                            <Text style={styles.username}>{post.user.full_name}</Text>
+                        </TouchableOpacity>
+                    
+                        {post.user.verified && 
+
+                            <SvgIcon name="verified" width={16} height={16} color={AppDetails.primaryColor} />
+
+                        }
                         <Text style={[styles.timeText, { marginLeft: 5, marginRight: 0 }]}>• {CalculateElapsedTime(post.created)}</Text>
                         <View style={styles.spacer} />
-                        <TouchableOpacity style={{ backgroundColor: "#000", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 }}>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#fff" }}>Follow</Text>
-                        </TouchableOpacity>
+
                     </View>
                 </View>
             </View>
             
-            <Text style={[styles.postText, { marginTop: 12 }]}>
-                {shouldTruncate ? `${post.text.substring(0, 70)}...` : post.text}
-                {shouldTruncate && (
-                    <Text onPress={() => setIsExpanded(true)} style={{ color: '#787878', fontWeight: '600' }}> See more</Text>
-                )}
-            </Text>
+            <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
             {post.type === 'shared' && post.shared_post ? (
                 <SharedPostItem post={post.shared_post} />
             ) : post.type === 'article' ? (
@@ -333,15 +337,13 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                         return mediaItem ? <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} /> : null;
                     }
                     if (post.media && post.media.length > 1) {
-                        const screenWidth = Dimensions.get('window').width;
-                        const contentWidth = screenWidth - 30;
                         return (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                                 {post.media.map((item, index) => (
                                     <Image
                                         key={index}
                                         source={{ uri: item.url }}
-                                        style={{ height: 600, width: 300, borderRadius: 10, marginRight: 10 }}
+                                        style={{ height: MEDIA_HEIGHT, width: MEDIA_WIDTH, borderRadius: 10, marginRight: 10 }}
                                         resizeMode="cover"
                                     />
                                 ))}
@@ -352,13 +354,12 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                         post.media && post.media.length > 0 &&
                         <Image
                             source={{ uri: post.media[0].url }}
-                            style={{ height: 600, width: 300, borderRadius: 10, marginTop: 10 }}
+                            style={{ height: MEDIA_HEIGHT, width: MEDIA_WIDTH, borderRadius: 10, marginTop: 10 }}
                             resizeMode="cover"
                         />
                     );
                 })()
             )}
-
 
             <View style={styles.engagementBar}>
                 <TouchableOpacity style={styles.engagementItem} onPress={onLike}>
@@ -366,15 +367,15 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                     <Text style={styles.engagementText}>{likeCount}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.engagementItem} onPress={() => textInputRef.current?.focus()}>
-                    <Ionicons name="chatbubble-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                    <SvgIcon name="comment" width={20} height={20} color="#333" />
                     <Text style={styles.engagementText}>{post.comments_count}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.engagementItem}>
-                    <Ionicons name="paper-plane-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                    <SvgIcon name="share" width={20} height={20} color="#333" />
                     <Text style={styles.engagementText}>29</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.engagementItem}>
-                    <Ionicons name="star-outline" size={23} style={{color:"#333", fontWeight:"bold"}} />
+                    <SvgIcon name="favourite" width={20} height={20} color="#333" />
                 </TouchableOpacity>
             </View>
         </View>
@@ -684,9 +685,9 @@ const styles = StyleSheet.create({
     threadLine: { width: 2, flex: 1, backgroundColor: '#e0e0e0', marginTop: 8, marginBottom: -15, borderRadius: 1 },
     contentColumn: { flex: 1, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0' },
     headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-    username: { fontWeight: '600', fontSize: 15, color: '#000' },
+    username: { fontFamily:"ReadexPro_500Medium", marginRight: 3, fontWeight: '600',Size: 15, color: '#000' },
     spacer: { flex: 1 },
-    timeText: { color: '#999', fontSize: 13, marginRight: 10 },
+    timeText: { color: '#999', fontSize: 13, marginRight: 10, fontFamily:"WorkSans_400Regular" },
     moreButton: { padding: 2 },
     postText: { fontSize: 15, color: '#000', lineHeight: 21, marginBottom: 10 },
     commentText: { fontSize: 15, color: '#000', lineHeight: 20, marginBottom: 8 },
@@ -702,8 +703,9 @@ const styles = StyleSheet.create({
     disabledPostButton: { opacity: 0.4 },
     engagementBar: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: "space-evenly",
         marginTop: 15,
+        // marginRight:50,
         width: '90%',
     },
     engagementItem: {

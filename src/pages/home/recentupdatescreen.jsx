@@ -20,6 +20,7 @@ import Feeds from "./feeds/feeds.jsx"
 import Quicklinks from './quicklinks.jsx';
 import Banner from './banner.jsx';
 import GetFeedsController from '../../controllers/getfeedscontroller.js';
+import useStore from "../../repository/store.js"
 
 
 const RecentUpdatesScreen = () => {
@@ -30,7 +31,10 @@ const RecentUpdatesScreen = () => {
 
   const API_URL = `https://hafrik.com/api/v1/feed/list.php`;
 
-  
+  const recentFeedsFromStore = useStore((state)=> state.recentUpdateFeeds)
+  const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
+
+
  
 
     useEffect(()=>{
