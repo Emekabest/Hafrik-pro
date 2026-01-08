@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Text, View, StyleSheet, TouchableOpacity, ScrollView, FlatList, TextInput } from "react-native";
+import { useState, useEffect } from "react";
+import { Text, View, StyleSheet, TouchableOpacity, ScrollView, FlatList, TextInput, ActivityIndicator, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import useStore from "../../repository/store";
 import AppDetails from "../../helpers/appdetails";
+import SearchSuggestionController from "../../controllers/searchsuggestioncontroller";
+import { useAuth } from "../../AuthContext";
 
 
 const SearchScreen = ()=>{
@@ -10,11 +12,33 @@ const SearchScreen = ()=>{
     const searchQuery = useStore((state) => state.searchQuery);
     const setSearchQuery = useStore((state) => state.setSearchQuery);
     const [activeTab, setActiveTab] = useState("Posts");
-    const tabs = ["Posts", "Blogs", "Users", "Pages", "Groups", "Events"];
+    const [activeSearchData, setActiveSearchData] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const { token } = useAuth();
+    const tabs = ["Posts", "Users", "Pages", "Groups", "Events"];
 
 
-    const randomData = Array.from({ length: 40 }, (_, i) => `Result Item ${i + 1} for "${searchQuery}"`);
+    const handleSearchType = async ()=>{
+        if (!searchQuery || searchQuery.trim() === "") {
+            setActiveSearchData([]);
+            return;
+        }
+    
+        setIsLoading(true);
+        const response = await SearchSuggestionController(searchQuery, token);
+        const result = response?.data?.results || [];
 
+        // Filter based on active tab (e.g., "Posts" -> "post")
+        const targetType = activeTab.slice(0, -1).toLowerCase();
+        const filteredData = result.filter(item => (item.type || '').toLowerCase() === targetType);
+
+        setActiveSearchData(filteredData);
+        setIsLoading(false);
+    } 
+
+    useEffect(() => {
+        handleSearchType();
+    }, [activeTab, searchQuery]);
 
     return(
         <View style={styles.container}>
@@ -50,17 +74,27 @@ const SearchScreen = ()=>{
                         onChangeText={setSearchQuery}
                     />
                 </View>
-                <FlatList
-                    data={randomData}
-                    keyExtractor={(item, index) => `${item}-${index}`}
-                    renderItem={({ item }) => (
-                        <View style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
-                            <Text style={{ fontSize: 16, fontFamily: "ReadexPro_400Regular", color: '#333' }}>{item}</Text>
-                        </View>
-                    )}
-                    style={{ flex: 1 }}
-
-                />
+                {isLoading ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="small" color={AppDetails.primaryColor} />
+                    </View>
+                ) : (
+                    <FlatList
+                        data={activeSearchData}
+                        keyExtractor={(item, index) => `${item.id}-${index}`}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity style={styles.resultItem}>
+                                <Image source={{ uri: item.thumbnail }} style={styles.resultImage} />
+                                <View style={styles.resultTextContainer}>
+                                    <Text style={styles.resultTitle}>{item.title}</Text>
+                                    <Text style={styles.resultSubtitle}>{item.subtitle}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                        style={{ flex: 1 }}
+                        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>No results found</Text>}
+                    />
+                )}
             </View>
         </View>
     )
@@ -146,6 +180,33 @@ const styles = StyleSheet.create({
         fontFamily: "ReadexPro_400Regular",
         paddingVertical: 0,
         textAlignVertical: 'center',
+    },
+    resultItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    resultImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#eee',
+    },
+    resultTextContainer: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    resultTitle: {
+        fontSize: 16,
+        fontFamily: "ReadexPro_400Regular",
+        color: '#333',
+    },
+    resultSubtitle: {
+        fontSize: 13,
+        color: '#888',
+        fontFamily: "ReadexPro_400Regular",
     },
 })
 

@@ -47,7 +47,7 @@ const TrendingOnHafrikScreen = () => {
 
     return (
       <View style={styles.container}>
-          <Feeds combinedData={combinedData} feeds={feeds} setFeeds={setFeeds} API_URL={API_URL} />
+          <Feeds combinedData={combinedData} feeds={feeds} setFeeds={setFeeds} API_URL={API_URL} feedsController={GetFeedsController} />
       </View>
   );
 };

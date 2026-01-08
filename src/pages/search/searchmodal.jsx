@@ -29,11 +29,13 @@ const SearchModal = ()=>{
             return;
         }
 
+        
         setIsLoading(true);
         const response = await SearchSuggestionController(text, token);
         setIsLoading(false);
 
         const suggestions = response?.data?.results || [];
+        
         setSearchSuggestions(suggestions);
     }
     

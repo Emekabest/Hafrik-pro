@@ -13,6 +13,8 @@ const SearchSuggestionController = async(query, token)=>{
             }
         })
 
+        // console.log(response.data);
+
         return {status:response.status, data:response.data}
         
     } catch (error) {
