@@ -3,7 +3,7 @@ import {Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithout
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useNavigation } from '@react-navigation/native';
-import { useState, useRef, useEffect, memo } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
@@ -1650,4 +1650,4 @@ const styles = StyleSheet.create({
 })
 
 
-export default memo(FeedCard);
+export default React.memo(FeedCard);

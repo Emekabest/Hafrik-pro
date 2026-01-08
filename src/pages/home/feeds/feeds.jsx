@@ -113,15 +113,16 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
         setLoadingMore(true);
         const nextPage = page + 1;
 
-        console.log("OMOoo")
-
         const response = await feedsController(API_URL, token, nextPage);
+
 
         
         if (response.data && Array.isArray(response.data)) {
+            console.log("This ran")
             setFeeds(prevFeeds => {
                 const existingIds = new Set(prevFeeds.map(feed => feed.id));
                 const newFeeds = response.data.filter(feed => feed && !existingIds.has(feed.id));
+                console.log("New Feeds:", newFeeds);
                 return [...prevFeeds, ...newFeeds];
             });
           
@@ -133,6 +134,12 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
 
     };
+
+    useEffect(() => {
+
+        console.log("Feeds updated, total count:", feeds.length);
+
+    },[feeds])
 
     const renderFooter = () => (
         <View style={styles.footerContainer}>
@@ -153,6 +160,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
           case 'feedsheader':
             return <FeedsHeader />
           case 'feed':
+
             const shouldPlay = currentPlayingId === item.data.id && delayedFocus;
 
             // console.log(currentPlayingId, item.data.id, shouldPlay);

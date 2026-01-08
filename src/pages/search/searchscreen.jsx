@@ -9,6 +9,7 @@ import { useAuth } from "../../AuthContext";
 
 const SearchScreen = ()=>{
     const setSearchResultsVisible = useStore((state) => state.setSearchResultsVisible);
+    const setSearchVisible = useStore((state) => state.setSearchVisible);
     const searchQuery = useStore((state) => state.searchQuery);
     const setSearchQuery = useStore((state) => state.setSearchQuery);
     const [activeTab, setActiveTab] = useState("Posts");
@@ -36,6 +37,17 @@ const SearchScreen = ()=>{
         setIsLoading(false);
     } 
 
+    
+    const handleBackToPreviousScreen = ()=>{
+        
+        setSearchVisible(true);
+
+        /* Delay hiding search results to allow any UI transitions */
+        setTimeout(() => {
+            setSearchResultsVisible(false);
+        }, 100);
+    }
+
     useEffect(() => {
         handleSearchType();
     }, [activeTab, searchQuery]);
@@ -43,7 +55,7 @@ const SearchScreen = ()=>{
     return(
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => setSearchResultsVisible(false)} style={styles.backButton}>
+                <TouchableOpacity onPress={handleBackToPreviousScreen} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#000" />
                 </TouchableOpacity>
 

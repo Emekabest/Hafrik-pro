@@ -34,7 +34,7 @@ const RecentUpdatesScreen = () => {
   const recentFeedsFromStore = useStore((state)=> state.recentUpdateFeeds)
   const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
 
-
+  
  
 
     useEffect(()=>{

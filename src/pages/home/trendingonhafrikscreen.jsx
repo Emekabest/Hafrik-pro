@@ -13,18 +13,19 @@ const TrendingOnHafrikScreen = () => {
 
   const { token } = useAuth();
 
+  const url = `https://hafrik.com/api/v1/feed/nearby.php`;
+
   const API_URL = `https://hafrik.com/api/v1/feed/trending.php`;
 
-
-  useEffect(()=>{
+    useEffect(()=>{
         const getFeeds = async()=>{
             const response = await GetFeedsController(API_URL, token, 1);  
             setFeeds(response.data);
         }
         getFeeds()
-  },[])
+    },[])
 
-
+    
 
 
     const combinedData = useMemo(() => {
