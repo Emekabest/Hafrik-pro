@@ -32,6 +32,7 @@ const HomePage = () => {
     setIsDrawerVisible(false);
   }, []);
 
+  
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']} >
 

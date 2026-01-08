@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, use } from "react";
 import { View, StyleSheet, TextInput, TouchableOpacity, Modal, SectionList, Image, Text, Platform, ActivityIndicator, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +8,7 @@ import SearchSuggestionController from "../../controllers/searchsuggestioncontro
 import GetFeedsController from "../../controllers/getfeedscontroller";
 import { useAuth } from "../../AuthContext";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 /** ........................................ **/
@@ -16,6 +17,8 @@ const youMayLikeDescriptionLength = 40;
 
 
 ////////////////////////////////////////////////
+
+
 
 
 
@@ -30,38 +33,42 @@ const SearchModal = ()=>{
 
     const [showAllRecent, setShowAllRecent] = useState(false);
 
-    const [recentSearches, setRecentSearches] = useState([
-        { text: "Nature Photography" },
-        { text: "Tech Innovations" },
-        { text: "Healthy Recipes" },
-        { text: "Travel Destinations" },
-        { text: "Fitness Tips" },
-        { text: "Movie Reviews" },
-        { text: "Music Festivals" },
-        { text: "Art Exhibitions" },
-        { text: "Gaming News" },
-        { text: "Fashion Trends" },
-         { text: "Science Discoveries" },
-        { text: "Historical Events" },
-        { text: "Nature Photography" },
-        { text: "Tech Innovations" },
-        { text: "Healthy Recipes" },
-        { text: "Travel Destinations" },
-        { text: "Fitness Tips" },
-        { text: "Movie Reviews" },
-        { text: "Music Festivals" },
-        { text: "Art Exhibitions" },
-        { text: "Gaming News" },
-        { text: "Fashion Trends" },
-        { text: "Science Discoveries" },
-        { text: "Historical Events" },
-       
-    ]);
+    const [recentSearches, setRecentSearches] = useState([]);
 
     const [youMayLike, setYouMayLike] = useState([]);
 
     const navigation = useNavigation();
     
+
+
+
+    
+
+    const setRecentSearch = async(searchText)=>{
+        const recentSearches = JSON.parse(await AsyncStorage.getItem('recent_search'));
+
+        if (recentSearches){
+            
+            AsyncStorage.setItem('recent_search', JSON.stringify([{text: searchText}, ...recentSearches]));
+        }
+        else{
+            AsyncStorage.setItem('recent_search', JSON.stringify([{text: searchText}]));
+        }
+    }   
+    
+
+    const getRecentSearches = async()=>{
+        const recentSearches = JSON.parse(await AsyncStorage.getItem('recent_search'));
+        if (recentSearches.length > 0){
+            setRecentSearches(recentSearches);
+        }
+    }
+    useEffect(() => {
+        getRecentSearches();
+    }, []);
+
+
+
 
 
     const handleYouMayLike = async ()=>{
@@ -105,13 +112,6 @@ const SearchModal = ()=>{
 
 
 
-    const handleRecentSearch = (item)=>{
-
-
-       
-        
-    }   
-    
 
 
 
@@ -160,6 +160,9 @@ const SearchModal = ()=>{
         setSearchVisible(false);
         setSearchQuery(searchText);
         setSearchResultsVisible(true);
+
+        setRecentSearch(searchText);
+
     }
 
     
@@ -196,10 +199,10 @@ const SearchModal = ()=>{
             <ScrollView style= {{paddingHorizontal:17}}>
 
                 <View style={styles.recentSearchContainer}>
-                    <Text>Recent Searches</Text>
+                    <Text style={styles.youMayLike_RecentSearchText}>Recent Searches</Text>
                     <View>
                         {(showAllRecent ? recentSearches : recentSearches.slice(0, 10)).map((item, index) => (
-                            <Text key={index}>{item.text}</Text>
+                            <Text style={styles.youMayLike_RecentSearchDescription}  key={index}>{item.text}</Text>
                         ))}
                     </View>
                     {recentSearches.length > 10 && (
@@ -212,7 +215,7 @@ const SearchModal = ()=>{
                 </View>
 
                 <View style={styles.youMayLikeContainer}>
-                    <Text style={styles.youMayLikeText}>You may like</Text>
+                    <Text style={styles.youMayLike_RecentSearchText}>You may like</Text>
 
                     {
                         youMayLike.map((item, index) => {
@@ -221,7 +224,7 @@ const SearchModal = ()=>{
                             return (
                                 <TouchableOpacity activeOpacity={0.5} key={index} onPress={()=> navigation.navigate('CommentScreen', {feedId: item.id})}  style={styles.youMayLikeItem}>
                                     <Ionicons name="ellipse" size={6} color={AppDetails.primaryColor} />
-                                    <Text style={styles.youMayLikeDescription}>{truncatedText}</Text>
+                                    <Text style={styles.youMayLike_RecentSearchDescription}>{truncatedText}</Text>
                                 </TouchableOpacity>
                             )
                         })
@@ -368,27 +371,31 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 15,
     },
+
+ 
     youMayLikeContainer: {
         flex: 1,
         marginTop: 30,
         justifyContent: 'center',
         alignItems: 'flex-start',
     },
-    youMayLikeText: {
+    youMayLike_RecentSearchText: {
         fontSize: 15,
         fontFamily: "WorkSans_600SemiBold",
         color: '#000',
     },
+
+
     youMayLikeItem: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 10,
     },
-    youMayLikeDescription: {
+    youMayLike_RecentSearchDescription: {
         marginLeft: 10,
         fontSize: 14,
         color: '#333',
-        fontFamily: "WorkSans_500Medium",
+        fontFamily: "WorkSans_400Regular",
     }
 })
 
