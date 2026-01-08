@@ -6,7 +6,8 @@ import AppDetails from "../../helpers/appdetails";
 import SearchSuggestionController from "../../controllers/searchsuggestioncontroller";
 import { useAuth } from "../../AuthContext";
 import { useNavigation } from '@react-navigation/native';
-import SearchPostCard from "./searchpostcard";
+import FeedCard from "../home/feeds/feedcard";
+import { useIsFocused } from '@react-navigation/native';
 
 
 const SearchScreen = ()=>{
@@ -67,17 +68,81 @@ const SearchScreen = ()=>{
 
 
 
+        const [currentPlayingId, setCurrentPlayingId] = useState(null);
+        const isFocused = useIsFocused();
+
+        const normalizeToFeed = useCallback((item) => {
+            const author = item?.meta?.author || {};
+            const media = (() => {
+                const m = item?.media;
+                if (!m) {
+                    return item.thumbnail ? [{ url: item.thumbnail, thumbnail: item.thumbnail }] : [];
+                }
+
+                // If media is already an array of media objects
+                if (Array.isArray(m)) {
+                    return m.map(mi => ({
+                        url: mi.url || mi.thumbnail || mi.thumb || (mi.thumbs && mi.thumbs[0]) || null,
+                        thumbnail: mi.thumbnail || mi.thumb || (mi.thumbs && mi.thumbs[0]) || mi.url || null,
+                        type: mi.type || item.post_type || m.type || null,
+                    })).filter(x => x.url);
+                }
+
+                // media is an object with thumbs/total/layout
+                if (Array.isArray(m.thumbs) && m.thumbs.length > 0) {
+                    return m.thumbs.map(t => ({ url: t, thumbnail: t, type: m.type || item.post_type || null }));
+                }
+
+                // fallback to any nested items
+                if (Array.isArray(m.items) && m.items.length > 0) {
+                    return m.items.map(it => ({ url: it.url || it.thumbnail || null, thumbnail: it.thumbnail || it.url || null, type: it.type || m.type || null })).filter(x => x.url);
+                }
+
+                return [];
+            })();
+            const thumbnail = item.thumbnail || (media[0] && media[0].thumbnail) || null;
+            return {
+                id: item.id,
+                user: {
+                    id: author.id,
+                    full_name: author.name || author.full_name || item.user?.full_name || item.title,
+                    username: author.username || item.user?.username,
+                    avatar: author.avatar || item.user?.avatar || item.thumbnail,
+                    verified: !!author.verified || !!item.user?.verified,
+                },
+                text: item.title || item.subtitle || item.text || "",
+                title: item.title,
+                subtitle: item.subtitle,
+                type: (item.type || item.post_type || (item.is_video ? 'video' : 'post')).toLowerCase(),
+                media,
+                thumbnail,
+                likes_count: item.meta?.likes || item.likes || 0,
+                comments_count: item.meta?.comments || item.comments || 0,
+                views: item.meta?.views || item.views || 0,
+                created: (() => {
+                    const t = item.meta?.time || item.created || null;
+                    if (t === null || t === undefined) return null;
+                    if (typeof t === 'number') return new Date(t * 1000).toISOString();
+                    return String(t);
+                })(),
+                payload: item.payload,
+                shared_post: item.shared_post || null,
+            };
+        }, []);
 
 
-
+        
         const renderSearchItem = useCallback(({ item }) => {
+            const feed = normalizeToFeed(item);
             return (
-                <SearchPostCard
-                    item={item}
-                    onPress={() => navigation.navigate('CommentScreen', { feedId: item.id })}
+                <FeedCard
+                    feed={feed}
+                    currentPlayingId={currentPlayingId}
+                    setCurrentPlayingId={setCurrentPlayingId}
+                    isFocused={isFocused}
                 />
             );
-        }, [navigation]);
+        }, [normalizeToFeed, currentPlayingId, isFocused]);
 
         const keyExtractor = useCallback((item, index) => `${item.id}-${index}`, []);
 

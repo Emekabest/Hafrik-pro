@@ -27,6 +27,7 @@ const SearchPostCard = ({ item, onPress }) => {
     // scale media using provided media design size
 
     return (
+        
         <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.container}>
             <View style={styles.containerLeft}>
                 <View style={styles.ImageContainer}>
