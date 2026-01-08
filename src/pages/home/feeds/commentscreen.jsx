@@ -420,7 +420,6 @@ const CommentScreen = ({route})=>{
             const commentsResponse = await GetCommentsController(feedId, token)
             if(commentsResponse.status === 200){
                 const comments = commentsResponse.data
-                console.log(comments)
 
                 setComments(comments);
             }
@@ -434,9 +433,6 @@ const CommentScreen = ({route})=>{
         getData()
     },[feedId, token])
 
-    const sayHelloWorld = () => {
-        console.log("helloworld");
-    };
 
     const handleLike = async() => {  
         toggleLike(feedId);
@@ -464,7 +460,6 @@ const CommentScreen = ({route})=>{
         const response = await AddCommentController(feedId, text, token, parentId);
 
 
-        console.log(response.data)
         if ((response.status === "success" || response.status === 200) && response.data) {
             const responseData = response.data;
             const newComment = {

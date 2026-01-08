@@ -39,7 +39,6 @@ const RecentUpdatesScreen = () => {
     useEffect(()=>{
         const getFeeds = async()=>{
             const response = await GetFeedsController(API_URL, token, 1);  
-            console.log(response)
             setFeeds(response.data);
         }
         getFeeds()

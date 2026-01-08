@@ -12,7 +12,6 @@ const OptionsModal = ({ visible, postId, onClose }) => {
 
         const response = await ToggleSaveController(postId, token);
 
-        console.log(response);
         if (response.status === 200) {
 
             onClose();

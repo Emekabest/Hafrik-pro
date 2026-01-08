@@ -1,10 +1,35 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import { TouchableOpacity } from "react-native";
 import { StyleSheet, Text, View } from "react-native";
+import GetCountriesController from "../../controllers/countriescontroller/getcountriescontroller";
+import { useAuth } from "../../AuthContext";
 
 
 const FeedsHeader = ()=>{
 
+    const {token} = useAuth();
+    const [countries, setCountries] = useState([]);
+
+
+
+    useEffect(()=>{
+        const getData = async ()=>{
+            const response = await GetCountriesController(token);
+       
+
+            
+            if (response.status === 200){
+                setCountries(response.data.countries);
+                
+            }
+
+        }
+        getData();
+    },[])
+
+
+    console.log("Countries in Header:", countries);
 
     return(
         <View style = {styles.containerHeader} >
