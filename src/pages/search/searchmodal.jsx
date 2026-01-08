@@ -96,7 +96,7 @@ const SearchModal = ()=>{
     const handleYouMayLike = async ()=>{
          const API_URL = `https://hafrik.com/api/v1/feed/list.php`;
 
-        const randomNum  = Math.floor(Math.random() * 20) + 1; // Random number between 1 and 20
+        const randomNum  = Math.floor(Math.random() * 30) + 1; // Random number between 1 and 20
         const response = await GetFeedsController(API_URL, token, randomNum);
 
 
