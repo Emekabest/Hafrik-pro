@@ -45,27 +45,56 @@ const SearchModal = ()=>{
     
 
     const setRecentSearch = async(searchText)=>{
-        const recentSearches = JSON.parse(await AsyncStorage.getItem('recent_search'));
-
-        if (recentSearches){
+        try {
+            const recentSearchesRaw = await AsyncStorage.getItem('recent_search');
+            let recentSearches = recentSearchesRaw ? JSON.parse(recentSearchesRaw) : [];
             
-            AsyncStorage.setItem('recent_search', JSON.stringify([{text: searchText}, ...recentSearches]));
-        }
-        else{
-            AsyncStorage.setItem('recent_search', JSON.stringify([{text: searchText}]));
+            // Remove if exists to move it to the top
+            recentSearches = recentSearches.filter(item => item.text !== searchText);
+
+            const newRecentSearches = [{text: searchText}, ...recentSearches].slice(0, 20); // Keep only top 20
+            
+            await AsyncStorage.setItem('recent_search', JSON.stringify(newRecentSearches));
+        } catch (error) {
+            console.error("Failed to save recent search", error);
         }
     }   
     
 
     const getRecentSearches = async()=>{
-        const recentSearches = JSON.parse(await AsyncStorage.getItem('recent_search'));
-        if (recentSearches.length > 0){
-            setRecentSearches(recentSearches);
+        try {
+            const recentSearchesJSON = await AsyncStorage.getItem('recent_search');
+            if (recentSearchesJSON) {
+                setRecentSearches(JSON.parse(recentSearchesJSON));
+            } else {
+                setRecentSearches([]);
+            }
+        } catch (error) {
+            console.error("Failed to get recent searches", error);
+            setRecentSearches([]);
         }
     }
+
     useEffect(() => {
         getRecentSearches();
     }, []);
+
+
+
+    const handleDeleteRecentSearch = async(indexToDelete)=>{
+        try {
+            const searchesFromStorage = await AsyncStorage.getItem('recent_search');
+            const recentSearches = searchesFromStorage ? JSON.parse(searchesFromStorage) : [];
+            
+            const updatedSearches = recentSearches.filter((_, itemIndex) => itemIndex !== indexToDelete);
+
+            await AsyncStorage.setItem('recent_search', JSON.stringify(updatedSearches));
+            setRecentSearches(updatedSearches);
+
+        } catch (error) {
+            console.error("Failed to delete recent search", error);
+        }
+    }
 
 
 
@@ -199,10 +228,15 @@ const SearchModal = ()=>{
             <ScrollView style= {{paddingHorizontal:17}}>
 
                 <View style={styles.recentSearchContainer}>
-                    <Text style={styles.youMayLike_RecentSearchText}>Recent Searches</Text>
                     <View>
                         {(showAllRecent ? recentSearches : recentSearches.slice(0, 10)).map((item, index) => (
-                            <Text style={styles.youMayLike_RecentSearchDescription}  key={index}>{item.text}</Text>
+                            <TouchableOpacity key={index} style={styles.recentSearchesDesContainer} >
+                                <Ionicons name="time-outline" size={15} color="#333" />
+                                <Text style={[styles.youMayLike_RecentSearchDescription, {flex: 1}]}  key={index}>{item.text}</Text>
+                                <TouchableOpacity onPress={() => handleDeleteRecentSearch(index)}>
+                                    <Ionicons name="close-circle" size={18} color="#999" />
+                                </TouchableOpacity>
+                            </TouchableOpacity>
                         ))}
                     </View>
                     {recentSearches.length > 10 && (
@@ -306,6 +340,7 @@ const styles = StyleSheet.create({
         height: 35,
         paddingHorizontal: 10,
     },
+
     searchInput: {
         flex: 1,
         height: 35,
@@ -315,12 +350,15 @@ const styles = StyleSheet.create({
         paddingVertical: 0,
         textAlignVertical: 'center',
     },
+
     closeButton: {
         marginLeft: 10,
     },
+
     resultsContainer: {
         flex: 1,
     },
+
     resultItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -372,6 +410,18 @@ const styles = StyleSheet.create({
         fontSize: 15,
     },
 
+    recentSearchContainer:{
+        marginTop: 10,
+
+    },
+
+    recentSearchesDesContainer:{
+        display:"flex",
+        flexDirection:"row",
+        alignItems:"center",
+        marginVertical:6,
+
+    },
  
     youMayLikeContainer: {
         flex: 1,
