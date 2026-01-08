@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform, AppState, Button } from "react-native"
 import FeedCard from "./feedcard.jsx";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import GetFeedsController from "../../../controllers/getfeedscontroller.js";
 import Banner from "../banner.jsx";
 import QuickLinks from "../quicklinks.jsx";
 import PostFeed from "../postfeed.jsx";
@@ -20,7 +19,7 @@ import AppDetails from "../../../helpers/appdetails.js";
 
 
 
-const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
+const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -51,7 +50,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
     
 
 
-
+    
     useEffect(() => {
         feedsRef.current = feeds;
     }, [feeds]);
@@ -70,7 +69,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
             subscription.remove();
         };
     }, []);
-
 
 
     useEffect(() => {
@@ -114,9 +112,8 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
         setLoadingMore(true);
         const nextPage = page + 1;
 
-        console.log("OMOoo")
+        const response = await feedsController(API_URL, token, nextPage);
 
-        const response = await GetFeedsController(API_URL, token, nextPage);
 
         
         if (response.data && Array.isArray(response.data)) {
@@ -134,6 +131,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
 
 
     };
+
 
     const renderFooter = () => (
         <View style={styles.footerContainer}>
@@ -154,6 +152,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
           case 'feedsheader':
             return <FeedsHeader />
           case 'feed':
+
             const shouldPlay = currentPlayingId === item.data.id && delayedFocus;
 
             // console.log(currentPlayingId, item.data.id, shouldPlay);
@@ -188,7 +187,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL } )=>{
     )}
     
     
-    
+
     
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         // console.log("Viewable Items Changed:", viewableItems);

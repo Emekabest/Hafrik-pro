@@ -13,24 +13,24 @@ const TrendingOnHafrikScreen = () => {
 
   const { token } = useAuth();
 
-  const API_URL = `https://hafrik.com/api/v1/feed/list.php`;
+  const url = `https://hafrik.com/api/v1/feed/nearby.php`;
 
+  const API_URL = `https://hafrik.com/api/v1/feed/trending.php`;
 
-  useEffect(()=>{
+    useEffect(()=>{
         const getFeeds = async()=>{
             const response = await GetFeedsController(API_URL, token, 1);  
             setFeeds(response.data);
         }
         getFeeds()
-  },[])
+    },[])
 
-
+    
 
 
     const combinedData = useMemo(() => {
         const feedsheader = { type: 'feedsheader' }
 
-        // console.log(feeds)
         // Ensure unique feed items and handle shared_post correctly
         
         const data = [
@@ -47,7 +47,7 @@ const TrendingOnHafrikScreen = () => {
 
     return (
       <View style={styles.container}>
-          <Feeds combinedData={combinedData} feeds={feeds} setFeeds={setFeeds} API_URL={API_URL} />
+          <Feeds combinedData={combinedData} feeds={feeds} setFeeds={setFeeds} API_URL={API_URL} feedsController={GetFeedsController} />
       </View>
   );
 };

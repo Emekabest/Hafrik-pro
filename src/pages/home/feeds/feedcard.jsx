@@ -3,7 +3,7 @@ import {Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithout
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useNavigation } from '@react-navigation/native';
-import { useState, useRef, useEffect, memo } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
@@ -1015,7 +1015,8 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
 
     const [isExpanded, setIsExpanded] = useState(false);
     const hasMedia = (post.media && post.media.length > 0) || ['video', 'reel', 'poll', 'article'].includes(post.type);
-    const shouldTruncate = hasMedia && post.text && post.text.length > 50 && !isExpanded;
+    const isLongPostText = post.text && post.text.length > 50;
+    const shouldTruncate = isLongPostText && !isExpanded;
 
     return (
         <View style={styles.sharedPostContainer}>
@@ -1029,8 +1030,12 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             </View>
             {post.text ? (
                 <Text style={{ marginTop: 10, fontFamily: "WorkSans_400Regular" }}>
-                    {shouldTruncate ? `${post.text.substring(0, 50)}...` : post.text}
-                    {shouldTruncate && <Text onPress={() => setIsExpanded(true)} style={{ color: '#787878', fontWeight: '600' }}> See more</Text>}
+                    {isLongPostText && !isExpanded ? `${post.text.substring(0, 50)}...` : post.text}
+                    {isLongPostText && (
+                        <Text onPress={() => setIsExpanded(prev => !prev)} style={{ color: '#787878', fontWeight: '600' }}>
+                            {isExpanded ? ' See less' : ' See more'}
+                        </Text>
+                    )}
                 </Text>
             ) : null}
             {post.type === 'poll' ? (
@@ -1378,8 +1383,12 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                 {feed.text ? (
                     <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})} activeOpacity={1} style={styles.textSection}>
                         <Text style = {{fontSize:14, color:"#000", fontFamily:"WorkSans_400Regular"}}>
-                            {shouldTruncate ? `${feed.text.substring(0, 50)}...` : feed.text}
-                            {shouldTruncate && <Text onPress={() => setIsExpanded(true)} style={{ color: '#787878', fontWeight: '600' }}> See more</Text>}
+                            {(feed.text && feed.text.length > 50 && !isExpanded) ? `${feed.text.substring(0, 50)}...` : feed.text}
+                            {(feed.text && feed.text.length > 50) && (
+                                <Text onPress={() => setIsExpanded(prev => !prev)} style={{ color: '#787878', fontWeight: '600' }}>
+                                    {isExpanded ? ' See less' : ' See more'}
+                                </Text>
+                            )}
                         </Text>
                     </TouchableOpacity>
                 ) : <View style = {styles.textSection} />}
@@ -1650,4 +1659,4 @@ const styles = StyleSheet.create({
 })
 
 
-export default memo(FeedCard);
+export default React.memo(FeedCard);
