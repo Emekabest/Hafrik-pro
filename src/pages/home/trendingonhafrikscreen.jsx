@@ -13,7 +13,7 @@ const TrendingOnHafrikScreen = () => {
 
   const { token } = useAuth();
 
-  const API_URL = `https://hafrik.com/api/v1/feed/list.php`;
+  const API_URL = `https://hafrik.com/api/v1/feed/trending.php`;
 
 
   useEffect(()=>{

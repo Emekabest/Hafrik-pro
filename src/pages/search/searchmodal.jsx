@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, use } from "react";
 import { View, StyleSheet, TextInput, TouchableOpacity, Modal, SectionList, Image, Text, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,9 +17,38 @@ const SearchModal = ()=>{
     const { token } = useAuth();
     const [searchSuggestions, setSearchSuggestions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const navigation = useNavigation();
 
+    const [recentSearches, setRecentSearches] = useState([]);
+
+    const [youMayLike, setYouMayLike] = useState([]);
+
+    const navigation = useNavigation();
     
+
+
+    const handleYouMayLike = async ()=>{
+        
+
+        const response = await GetFeedsController(AppDetails.APIs.recentUpdates, token, 1);  
+
+        
+
+    }
+
+
+
+    const handleRecentSearch = (item)=>{
+       
+        
+    }   
+    
+
+
+
+
+
+
+    /**This function handles when the user types in the search input */
     const handleSearchSuggestions = async (text)=>{
         setSearchText(text)
 
@@ -29,7 +58,7 @@ const SearchModal = ()=>{
             return;
         }
 
-        
+
         setIsLoading(true);
         const response = await SearchSuggestionController(text, token);
         setIsLoading(false);

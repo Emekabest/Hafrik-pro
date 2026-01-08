@@ -10,6 +10,8 @@ const GetFeedsController = async(url, token, page = 1)=>{
             }
         })
 
+
+        console.log(response.data);
     
         return {status:response.status, data:response.data.data.data}
     }

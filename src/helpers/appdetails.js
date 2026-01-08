@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 
+const baseUrl = "https://api.hafrik.com/v1/";
 
 const AppDetails = {
 
@@ -9,6 +10,10 @@ const AppDetails = {
         scrollEventThrottle: 16,
 
         decelerationRate: Platform.OS === 'ios' ? 0.92 : 0.90,
+    },
+
+    APIs:{
+        recentUpdates: `${baseUrl}/feed/list.php`,
     }
 
 
