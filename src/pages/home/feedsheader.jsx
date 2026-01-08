@@ -6,6 +6,10 @@ import { StyleSheet, Text, View } from "react-native";
 const FeedsHeader = ()=>{
 
 
+
+    
+
+
     return(
         <View style = {styles.containerHeader} >
             <View style = {styles.containerHeaderLeft}>
