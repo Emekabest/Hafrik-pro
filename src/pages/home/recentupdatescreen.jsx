@@ -35,12 +35,11 @@ const RecentUpdatesScreen = () => {
   const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
 
   
- 
-
+  
     useEffect(()=>{
         const getFeeds = async()=>{
             const response = await GetFeedsController(API_URL, token, 1);  
-            // console.log(response.data)
+            console.log(response)
             setFeeds(response.data);
         }
         getFeeds()
@@ -55,7 +54,6 @@ const RecentUpdatesScreen = () => {
         const postFeedItem = { type: 'postfeed' }
         const feedsheader = { type: 'feedsheader' }
 
-        // console.log(feeds)
         // Ensure unique feed items and handle shared_post correctly
         
         const data = [

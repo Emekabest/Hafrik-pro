@@ -31,7 +31,7 @@ const useStore = create((set) => ({
         };
     }),
 
-
+    
 
     isSearchVisible: false,
     setSearchVisible: (visible) => set({ isSearchVisible: visible }),

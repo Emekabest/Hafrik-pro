@@ -15,12 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const youMayLikeDescriptionLength = 40;
 
-
 ////////////////////////////////////////////////
-
-
-
-
 
 const SearchModal = ()=>{
     const setSearchVisible = useStore((state) => state.setSearchVisible);
@@ -39,12 +34,9 @@ const SearchModal = ()=>{
 
     const navigation = useNavigation();
     
-
-
-
     
-
     const setRecentSearch = async(searchText)=>{
+             
         try {
             const recentSearchesRaw = await AsyncStorage.getItem('recent_search');
             let recentSearches = recentSearchesRaw ? JSON.parse(recentSearchesRaw) : [];
@@ -56,6 +48,8 @@ const SearchModal = ()=>{
             
             await AsyncStorage.setItem('recent_search', JSON.stringify(newRecentSearches));
         } catch (error) {
+            
+            console.error("Failed to save recent search", error);
             console.error("Failed to save recent search", error);
         }
     }   
@@ -74,7 +68,6 @@ const SearchModal = ()=>{
             setRecentSearches([]);
         }
     }
-
     useEffect(() => {
         getRecentSearches();
     }, []);

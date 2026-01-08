@@ -402,7 +402,7 @@ const CommentScreen = ({route})=>{
     const toggleLike = useStore(state => state.toggleLike);
     const syncFeedData = useStore(state => state.syncFeedData);
 
-
+    
 
     useEffect(()=>{
 

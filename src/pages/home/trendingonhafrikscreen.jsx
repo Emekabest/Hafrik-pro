@@ -31,7 +31,6 @@ const TrendingOnHafrikScreen = () => {
     const combinedData = useMemo(() => {
         const feedsheader = { type: 'feedsheader' }
 
-        // console.log(feeds)
         // Ensure unique feed items and handle shared_post correctly
         
         const data = [

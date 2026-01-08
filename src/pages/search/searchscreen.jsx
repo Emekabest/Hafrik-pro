@@ -17,7 +17,7 @@ const SearchScreen = ()=>{
     const [isLoading, setIsLoading] = useState(false);
     const { token } = useAuth();
     const tabs = ["Posts", "Users", "Pages", "Groups", "Events"];
-
+    
 
     const handleSearchType = async ()=>{
         if (!searchQuery || searchQuery.trim() === "") {
@@ -37,7 +37,7 @@ const SearchScreen = ()=>{
         setIsLoading(false);
     } 
 
-    
+
     const handleBackToPreviousScreen = ()=>{
         
         setSearchVisible(true);

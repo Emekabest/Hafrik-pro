@@ -50,7 +50,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     
 
 
-
+    
     useEffect(() => {
         feedsRef.current = feeds;
     }, [feeds]);
@@ -69,7 +69,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             subscription.remove();
         };
     }, []);
-
 
 
     useEffect(() => {
@@ -118,11 +117,9 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
         
         if (response.data && Array.isArray(response.data)) {
-            console.log("This ran")
             setFeeds(prevFeeds => {
                 const existingIds = new Set(prevFeeds.map(feed => feed.id));
                 const newFeeds = response.data.filter(feed => feed && !existingIds.has(feed.id));
-                console.log("New Feeds:", newFeeds);
                 return [...prevFeeds, ...newFeeds];
             });
           
@@ -135,11 +132,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
     };
 
-    useEffect(() => {
-
-        console.log("Feeds updated, total count:", feeds.length);
-
-    },[feeds])
 
     const renderFooter = () => (
         <View style={styles.footerContainer}>
