@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { View, StyleSheet, TextInput, TouchableOpacity, Modal, SectionList, Image, Text, Platform, ActivityIndicator } from "react-native";
+import { View, StyleSheet, TextInput, TouchableOpacity, Modal, SectionList, Image, Text, Platform, ActivityIndicator, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AppDetails from "../../helpers/appdetails";
@@ -19,7 +19,35 @@ const SearchModal = ()=>{
     const [searchSuggestions, setSearchSuggestions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const [recentSearches, setRecentSearches] = useState([]);
+    const [showAllRecent, setShowAllRecent] = useState(false);
+
+    const [recentSearches, setRecentSearches] = useState([
+        { text: "Nature Photography" },
+        { text: "Tech Innovations" },
+        { text: "Healthy Recipes" },
+        { text: "Travel Destinations" },
+        { text: "Fitness Tips" },
+        { text: "Movie Reviews" },
+        { text: "Music Festivals" },
+        { text: "Art Exhibitions" },
+        { text: "Gaming News" },
+        { text: "Fashion Trends" },
+         { text: "Science Discoveries" },
+        { text: "Historical Events" },
+        { text: "Nature Photography" },
+        { text: "Tech Innovations" },
+        { text: "Healthy Recipes" },
+        { text: "Travel Destinations" },
+        { text: "Fitness Tips" },
+        { text: "Movie Reviews" },
+        { text: "Music Festivals" },
+        { text: "Art Exhibitions" },
+        { text: "Gaming News" },
+        { text: "Fashion Trends" },
+        { text: "Science Discoveries" },
+        { text: "Historical Events" },
+       
+    ]);
 
     const [youMayLike, setYouMayLike] = useState([]);
 
@@ -46,14 +74,14 @@ const SearchModal = ()=>{
             /**Other post type like (photos, videos, post, text), Max limit of 6 */
             const otherPosts = shuffledFeeds.filter(feed => feed.type !== 'article').slice(0, 6).map(feed => ({
                 full_name: feed.user?.full_name,
-                text: feed.text
+                title: feed.text
             }));
 
 
             /**Article posts type only, Max limit of 4. */
             const articlePosts = shuffledFeeds.filter(feed => feed.type === 'article').slice(0, 4).map(feed => ({
                 full_name: feed.user?.full_name,
-                title: feed.payload?.title
+                title: feed.payload?.title.trim()
             }));
 
 
@@ -154,42 +182,89 @@ const SearchModal = ()=>{
                 </TouchableOpacity>
             </View>
 
-            <SectionList
-                sections={sections}
-                keyExtractor={(item, index) => `${item.id}-${index}`}
-                renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.resultItem}>
-                        <Image source={{ uri: item.thumbnail }} style={styles.resultImage} />
-                        <View style={styles.resultTextContainer}>
-                            <Text style={styles.resultTitle}>{item.title}</Text>
-                            <Text style={styles.resultSubtitle}>{item.subtitle}</Text>
-                        </View>
-                    </TouchableOpacity>
-                )}
-                renderSectionHeader={({ section: { title } }) => (
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionHeaderText}>{title}</Text>
-                    </View>
-                )}
-                style={styles.resultsContainer}
-                keyboardShouldPersistTaps="handled"
-                initialNumToRender={3}
-                maxToRenderPerBatch={3}
-                windowSize={2}
-                removeClippedSubviews={Platform.OS === 'android'}
-                scrollEventThrottle={AppDetails.flatList.scrollEventThrottle} // Adjust the throttle rate (16ms for ~60fps)
-                decelerationRate={AppDetails.flatList.decelerationRate}
-            />
+        {
+            searchText.trim().length === 0 ? 
+            <ScrollView style= {{paddingHorizontal:17}}>
 
-            {searchText.trim().length > 0 && (
-                <View style={styles.seeAllButton}>
-                <TouchableOpacity onPress={handleSeeAllResults} >
-                    <Text style={styles.seeAllText}>See all results</Text>
-                </TouchableOpacity>
+                <View style={styles.recentSearchContainer}>
+                    <Text>Recent Searches</Text>
+                    <View>
+                        {(showAllRecent ? recentSearches : recentSearches.slice(0, 10)).map((item, index) => (
+                            <Text key={index}>{item.text}</Text>
+                        ))}
+                    </View>
+                    {recentSearches.length > 10 && (
+                        <TouchableOpacity onPress={() => setShowAllRecent(!showAllRecent)}>
+                            <Text style={{ color: AppDetails.primaryColor, marginTop: 10 }}>
+                                {showAllRecent ? 'See less' : 'See more'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
-            )}
+                <View style={styles.youMayLikeContainer}>
+                    <Text style={styles.youMayLikeText}>You may like</Text>
+
+                    {
+                        youMayLike.map((item, index) => {
+                        const textToDisplay = item.title || item.full_name || '';
+                        const truncatedText = textToDisplay.length > 40 ? textToDisplay.substring(0, 40) + '...' : textToDisplay;
+                        return (
+                            <TouchableOpacity key={index} style={styles.youMayLikeItem}>
+                                <Ionicons name="ellipse" size={10} color={AppDetails.primaryColor} />
+                                <Text style={styles.youMayLikeDescription}>{truncatedText}</Text>
+                            </TouchableOpacity>
+                        )
+                    })
+                    }
+                    
+                </View>
+
+            </ScrollView>
             
+            :
+
+            <>
+                <SectionList
+                    sections={sections}
+                    keyExtractor={(item, index) => `${item.id}-${index}`}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity style={styles.resultItem}>
+                            <Image source={{ uri: item.thumbnail }} style={styles.resultImage} />
+                            <View style={styles.resultTextContainer}>
+                                <Text style={styles.resultTitle}>{item.title}</Text>
+                                <Text style={styles.resultSubtitle}>{item.subtitle}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+                    renderSectionHeader={({ section: { title } }) => (
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionHeaderText}>{title}</Text>
+                        </View>
+                    )}
+                    style={styles.resultsContainer}
+                    keyboardShouldPersistTaps="handled"
+                    initialNumToRender={3}
+                    maxToRenderPerBatch={3}
+                    windowSize={2}
+                    removeClippedSubviews={Platform.OS === 'android'}
+                    scrollEventThrottle={AppDetails.flatList.scrollEventThrottle} // Adjust the throttle rate (16ms for ~60fps)
+                    decelerationRate={AppDetails.flatList.decelerationRate}
+                />
+
+                {searchText.trim().length > 0 && (
+                    <View style={styles.seeAllButton}>
+                    <TouchableOpacity onPress={handleSeeAllResults} >
+                        <Text style={styles.seeAllText}>See all results</Text>
+                    </TouchableOpacity>
+                    </View>
+
+                )}
+                
+            </>
+
+        }
+
             </SafeAreaView>
         </Modal>
     )
@@ -284,6 +359,28 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         fontSize: 15,
     },
+    youMayLikeContainer: {
+        flex: 1,
+        marginTop: 30,
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+    },
+    youMayLikeText: {
+        fontSize: 15,
+        fontFamily: "WorkSans_600SemiBold",
+        color: '#000',
+    },
+    youMayLikeItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+    },
+    youMayLikeDescription: {
+        marginLeft: 10,
+        fontSize: 14,
+        color: '#333',
+        fontFamily: "WorkSans_500Medium",
+    }
 })
 
 export default SearchModal;
