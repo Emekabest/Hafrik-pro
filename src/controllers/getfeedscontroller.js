@@ -3,7 +3,7 @@ import axios from "axios"
 
 const GetFeedsController = async(url, token, page = 1)=>{
 
-    const API_URL = `https://hafrik.com/api/v1/feed/list.php?page=1`;
+    const API_URL = `${url}?page=${page}`;
 
     try{
         const response = await axios.get(API_URL, {

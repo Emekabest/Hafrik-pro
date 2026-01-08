@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
-import { Text, View, StyleSheet, TouchableOpacity, ScrollView, FlatList, TextInput, ActivityIndicator, Image } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { Text, View, StyleSheet, TouchableOpacity, ScrollView, FlatList, TextInput, ActivityIndicator, Image, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import useStore from "../../repository/store";
 import AppDetails from "../../helpers/appdetails";
 import SearchSuggestionController from "../../controllers/searchsuggestioncontroller";
 import { useAuth } from "../../AuthContext";
+import { useNavigation } from '@react-navigation/native';
+import SearchPostCard from "./searchpostcard";
 
 
 const SearchScreen = ()=>{
@@ -17,7 +19,7 @@ const SearchScreen = ()=>{
     const [isLoading, setIsLoading] = useState(false);
     const { token } = useAuth();
     const tabs = ["Posts", "Users", "Pages", "Groups", "Events"];
-    
+
 
     const handleSearchType = async ()=>{
         if (!searchQuery || searchQuery.trim() === "") {
@@ -38,20 +40,55 @@ const SearchScreen = ()=>{
     } 
 
 
-    const handleBackToPreviousScreen = ()=>{
-        
+
+
+
+
+    const navigation = useNavigation();
+
+    const handleBackToPreviousScreen = useCallback(()=>{
         setSearchVisible(true);
 
         /* Delay hiding search results to allow any UI transitions */
         setTimeout(() => {
             setSearchResultsVisible(false);
         }, 100);
-    }
+    }, [setSearchVisible, setSearchResultsVisible]);
 
     useEffect(() => {
         handleSearchType();
     }, [activeTab, searchQuery]);
 
+
+
+
+
+
+
+
+
+
+
+
+        const renderSearchItem = useCallback(({ item }) => {
+            return (
+                <SearchPostCard
+                    item={item}
+                    onPress={() => navigation.navigate('CommentScreen', { feedId: item.id })}
+                />
+            );
+        }, [navigation]);
+
+        const keyExtractor = useCallback((item, index) => `${item.id}-${index}`, []);
+
+
+
+
+
+
+
+
+    
     return(
         <View style={styles.container}>
             <View style={styles.header}>
@@ -93,23 +130,21 @@ const SearchScreen = ()=>{
                 ) : (
                     <FlatList
                         data={activeSearchData}
-                        keyExtractor={(item, index) => `${item.id}-${index}`}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity style={styles.resultItem}>
-                                <Image source={{ uri: item.thumbnail }} style={styles.resultImage} />
-                                <View style={styles.resultTextContainer}>
-                                    <Text style={styles.resultTitle}>{item.title}</Text>
-                                    <Text style={styles.resultSubtitle}>{item.subtitle}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        )}
+                        keyExtractor={keyExtractor}
+                        renderItem={renderSearchItem}
                         style={{ flex: 1 }}
                         ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>No results found</Text>}
+                        onEndReachedThreshold={0.5}
+                        initialNumToRender={2}
+                        maxToRenderPerBatch={2}
+                        windowSize={3}
+                        removeClippedSubviews={Platform.OS === 'android'}
                     />
                 )}
             </View>
         </View>
     )
+
 }
 
 
@@ -222,4 +257,4 @@ const styles = StyleSheet.create({
     },
 })
 
-export default SearchScreen;
+export default React.memo(SearchScreen);
