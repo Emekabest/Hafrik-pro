@@ -194,6 +194,16 @@ const SearchModal = ()=>{
 
     }
 
+    const handleSelectRecentSearch = (text)=>{
+
+        setSearchVisible(false);
+        setSearchText(text);
+        setSearchQuery(text)
+        setSearchResultsVisible(true);
+        setRecentSearch(text);
+    
+    }
+
     
 
     return(
@@ -230,7 +240,7 @@ const SearchModal = ()=>{
                 <View style={styles.recentSearchContainer}>
                     <View>
                         {(showAllRecent ? recentSearches : recentSearches.slice(0, 10)).map((item, index) => (
-                            <TouchableOpacity key={index} style={styles.recentSearchesDesContainer} >
+                            <TouchableOpacity onPress={()=> handleSelectRecentSearch(item.text) } activeOpacity={0.5} key={index}  style={styles.recentSearchesDesContainer} >
                                 <Ionicons name="time-outline" size={15} color="#333" />
                                 <Text style={[styles.youMayLike_RecentSearchDescription, {flex: 1}]}  key={index}>{item.text}</Text>
                                 <TouchableOpacity onPress={() => handleDeleteRecentSearch(index)}>
