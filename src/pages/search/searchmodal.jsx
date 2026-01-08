@@ -1,10 +1,11 @@
-import React, { useState, useMemo, use } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { View, StyleSheet, TextInput, TouchableOpacity, Modal, SectionList, Image, Text, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AppDetails from "../../helpers/appdetails";
 import useStore from "../../repository/store";
 import SearchSuggestionController from "../../controllers/searchsuggestioncontroller";
+import GetFeedsController from "../../controllers/getfeedscontroller";
 import { useAuth } from "../../AuthContext";
 import { useNavigation } from "@react-navigation/native";
 
@@ -27,13 +28,45 @@ const SearchModal = ()=>{
 
 
     const handleYouMayLike = async ()=>{
-        
+         const API_URL = `https://hafrik.com/api/v1/feed/list.php`;
 
-        const response = await GetFeedsController(AppDetails.APIs.recentUpdates, token, 1);  
+        const randomNum  = Math.floor(Math.random() * 20) + 1; // Random number between 1 and 20
+        const response = await GetFeedsController(API_URL, token, randomNum);
 
-        
 
+        if((response?.data || []).length > 0){
+            const allFeeds = response.data;
+            
+            // Shuffle the array to get random posts
+            const shuffledFeeds = [...allFeeds].sort(() => 0.5 - Math.random());
+
+            // console.log("Shuffled feeds for You May Like:", shuffledFeeds);
+
+
+            /**Other post type like (photos, videos, post, text), Max limit of 6 */
+            const otherPosts = shuffledFeeds.filter(feed => feed.type !== 'article').slice(0, 6).map(feed => ({
+                full_name: feed.user?.full_name,
+                text: feed.text
+            }));
+
+
+            /**Article posts type only, Max limit of 4. */
+            const articlePosts = shuffledFeeds.filter(feed => feed.type === 'article').slice(0, 4).map(feed => ({
+                full_name: feed.user?.full_name,
+                title: feed.payload?.title
+            }));
+
+
+            setYouMayLike([...otherPosts, ...articlePosts]);
+        }
     }
+
+    useEffect(() => {
+        handleYouMayLike();
+
+        console.log("You may like posts:", youMayLike);
+    }, []);
+
 
 
 
