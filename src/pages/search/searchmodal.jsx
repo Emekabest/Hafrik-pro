@@ -10,6 +10,15 @@ import { useAuth } from "../../AuthContext";
 import { useNavigation } from "@react-navigation/native";
 
 
+/** ........................................ **/
+
+const youMayLikeDescriptionLength = 40;
+
+
+////////////////////////////////////////////////
+
+
+
 const SearchModal = ()=>{
     const setSearchVisible = useStore((state) => state.setSearchVisible);
     const setSearchQuery = useStore((state) => state.setSearchQuery);
@@ -68,11 +77,10 @@ const SearchModal = ()=>{
             // Shuffle the array to get random posts
             const shuffledFeeds = [...allFeeds].sort(() => 0.5 - Math.random());
 
-            // console.log("Shuffled feeds for You May Like:", shuffledFeeds);
-
 
             /**Other post type like (photos, videos, post, text), Max limit of 6 */
-            const otherPosts = shuffledFeeds.filter(feed => feed.type !== 'article').slice(0, 6).map(feed => ({
+            const otherPosts = shuffledFeeds.filter(feed => feed.type !== 'article').slice(0, 10).map(feed => ({
+                id: feed.id,
                 full_name: feed.user?.full_name,
                 title: feed.text
             }));
@@ -80,6 +88,7 @@ const SearchModal = ()=>{
 
             /**Article posts type only, Max limit of 4. */
             const articlePosts = shuffledFeeds.filter(feed => feed.type === 'article').slice(0, 4).map(feed => ({
+                id: feed.id,
                 full_name: feed.user?.full_name,
                 title: feed.payload?.title.trim()
             }));
@@ -91,14 +100,14 @@ const SearchModal = ()=>{
 
     useEffect(() => {
         handleYouMayLike();
-
-        console.log("You may like posts:", youMayLike);
     }, []);
 
 
 
 
     const handleRecentSearch = (item)=>{
+
+
        
         
     }   
@@ -208,14 +217,14 @@ const SearchModal = ()=>{
                     {
                         youMayLike.map((item, index) => {
                         const textToDisplay = item.title || item.full_name || '';
-                        const truncatedText = textToDisplay.length > 40 ? textToDisplay.substring(0, 40) + '...' : textToDisplay;
-                        return (
-                            <TouchableOpacity key={index} style={styles.youMayLikeItem}>
-                                <Ionicons name="ellipse" size={10} color={AppDetails.primaryColor} />
-                                <Text style={styles.youMayLikeDescription}>{truncatedText}</Text>
-                            </TouchableOpacity>
-                        )
-                    })
+                        const truncatedText = textToDisplay.length > youMayLikeDescriptionLength ? textToDisplay.substring(0, youMayLikeDescriptionLength) + '...' : textToDisplay;
+                            return (
+                                <TouchableOpacity activeOpacity={0.5} key={index} onPress={()=> navigation.navigate('CommentScreen', {feedId: item.id})}  style={styles.youMayLikeItem}>
+                                    <Ionicons name="ellipse" size={6} color={AppDetails.primaryColor} />
+                                    <Text style={styles.youMayLikeDescription}>{truncatedText}</Text>
+                                </TouchableOpacity>
+                            )
+                        })
                     }
                     
                 </View>
