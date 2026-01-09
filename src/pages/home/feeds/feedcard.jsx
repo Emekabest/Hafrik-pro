@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import {Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator, Animated, TextInput, Button } from "react-native";
+import {Image, StyleSheet, Text, TouchableOpacity, View, Modal, TouchableWithoutFeedback, ScrollView, Dimensions, Alert, ActivityIndicator, Animated, TextInput, Button, FlatList } from "react-native";
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useNavigation } from '@react-navigation/native';
@@ -260,18 +260,27 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
             { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
         ]}>
             {isMultiMedia ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}>
-                    {media.map((item, index) => (
+                <FlatList
+                    data={media}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingLeft: leftOffset, paddingRight: rightOffset }}
+                    keyExtractor={(item, index) => String(index)}
+                    renderItem={({ item, index }) => (
                         <FeedImageItem
-                            key={index}
                             uri={item.url}
                             targetHeight={MEDIA_HEIGHT}
                             maxWidth={MEDIA_WIDTH}
                             marginRight={10}
                             onPress={() => onImagePress(item.url)}
                         />
-                    ))}
-                </ScrollView>
+                    )}
+                    initialNumToRender={1}
+                    maxToRenderPerBatch={1}
+                    windowSize={1}
+                    decelerationRate="fast"
+                    snapToInterval={MEDIA_WIDTH + 10}
+                />
             ) : (
                 <TouchableOpacity onPress={() => onImagePress(media[0].url)} activeOpacity={1} style={{marginLeft: leftOffset, width: MEDIA_WIDTH, height: MEDIA_HEIGHT, borderRadius: 10, backgroundColor: '#000', overflow: 'hidden'}}>
                     {isLoading && <SkeletonLoader style={StyleSheet.absoluteFill} />}
