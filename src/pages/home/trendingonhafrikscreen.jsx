@@ -13,6 +13,11 @@ const TrendingOnHafrikScreen = () => {
 
   const { token } = useAuth();
 
+  
+
+  const refreshSignal = useStore(state => state.refreshSignal);
+  const [version, setVersion] = useState(0);
+
   const url = `https://hafrik.com/api/v1/feed/nearby.php`;
 
   const API_URL = `https://hafrik.com/api/v1/feed/trending.php`;

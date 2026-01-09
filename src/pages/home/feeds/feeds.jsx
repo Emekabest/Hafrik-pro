@@ -24,9 +24,7 @@ import AppDetails from "../../../helpers/appdetails.js";
 const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
     const [page, setPage] = useState(1);
-    const feedsPageFromStore = useStore((state)=> state.feedsPage)
-    const setFeedsPageToStore = useStore((state)=> state.setFeedsPage)
-
+   
     const [loadingMore, setLoadingMore] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [currentPlayingId, setCurrentPlayingId] = useState(null);
@@ -36,17 +34,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     const { token } = useAuth();
     const syncFeedData = useStore(state => state.syncFeedData);
     const feedsRef = useRef(feeds);
-
-
-
-    /**Changing the state of the feed page */
-    useEffect(()=>{
-
-        // setPage(feedsPageFromStore);
-        console.log("Feeds page is triggered", feedsPageFromStore)
-
-    },[feedsPageFromStore])
-    /**.................................. */
 
 
 
@@ -126,8 +113,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
         
         setLoadingMore(true);
         const nextPage = page + 1;
-
-        console.log(nextPage)
 
         const response = await feedsController(API_URL, token, nextPage);
 

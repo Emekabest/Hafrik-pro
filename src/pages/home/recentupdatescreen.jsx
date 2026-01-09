@@ -34,10 +34,8 @@ const RecentUpdatesScreen = () => {
   const recentFeedsFromStore = useStore((state)=> state.recentUpdateFeeds)
   const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
 
-  const feedsPage = useStore((state)=> state.feedsPage)
-  const setFeedsPage = useStore((state)=> state.setFeedsPage)
-
   const refreshSignal = useStore(state => state.refreshSignal);
+  const [version, setVersion] = useState(0);
 
 
 
@@ -60,15 +58,14 @@ const RecentUpdatesScreen = () => {
         getFeeds()
     },[])
     useEffect(()=>{
-      console.log("Refresh triggered in recent updates", refreshSignal)
+        // increment version to force remount of child components
+        setVersion(v => v + 1);
         getFeeds()
     },[refreshSignal])
 
 
-
-
-
     useEffect(()=>{      
+
         setFeeds(recentFeedsFromStore);
     
     },[recentFeedsFromStore])
@@ -104,7 +101,7 @@ const RecentUpdatesScreen = () => {
 
   return (
       <View style={styles.container}>
-          <Feeds combinedData={combinedData} feeds={feeds} setFeeds={setFeeds} API_URL={API_URL} feedsController={GetFeedsController} />
+          <Feeds key={version} combinedData={combinedData} feeds={feeds} setFeeds={setFeeds} API_URL={API_URL} feedsController={GetFeedsController} />
       </View>
   );
 };
