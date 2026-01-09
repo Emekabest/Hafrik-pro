@@ -106,11 +106,13 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
 
     const handleLoadMore = async () => {
-        if (loadingMore || initialLoading) return;
+        if (feeds.length === 0 || loadingMore || initialLoading) return;
 
         
         setLoadingMore(true);
         const nextPage = page + 1;
+
+        console.log(nextPage)
 
         const response = await feedsController(API_URL, token, nextPage);
 

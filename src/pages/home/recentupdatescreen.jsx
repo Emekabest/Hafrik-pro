@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, use } from 'react';
 import {
   View,
   Text,
@@ -21,10 +21,10 @@ import Quicklinks from './quicklinks.jsx';
 import Banner from './banner.jsx';
 import GetFeedsController from '../../controllers/getfeedscontroller.js';
 import useStore from "../../repository/store.js"
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const RecentUpdatesScreen = () => {
-
   const [feeds, setFeeds] = useState([])
 
   const { token } = useAuth();
@@ -34,15 +34,26 @@ const RecentUpdatesScreen = () => {
   const recentFeedsFromStore = useStore((state)=> state.recentUpdateFeeds)
   const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
 
-  
+
   
     useEffect(()=>{
         const getFeeds = async()=>{
+        // await AsyncStorage.removeItem('selected_country');
+
             const response = await GetFeedsController(API_URL, token, 1);  
-            setFeeds(response.data);
+            setRecentFeedsToStore([...response.data]);
+            
         }
         getFeeds()
     },[])
+    useEffect(()=>{
+
+      
+        setFeeds(recentFeedsFromStore);
+    
+    },[recentFeedsFromStore])
+
+
 
 
   
@@ -77,6 +88,8 @@ const RecentUpdatesScreen = () => {
       </View>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   container:{

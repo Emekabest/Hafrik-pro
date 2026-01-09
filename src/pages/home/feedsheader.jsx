@@ -6,14 +6,19 @@ import GetCountriesController from "../../controllers/countriescontroller/getcou
 import { useAuth } from "../../AuthContext";
 import AppDetails from "../../helpers/appdetails";
 import GetCountryFeedController from "../../controllers/countriescontroller/getcountryfeedcontroller";
+import useStore from "../../repository/store.js"
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import GetFeedsController from "../../controllers/getfeedscontroller.js";
 
 
 const FeedsHeader = ()=>{
 
     const {token} = useAuth();
     const [countries, setCountries] = useState([]);
-    const [selectedCountry, setSelectedCountry] = useState({ id: 'all', name: 'All' });
+    const [selectedCountry, setSelectedCountry] = useState({ country_id: 'all', country_name: 'All' });
     const [countryModalVisible, setCountryModalVisible] = useState(false);
+
+    const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
 
 
 
@@ -35,17 +40,39 @@ const FeedsHeader = ()=>{
         getData();
     },[])
 
+    // Load previously selected country from local storage and apply as default
+    useEffect(() => {
+        const loadSelectedCountry = async () => {
+            try {
+                const raw = await AsyncStorage.getItem('selected_country');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed) setSelectedCountry(parsed);
+                }
+            } catch (e) {
+                // ignore parse/storage errors
+            }
+        };
+        loadSelectedCountry();
+    }, []);
+
     const openCountrySelector = () => setCountryModalVisible(true);
     const closeCountrySelector = () => setCountryModalVisible(false);
 
 
+
+
+
     const handleSelectCountry = async (country) => {
         
-        const response = await GetCountryFeedController(country.country_id, token);
+        AsyncStorage.setItem('selected_country', JSON.stringify(country));
+
+        const response = await GetFeedsController("https://hafrik.com/api/v1/feed/list.php", token);
 
         if (response.status === 200){
             
-            
+            setRecentFeedsToStore([...response.data]);
+
         }
 
         
