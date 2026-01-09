@@ -16,7 +16,6 @@ const GetCountriesController = async(token)=>{
         return {status:response.status, data:response.data.data}
     }
     catch(error){
-        console.log("Countries Error:", error);
         return {status:error.status, data:error}
     }
 

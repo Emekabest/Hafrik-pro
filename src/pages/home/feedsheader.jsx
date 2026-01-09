@@ -1,15 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { TouchableOpacity } from "react-native";
+import { TouchableOpacity, Modal, FlatList, Pressable } from "react-native";
 import { StyleSheet, Text, View } from "react-native";
 import GetCountriesController from "../../controllers/countriescontroller/getcountriescontroller";
 import { useAuth } from "../../AuthContext";
+import AppDetails from "../../helpers/appdetails";
+import GetCountryFeedController from "../../controllers/countriescontroller/getcountryfeedcontroller";
 
 
 const FeedsHeader = ()=>{
 
     const {token} = useAuth();
     const [countries, setCountries] = useState([]);
+    const [selectedCountry, setSelectedCountry] = useState({ id: 'all', name: 'All' });
+    const [countryModalVisible, setCountryModalVisible] = useState(false);
 
 
 
@@ -20,16 +24,39 @@ const FeedsHeader = ()=>{
 
             
             if (response.status === 200){
-                setCountries(response.data.countries);
-                
+                const remote = Array.isArray(response.data.countries) ? response.data.countries : [];
+                const list = [{ id: 'all', name: 'All' }, ...remote];
+                setCountries(list);
+            } else {
+                setCountries([{ id: 'all', name: 'All' }]);
             }
 
         }
         getData();
     },[])
 
+    const openCountrySelector = () => setCountryModalVisible(true);
+    const closeCountrySelector = () => setCountryModalVisible(false);
 
-    console.log("Countries in Header:", countries);
+
+    const handleSelectCountry = async (country) => {
+        
+        const response = await GetCountryFeedController(country.country_id, token);
+
+        if (response.status === 200){
+            
+            
+        }
+
+        
+        setSelectedCountry(country);
+        closeCountrySelector();
+    }
+
+    const displayCountryName = selectedCountry ? (selectedCountry.name || selectedCountry.title || selectedCountry.country || selectedCountry.country_name) : null;
+    const countryFontSize = displayCountryName && displayCountryName.length > 16 ? 11 : 12;
+
+
 
     return(
         <View style = {styles.containerHeader} >
@@ -37,15 +64,33 @@ const FeedsHeader = ()=>{
                 <Text style ={{fontSize:17, fontFamily:"ReadexPro_500Medium"}}>Recent Updates</Text>
             </View>
             <View style = {styles.containerHeaderRight}>
-                <TouchableOpacity style = {styles.containerHeaderRightExplore}>  
-                    <Ionicons name="globe-outline" size={20} color="#000" />
-                    <Text style = {{fontSize:12, fontFamily:"ReadexPro_500Medium"}}>Explore by cities</Text>
+                <TouchableOpacity activeOpacity={0.7} style = {styles.containerHeaderRightExplore} onPress={openCountrySelector}>  
+                    <Ionicons name="globe-outline" size={20} color="#000" style={{marginRight:5}} />
+                    <Text style = {{fontSize: countryFontSize, fontFamily:"ReadexPro_500Medium"}}>
+                        {displayCountryName ? displayCountryName : 'Explore by country'}
+                    </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style = {styles.containerHeaderRightAll}>
-                    <Ionicons name="apps" size={15} />
-                    <Text style ={{fontSize:12, fontFamily:"ReadexPro_500Medium"}}>All</Text>
-                </TouchableOpacity>
+
             </View>
+                <Modal visible={countryModalVisible} transparent animationType="slide" onRequestClose={closeCountrySelector}>
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContainer}>
+                            <Text style={styles.modalTitle}>Select country</Text>
+                            <FlatList
+                                data={countries}
+                                keyExtractor={(c, i) => (c.id ? String(c.id) : String(i))}
+                                renderItem={({item}) => (
+                                    <Pressable onPress={() => handleSelectCountry(item)} style={styles.countryItem}>
+                                        <Text style={styles.countryText}>{item.name || item.title || item.country || item.country_name || 'Unknown'}</Text>
+                                    </Pressable>
+                                )}
+                            />
+                            <TouchableOpacity activeOpacity={1} onPress={closeCountrySelector} style={styles.modalClose}>
+                                <Text style={{color: '#fff'}}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
         </View>
     )
 }
@@ -58,57 +103,92 @@ const styles = StyleSheet.create({
     },
 
     containerHeader:{
-        height:30,
+        height:52,
         display:"flex",
         flexDirection:"row",
         justifyContent:"space-between",
         alignItems:"center",
-        paddingVertical:35,
-        paddingHorizontal:10,        
+        paddingVertical:10,
+        paddingHorizontal:12,
 
     },
 
     containerHeaderLeft:{
 
-        width:"45%",
-        height:30,
+        width:"60%",
+        height:40,
 
     },
 
     containerHeaderRight:{
 
-        width:"55%",
-        height:25,
+        width:"40%",
+        height:40,
 
         display:"flex",
         flexDirection:"row",
-        justifyContent:"space-between"
+        justifyContent:"flex-end",
+        alignItems: 'center'
     },
 
     containerHeaderRightExplore:{
-        height:25,
-        width:"65%",
-        paddingHorizontal:5,
+        height:34,
+        paddingHorizontal:12,
         backgroundColor:"#e9e9e9ff",
         display:"flex",
         flexDirection:"row",
         borderRadius:20,
         alignItems:"center",
-        justifyContent:"space-around",
+        justifyContent:"center",
+        marginRight:8,
 
     },
 
     containerHeaderRightAll:{
-        height:25,
-        width:"25%",
+        height:34,
+        paddingHorizontal:10,
         display:"flex",
         flexDirection:"row",
         backgroundColor:"#e9e9e9ff",
         borderRadius:20,
         alignItems:"center",
-        justifyContent:"space-around",
-        paddingHorizontal:7,
+        justifyContent:"center",
 
+    },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        width: '90%',
+        maxHeight: '70%',
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 12,
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontFamily: 'ReadexPro_600SemiBold',
+        marginBottom: 8,
+    },
+    countryItem: {
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    countryText: {
+        fontSize: 14,
+        fontFamily: 'ReadexPro_400Regular',
+    },
+    modalClose: {
+        marginTop: 10,
+        backgroundColor: AppDetails?.primaryColor || '#333',
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 6,
     },
 
     containerFeeds:{

@@ -31,7 +31,8 @@ const useStore = create((set) => ({
         };
     }),
 
-    
+
+    /** Search Section ............................................... */
 
     isSearchVisible: false,
     setSearchVisible: (visible) => set({ isSearchVisible: visible }),
@@ -42,7 +43,17 @@ const useStore = create((set) => ({
     isSearchResultsVisible: false,
     setSearchResultsVisible: (visible) => set({ isSearchResultsVisible: visible }),
 
+
+
+
     /**Feeds Section............................................... */
+
+    recentUpdateFeeds: [],
+    setRecentUpdateFeeds: (state)=> set({
+        recentUpdateFeeds: state
+    }),
+
+    
 
     trendingFeeds: [],
     setTrendingFeeds: (state)=> set({
@@ -50,11 +61,11 @@ const useStore = create((set) => ({
     }),
     
 
-    recentUpdateFeeds: [],
-    setRecentUpdateFeeds: (state)=> set({
-        recentUpdateFeeds: state
-    }),
 
+    whatsNearbyFeeds: [],
+    setWhatsNearbyFeeds: (state)=> set({
+        whatsNearbyFeeds: state
+    }),
 
 
 }));

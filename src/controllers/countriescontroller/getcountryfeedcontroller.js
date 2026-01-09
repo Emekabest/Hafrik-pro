@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const getCountryFeedController = async(countryCode, token)=>{
+const GetCountryFeedController = async(countryCode, token)=>{
     
     const API_URL = `https://hafrik.com/api/v1/feed/list.php?country_id=${countryCode}`
 
@@ -13,14 +13,14 @@ const getCountryFeedController = async(countryCode, token)=>{
         })
 
     
-        return {status:response.status, data:response.data.data}
+        return {status:response.status, data:response.data.data.data}
     }
     catch(error){
-
+        console.log(error);
         return {status:error.status, data:error}
     }
 
 }
 
-export default getCountryFeedController;
+export default GetCountryFeedController;
 
