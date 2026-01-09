@@ -309,7 +309,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                 initialNumToRender={3}
                 maxToRenderPerBatch={3}
                 windowSize={5}
-                removeClippedSubviews={Platform.OS === 'android'}
+                removeClippedSubviews={false}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}

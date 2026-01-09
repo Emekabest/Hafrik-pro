@@ -10,8 +10,6 @@ const GetFeedsController = async(url, token, page = 1)=>{
     const API_URL = selectedCountry && selectedCountry.country_id && selectedCountry.country_id !== 'all' ?
         `${url}?country_id=${selectedCountry.country_id}&page=${page}` :
         `${url}?page=${page}`;
-
-        console.log(API_URL);
     
     try{
         const response = await axios.get(API_URL, {
