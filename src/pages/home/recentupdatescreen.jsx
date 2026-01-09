@@ -34,21 +34,41 @@ const RecentUpdatesScreen = () => {
   const recentFeedsFromStore = useStore((state)=> state.recentUpdateFeeds)
   const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
 
+  const feedsPage = useStore((state)=> state.feedsPage)
+  const setFeedsPage = useStore((state)=> state.setFeedsPage)
 
-  
-    useEffect(()=>{
-        const getFeeds = async()=>{
-        // await AsyncStorage.removeItem('selected_country');
+  const refreshSignal = useStore(state => state.refreshSignal);
 
-            const response = await GetFeedsController(API_URL, token, 1);  
-            setRecentFeedsToStore([...response.data]);
-            
+
+
+
+  const getFeeds = async()=>{
+    // await AsyncStorage.removeItem('selected_country');
+
+        const response = await GetFeedsController(API_URL, token, 1);  
+
+        if (response.status === 200) {
+          setRecentFeedsToStore([...response.data]);
+
         }
+        else{
+          Alert.alert("Error", "Failed to fetch recent updates.");
+        }
+  }
+
+    useEffect(()=>{
         getFeeds()
     },[])
     useEffect(()=>{
+      console.log("Refresh triggered in recent updates", refreshSignal)
+        getFeeds()
+    },[refreshSignal])
 
-      
+
+
+
+
+    useEffect(()=>{      
         setFeeds(recentFeedsFromStore);
     
     },[recentFeedsFromStore])

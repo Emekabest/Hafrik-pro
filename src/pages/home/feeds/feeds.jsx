@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform, AppState, Button } from "react-native"
 import FeedCard from "./feedcard.jsx";
+import React, { PureComponent } from "react";
+
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Banner from "../banner.jsx";
 import QuickLinks from "../quicklinks.jsx";
@@ -22,6 +24,9 @@ import AppDetails from "../../../helpers/appdetails.js";
 const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
     const [page, setPage] = useState(1);
+    const feedsPageFromStore = useStore((state)=> state.feedsPage)
+    const setFeedsPageToStore = useStore((state)=> state.setFeedsPage)
+
     const [loadingMore, setLoadingMore] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [currentPlayingId, setCurrentPlayingId] = useState(null);
@@ -32,6 +37,16 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     const syncFeedData = useStore(state => state.syncFeedData);
     const feedsRef = useRef(feeds);
 
+
+
+    /**Changing the state of the feed page */
+    useEffect(()=>{
+
+        // setPage(feedsPageFromStore);
+        console.log("Feeds page is triggered", feedsPageFromStore)
+
+    },[feedsPageFromStore])
+    /**.................................. */
 
 
 

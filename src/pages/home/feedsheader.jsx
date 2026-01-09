@@ -19,6 +19,8 @@ const FeedsHeader = ()=>{
     const [countryModalVisible, setCountryModalVisible] = useState(false);
 
     const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
+    const setFeedsPageToStore = useStore((state)=> state.setFeedsPage)
+    const triggerRefresh = useStore((state) => state.triggerRefresh);  
 
 
 
@@ -72,7 +74,8 @@ const FeedsHeader = ()=>{
         if (response.status === 200){
             
             setRecentFeedsToStore([...response.data]);
-
+            triggerRefresh();
+        
         }
 
         

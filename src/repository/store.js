@@ -45,6 +45,9 @@ const useStore = create((set) => ({
 
 
 
+    refreshSignal: 0,
+    triggerRefresh: () => set((state) => ({ refreshSignal: state.refreshSignal + 1 })),
+
 
     /**Feeds Section............................................... */
 
@@ -67,6 +70,12 @@ const useStore = create((set) => ({
         whatsNearbyFeeds: state
     }),
 
+
+
+    feedsPage: 1,
+    setFeedsPage: (state)=> set({
+        feedsPage: state
+    }),
 
 }));
 
