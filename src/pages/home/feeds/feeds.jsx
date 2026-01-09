@@ -152,7 +152,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
           case 'postfeed':
             return <PostFeed />;
           case 'feedsheader':
-            return <FeedsHeader />
+            return <FeedsHeader name={item.name} />
           case 'feed':
 
             const shouldPlay = currentPlayingId === item.data.id && delayedFocus;

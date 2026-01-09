@@ -11,7 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import GetFeedsController from "../../controllers/getfeedscontroller.js";
 
 
-const FeedsHeader = ()=>{
+const FeedsHeader = ( { name })=>{
 
     const {token} = useAuth();
     const [countries, setCountries] = useState([]);
@@ -90,7 +90,7 @@ const FeedsHeader = ()=>{
     return(
         <View style = {styles.containerHeader} >
             <View style = {styles.containerHeaderLeft}>
-                <Text style ={{fontSize:17, fontFamily:"ReadexPro_500Medium"}}>Recent Updates</Text>
+                <Text style ={{fontSize:17, fontFamily:"ReadexPro_500Medium"}}>{name}</Text>
             </View>
             <View style = {styles.containerHeaderRight}>
                 <TouchableOpacity activeOpacity={0.7} style = {styles.containerHeaderRightExplore} onPress={openCountrySelector}>  

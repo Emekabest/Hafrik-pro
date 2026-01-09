@@ -79,7 +79,7 @@ const RecentUpdatesScreen = () => {
         const bannerItem = { type: 'banner' };
         const quickLinksItem = { type: 'quicklinks' };
         const postFeedItem = { type: 'postfeed' }
-        const feedsheader = { type: 'feedsheader' }
+        const feedsheader = { type: 'feedsheader', name: 'Recent Updates' };
 
         // Ensure unique feed items and handle shared_post correctly
         

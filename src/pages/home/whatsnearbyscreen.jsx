@@ -25,9 +25,11 @@ const WhatsNearbyScreen = () => {
 
 
     const combinedData = useMemo(() => {
+      const feedsheader = { type: 'feedsheader', name: 'What\'s Nearby' };
       
         
         const data = [
+            feedsheader,
             ...feeds.map(feed => {
                 
                 return { type: 'feed', data: feed };
