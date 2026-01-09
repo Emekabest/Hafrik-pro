@@ -21,7 +21,7 @@ const FeedsHeader = ( { name })=>{
     const setRecentFeedsToStore = useStore((state)=> state.setRecentUpdateFeeds)
     const triggerRefresh = useStore((state) => state.triggerRefresh);  
 
-
+    
 
     useEffect(()=>{
         const getData = async ()=>{
