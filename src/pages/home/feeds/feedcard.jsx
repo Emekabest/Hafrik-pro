@@ -6,9 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState, useRef, useEffect, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
-import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
-import { useAuth } from "../../../AuthContext";
-import getUserPostInteractionController from "../../../controllers/getuserpostinteractioncontroller";
+import EngagementBar from "./feedcardproperties/engagementbar.jsx";
 import ShareModal from "./share";
 import { Image as RemoteImage } from "expo-image";
 import { getPlayer } from './videoRegistry';
@@ -1205,45 +1203,13 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
     
-    const toggleLikeStore = useStore(state => state.toggleLike);
-    const syncFeedData = useStore(state => state.syncFeedData);
-    const storedLiked = useStore(state => state.likedPosts[feed.id]);
-    const storedCount = useStore(state => state.likeCounts[feed.id]);
-
-    const [liked, setLiked] = useState(storedLiked !== undefined ? storedLiked : false);
-    const [likeCount, setLikeCount] = useState(storedCount !== undefined ? storedCount : (parseInt(feed.likes_count) || 0));
-    const { token } = useAuth();
+    
 
     const [isExpanded, setIsExpanded] = useState(false);
     const hasMedia = (feed.media && feed.media.length > 0) || ['video', 'reel', 'shared', 'product', 'article', 'poll'].includes(feed.type);
     const shouldTruncate = hasMedia && feed.text && feed.text.length > 50 && !isExpanded;
 
-    useEffect(()=>{
-
-        const timer = setTimeout(() => {
-            const getUserPostInteraction = async()=>{
-                if(token){
-                    const response = await getUserPostInteractionController(feed.id, token)
-                    
-                    if(response && response.data){
-
-    useEffect(() => {
-        if (preloaded) setShowPoster(false);
-    }, [preloaded]);
-                        setLiked(!!response.data.liked)
-                        syncFeedData({
-                            id: feed.id,
-                            liked: !!response.data.liked,
-                            likes_count: parseInt(feed.likes_count) || 0
-                        });
-                    }
-                }
-            }
-            getUserPostInteraction()
-        }, 500);
-
-        return () => clearTimeout(timer);
-    },[feed.id, token])
+    
     
     const iconRef = useRef(null);
 
@@ -1269,18 +1235,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
 
 
 
-    /**Handles when the user likes a feed post */
-    const handleLike = async() => {  
-        setLiked(!liked);
-        setLikeCount(prev => liked ? prev - 1 : prev + 1);
-
-        const response = await ToggleFeedController(feed.id, token)
-        
-        if(response && response.status === 200){
-            toggleLikeStore(feed.id);
-        }
-    };
-    /**.................................................................... */
+    
 
 
 
@@ -1424,22 +1379,14 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                 </View>
 
 
-                <View style = {[styles.engagementBar, { marginTop: 5 }]}>
-                    <TouchableOpacity style = {[styles.likeSection, styles.engagementBarViews]} onPress={handleLike}>
-                        <Ionicons name={liked ? "heart" : "heart-outline"} size={22} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
-                        <Text style ={styles.engagementCount}>{likeCount}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style = {[styles.commentSection, styles.engagementBarViews]} onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})}>
-                        <SvgIcon name="comment" width={20} height={20} color="#333" />
-                        <Text style ={styles.engagementCount}>{feed.comments_count}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style = {[styles.shareSection, styles.engagementBarViews]} onPress={() => setShowShareOptions(true)}>
-                        <SvgIcon name="share" width={20} height={20} color="#333" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style = {[styles.repostSection, styles.engagementBarViews]}>
-                        <SvgIcon name="favourite" width={20} height={20} color="#333" />
-                    </TouchableOpacity>
-                </View>
+                <EngagementBar
+                    feedId={feed.id}
+                    initialLiked={!!feed.liked}
+                    initialLikeCount={parseInt(feed.likes_count) || 0}
+                    commentsCount={feed.comments_count}
+                    onOpenShare={() => setShowShareOptions(true)}
+                    onCommentPress={() => navigation.navigate('CommentScreen', { feedId: feed.id })}
+                />
             </View>
 
             <OptionsModal visible={showPostOptions} postId={feed.id} onClose={() => setShowPostOptions(false)} />
