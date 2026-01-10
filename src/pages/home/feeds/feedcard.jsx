@@ -1668,4 +1668,22 @@ const styles = StyleSheet.create({
 })
 
 
-export default React.memo(FeedCard);
+
+export default React.memo(FeedCard, (prev, next) => {
+    // Determine whether the currentPlayingId refers to this feed.
+    const isPlayingForFeed = (playingId, feedId) => {
+        if (!playingId || !feedId) return false;
+        // play ids are emitted like `${feed.id}_video_0` or `${feed.id}_shared`
+        return String(playingId).startsWith(`${feedId}_`);
+    };
+
+    const prevShouldPlay = isPlayingForFeed(prev.currentPlayingId, prev.feed.id) && prev.isFocused;
+    const nextShouldPlay = isPlayingForFeed(next.currentPlayingId, next.feed.id) && next.isFocused;
+
+    return (
+        prev.feed.id === next.feed.id &&               // same post
+        prev.feed.likes === next.feed.likes &&         // no like change
+        prev.feed.comments === next.feed.comments &&   // no comment change
+        prevShouldPlay === nextShouldPlay              // playback didn't change
+    );
+});
