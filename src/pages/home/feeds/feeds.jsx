@@ -108,6 +108,8 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
 
     const handleLoadMore = async () => {
+        console.log("Loading page:", page);
+
         if (feeds.length === 0 || loadingMore || initialLoading) return;
 
         

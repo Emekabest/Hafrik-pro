@@ -25,7 +25,6 @@ import getUserPostInteractionController from '../../../controllers/getuserpostin
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 // no caching for comment video as requested
-import useStore from "../../../repository/store";
 import SvgIcon from '../../../assl.js/svg/svg';
 
 const MEDIA_HEIGHT = 520;
@@ -397,10 +396,9 @@ const CommentScreen = ({route})=>{
     const textInputRef = useRef(null);
     const { feedId } = route.params;
 
-    const likedPosts = useStore(state => state.likedPosts);
-    const likeCounts = useStore(state => state.likeCounts);
-    const toggleLike = useStore(state => state.toggleLike);
-    const syncFeedData = useStore(state => state.syncFeedData);
+    // Local like state (store removed) — initialized when post is fetched
+    const [localLiked, setLocalLiked] = useState(null);
+    const [localLikeCount, setLocalLikeCount] = useState(null);
 
     
 
@@ -411,7 +409,11 @@ const CommentScreen = ({route})=>{
             const response = await getUserPostInteractionController(feedId, token);
             if(response.status === 200){
                 setPost(response.data);
-                syncFeedData(response.data);
+                // initialize local like state from server response
+                try {
+                    setLocalLiked(!!response.data.liked);
+                    setLocalLikeCount(parseInt(response.data.likes_count) || 0);
+                } catch (e) {}
             }
             else{
                 console.log("Something went wrong")
@@ -434,9 +436,18 @@ const CommentScreen = ({route})=>{
     },[feedId, token])
 
 
-    const handleLike = async() => {  
-        toggleLike(feedId);
-        await ToggleFeedController(feedId, token);
+    const handleLike = async() => {
+        const prev = localLiked !== null ? localLiked : !!post?.liked;
+        const next = !prev;
+        setLocalLiked(next);
+        setLocalLikeCount(c => (c !== null ? (next ? c + 1 : Math.max(0, c - 1)) : (next ? (parseInt(post?.likes_count) || 0) + 1 : Math.max(0, (parseInt(post?.likes_count) || 0) - 1))));
+        try {
+            await ToggleFeedController(feedId, token);
+        } catch (e) {
+            // rollback on error
+            setLocalLiked(l => !l);
+            setLocalLikeCount(c => (c !== null ? (prev ? Math.max(0, c - 1) : c + 1) : (prev ? Math.max(0, (parseInt(post?.likes_count) || 0) - 1) : (parseInt(post?.likes_count) || 0) + 1)));
+        }
     };
 
     const handleReplyToComment = useCallback((comment) => {
@@ -483,13 +494,21 @@ const CommentScreen = ({route})=>{
         }
     };
 
-    const liked = useMemo(() => (likedPosts ? (likedPosts[feedId] ?? !!post?.liked) : !!post?.liked), [likedPosts, feedId, post?.liked]);
-    const likeCount = useMemo(() => (likeCounts ? (likeCounts[feedId] ?? (parseInt(post?.likes_count) || 0)) : (parseInt(post?.likes_count) || 0)), [likeCounts, feedId, post?.likes_count]);
+    const liked = useMemo(() => (localLiked !== null ? localLiked : !!post?.liked), [localLiked, post?.liked]);
+    const likeCount = useMemo(() => (localLikeCount !== null ? localLikeCount : (parseInt(post?.likes_count) || 0)), [localLikeCount, post?.likes_count]);
 
     const handleLikeCb = useCallback(async () => {
-        toggleLike(feedId);
-        await ToggleFeedController(feedId, token);
-    }, [feedId, token, toggleLike]);
+        const prev = localLiked !== null ? localLiked : !!post?.liked;
+        const next = !prev;
+        setLocalLiked(next);
+        setLocalLikeCount(c => (c !== null ? (next ? c + 1 : Math.max(0, c - 1)) : (next ? (parseInt(post?.likes_count) || 0) + 1 : Math.max(0, (parseInt(post?.likes_count) || 0) - 1))));
+        try {
+            await ToggleFeedController(feedId, token);
+        } catch (e) {
+            setLocalLiked(l => !l);
+            setLocalLikeCount(c => (c !== null ? (prev ? Math.max(0, c - 1) : c + 1) : (prev ? Math.max(0, (parseInt(post?.likes_count) || 0) - 1) : (parseInt(post?.likes_count) || 0) + 1)));
+        }
+    }, [feedId, token, localLiked, post?.likes_count]);
 
     const handleReplyCb = useCallback((comment) => {
         setReplyingTo(comment);

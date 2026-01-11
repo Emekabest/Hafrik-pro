@@ -5,17 +5,17 @@ import SvgIcon from '../../../../assl.js/svg/svg';
 import { useAuth } from '../../../../AuthContext';
 import ToggleFeedController from '../../../../controllers/tooglefeedcontroller';
 import getUserPostInteractionController from '../../../../controllers/getuserpostinteractioncontroller';
-import useStore from '../../../../repository/store';
 
 
 
 const EngagementBar = ({ feedId, initialLiked = false, initialLikeCount = 0, commentsCount = 0, onOpenShare = () => {}, onCommentPress = () => {} }) => {
   const { token } = useAuth();
-  const toggleLikeStore = useStore(state => state.toggleLike);
-  const syncFeedData = useStore(state => state.syncFeedData);
+  // store sync removed — EngagementBar now manages local UI only
 
   const [liked, setLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount || 0);
+
+
 
 
 
@@ -27,10 +27,6 @@ const EngagementBar = ({ feedId, initialLiked = false, initialLikeCount = 0, com
         if (res && res.data) {
           const likedState = !!res.data.liked;
           setLiked(likedState);
-          // keep store in sync
-          if (typeof syncFeedData === 'function') {
-            syncFeedData({ id: feedId, liked: likedState, likes_count: likeCount });
-          }
         }
       } catch (e) {}
     };
@@ -45,8 +41,9 @@ const EngagementBar = ({ feedId, initialLiked = false, initialLikeCount = 0, com
     setLikeCount(c => next ? c + 1 : Math.max(0, c - 1));
     try {
       const res = await ToggleFeedController(feedId, token);
-      if (res && res.status === 200) {
-        if (typeof toggleLikeStore === 'function') toggleLikeStore(feedId);
+      // server toggled successfully — UI already updated locally
+      if (!(res && res.status === 200)) {
+        // if server did not succeed, rollback will occur in catch
       }
     } catch (e) {
       // rollback on error
@@ -103,8 +100,14 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(EngagementBar, (prev, next)=>{
+
+export default React.memo(EngagementBar, (prevProps, nextProps) => {
 
 
+    return(
+        prevProps.initialLiked === nextProps.initialLiked &&
+        prevProps.initialLikeCount === nextProps.initialLikeCount &&
+        prevProps.commentsCount === nextProps.commentsCount
+    )
 
 });

@@ -1202,8 +1202,9 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const [showShareOptions, setShowShareOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-    
-    
+
+
+
 
     const [isExpanded, setIsExpanded] = useState(false);
     const hasMedia = (feed.media && feed.media.length > 0) || ['video', 'reel', 'shared', 'product', 'article', 'poll'].includes(feed.type);
