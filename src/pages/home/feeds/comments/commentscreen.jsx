@@ -14,17 +14,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEvent } from 'expo';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { useAuth } from "../../../AuthContext";
-import AppDetails from "../../../helpers/appdetails";
+import { useAuth } from "../../../../AuthContext";
+import AppDetails from "../../../../helpers/appdetails";
 // comments controllers removed - this screen now shows only the post
-import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
-import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
-import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
+import getUserPostInteractionController from '../../../../controllers/getuserpostinteractioncontroller';
+import ToggleFeedController from "../../../../controllers/tooglefeedcontroller";
+import CalculateElapsedTime from "../../../../helpers/calculateelapsedtime";
 // no caching for comment video as requested
-import SvgIcon from '../../../assl.js/svg/svg';
-import PhotoPostContent from './feedcardproperties/photocontent';
-import PollContent from './feedcardproperties/pollcontent';
-import ProductPostContent from './feedcardproperties/productcontent';
+import SvgIcon from '../../../../assl.js/svg/svg';
+import PhotoPostContent from '../feedcardproperties/photocontent';
+import PollContent from '../feedcardproperties/pollcontent';
+import ProductPostContent from '../feedcardproperties/productcontent';
 
 const MEDIA_HEIGHT = 520;
 const MEDIA_WIDTH = 270;
@@ -381,6 +381,8 @@ const CommentScreen = ({ route }) => {
                     <ActivityIndicator size="large" color={AppDetails.primaryColor} />
                 </View>
             ) : (
+
+                
                 <ScrollView contentContainerStyle={styles.listContent}>
                     {headerElement}
 

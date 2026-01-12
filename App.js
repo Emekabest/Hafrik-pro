@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppDetails from './src/helpers/appdetails';
 import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
-import CommentScreen from './src/pages/home/feeds/commentscreen';
+import CommentScreen from './src/pages/home/feeds/comments/commentscreen';
 import useSharedStore from './src/repository/store';
 import { useFonts } from 'expo-font';
 import { WorkSans_300Light, WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold, WorkSans_700Bold, WorkSans_800ExtraBold} from '@expo-google-fonts/work-sans';
