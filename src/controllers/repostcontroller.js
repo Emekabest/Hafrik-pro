@@ -4,8 +4,8 @@ const RepostController = async(postData, token)=>{
 
     const API_URL = `https://hafrik.com/api/v1/feed/repost.php`;
 
-    const formData = new FormData();
-    formData.append('post_id', post_id);
+    // const formData = new FormData();
+    // formData.append('post_id', post_id);
 
 
     try{
