@@ -18,6 +18,8 @@ import { useAuth } from "../../../../AuthContext";
 import AppDetails from "../../../../helpers/appdetails";
 // comments controllers removed - this screen now shows only the post
 import getUserPostInteractionController from '../../../../controllers/getuserpostinteractioncontroller';
+import CommentBonds from './commentsbonds';
+import PostComment from './postcomment';
 import ToggleFeedController from "../../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../../helpers/calculateelapsedtime";
 // no caching for comment video as requested
@@ -311,6 +313,9 @@ const CommentScreen = ({ route }) => {
     const [loading, setLoading] = useState(true);
     const { feedId } = route.params;
 
+    const [commentText, setCommentText] = useState('');
+    const [posting, setPosting] = useState(false);
+
     const [localLiked, setLocalLiked] = useState(null);
     const [localLikeCount, setLocalLikeCount] = useState(null);
 
@@ -325,6 +330,8 @@ const CommentScreen = ({ route }) => {
                         setLocalLiked(!!response.data.liked);
                         setLocalLikeCount(parseInt(response.data.likes_count) || 0);
                     } catch (e) {}
+
+                    // comments are handled by CommentBonds component
                 } else {
                     console.log('Something went wrong fetching post');
                 }
@@ -359,6 +366,8 @@ const CommentScreen = ({ route }) => {
         <OriginalPostMemo post={post} liked={liked} likeCount={likeCount} onLike={handleLikeCb} onReply={() => {}} />
     ), [post, liked, likeCount, handleLikeCb]);
 
+    
+
 
 
 
@@ -382,15 +391,17 @@ const CommentScreen = ({ route }) => {
                 </View>
             ) : (
 
-                
+
                 <ScrollView contentContainerStyle={styles.listContent}>
                     {headerElement}
 
-
+                    <CommentBonds postId={feedId} token={token} />
 
 
                 </ScrollView>
             )}
+
+            <PostComment user={user} feedId={feedId} token={token} />
         </View>
     );
 };
@@ -406,7 +417,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, height: 50, borderBottomWidth: 0.5, borderBottomColor: '#efefef', backgroundColor: '#fff' },
     headerTitle: { fontSize: 17, fontWeight: 'bold', color: '#000' },
-    listContent: { paddingBottom: 20 },
+    listContent: { paddingBottom: 120 },
     postContainer: { flexDirection: 'row', paddingHorizontal: 15, paddingTop: 15, paddingBottom: 5 },
     commentContainer: { flexDirection: 'row', paddingHorizontal: 15, paddingTop: 12 },
     avatarColumn: { alignItems: 'center', marginRight: 12, width: 40 },
@@ -422,14 +433,8 @@ const styles = StyleSheet.create({
     commentText: { fontSize: 15, color: '#000', lineHeight: 20, marginBottom: 8 },
     interactionRow: { flexDirection: 'row', marginTop: 4, alignItems: 'center' },
     iconButton: { marginRight: 22 },
-    inputWrapper: { borderTopWidth: 0.5, borderTopColor: '#eee', backgroundColor: '#fff', paddingBottom: Platform.OS === 'ios' ? 20 : 0 },
-    inputContainer: { flexDirection: 'row', padding: 12, alignItems: 'flex-start' },
-    inputAvatar: { width: 32, height: 32, borderRadius: 16, marginRight: 12, marginTop: 2 },
-    inputFieldContainer: { flex: 1, marginRight: 10, justifyContent: 'center' },
     replyingTo: { fontSize: 11, color: '#999', marginBottom: 4 },
-    textInput: { fontSize: 15, color: '#000', maxHeight: 100, paddingTop: 0, paddingBottom: 0 },
-    postButton: { color: AppDetails.primaryColor || '#0095f6', fontWeight: '600', fontSize: 15, marginTop: 10 },
-    disabledPostButton: { opacity: 0.4 },
+    
     engagementBar: {
         flexDirection: 'row',
         justifyContent: "space-evenly",
