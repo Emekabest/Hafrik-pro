@@ -30,6 +30,7 @@ const PostComment = ({ user, feedId, token }) => {
                     <TextInput
                         value={commentText}
                         onChangeText={setCommentText}
+                        placeholderTextColor={"#a5a5a5ff"}
                         placeholder="Write a comment..."
                         multiline
                         style={styles.textInput}
