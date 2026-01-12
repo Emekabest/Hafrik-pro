@@ -4,15 +4,11 @@ import {
     View, 
     Text, 
     TouchableOpacity, 
-    TextInput, 
-    FlatList, 
     Image, 
-    KeyboardAvoidingView, 
-    Platform,
     Dimensions,
     ActivityIndicator,
     ScrollView,
-    AppState
+    Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useEvent } from 'expo';
@@ -20,7 +16,7 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuth } from "../../../AuthContext";
 import AppDetails from "../../../helpers/appdetails";
-import {AddCommentController, GetCommentsController} from '../../../controllers/commentscontroller';
+// comments controllers removed - this screen now shows only the post
 import getUserPostInteractionController from '../../../controllers/getuserpostinteractioncontroller';
 import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
@@ -365,7 +361,7 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                     <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
                     <Text style={styles.engagementText}>{likeCount}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.engagementItem} onPress={() => textInputRef.current?.focus()}>
+                <TouchableOpacity style={styles.engagementItem} onPress={() => textInputRef?.current?.focus()}>
                     <SvgIcon name="comment" width={20} height={20} color="#333" />
                     <Text style={styles.engagementText}>{post.comments_count}</Text>
                 </TouchableOpacity>
@@ -385,114 +381,37 @@ const OriginalPostMemo = React.memo(OriginalPost);
 
 
 
-const CommentScreen = ({route})=>{
+const CommentScreen = ({ route }) => {
     const navigation = useNavigation();
     const { user, token } = useAuth();
-    const [replyText, setReplyText] = useState("");
     const [post, setPost] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [comments, setComments] = useState([])
-    const [replyingTo, setReplyingTo] = useState(null);
-    const textInputRef = useRef(null);
     const { feedId } = route.params;
 
-    // Local like state (store removed) — initialized when post is fetched
     const [localLiked, setLocalLiked] = useState(null);
     const [localLikeCount, setLocalLikeCount] = useState(null);
 
-    
-
-    useEffect(()=>{
-
-        const getData = async()=>{
+    useEffect(() => {
+        const getData = async () => {
             setLoading(true);
-            const response = await getUserPostInteractionController(feedId, token);
-            if(response.status === 200){
-                setPost(response.data);
-                // initialize local like state from server response
-                try {
-                    setLocalLiked(!!response.data.liked);
-                    setLocalLikeCount(parseInt(response.data.likes_count) || 0);
-                } catch (e) {}
+            try {
+                const response = await getUserPostInteractionController(feedId, token);
+                if (response.status === 200) {
+                    setPost(response.data);
+                    try {
+                        setLocalLiked(!!response.data.liked);
+                        setLocalLikeCount(parseInt(response.data.likes_count) || 0);
+                    } catch (e) {}
+                } else {
+                    console.log('Something went wrong fetching post');
+                }
+            } catch (e) {
+                console.log('Error fetching post', e);
             }
-            else{
-                console.log("Something went wrong")
-            }
-            
-            const commentsResponse = await GetCommentsController(feedId, token)
-            if(commentsResponse.status === 200){
-                const comments = commentsResponse.data
-
-                setComments(comments);
-            }
-            else{
-                console.log("Something went wrong")
-            }
-            
             setLoading(false);
-        }
-
-        getData()
-    },[feedId, token])
-
-
-    const handleLike = async() => {
-        const prev = localLiked !== null ? localLiked : !!post?.liked;
-        const next = !prev;
-        setLocalLiked(next);
-        setLocalLikeCount(c => (c !== null ? (next ? c + 1 : Math.max(0, c - 1)) : (next ? (parseInt(post?.likes_count) || 0) + 1 : Math.max(0, (parseInt(post?.likes_count) || 0) - 1))));
-        try {
-            await ToggleFeedController(feedId, token);
-        } catch (e) {
-            // rollback on error
-            setLocalLiked(l => !l);
-            setLocalLikeCount(c => (c !== null ? (prev ? Math.max(0, c - 1) : c + 1) : (prev ? Math.max(0, (parseInt(post?.likes_count) || 0) - 1) : (parseInt(post?.likes_count) || 0) + 1)));
-        }
-    };
-
-    const handleReplyToComment = useCallback((comment) => {
-        setReplyingTo(comment);
-        textInputRef.current?.focus();
-    }, []);
-
-    const handleCancelReply = () => {
-        setReplyingTo(null);
-    };
-
-    const handlePostComment = async () => {
-        if (!replyText.trim()) return;
-        
-        const text = replyText;
-        const parentId = replyingTo ? replyingTo.id : null;
-        
-        setReplyText("");
-        setReplyingTo(null);
-
-        const response = await AddCommentController(feedId, text, token, parentId);
-
-
-        if ((response.status === "success" || response.status === 200) && response.data) {
-            const responseData = response.data;
-            const newComment = {
-                id: responseData.comment_id ? String(responseData.comment_id) : Date.now().toString(),
-                user: user,
-                text: responseData.comment || text,
-                created: new Date().toISOString(),
-                replies: []
-            };
-
-            if (parentId) {
-                setComments(prev => prev.map(c => {
-                    if (c.id === parentId) {
-                        return { ...c, replies: [...(c.replies || []), newComment] };
-                    }
-                    return c;
-                }));
-            } else {
-                setComments(prev => [newComment, ...prev]);
-            }
-        }
-    };
+        };
+        getData();
+    }, [feedId, token]);
 
     const liked = useMemo(() => (localLiked !== null ? localLiked : !!post?.liked), [localLiked, post?.liked]);
     const likeCount = useMemo(() => (localLikeCount !== null ? localLikeCount : (parseInt(post?.likes_count) || 0)), [localLikeCount, post?.likes_count]);
@@ -510,67 +429,10 @@ const CommentScreen = ({route})=>{
         }
     }, [feedId, token, localLiked, post?.likes_count]);
 
-    const handleReplyCb = useCallback((comment) => {
-        setReplyingTo(comment);
-        textInputRef.current?.focus();
-    }, []);
-
     const headerElement = useMemo(() => (
-        <OriginalPostMemo post={post} liked={liked} likeCount={likeCount} onLike={handleLikeCb} onReply={handleReplyCb} textInputRef={textInputRef} />
-    ), [post, liked, likeCount, handleLikeCb, handleReplyCb, textInputRef]);
+        <OriginalPostMemo post={post} liked={liked} likeCount={likeCount} onLike={handleLikeCb} onReply={() => {}} />
+    ), [post, liked, likeCount, handleLikeCb]);
 
-    const renderMedia = () => {
-        console.log('Post object:', post);
-        console.log('Post media:', post?.media);
-
-        if (!post || !post.media || post.media.length === 0) {
-            // Handle text feed without media
-            return (
-                <View style={{ marginTop: 10, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 10 }}>
-                    <Text style={{ fontSize: 16, color: '#333' }}>{post?.text || 'No content available'}</Text>
-                </View>
-            );
-        }
-        
-        const isVideo = post.type === 'video' || post.type === 'reel';
-        const screenWidth = Dimensions.get('window').width;
-        const contentWidth = screenWidth - 30; // 15 padding each side
-
-        if (isVideo) {
-            const mediaItem = post.media[0];
-            console.log('First media item:', mediaItem);
-            return mediaItem && mediaItem.video_url ? (
-                <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} />
-            ) : null;
-        }
-
-        if (post.media.length > 1) {
-            return (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-                    {post.media.map((item, index) => (
-                        item && item.url ? (
-                            <Image
-                                key={index}
-                                source={{ uri: item.url }}
-                                style={{ height: 250, width: contentWidth, borderRadius: 10, marginRight: 10 }}
-                                resizeMode="cover"
-                            />
-                        ) : null
-                    ))}
-                </ScrollView>
-            );
-        }
-
-        const firstMediaItem = post.media[0];
-        console.log('First media item for single media:', firstMediaItem);
-        return firstMediaItem && firstMediaItem.url ? (
-            <Image
-                source={{ uri: firstMediaItem.url }}
-                style={{ height: 250, width: '100%', borderRadius: 10, marginTop: 10 }}
-                resizeMode="cover"
-            />
-        ) : null;
-    };
 
     const renderHeader = () => (
         <View style={styles.header}>
@@ -578,114 +440,36 @@ const CommentScreen = ({route})=>{
                 <Ionicons name="arrow-back" size={24} color="#000" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Hafrik</Text>
-            <View style={{width: 24}} /> 
+            <View style={{ width: 24 }} />
         </View>
     );
 
-    
-
-    const renderCommentItem = useCallback(({ item }) => (
-        <View style={styles.commentContainer}>
-             <View style={styles.avatarColumn}>
-                <Image source={{ uri: item.user.avatar }} style={styles.avatar} />
-            </View>
-            <View style={styles.contentColumn}>
-                <View style={styles.headerRow}>
-                    <Text style={styles.username}>{item.user.full_name}</Text>
-                    <View style={styles.spacer} />
-                    <Text style={styles.timeText}>{CalculateElapsedTime(item.created)}</Text>
-                    <TouchableOpacity style={styles.moreButton}>
-                        <Ionicons name="ellipsis-horizontal" size={18} color="#666" />
-                    </TouchableOpacity>
-                </View>
-                
-                <Text style={styles.commentText}>{item.text}</Text>
-                
-                <View style={styles.interactionRow}>
-                    <TouchableOpacity style={styles.iconButton}>
-                        <Ionicons name="heart-outline" size={22} color="#333" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton} onPress={() => handleReplyToComment(item)}>
-                        <Ionicons name="chatbubble-outline" size={21} color="#333" />
-                    </TouchableOpacity>
-                </View>
-
-                {item.replies && item.replies.length > 0 && (
-                    <View style={{marginTop: 10, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: '#f0f0f0'}}>
-                        {item.replies.map((reply, index) => (
-                            <View key={index} style={{flexDirection: 'row', marginTop: 8}}>
-                                <Image source={{ uri: reply.user.avatar }} style={{width: 24, height: 24, borderRadius: 12, marginRight: 8}} />
-                                <View style={{flex: 1}}>
-                                    <Text style={{fontWeight: '600', fontSize: 13}}>{reply.user.full_name || reply.user.username}</Text>
-                                    <Text style={{fontSize: 13, color: '#333'}}>{reply.text}</Text>
-                                </View>
-                            </View>
-                        ))}
-                    </View>
-                )}
-            </View>
-        </View>
-    ), [handleReplyToComment]);
-    
-    return(
+    return (
         <View style={styles.container}>
             {renderHeader()}
             {loading ? (
-                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="large" color={AppDetails.primaryColor} />
                 </View>
             ) : (
-            <>
-            <FlatList
-                data={comments}
-                keyExtractor={item => item.id}
-                renderItem={renderCommentItem}
-                ListHeaderComponent={headerElement}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-            />
-            
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === "ios" ? "padding" : "height"} 
-                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-                style={styles.inputWrapper}
-            >
-                <View style={styles.inputContainer}>
-                    <Image 
-                        source={{ uri: user?.avatar || "https://via.placeholder.com/150" }} 
-                        style={styles.inputAvatar} 
-                    />
-                    <View style={styles.inputFieldContainer}>
-                        <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <Text style={styles.replyingTo}>
-                                Replying to {replyingTo ? (replyingTo.user.full_name || replyingTo.user.username) : post?.user?.full_name}
-                            </Text>
-                            {replyingTo && (
-                                <TouchableOpacity onPress={handleCancelReply} style={{padding: 2}}>
-                                    <Ionicons name="close" size={14} color="#999" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                        <TextInput
-                            ref={textInputRef}
-                            style={styles.textInput}
-                            placeholder={`Reply to ${replyingTo ? (replyingTo.user.full_name || replyingTo.user.username) : post?.user?.full_name}...`}
-                            placeholderTextColor="#999"
-                            multiline
-                            value={replyText}
-                            onChangeText={setReplyText}
-                        />
-                    </View>
-                    <TouchableOpacity disabled={!replyText.trim()} onPress={handlePostComment}>
-                        <Text style={[styles.postButton, !replyText.trim() && styles.disabledPostButton]}>Post</Text>
-                    </TouchableOpacity>
-                </View>
-            </KeyboardAvoidingView>
-            </>
+                <ScrollView contentContainerStyle={styles.listContent}>
+                    {headerElement}
+
+
+
+
+                </ScrollView>
             )}
         </View>
-    )
-}
+    );
+};
+
+
+
+
+
+
+
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
