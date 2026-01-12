@@ -176,7 +176,6 @@ const ArticleContent = ({ post }) => {
 
 /**Shared Post Main Item............................................................................. */
 const SharedPostItem = ({ post }) => {
-        console.log("About to render shared post:", post);
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
 
@@ -215,7 +214,6 @@ const SharedPostItem = ({ post }) => {
 const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
     if (!post) return null;
 
-    console.log(post)
 
     return (
         <View style={[styles.postContainer, { flexDirection: 'column' }]}>
@@ -251,7 +249,7 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
             ) : post.type === 'poll' ? (
                 <PollContent feed={post} />
             ) : post.type ==='product' ? (
-                <ProductPostContent  />
+                <ProductPostContent feed={post} imageWidth={MEDIA_WIDTH} leftOffset={15} rightOffset={15} />
             ) : (
                 (() => {
                     const isVideo = post.type === 'video' || post.type === 'reel';

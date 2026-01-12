@@ -4,7 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../../../../helpers/appdetails';
 import { Image as RemoteImage } from 'expo-image';
 
+
+
 const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) => {
+
+    // console.log("Product feed:", feed);
+
     const navigation = null; // navigation not required here; parent handles navigation in feedcard
     const products = feed.media || [];
 
@@ -112,12 +117,14 @@ const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
                             <Text style={{ fontSize: 13, color: '#555' }}>{product.category_id ? `Category` : (feed.category || "Category")}</Text>
                         </View>
                     </View>
-                    
                 </View>
+
             </View>
         );
     }
     
+
+
     return (
         <View style={{ marginTop: 5 }}>
             <View style={{ 
