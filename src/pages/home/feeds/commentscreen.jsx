@@ -22,9 +22,11 @@ import ToggleFeedController from "../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 // no caching for comment video as requested
 import SvgIcon from '../../../assl.js/svg/svg';
+import PhotoPostContent from './feedcardproperties/photocontent';
 
 const MEDIA_HEIGHT = 520;
 const MEDIA_WIDTH = 270;
+
 
 const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const isFocused = useIsFocused();
@@ -290,6 +292,8 @@ const SharedPostItem = ({ post }) => {
     );
 };
 
+
+
 const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
     if (!post) return null;
 
@@ -331,30 +335,27 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                         const mediaItem = post.media && post.media[0];
                         return mediaItem ? <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} /> : null;
                     }
-                    if (post.media && post.media.length > 1) {
+
+                    
+
+                    if (post.media && post.media.length > 0) {
                         return (
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-                                {post.media.map((item, index) => (
-                                    <Image
-                                        key={index}
-                                        source={{ uri: item.url }}
-                                        style={{ height: MEDIA_HEIGHT, width: MEDIA_WIDTH, borderRadius: 10, marginRight: 10 }}
-                                        resizeMode="cover"
-                                    />
-                                ))}
-                            </ScrollView>
+                            <PhotoPostContent
+                                media={post.media}
+                                imageWidth={MEDIA_WIDTH}
+                                leftOffset={15}
+                                rightOffset={15}
+                                onImagePress={() => {}}
+                            />
                         );
                     }
-                    return (
-                        post.media && post.media.length > 0 &&
-                        <Image
-                            source={{ uri: post.media[0].url }}
-                            style={{ height: MEDIA_HEIGHT, width: MEDIA_WIDTH, borderRadius: 10, marginTop: 10 }}
-                            resizeMode="cover"
-                        />
-                    );
+
+                    return null;
                 })()
             )}
+
+
+
 
             <View style={styles.engagementBar}>
                 <TouchableOpacity style={styles.engagementItem} onPress={onLike}>
@@ -413,6 +414,9 @@ const CommentScreen = ({ route }) => {
         getData();
     }, [feedId, token]);
 
+
+
+
     const liked = useMemo(() => (localLiked !== null ? localLiked : !!post?.liked), [localLiked, post?.liked]);
     const likeCount = useMemo(() => (localLikeCount !== null ? localLikeCount : (parseInt(post?.likes_count) || 0)), [localLikeCount, post?.likes_count]);
 
@@ -432,6 +436,9 @@ const CommentScreen = ({ route }) => {
     const headerElement = useMemo(() => (
         <OriginalPostMemo post={post} liked={liked} likeCount={likeCount} onLike={handleLikeCb} onReply={() => {}} />
     ), [post, liked, likeCount, handleLikeCb]);
+
+
+
 
 
     const renderHeader = () => (

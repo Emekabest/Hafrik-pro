@@ -78,6 +78,9 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
     );
 });
 
+
+
+
 const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onImagePress }) => {
     const isMultiMedia = media.length > 1;
     const mediaUrl = media.length > 0 ? media[0].url : null;
