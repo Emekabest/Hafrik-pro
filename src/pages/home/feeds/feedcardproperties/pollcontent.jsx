@@ -6,9 +6,13 @@ import AppDetails from '../../../../helpers/appdetails';
 const PollPostContent = memo(({ feed }) => {
     let options = [];
 
-    if (feed.payload && Array.isArray(feed.payload.options)) {
+
+    if (feed.payload && Array.isArray(feed.payload.options)){
+        console.log(feed)
         options = feed.payload.options;
     } else {
+        // console.log("B")
+
         const pollMedia = (feed.media && Array.isArray(feed.media) && feed.media.length > 0) ? feed.media[0] : null;
         options = (pollMedia && Array.isArray(pollMedia.options) && pollMedia.options.length > 0)
             ? pollMedia.options
@@ -92,3 +96,5 @@ const PollPostContent = memo(({ feed }) => {
 });
 
 export default PollPostContent;
+
+

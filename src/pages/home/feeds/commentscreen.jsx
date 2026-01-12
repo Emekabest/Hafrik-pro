@@ -23,6 +23,8 @@ import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 // no caching for comment video as requested
 import SvgIcon from '../../../assl.js/svg/svg';
 import PhotoPostContent from './feedcardproperties/photocontent';
+import PollContent from './feedcardproperties/pollcontent';
+import ProductPostContent from './feedcardproperties/productcontent';
 
 const MEDIA_HEIGHT = 520;
 const MEDIA_WIDTH = 270;
@@ -110,92 +112,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     );
 };
 
-const PollContent = ({ post }) => {
-    let options = [];
-
-    if (post.payload && Array.isArray(post.payload.options)) {
-        options = post.payload.options;
-    } else {
-        const pollMedia = (post.media && Array.isArray(post.media) && post.media.length > 0) ? post.media[0] : null;
-        options = (pollMedia && Array.isArray(pollMedia.options) && pollMedia.options.length > 0) 
-            ? pollMedia.options 
-            : (Array.isArray(post.options) ? post.options : []);
-    }
-
-    const [votedId, setVotedId] = useState(post.user_voted_id || null);
-    
-    if (!options || options.length === 0) return null;
-
-    const totalVotes = options.reduce((acc, opt) => acc + (opt.votes || 0), 0) + (votedId && !post.user_voted_id ? 1 : 0);
-
-    const handleVote = (id) => {
-        if (votedId) return;
-        setVotedId(id);
-    };
-
-    return (
-        <View style={{ marginTop: 5, paddingRight: 5, width: '100%' }}>
-            {options.map((option, index) => {
-                const isSelected = votedId === option.id;
-                const votes = (option.votes || 0) + (isSelected && !post.user_voted_id ? 1 : 0);
-                const percentage = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
-                const primaryColor = AppDetails.primaryColor || '#000000';
-
-                return (
-                    <View key={option.id || index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                        <TouchableOpacity 
-                            onPress={() => handleVote(option.id)}
-                            disabled={!!votedId}
-                            activeOpacity={0.7}
-                            style={{
-                                flex: 1,
-                                height: 45,
-                                justifyContent: 'center',
-                                borderRadius: 50,
-                                borderWidth: 1,
-                                borderColor: isSelected ? primaryColor : '#e0e0e0',
-                                backgroundColor: '#fff',
-                                overflow: 'hidden'
-                            }}
-                        >
-                            {votedId && (
-                                <View style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    bottom: 0,
-                                    left: 0,
-                                    width: `${percentage}%`,
-                                    backgroundColor: isSelected ? (primaryColor + '33') : '#f5f5f5', 
-                                }} />
-                            )}
-                            
-                            <View style={{ paddingHorizontal: 12 }}>
-                                <Text style={{ fontWeight: isSelected ? '600' : '400', color: '#333', fontSize: 14 }}>{option.text}</Text>
-                            </View>
-                        </TouchableOpacity>
-                        {votedId && (
-                            <View style={{ 
-                                width: 30, 
-                                height: 30, 
-                                borderRadius: 15, 
-                                backgroundColor: '#f0f0f0', 
-                                justifyContent: 'center', 
-                                alignItems: 'center', 
-                                marginLeft: 8 
-                            }}>
-                                <Text style={{ fontSize: 12, color: '#666', fontWeight: 'bold' }}>{votes}</Text>
-                            </View>
-                        )}
-                    </View>
-                )
-            })}
-            <View style={{ flexDirection: 'row', marginTop: 4, paddingHorizontal: 2 }}>
-                <Text style={{ color: '#787878ff', fontSize: 12 }}>{totalVotes} votes</Text>
-                <Text style={{ color: '#787878ff', fontSize: 12 }}> • {post.expires_at ? 'Ends soon' : 'Final results'}</Text>
-            </View>
-        </View>
-    );
-};
+// Using shared PollContent from feedcardproperties/pollcontent
 
 const ArticleContent = ({ post }) => {
     let payload = post.payload;
@@ -259,6 +176,7 @@ const ArticleContent = ({ post }) => {
 
 /**Shared Post Main Item............................................................................. */
 const SharedPostItem = ({ post }) => {
+        console.log("About to render shared post:", post);
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
 
@@ -274,7 +192,7 @@ const SharedPostItem = ({ post }) => {
             {post.text ? <Text style={{ marginTop: 10, fontFamily: "WorkSans_400Regular" }}>{post.text}</Text> : null}
             
             {post.type === 'poll' ? (
-                <PollContent post={post} />
+                <PollContent feed={post} />
             ) : mediaItem && (
                 <View style={{ width: '100%', marginTop: 10 }}>
                     {isVideo ? (
@@ -296,6 +214,8 @@ const SharedPostItem = ({ post }) => {
 
 const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
     if (!post) return null;
+
+    console.log(post)
 
     return (
         <View style={[styles.postContainer, { flexDirection: 'column' }]}>
@@ -328,6 +248,10 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                 <SharedPostItem post={post.shared_post} />
             ) : post.type === 'article' ? (
                 <ArticleContent post={post} />
+            ) : post.type === 'poll' ? (
+                <PollContent feed={post} />
+            ) : post.type ==='product' ? (
+                <ProductPostContent  />
             ) : (
                 (() => {
                     const isVideo = post.type === 'video' || post.type === 'reel';
