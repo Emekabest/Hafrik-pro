@@ -1,29 +1,68 @@
-import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Image, Text, StyleSheet, Platform, Keyboard } from 'react-native';
-import AddCommentController from '../../../../controllers/commentscontroller';
+import React, { useState, useEffect } from 'react';
+import { View, TextInput, TouchableOpacity, Image, Text, StyleSheet, Platform, Keyboard, Alert } from 'react-native';
+import { AddCommentController } from '../../../../controllers/commentscontroller';
 import AppDetails from '../../../../helpers/appdetails';
 import { Ionicons } from '@expo/vector-icons';
 
 const PostComment = ({ user, feedId, token }) => {
     const [commentText, setCommentText] = useState('');
     const [posting, setPosting] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const onShow = (e) => {
+            const h = e?.endCoordinates?.height || 0;
+            setKeyboardHeight(h);
+        };
+        const onHide = () => setKeyboardHeight(0);
+
+        const showSub = Keyboard.addListener(showEvent, onShow);
+        const hideSub = Keyboard.addListener(hideEvent, onHide);
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
+
 
     const handlePost = async () => {
         Keyboard.dismiss();
         if (!commentText || posting) return;
         setPosting(true);
+
         try {
-            await AddCommentController(feedId, token, { text: commentText });
             setCommentText('');
+            const response = await AddCommentController(feedId, commentText, token);
+            if (response && response.status === 200) {
+                const responseData = response.data;
+                
+                const newComment = {
+                    id: responseData.comment_id,
+                    user: user,
+                    text: responseData.comment,
+                    created: new Date().toISOString(),
+                    replies: []
+                };
+
+
+            }
+            else{
+                Alert.alert("Error", "Failed to post comment. Please try again.");
+            }
+
+
         } catch (e) {
-            console.log('Error posting comment', e);
+            Alert.alert("Error", "Failed to post comment. Please try again." + e);
         }
         setPosting(false);
     };
 
 
     return (
-        <View style={styles.inputWrapper}>
+        <View style={[styles.inputWrapper, { bottom: keyboardHeight }] }>
             <View style={styles.inputContainer}>
                 <Image source={{ uri: user?.avatar }} style={styles.inputAvatar} />
                 <View style={styles.inputFieldContainer}>

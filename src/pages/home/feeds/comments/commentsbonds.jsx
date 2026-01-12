@@ -41,8 +41,8 @@ const CommentBonds = ({ postId, token }) => {
 
     if (!comments || comments.length === 0) {
         return (
-            <View style={{ paddingHorizontal: 15, paddingTop: 10 }}>
-                <Text style={{ color: '#777' }}>No comments yet</Text>
+            <View style={{ paddingHorizontal: 15, paddingTop: 10,  justifyContent: 'center', alignItems: 'center', height:"100%" }}>
+                <Text style={{ color: '#777' , fontFamily:"WorkSans_400Regular" }}>Be the first to comment!</Text>
             </View>
         );
     }
@@ -78,6 +78,7 @@ const CommentBonds = ({ postId, token }) => {
         </View>
     );
 };
+
 
 
 const styles = StyleSheet.create({
