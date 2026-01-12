@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Fla
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
+import GetBannersController from '../../controllers/getbannerscontroller';
 
 const { width: screenWidth } = Dimensions.get('window');
 const SLIDE_WIDTH = screenWidth * 0.9;
 const SLIDE_MARGIN = (screenWidth - SLIDE_WIDTH) / 2;
+
 
 const Banner = () => {
     const navigation = useNavigation();
@@ -17,44 +19,40 @@ const Banner = () => {
     const flatListRef = useRef(null);
     const viewabilityConfig = { itemVisiblePercentThreshold: 50 };
 
-    // Fetch banners from API
-    const fetchBanners = async () => {
-        try {
+        
+
+
+    useEffect(()=>{
+        const execute = async ()=>{
             setBannerLoading(true);
-            const response = await fetch('https://hafrik.com/api/v1/home/banners.php');
+            const response = await GetBannersController();           
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (response && response.status === 200){
+                if (Array.isArray(response.data)){
 
-            const responseText = await response.text();
-            let bannersData = [];
-
-            try {
-                const data = JSON.parse(responseText);
-                if (data.status === 'success') {
-                    if (Array.isArray(data.data)) {
-                        
-                        bannersData = data.data;
-                    } else if (data.data && Array.isArray(data.data.data)) {
-                        bannersData = data.data.data;
-                    } else if (data.data && typeof data.data === 'object') {
-                        bannersData = Object.values(data.data).filter(item => Array.isArray(item))[0] || [];
-                    }
+                    setBanners(response.data);
+                } else if (response.data && Array.isArray(response.data.data)) {
+                    setBanners(response.data.data);
+                } else if (response.data && typeof response.data === 'object') {
+                    setBanners(Object.values(response.data).filter(item => Array.isArray(item))[0] || []);
                 }
-            } catch (parseError) {
-                console.error('Banners JSON Parse Error:', parseError);
+
             }
 
-            setBanners(bannersData);
 
-        } catch (error) {
-            console.error('Error fetching banners:', error);
-            setBanners([]);
-        } finally {
             setBannerLoading(false);
         }
-    };
+
+        execute();
+    },[])
+
+
+
+
+
+
+
+
 
     // Handle banner press
     const handleBannerPress = (banner) => {
@@ -70,7 +68,7 @@ const Banner = () => {
 
     // Initial load
     useEffect(() => {
-        fetchBanners();
+        // fetchBanners();
     }, []);
 
     // Auto-rotate banners

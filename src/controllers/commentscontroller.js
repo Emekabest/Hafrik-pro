@@ -20,7 +20,6 @@ const AddCommentController = async(post_id, comment, token)=>{
     }
     catch(error){
 
-        console.log(error.message)
         return {status:error.response.status, data:error.response.data}
     }
 }
@@ -41,7 +40,6 @@ const GetCommentsController = async(post_id, token)=>{
     }
     catch(error){
 
-        console.log(error.message)
         return {status:error.response.status, data:error.response.data}
     }
 }

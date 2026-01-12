@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -22,10 +23,19 @@ const QuickLinks = () => {
   const [quickLinks, setQuickLinks] = useState([]);
   const [quickLinksLoading, setQuickLinksLoading] = useState(true);
 
+
+
   const fetchQuickLinks = async () => {
     try {
       setQuickLinksLoading(true);
-      const response = await fetch('https://hafrik.com/api/v1/home/quick_links.php');
+      const selectedCountry = JSON.parse(await AsyncStorage.getItem('selected_country'));
+
+      const API_URL = selectedCountry && selectedCountry.country_id && selectedCountry.country_id !== 'all'
+        ? `https://hafrik.com//api/v1/home/banners.php?country_id=${selectedCountry.country_id}`
+        : 'https://hafrik.com/api/v1/home/quick_links.php';
+
+
+      const response = await fetch(API_URL);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const responseText = await response.text();
       let quickLinksData = [];

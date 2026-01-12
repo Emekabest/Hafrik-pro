@@ -17,8 +17,6 @@ const RepostController = async(postData, token)=>{
         })
 
     
-        console.log("Repost Response:", response.data);
-
         return {status:response.status, data:response.data}
     }
     catch(error){
