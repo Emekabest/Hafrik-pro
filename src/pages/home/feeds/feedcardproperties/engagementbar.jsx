@@ -103,13 +103,22 @@ const styles = StyleSheet.create({
 });
 
 
-export default React.memo(EngagementBar, (prevProps, nextProps) => {
 
 
-    return(
-        prevProps.initialLiked === nextProps.initialLiked &&
-        prevProps.initialLikeCount === nextProps.initialLikeCount &&
-        prevProps.commentsCount === nextProps.commentsCount
-    )
 
-});
+const handleMemomize = (prevProps, nextProps) => {
+  const p = prevProps;
+  const n = nextProps;
+
+  if (p.feedId !== n.feedId) return false;
+  if (p.initialLiked !== n.initialLiked) return false;
+  if ((p.initialLikeCount || 0) !== (n.initialLikeCount || 0)) return false;
+  if ((p.commentsCount || 0) !== (n.commentsCount || 0)) return false;
+
+  // If handler references changed, re-render (unlikely but safe)..
+  if (p.onOpenShare !== n.onOpenShare) return false;
+  if (p.onCommentPress !== n.onCommentPress) return false;
+
+  return true;
+};
+export default React.memo(EngagementBar, handleMemomize);

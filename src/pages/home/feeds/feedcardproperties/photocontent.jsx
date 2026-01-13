@@ -86,7 +86,7 @@ const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress 
 
 
 
-const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onImagePress }) => {
+const PhotoPostContent = ({ media, imageWidth, leftOffset, rightOffset, onImagePress }) => {
     const isMultiMedia = media.length > 1;
     const mediaUrl = media.length > 0 ? media[0].url : null;
     const [isLoading, setIsLoading] = useState(true);
@@ -152,16 +152,7 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
             )}
         </View>
     );
-});
-
-
-
-
-
-
-
-
-
+};
 
 
 const styles = StyleSheet.create({
@@ -171,5 +162,36 @@ const styles = StyleSheet.create({
     }
 });
 
-export default PhotoPostContent;
+
+
+const handleMemomize = (prevProps, nextProps) => {
+    const prev = prevProps;
+    const next = nextProps;
+
+    // dimension / layout props
+    if (prev.imageWidth !== next.imageWidth) return false;
+    if (prev.leftOffset !== next.leftOffset) return false;
+    if (prev.rightOffset !== next.rightOffset) return false;
+
+    // handler identity
+    if (prev.onImagePress !== next.onImagePress) return false;
+
+    // media length
+    const prevLen = (prev.media && prev.media.length) || 0;
+    const nextLen = (next.media && next.media.length) || 0;
+    if (prevLen !== nextLen) return false;
+
+    // shallow compare media urls/thumbnails (in order)...
+    for (let i = 0; i < prevLen; i++) {
+        const pItem = prev.media[i] || {};
+        const nItem = next.media[i] || {};
+        const pUrl = pItem.url || pItem.thumbnail || '';
+        const nUrl = nItem.url || nItem.thumbnail || '';
+        if (pUrl !== nUrl) return false;
+    }
+
+    return true;
+}
+
+export default memo(PhotoPostContent, handleMemomize);
 export { SkeletonLoader };
