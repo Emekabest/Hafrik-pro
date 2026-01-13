@@ -39,6 +39,9 @@ const SkeletonLoader = ({ style }) => {
 
 
 const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress }) => {
+
+   
+
     const [width, setWidth] = useState(() => {
         if (aspectRatioCache.has(uri)) {
             return Math.min(targetHeight * aspectRatioCache.get(uri), maxWidth);

@@ -8,8 +8,6 @@ import ProductPostContent from './productcontent.jsx';
 
 const PostContent = ({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isMuted, setIsMuted, isFocused }) => {
 
-      console.log("Rendering PostContent:", feed.id);
-
 
     const isVideo = feed.type === 'video' || feed.type === 'reel';
 
@@ -30,7 +28,7 @@ const PostContent = ({ feed, imageWidth, leftOffset, rightOffset, onImagePress, 
     }
 
     if (feed.type === 'group_picture'){
-        // placeholder for group picture handling......
+        // placeholder for group picture handling..........
     }
 
     if (feed.media && feed.media.length > 0) {
@@ -66,7 +64,7 @@ const handleMemomize = (prevProps, nextProps) => {
     const nMediaLen = (n.feed.media && n.feed.media.length) || 0;
     if (pMediaLen !== nMediaLen) return false;
 
-    // Compute whether playback should be active for this feed (mirrors parent logic)
+    // Compute whether playback should be active for this feed (mirrors parent logic)...
     const prevShouldPlay = !!(p.currentPlayingId && String(p.currentPlayingId).startsWith(`${p.feed.id}_`) && p.isFocused);
     const nextShouldPlay = !!(n.currentPlayingId && String(n.currentPlayingId).startsWith(`${n.feed.id}_`) && n.isFocused);
     if (prevShouldPlay !== nextShouldPlay) return false;

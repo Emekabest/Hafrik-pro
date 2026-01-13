@@ -6,7 +6,7 @@ import { Image as RemoteImage } from 'expo-image';
 
 
 
-const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) => {
+const ProductPostContent = ({ feed, imageWidth, leftOffset, rightOffset }) => {
 
     // console.log("Product feed:", feed);
 
@@ -230,6 +230,23 @@ const ProductPostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
             </View>
         </View>
     );
-});
+};
 
-export default ProductPostContent;
+
+const handleMemomize = (prevProps, nextProps) => {
+    if (prevProps.feed?.id !== nextProps.feed?.id) return false;
+    const prevMediaLen = prevProps.feed?.media?.length ?? 0;
+    const nextMediaLen = nextProps.feed?.media?.length ?? 0;
+    if (prevMediaLen !== nextMediaLen) return false;
+    const prevFirst = prevProps.feed?.media?.[0] ?? {};
+    const nextFirst = nextProps.feed?.media?.[0] ?? {};
+    const prevFirstImg = (prevFirst.images && prevFirst.images[0]) || prevFirst.image;
+    const nextFirstImg = (nextFirst.images && nextFirst.images[0]) || nextFirst.image;
+    if (prevFirstImg !== nextFirstImg) return false;
+    if (prevProps.feed?.text !== nextProps.feed?.text) return false;
+    if (prevProps.imageWidth !== nextProps.imageWidth) return false;
+    if (prevProps.leftOffset !== nextProps.leftOffset) return false;
+    if (prevProps.rightOffset !== nextProps.rightOffset) return false;
+    return true;
+}
+export default memo(ProductPostContent, handleMemomize);

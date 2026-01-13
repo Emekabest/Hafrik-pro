@@ -17,7 +17,7 @@ const EngagementBar = ({ feedId, initialLiked = false, initialLikeCount = 0, com
 
 
 
-
+//   console.log("Liked::",feedId)
 
   useEffect(() => {
     const loadInteraction = async () => {

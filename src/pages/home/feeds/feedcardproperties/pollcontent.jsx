@@ -5,7 +5,7 @@ import AppDetails from '../../../../helpers/appdetails';
 
 
 
-const PollPostContent = memo(({ feed }) => {
+const PollPostContent = ({ feed }) => {
     let options = [];
 
 
@@ -92,8 +92,42 @@ const PollPostContent = memo(({ feed }) => {
             </View>
         </View>
     );
-});
+};
 
-export default PollPostContent;
 
+
+
+
+const handleMemomize = (prevProps, nextProps) => {
+    if (prevProps.feed?.id !== nextProps.feed?.id) return false;
+
+    const resolveOptions = (f) => {
+        if (!f) return [];
+        if (f.payload && Array.isArray(f.payload.options)) return f.payload.options;
+        if (Array.isArray(f.options)) return f.options;
+        const pollMedia = (f.media && Array.isArray(f.media) && f.media.length > 0) ? f.media[0] : null;
+        if (pollMedia && Array.isArray(pollMedia.options)) return pollMedia.options;
+        return [];
+    }
+
+    const prevOptions = resolveOptions(prevProps.feed);
+    const nextOptions = resolveOptions(nextProps.feed);
+    if ((prevOptions?.length ?? 0) !== (nextOptions?.length ?? 0)) return false;
+
+    for (let i = 0; i < (prevOptions?.length ?? 0); i++){
+        const a = prevOptions[i] ?? {};
+        const b = nextOptions[i] ?? {};
+        if (a.id !== b.id) return false;
+        if ((a.text ?? '') !== (b.text ?? '')) return false;
+        if ((a.votes ?? 0) !== (b.votes ?? 0)) return false;
+    }
+
+    if ((prevProps.feed?.user_voted_id ?? null) !== (nextProps.feed?.user_voted_id ?? null)) return false;
+    if ((prevProps.feed?.expires_at ?? '') !== (nextProps.feed?.expires_at ?? '')) return false;
+
+    return true;
+}
+
+
+export default memo(PollPostContent, handleMemomize);
 
