@@ -10,7 +10,7 @@ const aspectRatioCache = new Map();
 const MEDIA_HEIGHT = 470;
 const MEDIA_WIDTH = 240;
 
-const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
+const VideoPostContent = ({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
     const navigation = useNavigation();
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
@@ -219,9 +219,8 @@ const VideoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, cur
             )}
         </View>
     );
-});
+};
 
-export default VideoPostContent;
 
 const styles = StyleSheet.create({
     mediaSection: {
@@ -237,3 +236,22 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
 });
+
+
+
+const handleMemomize = (prevProps, nextProps) => {
+    if (prevProps.parentFeedId !== nextProps.parentFeedId) return false;
+    if ((prevProps.media?.length ?? 0) !== (nextProps.media?.length ?? 0)) return false;
+    const prevFirst = prevProps.media?.[0] ?? {};
+    const nextFirst = nextProps.media?.[0] ?? {};
+    if (prevFirst.video_url !== nextFirst.video_url) return false;
+    if (prevFirst.thumbnail !== nextFirst.thumbnail) return false;
+    if (prevProps.isMuted !== nextProps.isMuted) return false;
+    if (prevProps.isFocused !== nextProps.isFocused) return false;
+    if (prevProps.currentPlayingId !== nextProps.currentPlayingId) return false;
+    if (prevProps.imageWidth !== nextProps.imageWidth) return false;
+    if (prevProps.leftOffset !== nextProps.leftOffset) return false;
+    if (prevProps.rightOffset !== nextProps.rightOffset) return false;
+    return true;
+}
+export default memo(VideoPostContent, handleMemomize);
