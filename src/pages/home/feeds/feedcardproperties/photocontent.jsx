@@ -6,6 +6,8 @@ const aspectRatioCache = new Map();
 const MEDIA_HEIGHT = 470;
 const MEDIA_WIDTH = 240;
 
+
+
 const SkeletonLoader = ({ style }) => {
     const animValue = useRef(new Animated.Value(0.3)).current;
 
@@ -32,6 +34,9 @@ const SkeletonLoader = ({ style }) => {
         <Animated.View style={[style, { opacity: animValue, backgroundColor: '#dddddd' }]} />
     );
 };
+
+
+
 
 const FeedImageItem = memo(({ uri, targetHeight, maxWidth, marginRight, onPress }) => {
     const [width, setWidth] = useState(() => {
@@ -148,6 +153,16 @@ const PhotoPostContent = memo(({ media, imageWidth, leftOffset, rightOffset, onI
         </View>
     );
 });
+
+
+
+
+
+
+
+
+
+
 
 const styles = StyleSheet.create({
     mediaSection: {

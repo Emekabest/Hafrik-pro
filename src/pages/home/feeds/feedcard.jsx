@@ -61,7 +61,7 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
     }
 
     if (feed.type === 'group_picture'){
-        console.log("Group picture feed::", feed.id);
+        // console.log("Group picture feed::", feed.id);
 
     }
 
