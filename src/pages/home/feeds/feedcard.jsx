@@ -59,6 +59,12 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
     if (feed.type === 'poll') {
         return <PollPostContent feed={feed} />;
     }
+
+    if (feed.type === 'group_picture'){
+        console.log("Group picture feed::", feed.id);
+
+    }
+
     else{
     }
 
@@ -73,16 +79,6 @@ const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePr
 });
 
 // #endregion
-
-
-
-
-
-
-
-
-
-
 
 
 

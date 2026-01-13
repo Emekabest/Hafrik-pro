@@ -31,7 +31,7 @@ const QuickLinks = () => {
       const selectedCountry = JSON.parse(await AsyncStorage.getItem('selected_country'));
 
       const API_URL = selectedCountry && selectedCountry.country_id && selectedCountry.country_id !== 'all'
-        ? `https://hafrik.com//api/v1/home/banners.php?country_id=${selectedCountry.country_id}`
+        ? `https://hafrik.com/api/v1/home/quick_links.php?country_id=${selectedCountry.country_id}`
         : 'https://hafrik.com/api/v1/home/quick_links.php';
 
 

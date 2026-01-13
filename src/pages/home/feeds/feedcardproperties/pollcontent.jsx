@@ -3,15 +3,15 @@ import { View, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../../../../helpers/appdetails';
 
+
+
 const PollPostContent = memo(({ feed }) => {
     let options = [];
 
 
     if (feed.payload && Array.isArray(feed.payload.options)){
-        console.log(feed)
         options = feed.payload.options;
     } else {
-        // console.log("B")
 
         const pollMedia = (feed.media && Array.isArray(feed.media) && feed.media.length > 0) ? feed.media[0] : null;
         options = (pollMedia && Array.isArray(pollMedia.options) && pollMedia.options.length > 0)
@@ -28,7 +28,6 @@ const PollPostContent = memo(({ feed }) => {
     const handleVote = (id) => {
         if (votedId) return;
         setVotedId(id);
-        // API integration would happen here
     };
 
     return (
