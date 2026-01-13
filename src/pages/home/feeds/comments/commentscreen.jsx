@@ -19,7 +19,7 @@ import AppDetails from "../../../../helpers/appdetails";
 // comments controllers removed - this screen now shows only the post
 import getUserPostInteractionController from '../../../../controllers/getuserpostinteractioncontroller';
 import CommentBonds from './commentsbonds';
-import PostComment from './postcomment';
+import AddComment from './addcomment';
 import ToggleFeedController from "../../../../controllers/tooglefeedcontroller";
 import CalculateElapsedTime from "../../../../helpers/calculateelapsedtime";
 // no caching for comment video as requested
@@ -116,7 +116,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
 
 // Using shared PollContent from feedcardproperties/pollcontent
 
-const ArticleContent = ({ post }) => {
+const CommentArticleItem = ({ post }) => {
     let payload = post.payload;
 
     if (typeof payload === 'string') {
@@ -176,6 +176,7 @@ const ArticleContent = ({ post }) => {
 };
 
 
+
 /**Shared Post Main Item............................................................................. */
 const SharedPostItem = ({ post }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
@@ -213,7 +214,7 @@ const SharedPostItem = ({ post }) => {
 
 
 
-const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
+const CommentPostContent = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
     if (!post) return null;
 
 
@@ -243,11 +244,12 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                 </View>
             </View>
             
+
             <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
             {post.type === 'shared' && post.shared_post ? (
                 <SharedPostItem post={post.shared_post} />
             ) : post.type === 'article' ? (
-                <ArticleContent post={post} />
+                <CommentArticleItem post={post} />
             ) : post.type === 'poll' ? (
                 <PollContent feed={post} />
             ) : post.type ==='product' ? (
@@ -261,7 +263,6 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
                     }
 
                     
-
                     if (post.media && post.media.length > 0) {
                         return (
                             <PhotoPostContent
@@ -302,7 +303,7 @@ const OriginalPost = ({ post, liked, likeCount, onLike, onReply, textInputRef })
     );
 };
 
-const OriginalPostMemo = React.memo(OriginalPost);
+const OriginalPostMemo = React.memo(CommentPostContent);
 
 
 
@@ -313,11 +314,12 @@ const CommentScreen = ({ route }) => {
     const [loading, setLoading] = useState(true);
     const { feedId } = route.params;
 
-    const [commentText, setCommentText] = useState('');
-    const [posting, setPosting] = useState(false);
-
     const [localLiked, setLocalLiked] = useState(null);
     const [localLikeCount, setLocalLikeCount] = useState(null);
+
+
+    console.log(feedId)
+
 
     useEffect(() => {
         const getData = async () => {
@@ -362,13 +364,12 @@ const CommentScreen = ({ route }) => {
         }
     }, [feedId, token, localLiked, post?.likes_count]);
 
+
+
+
     const headerElement = useMemo(() => (
         <OriginalPostMemo post={post} liked={liked} likeCount={likeCount} onLike={handleLikeCb} onReply={() => {}} />
     ), [post, liked, likeCount, handleLikeCb]);
-
-    
-
-
 
 
 
@@ -401,7 +402,7 @@ const CommentScreen = ({ route }) => {
                 </ScrollView>
             )}
 
-            <PostComment user={user} feedId={feedId} token={token} />
+            <AddComment user={user} feedId={feedId} token={token} />
         </View>
     );
 };

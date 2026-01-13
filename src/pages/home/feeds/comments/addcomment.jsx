@@ -4,7 +4,9 @@ import { AddCommentController } from '../../../../controllers/commentscontroller
 import AppDetails from '../../../../helpers/appdetails';
 import { Ionicons } from '@expo/vector-icons';
 
-const PostComment = ({ user, feedId, token }) => {
+
+
+const AddComment = ({ user, feedId, token }) => {
     const [commentText, setCommentText] = useState('');
     const [posting, setPosting] = useState(false);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -98,4 +100,4 @@ const styles = StyleSheet.create({
     postButtonContainer: { justifyContent: 'center', paddingHorizontal: 12 },
 });
 
-export default PostComment;
+export default AddComment;

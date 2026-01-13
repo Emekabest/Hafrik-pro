@@ -5,6 +5,7 @@ import CalculateElapsedTime from '../../../../helpers/calculateelapsedtime';
 import SvgIcon from '../../../../assl.js/svg/svg';
 import { Ionicons } from '@expo/vector-icons';
 
+
 const CommentBonds = ({ postId, token }) => {
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
