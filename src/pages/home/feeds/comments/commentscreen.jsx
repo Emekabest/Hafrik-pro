@@ -12,8 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
-import CommentVideoItem from './commentpost/commentvideoitem';
-import CommentArticleItem from './commentpost/commentarticleitem';
+import CommentMainPostContent from './commentpost/commentmainpostcontent';
 import { useAuth } from "../../../../AuthContext";
 import AppDetails from "../../../../helpers/appdetails";
 // comments controllers removed - this screen now shows only the post
@@ -21,157 +20,14 @@ import getUserPostInteractionController from '../../../../controllers/getuserpos
 import CommentBonds from './commentsbonds';
 import AddComment from './addcomment';
 import ToggleFeedController from "../../../../controllers/tooglefeedcontroller";
-import CalculateElapsedTime from "../../../../helpers/calculateelapsedtime";
 // no caching for comment video as requested
-import SvgIcon from '../../../../assl.js/svg/svg';
-import PhotoPostContent from '../feedcardproperties/photocontent';
-import PollContent from '../feedcardproperties/pollcontent';
-import ProductPostContent from '../feedcardproperties/productcontent';
+
 
 const MEDIA_HEIGHT = 520;
 const MEDIA_WIDTH = 270;
 
 
-// CommentVideoItem extracted to ./commentpost/commentvideoitem
-
-// Using shared PollContent from feedcardproperties/pollcontent
-
-// CommentArticleItem extracted to ./commentpost/commentarticleitem
-
-
-
-/**Shared Post Main Item............................................................................. */
-const SharedPostItem = ({ post }) => {
-    const isVideo = post.type === 'video' || post.type === 'reel';
-    const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
-
-    return (
-        <View style={styles.sharedPostContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
-                <View style={{ marginLeft: 10 }}>
-                    <Text style={{ fontWeight: 'bold' }}>{post.user.full_name}</Text>
-                    <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(post.created)}</Text>
-                </View>
-            </View>
-            {post.text ? <Text style={{ marginTop: 10, fontFamily: "WorkSans_400Regular" }}>{post.text}</Text> : null}
-            
-            {post.type === 'poll' ? (
-                <PollContent feed={post} />
-            ) : mediaItem && (
-                <View style={{ width: '100%', marginTop: 10 }}>
-                    {isVideo ? (
-                        <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} />
-                    ) : (
-                        <Image 
-                            source={{ uri: mediaItem.url || mediaItem.thumbnail }} 
-                            style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, borderRadius: 10 }} 
-                            resizeMode="cover" 
-                        />
-                    )}
-                </View>
-            )}
-        </View>
-    );
-};
-
-
-
-
-
-
-const CommentMainPostContent = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
-    if (!post) return null;
-
-
-    return (
-        <View style={[styles.postContainer, { flexDirection: 'column' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-
-                <TouchableOpacity>
-                    <Image source={{ uri: post.user.avatar }} style={styles.avatar} />
-                </TouchableOpacity>
-
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                    <View style={styles.headerRow}>
-                        <TouchableOpacity>
-                            <Text style={styles.username}>{post.user.full_name}</Text>
-                        </TouchableOpacity>
-                    
-                        {post.user.verified && 
-
-                            <SvgIcon name="verified" width={16} height={16} color={AppDetails.primaryColor} />
-
-                        }
-                        <Text style={[styles.timeText, { marginLeft: 5, marginRight: 0 }]}>• {CalculateElapsedTime(post.created)}</Text>
-                        <View style={styles.spacer} />
-
-                    </View>
-                </View>
-            </View>
-            
-
-            <Text style={[styles.postText, { marginTop: 12 }]}>{post.text}</Text>
-            {post.type === 'shared' && post.shared_post ? (
-                <SharedPostItem post={post.shared_post} />
-            ) : post.type === 'article' ? (
-                <CommentArticleItem post={post} />
-            ) : post.type === 'poll' ? (
-                <PollContent feed={post} />
-            ) : post.type ==='product' ? (
-                <ProductPostContent feed={post} imageWidth={MEDIA_WIDTH} leftOffset={15} rightOffset={15} />
-            ) : (
-                (() => {
-                    const isVideo = post.type === 'video' || post.type === 'reel';
-                    if (isVideo) {
-                        const mediaItem = post.media && post.media[0];
-                        return mediaItem ? <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} /> : null;
-                    }
-
-                    
-                    if (post.media && post.media.length > 0) {
-                        return (
-                            <PhotoPostContent
-                                media={post.media}
-                                imageWidth={MEDIA_WIDTH}
-                                leftOffset={15}
-                                rightOffset={15}
-                                onImagePress={() => {}}
-                            />
-                        );
-                    }
-
-                    return null;
-                })()
-            )}
-
-
-
-
-            <View style={styles.engagementBar}>
-                <TouchableOpacity style={styles.engagementItem} onPress={onLike}>
-                    <Ionicons name={liked ? "heart" : "heart-outline"} size={23} style={{color: liked ? "#ff4444" : "#333", fontWeight:"bold"}} />
-                    <Text style={styles.engagementText}>{likeCount}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.engagementItem} onPress={() => textInputRef?.current?.focus()}>
-                    <SvgIcon name="comment" width={20} height={20} color="#333" />
-                    <Text style={styles.engagementText}>{post.comments_count}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.engagementItem}>
-                    <SvgIcon name="share" width={20} height={20} color="#333" />
-                    <Text style={styles.engagementText}>29</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.engagementItem}>
-                    <SvgIcon name="favourite" width={20} height={20} color="#333" />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
-};
-
 const OriginalPostMemo = React.memo(CommentMainPostContent);
-
-
 
 const CommentScreen = ({ route }) => {
     const navigation = useNavigation();
@@ -183,9 +39,7 @@ const CommentScreen = ({ route }) => {
     const [localLiked, setLocalLiked] = useState(null);
     const [localLikeCount, setLocalLikeCount] = useState(null);
 
-
-    console.log(feedId)
-
+    
 
     useEffect(() => {
         const getData = async () => {
