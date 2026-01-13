@@ -309,7 +309,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                 onEndReachedThreshold={0.5}
                 initialNumToRender={3}
                 maxToRenderPerBatch={3}
-                windowSize={4}
+                windowSize={5}
                 removeClippedSubviews={false}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}
