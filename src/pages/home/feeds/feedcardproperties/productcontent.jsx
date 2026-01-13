@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { View, ScrollView, Image, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../../../../helpers/appdetails';
-import { Image as RemoteImage } from 'expo-image';
+import { Image as ExpoImage } from 'expo-image';
 
 
 
@@ -37,7 +37,7 @@ const ProductPostContent = ({ feed, imageWidth, leftOffset, rightOffset }) => {
                         {images.length > 0 ? images.map((img, index) => (
                             <View key={index} style={{ width: imageWidth, marginRight: 10 }}>
                                 <View style={{ width: '100%', height: imageWidth, borderRadius: 10, backgroundColor: '#f0f0f0', overflow: 'hidden' }}>
-                                    <RemoteImage 
+                                    <ExpoImage 
                                         source={{ uri: img }} 
                                         style={{ width: '100%', height: '100%' }} 
                                         contentFit="cover" 
@@ -147,10 +147,11 @@ const ProductPostContent = ({ feed, imageWidth, leftOffset, rightOffset }) => {
                         <View key={index} style={{ width: imageWidth, marginRight: 10 }}>
                             <View style={{ width: '100%', height: imageWidth, borderRadius: 10, backgroundColor: '#f0f0f0', overflow: 'hidden', marginBottom: 10 }}>
                                 {productImage ? (
-                                <Image 
+                                <ExpoImage 
                                     source={{ uri: productImage }} 
                                     style={{ width: '100%', height: '100%' }} 
-                                    resizeMode="cover" 
+                                    contentFit="cover"
+                                    cachePolicy="memory-disk"
                                 />
                                 ) : (
                                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8f8f8' }}>

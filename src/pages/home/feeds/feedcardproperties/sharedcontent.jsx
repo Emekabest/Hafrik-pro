@@ -1,5 +1,6 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Dimensions, ActivityIndicator } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useNavigation } from '@react-navigation/native';
@@ -7,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getPlayer } from '../videoRegistry';
 import CalculateElapsedTime from '../../../../helpers/calculateelapsedtime';
 import { SkeletonLoader } from './photocontent.jsx';
+
 
 const aspectRatioCache = new Map();
 const MEDIA_HEIGHT = 470;
@@ -30,17 +32,17 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
         return 16 / 9; // Default aspect ratio
     });
 
-    useEffect(() => {
-        if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
-            Image.getSize(mediaUrl, (width, height) => {
-                if (height > 0) {
-                    const ratio = width / height;
-                    aspectRatioCache.set(mediaUrl, ratio);
-                    setAspectRatio(ratio);
-                }
-            }, (error) => console.log(error));
-        }
-    }, [mediaUrl]);
+    // useEffect(() => {
+    //     if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
+    //         Image.getSize(mediaUrl, (width, height) => {
+    //             if (height > 0) {
+    //                 const ratio = width / height;
+    //                 aspectRatioCache.set(mediaUrl, ratio);
+    //                 setAspectRatio(ratio);
+    //             }
+    //         }, (error) => console.log(error));
+    //     }
+    // }, [mediaUrl]);
     
     // Video specific state
     const [isPlaying, setIsPlaying] = useState(false);
@@ -163,7 +165,12 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
     return (
         <View style={styles.sharedPostContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Image source={{ uri: post.user.avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
+                <ExpoImage 
+                source={{ uri: post.user.avatar }}
+                style={{ width: 30, height: 30, borderRadius: 15 }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                />
                 <View style={{ marginLeft: 10 }}>
                     <Text style={{ fontFamily:"WorkSans_600SemiBold" }}>{post.user.full_name}</Text>
                     <Text style={{ marginLeft: 5, fontSize: 12, color: 'lightgray' }}>@{post.user.username}</Text>
@@ -188,10 +195,11 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
             ) : post.type === 'article' && post.payload ? (
                 <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: post.id})} activeOpacity={0.8} style={{ marginTop: 10 }}>
                     {post.payload.cover && (
-                        <Image 
+                        <ExpoImage 
                             source={{ uri: post.payload.cover }} 
                             style={{ width: '100%', height: 160, borderRadius: 8, backgroundColor: '#f0f0f0' }} 
-                            resizeMode="cover" 
+                            contentFit="cover"
+                            cachePolicy="memory-disk" 
                         />
                     )}
                     <View style={{ marginTop: 8 }}>
@@ -239,18 +247,19 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
                                     }}
                                 />
                                 ) : (
-                                    <Image
+                                    <ExpoImage
                                         source={{ uri: mediaItem.thumbnail }}
                                         style={{ width: "100%", height: "100%" }}
-                                        resizeMode="contain"
+                                        contentFit='cover'
+                                        cachePolicy="memory-disk"
                                     />
                                 )}
                                 {showSharedPoster && (
-                                    <Image
+                                    <ExpoImage
                                         source={{ uri: mediaItem.thumbnail }}
                                         style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
-                                        resizeMode="cover"
-                                        pointerEvents="none"
+                                        contentFit="cover"
+                                        cachePolicy="memory-disk"
                                     />
                                 )}
                                 <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isBuffering && !isPlaying) ? 1 : 0}]} pointerEvents="none">
@@ -267,7 +276,7 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
                         ) : (
                             <>
                                 {isImageLoading && <SkeletonLoader style={StyleSheet.absoluteFill} />}
-                                <Image source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} resizeMode="contain" onLoadStart={() => setIsImageLoading(true)} onLoadEnd={() => setIsImageLoading(false)} />
+                                <ExpoImage source={{ uri: mediaUrl }} style={{ width: '100%', height: '100%', borderRadius: 10 }} contentFit="contain" cachePolicy="memory-disk" onLoadStart={() => setIsImageLoading(true)} onLoadEnd={() => setIsImageLoading(false)} />
                             </>
                         )}
                     </View>

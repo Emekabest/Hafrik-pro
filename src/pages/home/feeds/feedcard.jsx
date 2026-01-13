@@ -8,12 +8,13 @@ import AppDetails from "../../../helpers/appdetails";
 import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 import EngagementBar from "./feedcardproperties/engagementbar.jsx";
 import ShareModal from "./share";
-import { Image as RemoteImage } from "expo-image";
+import { Image as ExpoImage } from "expo-image";
 import { getPlayer } from './videoRegistry';
 import OptionsModal from "./options";
 import SvgIcon from "../../../assl.js/svg/svg";
 import useStore from "../../../repository/store";
 import PostContent from "./feedcardproperties/postcontent.jsx";
+
 
 
 
@@ -112,9 +113,11 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
             <View style = {styles.containerLeft}>
                 <View style = {styles.ProfileContainer}>
                     <View style = {styles.ImageContainer}>
-                        <Image
+                        <ExpoImage
                             source={{uri:feed.user.avatar}}
                             style={{height:"100%", width:"100%"}}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
                         />
 
                     </View>
@@ -235,7 +238,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     <TouchableOpacity style={styles.saveButton} onPress={handleSaveImage}>
                         <Ionicons name="download-outline" size={30} color="white" />
                     </TouchableOpacity>
-                    <Image source={{uri: fullScreenImage}} style={styles.fullScreenImage} resizeMode="contain" />
+                    <ExpoImage source={{uri: fullScreenImage}} style={styles.fullScreenImage} contentFit="contain" />
                 </View>
             </Modal>
 

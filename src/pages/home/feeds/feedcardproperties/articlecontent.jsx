@@ -1,7 +1,9 @@
 import React, { memo, useState, useEffect } from 'react';
 import { View, Image, TouchableOpacity, Text, Dimensions, StyleSheet } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+
 
 const aspectRatioCache = new Map();
 
@@ -13,22 +15,6 @@ const ArticlePostContent = ({ feed, imageWidth, leftOffset, rightOffset }) => {
     const coverUrl = payload.cover;
     const title = payload.title;
 
-    const [aspectRatio, setAspectRatio] = useState(() => {
-        if (coverUrl && aspectRatioCache.has(coverUrl)) {
-            return aspectRatioCache.get(coverUrl);
-        }
-        return null;
-    });
-
-    useEffect(() => {
-        if (coverUrl && !aspectRatioCache.has(coverUrl)) {
-            Image.getSize(coverUrl, (width, height) => {
-                const ratio = width / height;
-                aspectRatioCache.set(coverUrl, ratio);
-                setAspectRatio(ratio);
-            }, (error) => console.log(error));
-        }
-    }, [coverUrl]);
 
     const handlePress = () => {
         navigation.navigate('CommentScreen', {feedId: feed.id});
@@ -38,15 +24,16 @@ const ArticlePostContent = ({ feed, imageWidth, leftOffset, rightOffset }) => {
         <View style={{ marginTop: 5 }}>
              <View style={[
                 styles.mediaSection,
-                { height: aspectRatio ? imageWidth / aspectRatio : 240 },
+                { height: 240 },
                 { width: Dimensions.get("window").width, marginLeft: -leftOffset, borderRadius: 0, backgroundColor: 'transparent' }
             ]}>
                 {coverUrl ? (
                     <TouchableOpacity onPress={handlePress} activeOpacity={1} style={{flex: 1}}>
-                        <Image
+                        <ExpoImage
                             source={{uri: coverUrl}}
                             style={{height:"100%", width: imageWidth, marginLeft: leftOffset, borderRadius: 10}}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
                         />
                     </TouchableOpacity>
                 ) : null}

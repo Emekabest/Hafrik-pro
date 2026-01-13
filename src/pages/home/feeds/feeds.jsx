@@ -300,7 +300,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                     return `${item.type}-${index}`;
                 }}
                 renderItem={renderCombinedItem}
-                // scrollEventThrottle={AppDetails.flatList.scrollEventThrottle} // Adjust the throttle rate (16ms for ~60fps)
+                scrollEventThrottle={AppDetails.flatList.scrollEventThrottle} // Adjust the throttle rate (16ms for ~60fps)
                 decelerationRate={AppDetails.flatList.decelerationRate} // Slows down the scroll momentum,
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}

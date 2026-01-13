@@ -1,5 +1,6 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
 import { View, Image, ScrollView, TouchableWithoutFeedback, TouchableOpacity, ActivityIndicator, StyleSheet, Dimensions } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useNavigation } from '@react-navigation/native';
@@ -16,17 +17,17 @@ const VideoPostContent = ({ media, imageWidth, leftOffset, rightOffset, currentP
     const mediaItem = media.length > 0 ? media[0] : null;
     const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
     
-    const [aspectRatio, setAspectRatio] = useState(() => {
-        if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
-            return aspectRatioCache.get(mediaUrl);
-        }
-        if (mediaItem && mediaItem.width && mediaItem.height){
-            const ratio = mediaItem.width / mediaItem.height;
-            if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
-            return ratio;
-        }
-        return null;
-    });
+    // const [aspectRatio, setAspectRatio] = useState(() => {
+    //     if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
+    //         return aspectRatioCache.get(mediaUrl);
+    //     }
+    //     if (mediaItem && mediaItem.width && mediaItem.height){
+    //         const ratio = mediaItem.width / mediaItem.height;
+    //         if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
+    //         return ratio;
+    //     }
+    //     return null;
+    // });
     
     const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
@@ -125,15 +126,15 @@ const VideoPostContent = ({ media, imageWidth, leftOffset, rightOffset, currentP
         navigation.navigate('CommentScreen', {feedId: parentFeedId});
     };
 
-    useEffect(() => {
-        if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
-            Image.getSize(mediaUrl, (width, height) => {
-                const ratio = width / height;
-                aspectRatioCache.set(mediaUrl, ratio);
-                setAspectRatio(ratio);
-            }, (error) => console.log(error));
-        }
-    }, [mediaUrl]);
+    // useEffect(() => {
+    //     if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
+    //         Image.getSize(mediaUrl, (width, height) => {
+    //             const ratio = width / height;
+    //             aspectRatioCache.set(mediaUrl, ratio);
+    //             setAspectRatio(ratio);
+    //         }, (error) => console.log(error));
+    //     }
+    // }, [mediaUrl]);
 
     if (!media || media.length === 0) return null;
 
@@ -188,18 +189,21 @@ const VideoPostContent = ({ media, imageWidth, leftOffset, rightOffset, currentP
                             }}
                         />
                         ) : (
-                        <Image
+                        <ExpoImage
                             source={{ uri: mediaItem.thumbnail }}
                             style={{ width: "100%", height: "100%" }}
-                            resizeMode="contain"
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
+                            pointerEvents='none'
                         />
                     )}
                     {showSinglePoster && (
-                        <Image
+                        <ExpoImage
                             source={{ uri: mediaItem.thumbnail }}
                             style={[StyleSheet.absoluteFill, { width: '100%', height: '100%' }]}
-                            resizeMode="cover"
-                            pointerEvents="none"
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            pointerEvents='none'
                         />
                     )}
                     <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2, opacity: (isSingleVideoBuffering && !isSingleVideoPlaying) ? 1 : 0}]} pointerEvents="none">

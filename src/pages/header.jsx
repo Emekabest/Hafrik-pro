@@ -6,6 +6,9 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+
+import { Image as ExpoImage } from 'expo-image';
+
 import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../helpers/appdetails';
 import { useAuth } from '../AuthContext';
@@ -25,10 +28,11 @@ const Header = ({ onOpenDrawer }) => {
     <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity style={styles.leftIcon} activeOpacity={1} onPress={onOpenDrawer}>
-              <Image
+              <ExpoImage
                 source={{uri: user.avatar}}
                 style={{ height: "100%", width: "100%" }}
-                resizeMode="cover"
+                contentFit='cover'
+                cachePolicy="memory-disk"
               />
             </TouchableOpacity>
           </View>
