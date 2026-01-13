@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const aspectRatioCache = new Map();
 
-const ArticlePostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) => {
+const ArticlePostContent = ({ feed, imageWidth, leftOffset, rightOffset }) => {
     const navigation = useNavigation();
     const payload = feed.payload;
     if (!payload) return null;
@@ -60,7 +60,7 @@ const ArticlePostContent = memo(({ feed, imageWidth, leftOffset, rightOffset }) 
             </TouchableOpacity>
         </View>
     );
-});
+};
 
 const styles = StyleSheet.create({
     mediaSection: {
@@ -69,4 +69,19 @@ const styles = StyleSheet.create({
     }
 });
 
-export default ArticlePostContent;
+
+
+
+
+const handleMemomize = (prevProps, nextProps) => {
+    if (prevProps.feed?.id !== nextProps.feed?.id) return false;
+    const prevPayload = prevProps.feed?.payload ?? {};
+    const nextPayload = nextProps.feed?.payload ?? {};
+    if (prevPayload.cover !== nextPayload.cover) return false;
+    if (prevPayload.title !== nextPayload.title) return false;
+    if (prevProps.imageWidth !== nextProps.imageWidth) return false;
+    if (prevProps.leftOffset !== nextProps.leftOffset) return false;
+    if (prevProps.rightOffset !== nextProps.rightOffset) return false;
+    return true;
+}
+export default memo(ArticlePostContent, handleMemomize);
