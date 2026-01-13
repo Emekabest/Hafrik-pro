@@ -11,9 +11,9 @@ import {
     Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useEvent } from 'expo';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import CommentVideoItem from './commentpost/commentvideoitem';
+import CommentArticleItem from './commentpost/commentarticleitem';
 import { useAuth } from "../../../../AuthContext";
 import AppDetails from "../../../../helpers/appdetails";
 // comments controllers removed - this screen now shows only the post
@@ -32,148 +32,11 @@ const MEDIA_HEIGHT = 520;
 const MEDIA_WIDTH = 270;
 
 
-const CommentVideoItem = ({ videoUrl, thumbnail }) => {
-    const isFocused = useIsFocused();
-    const [hasError, setHasError] = useState(false);
-
-    // No caching as requested; use URL directly
-    const source = videoUrl || null;
-
-    // Create the player (hooks must be called unconditionally)
-    const player = useVideoPlayer(source, (p) => {
-        if (p && source) {
-            try { p.loop = true; } catch (e) { /* ignore */ }
-            if (isFocused) {
-                try { p.play(); } catch (e) { /* ignore */ }
-            }
-        }
-    });
-
-    const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });
-    const { status } = useEvent(player, 'statusChange', { status: player?.status ?? {} });
-
-    useEffect(() => {
-        return () => {
-            try { player?.release(); } catch (e) { /* ignore */ }
-        };
-    }, [player]);
-
-    if (hasError) {
-        return (
-            <View style={{ height: MEDIA_HEIGHT, width: MEDIA_WIDTH, borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#202020', justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="alert-circle-outline" size={30} color="#fff" />
-                <Text style={{color: '#fff', fontSize: 14, marginTop: 10}}>Something went wrong</Text>
-                <TouchableOpacity onPress={() => setHasError(false)} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#333', borderRadius: 20}}>
-                    <Text style={{color: '#fff', fontSize: 12}}>Try Again</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    }
-
-    const isBuffering = status?.isBuffering;
-    const isFinished = status?.didJustFinish;
-
-    return (
-        <View style={{ height: MEDIA_HEIGHT, width: MEDIA_WIDTH, borderRadius: 10, overflow: 'hidden', marginTop: 10, backgroundColor: '#000' }}>
-            {player ? (
-                <VideoView
-                    style={{ width: '100%', height: '100%' }}
-                    player={player}
-                    nativeControls={true}
-                    contentFit="contain"
-                    posterSource={{ uri: thumbnail }}
-                    usePoster={false}
-                    onError={(e) => { console.log('VideoView error', e); setHasError(true); }}
-                />
-            ) : (
-                <Image source={{ uri: thumbnail }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-            )}
-
-            {(isBuffering && !isPlaying) && (
-                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 2}]} pointerEvents="none">
-                    <ActivityIndicator size="large" color="#fff" />
-                </View>
-            )}
-
-            {(!isPlaying && !isBuffering) && (
-                <View style={[StyleSheet.absoluteFill, {justifyContent: 'center', alignItems: 'center', zIndex: 1}]}>
-                    <TouchableOpacity 
-                        onPress={() => {
-                            try {
-                                if (!player) return;
-                                if (isFinished) player.replay(); else player.play();
-                            } catch (e) { console.log('player control error', e); }
-                        }}
-                        style={{backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30, padding: 10}}
-                    >
-                        <Ionicons name="play" size={30} color="white" />
-                    </TouchableOpacity>
-                </View>
-            )}
-        </View>
-    );
-};
+// CommentVideoItem extracted to ./commentpost/commentvideoitem
 
 // Using shared PollContent from feedcardproperties/pollcontent
 
-const CommentArticleItem = ({ post }) => {
-    let payload = post.payload;
-
-    if (typeof payload === 'string') {
-        try {
-            payload = JSON.parse(payload);
-        } catch (e) {
-            console.warn("Failed to parse article payload", e);
-            payload = {};
-        }
-    }
-    
-    if (!payload) return null;
-
-    const { title, cover, text } = payload;
-    
-    // Basic HTML stripping and entity replacement for display
-    const cleanText = text ? text
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/p>/gi, '\n\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&rsquo;/g, "'")
-        .replace(/&quot;/g, '"')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .trim() : '';
-
-    return (
-        <View style={{ marginTop: 10, width: '100%', paddingBottom: 10 }}>
-             {cover ? (
-                <Image 
-                    source={{ uri: cover }} 
-                    style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 15, backgroundColor: '#f0f0f0' }} 
-                    resizeMode="cover" 
-                />
-            ) : null}
-            
-            {title ? (
-                <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#000', marginBottom: 10, lineHeight: 28 }}>
-                    {title}
-                </Text>
-            ) : null}
-            
-            {cleanText ? (
-                <Text style={{ fontSize: 16, color: '#333', lineHeight: 24 }}>
-                    {cleanText}
-                </Text>
-            ) : (
-                <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 5}}>
-                     <Text style={{ fontSize: 14, color: '#787878', fontWeight: '500' }}>Read full article</Text>
-                     <Ionicons name="arrow-forward" size={14} color="#787878" style={{marginLeft: 4}} />
-                </View>
-            )}
-        </View>
-    );
-};
+// CommentArticleItem extracted to ./commentpost/commentarticleitem
 
 
 
@@ -214,7 +77,10 @@ const SharedPostItem = ({ post }) => {
 
 
 
-const CommentPostContent = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
+
+
+
+const CommentMainPostContent = ({ post, liked, likeCount, onLike, onReply, textInputRef }) => {
     if (!post) return null;
 
 
@@ -303,7 +169,7 @@ const CommentPostContent = ({ post, liked, likeCount, onLike, onReply, textInput
     );
 };
 
-const OriginalPostMemo = React.memo(CommentPostContent);
+const OriginalPostMemo = React.memo(CommentMainPostContent);
 
 
 
