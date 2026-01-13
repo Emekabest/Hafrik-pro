@@ -45,6 +45,7 @@ const PostContent = ({ feed, imageWidth, leftOffset, rightOffset, onImagePress, 
 
 
 const handleMemomize = (prevProps, nextProps) => {
+
     const p = prevProps;
     const n = nextProps;
 

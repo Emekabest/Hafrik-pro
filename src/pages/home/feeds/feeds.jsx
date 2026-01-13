@@ -275,12 +275,11 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
     
 
-    const handleScroll = useCallback(() => {
-        // Throttle or debounce logic can be added here if needed
-        // console.log("Scrolling...");
-    }, []);
+
 
     
+
+
 
     return (
         <View style={styles.container}>
@@ -301,16 +300,15 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                     return `${item.type}-${index}`;
                 }}
                 renderItem={renderCombinedItem}
-                onScroll={handleScroll}
-                scrollEventThrottle={AppDetails.flatList.scrollEventThrottle} // Adjust the throttle rate (16ms for ~60fps)
-                decelerationRate={"fast"} // Slows down the scroll momentum,
+                // scrollEventThrottle={AppDetails.flatList.scrollEventThrottle} // Adjust the throttle rate (16ms for ~60fps)
+                decelerationRate={AppDetails.flatList.decelerationRate} // Slows down the scroll momentum,
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.5}
                 initialNumToRender={3}
                 maxToRenderPerBatch={3}
-                windowSize={4}
-                updateCellsBatchingPeriod={50}
+                windowSize={5}
+                // updateCellsBatchingPeriod={50}
                 removeClippedSubviews={false}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}
