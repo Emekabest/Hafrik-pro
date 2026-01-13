@@ -12,7 +12,7 @@ const aspectRatioCache = new Map();
 const MEDIA_HEIGHT = 470;
 const MEDIA_WIDTH = 240;
 
-const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
+const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
     const navigation = useNavigation();
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
@@ -277,7 +277,7 @@ const SharedPostCard = memo(({ post, currentPlayingId, setCurrentPlayingId, pare
             )}
         </View>
     );
-});
+};
 
 const styles = StyleSheet.create({
     sharedPostContainer: {
@@ -298,4 +298,14 @@ const styles = StyleSheet.create({
     }
 });
 
-export default SharedPostCard;
+
+
+
+const handleMemomize = (prevProps, nextProps) => {
+
+
+
+
+}
+
+export default memo(SharedPostCard, handleMemomize);

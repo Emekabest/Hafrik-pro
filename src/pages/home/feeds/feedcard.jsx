@@ -13,12 +13,7 @@ import { getPlayer } from './videoRegistry';
 import OptionsModal from "./options";
 import SvgIcon from "../../../assl.js/svg/svg";
 import useStore from "../../../repository/store";
-import PhotoPostContent, { SkeletonLoader } from "./feedcardproperties/photocontent.jsx";
-import VideoPostContent from "./feedcardproperties/videocontent.jsx";
-import SharedPostCard from "./feedcardproperties/sharedcontent.jsx";
-import ArticlePostContent from "./feedcardproperties/articlecontent.jsx";
-import PollPostContent from "./feedcardproperties/pollcontent.jsx";
-import ProductPostContent from "./feedcardproperties/productcontent.jsx";
+import PostContent from "./feedcardproperties/postcontent.jsx";
 
 
 
@@ -27,64 +22,7 @@ const MEDIA_HEIGHT = 470;
 const MEDIA_WIDTH = 240;
 
 
-// #region Post Content Components...............................................................
-
-// VideoPostContent extracted to feedcardproperties/videocontent.jsx
-
-/* ProductPostContent moved to feedcardproperties/productcontent.jsx */
-
-/* ArticlePostContent moved to feedcardproperties/articlecontent.jsx */
-
-/* PollPostContent moved to feedcardproperties/pollcontent.jsx */
-
-
-
-
-
-const PostContent = memo(({ feed, imageWidth, leftOffset, rightOffset, onImagePress, currentPlayingId, setCurrentPlayingId, isMuted, setIsMuted, isFocused }) => {
-    const isVideo = feed.type === 'video' || feed.type === 'reel';
-
-    if (feed.type === 'shared' && feed.shared_post) {
-        return <SharedPostCard post={feed.shared_post} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isMuted={isMuted} setIsMuted={setIsMuted} isFocused={isFocused} />;
-    }
-
-    if (feed.type === 'product') {
-        return <ProductPostContent feed={feed} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} />;
-    }
-
-    if (feed.type === 'article') {
-        return <ArticlePostContent feed={feed} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
-    }
-
-    if (feed.type === 'poll') {
-        return <PollPostContent feed={feed} />;
-    }
-
-    if (feed.type === 'group_picture'){
-        // console.log("Group picture feed::", feed.id);
-
-    }
-
-    else{
-    }
-
-    if (feed.media && feed.media.length > 0) {
-        if (isVideo) {
-            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isMuted={isMuted} setIsMuted={setIsMuted} isFocused={isFocused} />;
-        }
-        return <PhotoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
-    }
-
-    return null; // Return null if there is no media and it's not a shared post
-});
-
-// #endregion
-
-
-
-
-
-
+// Post content handled in ./feedcardproperties/postcontent.jsx
 
 
 

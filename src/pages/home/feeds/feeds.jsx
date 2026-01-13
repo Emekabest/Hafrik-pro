@@ -292,12 +292,12 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                     if (item.type === 'feed') {
 
                         if (item.data.type === 'shared' && item.data.shared_post) {
-                            // Use parentId for shared posts to ensure uniqueness
+                            // Use parentId for shared posts to ensure uniquenesssskkksssss
                             return `${item.type}-${item.data.id}-parent-${item.parentId}`;
                         }
                         return `${item.type}-${item.data.id}`;
                     }
-                    // Ensure unique keys for non-feed items
+                    // Ensure unique keys for non-feed items......
                     return `${item.type}-${index}`;
                 }}
                 renderItem={renderCombinedItem}
@@ -307,9 +307,9 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                 ListFooterComponent={renderFooter}
                 onEndReached={handleLoadMore}
                 onEndReachedThreshold={0.5}
-                initialNumToRender={3}
-                maxToRenderPerBatch={3}
-                windowSize={5}
+                initialNumToRender={5}
+                maxToRenderPerBatch={5}
+                windowSize={8}
                 removeClippedSubviews={false}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}
