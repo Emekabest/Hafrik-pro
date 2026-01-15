@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import SvgIcon from '../../../../../assl.js/svg/svg';
 import CalculateElapsedTime from '../../../../../helpers/calculateelapsedtime';
 import PhotoPostContent from '../../feedcardproperties/photocontent';
+import CommentVideoItem from './commentvideoitem';
 import PollContent from '../../feedcardproperties/pollcontent';
 import ProductPostContent from '../../feedcardproperties/productcontent';
 import AppDetails from '../../../../../helpers/appdetails';
@@ -59,7 +60,7 @@ const CommentMainPostContent = ({ post, liked, likeCount, onLike, onReply, textI
                     const isVideo = post.type === 'video' || post.type === 'reel';
                     if (isVideo) {
                         const mediaItem = post.media && post.media[0];
-                        return mediaItem ? <PhotoPostContent media={[mediaItem]} imageWidth={MEDIA_WIDTH} leftOffset={15} rightOffset={15} onImagePress={() => {}} /> : null;
+                        return mediaItem ? <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} /> : null;
                     }
 
                     if (post.media && post.media.length > 0) {
