@@ -114,7 +114,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
         
         setLoadingMore(true);
         const nextPage = page + 1;
-        console.log("Loading more feeds, page:", nextPage);
 
         const response = await feedsController(API_URL, token, nextPage);
 
@@ -308,7 +307,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                 onEndReachedThreshold={0.5}
                 initialNumToRender={3}
                 maxToRenderPerBatch={3}
-                windowSize={5}
+                windowSize={2}
                 // updateCellsBatchingPeriod={50}
                 removeClippedSubviews={false}
                 contentContainerStyle={styles.containerFeeds}

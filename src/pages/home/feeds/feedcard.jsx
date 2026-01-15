@@ -32,17 +32,18 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const navigation = useNavigation();
     const [isMuted, setIsMuted] = useState(false);
     const [showProfileOptions, setShowProfileOptions] = useState(false);
-    const [showPostOptions, setShowPostOptions] = useState(false);
+    const [showPostOptions, setShowPostOptions] = useState(false); 
     const [showShareOptions, setShowShareOptions] = useState(false);
     const [fullScreenImage, setFullScreenImage] = useState(null);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
 
+    console.log("This is currentId", currentPlayingId)
 
-
+    const maxFeedTextLength = 200;
     const [isExpanded, setIsExpanded] = useState(false);
     const hasMedia = (feed.media && feed.media.length > 0) || ['video', 'reel', 'shared', 'product', 'article', 'poll'].includes(feed.type);
-    const shouldTruncate = hasMedia && feed.text && feed.text.length > 50 && !isExpanded;
+    const shouldTruncate = hasMedia && feed.text && feed.text.length > maxFeedTextLength && !isExpanded;
 
     
     
@@ -185,8 +186,8 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                 {feed.text ? (
                     <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})} activeOpacity={1} style={styles.textSection}>
                         <Text style = {{fontSize:14, color:"#000", fontFamily:"WorkSans_400Regular"}}>
-                            {(feed.text && feed.text.length > 50 && !isExpanded) ? `${feed.text.substring(0, 50)}...` : feed.text}
-                            {(feed.text && feed.text.length > 50) && (
+                            {(feed.text && feed.text.length > maxFeedTextLength && !isExpanded) ? `${feed.text.substring(0, maxFeedTextLength)}...` : feed.text}
+                            {(feed.text && feed.text.length > maxFeedTextLength) && (
                                 <Text onPress={() => setIsExpanded(prev => !prev)} style={{ color: '#787878', fontWeight: '600' }}>
                                     {isExpanded ? ' See less' : ' See more'}
                                 </Text>
