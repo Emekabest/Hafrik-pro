@@ -11,13 +11,16 @@ const GetFeedsController = async(url, token, page = 1)=>{
         `${url}?country_id=${selectedCountry.country_id}&page=${page}` :
         `${url}?page=${page}`;
     
+
     try{
         const response = await axios.get(API_URL, {
             headers:{
-                    Authorization: `Bearer ${token}`
+                    Authorization: `Bearer ${token}`,
+                    'Cache-Control': 'no-cache'
             }
         })
           
+
         return {status:response.status, data:response.data.data.data}
     }
     catch(error){

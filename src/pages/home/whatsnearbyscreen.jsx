@@ -4,6 +4,7 @@ import Feeds from './feeds/feeds';
 import { useAuth } from '../../AuthContext';
 import GetFeedsController from '../../controllers/getfeedscontroller';
 import useStore from '../../repository/store';
+import testSuperagent from '../../controllers/superagentTest';
 
 const WhatsNearbyScreen = () => {
 
@@ -24,6 +25,8 @@ const WhatsNearbyScreen = () => {
 
   const getFeeds = async()=>{
       const response = await GetFeedsController(API_URL, token, 1); 
+
+      // const res = await testSuperagent(token)
       
       if (response.status === 200) {
         setWhatsNearbyFeedsToStore([...response.data]);

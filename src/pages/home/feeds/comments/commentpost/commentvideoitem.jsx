@@ -16,6 +16,7 @@ const CommentVideoItem = ({ videoUrl, thumbnail }) => {
     const [hasError, setHasError] = useState(false);
 
     const source = videoUrl || null;
+    console.log("CommentVideoItem source URL:", source);
 
     const player = useVideoPlayer(source, (p) => {
         if (p && source) {

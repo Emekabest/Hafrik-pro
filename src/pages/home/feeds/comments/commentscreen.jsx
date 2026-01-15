@@ -47,6 +47,7 @@ const CommentScreen = ({ route }) => {
             try {
                 const response = await getUserPostInteractionController(feedId, token);
                 if (response.status === 200) {
+                    // console.log("Fetched post for comments:", response.data);
                     setPost(response.data);
                     try {
                         setLocalLiked(!!response.data.liked);
