@@ -211,15 +211,25 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     
     
 
-    // useState(()=>{
+   
+    /** A function that mutate IsNextVideo in the store......................... */
 
-    //         console.log("Is next video", isNextVideo_store)
+    const lastNextRef = useRef({ shouldPlay: null, feedId: null });
 
-    // },[isNextVideo_store])
+    const setNextIfChanged = (next) => {
 
+        const prev = lastNextRef.current;
+        if (prev.shouldPlay === next.shouldPlay && prev.feedId === next.feedId) return;
+
+
+            setIsNextVideo(next);
+            lastNextRef.current = next;
+    };
+    /**......................................................................... */
     
+
+
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
-        // console.log("Viewable Items Changed:", viewableItems);
 
 
         const viewableVideoItem = viewableItems.find(item => {
@@ -243,43 +253,20 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             return false;
         });
 
-        let playId = null;
 
 
         if (viewableVideoItem){
 
-            setIsNextVideo({shouldPlay: true, feedId: viewableVideoItem.item.data.id});
+            setNextIfChanged({shouldPlay: true, feedId: viewableVideoItem.item.data.id});
             setIsVideoPlaying(true);
 
-            
-            // VideoManager.switchVideo(feedId);///
-
-            const feed = viewableVideoItem.item.data;
-            if (feed.type === 'shared' && feed.shared_post){
-                playId = `${feed.id}_shared`;
-            } else {
-                playId = `${feed.id}_video_0`;
-            }
-
-            // VideoManager.switchVideo(viewableVideoItem.item.data.id);
 
         }
         else{
             
             VideoManager.singlePause();
-            
+            setNextIfChanged({shouldPlay: false, feedId: null});
         }
-        
-
-        setCurrentPlayingId(currentId => {
-            
-            if (currentId !== playId) {
-                return playId;
-            }
-            return currentId;
-        });
-
-
     }).current;
 
 
@@ -290,11 +277,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
         waitForInteraction: true,
     }).current;
 
-    
-
-
-
-    
 
 
 
@@ -324,7 +306,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                 onEndReachedThreshold={0.5}
                 initialNumToRender={3}
                 maxToRenderPerBatch={3}
-                windowSize={3}
+                windowSize={5}
                 updateCellsBatchingPeriod={50}
                 removeClippedSubviews={false}
                 contentContainerStyle={styles.containerFeeds}
