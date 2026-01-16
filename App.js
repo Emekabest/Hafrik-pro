@@ -20,6 +20,8 @@ import useSharedStore from './src/repository/store';
 import { useFonts } from 'expo-font';
 import { WorkSans_300Light, WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold, WorkSans_700Bold, WorkSans_800ExtraBold} from '@expo-google-fonts/work-sans';
 import { ReadexPro_200ExtraLight,  ReadexPro_300Light, ReadexPro_400Regular, ReadexPro_500Medium, ReadexPro_600SemiBold, ReadexPro_700Bold, } from "@expo-google-fonts/readex-pro"
+import { Video } from 'expo-av';
+import VideoManager from './src/helpers/videomanager';
 
 
 
@@ -29,23 +31,54 @@ const Stack = createStackNavigator();
 // Create a component that handles the navigation based on auth state
 function AppNavigator() {
 
-  /** Ensures that the status bar style remains the same even after the state of the app is changed */
-      const handleAppStateChange = () => {
-      // StatusBar.setBarStyle('light-content', true);
-      // StatusBar.setBackgroundColor(AppDetails.primaryColor, true);
+  const [isAppMinimized, setIsAppMinimized] = useState(false);
+
+  /**..................App State Listener..............................*/
+
+    const handleAppStateChange = (AppState) => {
+        const minimized = AppState !== 'active';
+
+        setIsAppMinimized(minimized);
 
     };
 
 
     useEffect(() => {
 
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription.remove();
+      const subscription = AppState.addEventListener('change', handleAppStateChange);
+      return ()=>{
+
+        subscription.remove()
+
+      };
 
   }, []);
   /**................................................................................................*/
 
+
+
+
+  /**Pause or play any video playing in the feed */
+  const isNextVideo = useSharedStore(state => state.isNextVideo);
+  useEffect(() => {
+
+    if (isAppMinimized){
+        VideoManager.singlePause(); 
+
+    }
+    else{
+        if (isNextVideo.shouldPlay && isNextVideo.feedId){
+            VideoManager.play(isNextVideo.feedId); //Resume playing the video if app is restored
+
+        }
+    } 
+
+    
+  },[isAppMinimized])
   
+
+
+
 
     const [fontsLoaded] = useFonts({
   

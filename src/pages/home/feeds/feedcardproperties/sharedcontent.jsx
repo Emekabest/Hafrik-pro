@@ -105,8 +105,10 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
         }
     }, [sharedPlayer, isMuted]);
 
+    
     const { isPlaying: sharedPlaying } = useEvent(sharedPlayer, 'playingChange', { isPlaying: sharedPlayer?.playing ?? false });
     const { status: sharedStatus } = useEvent(sharedPlayer, 'statusChange', { status: sharedPlayer?.status ?? {} });
+
 
     useEffect(() => {
         if (!sharedPlayer) return;
@@ -115,35 +117,13 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
         } catch (e) {}
     }, [shouldPlay, sharedPlayer]);
 
-    useEffect(() => {
-        setIsPlaying(sharedStatus?.isPlaying ?? false);
-        setIsBuffering(sharedStatus?.isBuffering ?? false);
-        if (sharedStatus?.didJustFinish) setIsFinished(true);
-        if (sharedStatus?.isPlaying) setIsFinished(false);
 
-        if (sharedStatus?.isBuffering && !sharedStatus?.isPlaying) {
-            if (!bufferTimeoutSharedRef.current) {
-                bufferTimeoutSharedRef.current = setTimeout(() => {
-                    if (retryKeyShared < 2) {
-                        setRetryKeyShared(prev => prev + 1);
-                        setSource(null);
-                        setTimeout(() => setSource(mediaItem.video_url), 250);
-                    } else {
-                        setHasError(true);
-                        setIsBuffering(false);
-                    }
-                    bufferTimeoutSharedRef.current = null;
-                }, 6000);
-            }
-        } else if (bufferTimeoutSharedRef.current) {
-            clearTimeout(bufferTimeoutSharedRef.current);
-            bufferTimeoutSharedRef.current = null;
-        }
-    }, [sharedStatus]);
 
     useEffect(() => {
         if (sharedPlaying) setShowSharedPoster(false);
     }, [sharedPlaying]);
+
+
 
     useEffect(() => {
         if (preloadedShared) setShowSharedPoster(false);
@@ -161,6 +141,22 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
     const hasMedia = (post.media && post.media.length > 0) || ['video', 'reel', 'poll', 'article'].includes(post.type);
     const isLongPostText = post.text && post.text.length > 50;
     const shouldTruncate = isLongPostText && !isExpanded;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     return (
         <View style={styles.sharedPostContainer}>

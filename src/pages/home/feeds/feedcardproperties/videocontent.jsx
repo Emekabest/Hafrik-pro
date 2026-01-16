@@ -3,17 +3,17 @@ import { View, Image, ScrollView, TouchableWithoutFeedback, TouchableOpacity, Ac
 import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import VideoManager from '../../../../helpers/videomanager';
 import useStore from "../../../../repository/store.js";
 
 
-const aspectRatioCache = new Map();
+
 const MEDIA_HEIGHT = 470;
 const MEDIA_WIDTH = 240;
 
-const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
+const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted }) => {
    
     
    
@@ -25,29 +25,39 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
 
     
     const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
-    const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
     const [isSingleVideoBuffering, setIsSingleVideoBuffering] = useState(false);
     const [isSingleVideoError, setIsSingleVideoError] = useState(false);
     const [showSinglePoster, setShowSinglePoster] = useState(true);
-    const uniqueId = `${parentFeedId}_video_0`;
     const [source, setSource] = useState(null);
-    const [shouldPlay, setShouldPlay] = useState(false);
     const [isDownloadingSingle, setIsDownloadingSingle] = useState(false);
-    const [retryKeySingle, setRetryKeySingle] = useState(0);
     const bufferTimeoutSingleRef = useRef(null);
 
     const [isReadyToPlay, setIsReadyToPlay] = useState(false);
+    const isFocused = useIsFocused();
+
 
     const isNextVideo_store = useStore(state => state.isNextVideo);
+    const isSearchVisible_store = useStore(state => state.isSearchVisible);
 
 
-  
 
 
-    // const isMultiMedia = media.length > 1;
-    // const mediaItem = media.length > 0 ? media[0] : null;
+
+    useEffect(()=>{
+
+        if (!isFocused || isSearchVisible_store){
+
+            VideoManager.singlePause();
+
+        }
+        else if((isFocused && isNextVideo_store.shouldPlay) || (isSearchVisible_store === false && isNextVideo_store.shouldPlay)){
+            VideoManager.play(isNextVideo_store.feedId);
+        }
+
+    },[isFocused, isSearchVisible_store])
+
+
     
-
 
 
     useEffect(() => {
@@ -273,7 +283,7 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
                             currentPlayingId={currentPlayingId}
                             setCurrentPlayingId={setCurrentPlayingId}
                             uniqueId={`${parentFeedId}_video_${index}`}
-                            isFocused={isFocused}
+                            // isFocused={isFocused}
                             isMuted={isMuted}
                             setIsMuted={setIsMuted}
                             feedId={parentFeedId}

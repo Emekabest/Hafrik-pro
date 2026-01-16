@@ -26,8 +26,18 @@ class VideoManager {
     }
 
 
+    singlePlay(){
+        if (!this.currentlyPlayingVideoId) return;
+        const video = this.playersRef.get(this.currentlyPlayingVideoId);
+
+        if (video && video.status === 'readyToPlay') {
+            video.play();
+        }
+    }
+
 
     play(feedId) {
+        
         const video = this.playersRef.get(feedId);
 
         if (video && video.status === 'readyToPlay') {
@@ -37,6 +47,9 @@ class VideoManager {
             this.currentlyPlayingVideoId = feedId;
         }
     }
+
+
+
 
 
     singlePause(){
@@ -60,13 +73,6 @@ class VideoManager {
 
 
     switchVideo(nextVideoId) {
-
-        // if (this.currentlyPlayingVideoId === nextVideoId) {
-
-        //     this.play(nextVideoId);
-        //     return;
-        // }; // already playing
-
 
         if (this.currentlyPlayingVideoId === null || this.currentlyPlayingVideoId === nextVideoId){
             this.play(nextVideoId);
