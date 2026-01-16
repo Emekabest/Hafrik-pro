@@ -246,13 +246,13 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
         let playId = null;
 
 
-
-        if (viewableVideoItem) {
-            console.log("Viewable Video Item");
-
+        if (viewableVideoItem){
 
             setIsNextVideo({shouldPlay: true, feedId: viewableVideoItem.item.data.id});
             setIsVideoPlaying(true);
+
+            
+            // VideoManager.switchVideo(feedId);///
 
             const feed = viewableVideoItem.item.data;
             if (feed.type === 'shared' && feed.shared_post){
@@ -262,19 +262,15 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             }
 
             // VideoManager.switchVideo(viewableVideoItem.item.data.id);
+
         }
-        else{   
-            console.log("isVideoPlaying: " + isVideoPlaying);   
-            if (isVideoPlaying){
-                console.log("No viewable video item - pausing video");
-
-                    // const p = 
-                // setIsNextVideo({...p});
-            }
-
-            //
+        else{
+            
+            VideoManager.singlePause();
+            
         }
         
+
         setCurrentPlayingId(currentId => {
             
             if (currentId !== playId) {

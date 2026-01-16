@@ -111,6 +111,7 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
 
             try{
 
+
                 VideoManager.register(feedId, player);
 
             }
@@ -119,10 +120,21 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
                 console.log("Error registering video player:", e);
             }
 
+
+            // console.log(player.status)
         }
 
-        registerPlayer();
+
+        const videoPlayerExisting = VideoManager.getVideoPlayer(feedId);
+        if (!videoPlayerExisting){
+            registerPlayer();
+        }
+
     },[feedId, player?.status]);
+
+
+    
+
 
 
 
@@ -131,9 +143,7 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
         if (isReadyToPlay){
         
             if (isNextVideo_store.shouldPlay && isNextVideo_store.feedId === feedId){
-                // console.log("Play!!", feedId)
                     VideoManager.switchVideo(feedId);
-                    console.log("Playing video from VideoContent for feedId:", feedId);
 
             }
     }
@@ -142,23 +152,24 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
 
 
 
-    useEffect(()=>{
-
-        console.log("From videocontent::"+isNextVideo_store.shouldPlay)
-
-
-    },[isNextVideo_store])
-
+   
 
 
 
     useEffect(()=>{
+
+
 
         return () => {
-                console.log("render")
+            const videoPlayerExisting = VideoManager.getVideoPlayer(feedId);
+
+            if (videoPlayerExisting){
                 VideoManager.unregister(feedId);
 
+            }
+
         };
+        
     },[feedId])
 
     

@@ -39,9 +39,18 @@ class VideoManager {
     }
 
 
+    singlePause(){
+        console.log("Currently Paused Video Id: " + this.currentlyPlayingVideoId);
+        if (!this.currentlyPlayingVideoId) return;
+        const video = this.playersRef.get(this.currentlyPlayingVideoId);
+        if (video) {
+            video.pause();
+        }
+    }
+
 
     pause(feedId) {
-        const video = this.playersRef.get(feedId);
+        const video = this.playersRef.get(this.currentlyPlayingVideoId);
         if (video) {
             video.pause();
             if (this.currentlyPlayingVideoId === feedId) this.currentlyPlayingVideoId = null;
@@ -52,16 +61,25 @@ class VideoManager {
 
     switchVideo(nextVideoId) {
 
-        if (this.currentlyPlayingVideoId === nextVideoId) return; // already playing
+        // if (this.currentlyPlayingVideoId === nextVideoId) {
+
+        //     this.play(nextVideoId);
+        //     return;
+        // }; // already playing
 
 
-        if (this.currentlyPlayingVideoId === null){
+        if (this.currentlyPlayingVideoId === null || this.currentlyPlayingVideoId === nextVideoId){
             this.play(nextVideoId);
             return;
         }
 
         this.pause(this.currentlyPlayingVideoId);
         this.play(nextVideoId);
+    }
+
+    getVideoPlayer(feedId){
+
+        return this.playersRef.get(feedId) || null;
     }
 
 }
