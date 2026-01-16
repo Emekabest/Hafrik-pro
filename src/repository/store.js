@@ -52,6 +52,8 @@ const useStore = create((set) => ({
     triggerRefresh: () => set((state) => ({ refreshSignal: state.refreshSignal + 1 })),
 
 
+
+
     /**Feeds Section............................................... */
 
     recentUpdateFeeds: [],
@@ -73,6 +75,11 @@ const useStore = create((set) => ({
         whatsNearbyFeeds: state
     }),
 
+
+    isNextVideo: {shouldPlay: false, feedId: null},
+    setIsNextVideo: (state)=> set({
+        isNextVideo: state
+    })
 
 }));
 

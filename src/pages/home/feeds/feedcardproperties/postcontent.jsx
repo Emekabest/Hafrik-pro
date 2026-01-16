@@ -36,7 +36,7 @@ const PostContent = ({ feed, imageWidth, leftOffset, rightOffset, onImagePress, 
 
     if (feed.media && feed.media.length > 0) {
         if (isVideo) {
-            return <VideoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isMuted={isMuted} setIsMuted={setIsMuted} isFocused={isFocused} />;
+            return <VideoPostContent feedId={feed.id} media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} currentPlayingId={currentPlayingId} setCurrentPlayingId={setCurrentPlayingId} parentFeedId={feed.id} isMuted={isMuted} setIsMuted={setIsMuted} isFocused={isFocused} />;
         }
         return <PhotoPostContent media={feed.media} imageWidth={imageWidth} leftOffset={leftOffset} rightOffset={rightOffset} onImagePress={onImagePress} />;
     }

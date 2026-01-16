@@ -38,7 +38,7 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
 
-    console.log("This is currentId", currentPlayingId)
+    // console.log("This is currentId", currentPlayingId)
 
     const maxFeedTextLength = 200;
     const [isExpanded, setIsExpanded] = useState(false);
@@ -196,6 +196,8 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     </TouchableOpacity>
                 ) : <View style = {styles.textSection} />}
 
+
+
                 <PostContent 
                     feed={feed}
                     imageWidth={imageWidth}
@@ -208,7 +210,6 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     setIsMuted={setIsMuted}
                     isFocused={isFocused}
                 />
-
 
 
 

@@ -5,29 +5,24 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getPlayer } from '../videoRegistry';
+import VideoManager from '../../../../helpers/videomanager';
+import useStore from "../../../../repository/store.js";
+
 
 const aspectRatioCache = new Map();
 const MEDIA_HEIGHT = 470;
 const MEDIA_WIDTH = 240;
 
-const VideoPostContent = ({ media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
+const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted, isFocused }) => {
+   
+    
+   
     const navigation = useNavigation();
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
     const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
     
-    // const [aspectRatio, setAspectRatio] = useState(() => {
-    //     if (mediaUrl && aspectRatioCache.has(mediaUrl)) {
-    //         return aspectRatioCache.get(mediaUrl);
-    //     }
-    //     if (mediaItem && mediaItem.width && mediaItem.height){
-    //         const ratio = mediaItem.width / mediaItem.height;
-    //         if (mediaUrl) aspectRatioCache.set(mediaUrl, ratio);
-    //         return ratio;
-    //     }
-    //     return null;
-    // });
+
     
     const [isSingleVideoPlaying, setIsSingleVideoPlaying] = useState(false);
     const [isSingleVideoFinished, setIsSingleVideoFinished] = useState(false);
@@ -41,70 +36,17 @@ const VideoPostContent = ({ media, imageWidth, leftOffset, rightOffset, currentP
     const [retryKeySingle, setRetryKeySingle] = useState(0);
     const bufferTimeoutSingleRef = useRef(null);
 
-    // Player hooks for the single video (always call hooks in component body)
-    const hookSinglePlayer = useVideoPlayer(source || null, (p) => {
-        if (p && source) {
-            try { p.loop = true; } catch (e) {}
-        }
-    });
+    const [isReadyToPlay, setIsReadyToPlay] = useState(false);
 
-    const preloadedSingle = getPlayer(source) || getPlayer(mediaItem?.video_url);
-    const singlePlayer = preloadedSingle || hookSinglePlayer;
-
-    useEffect(() => {
-        if (singlePlayer) {
-            singlePlayer.muted = isMuted;
-        }
-    }, [singlePlayer, isMuted]);
-
-    const { isPlaying: singlePlaying } = useEvent(singlePlayer, 'playingChange', { isPlaying: singlePlayer?.playing ?? false });
-    const { status: singleStatus } = useEvent(singlePlayer, 'statusChange', { status: singlePlayer?.status ?? {} });
-
-    useEffect(() => {
-        if (!singlePlayer) return;
-        try {
-            if (shouldPlay) singlePlayer.play(); else singlePlayer.pause();
-        } catch (e) {}
-    }, [shouldPlay, singlePlayer]);
-
-    useEffect(() => {
-        setIsSingleVideoPlaying(singleStatus?.isPlaying ?? false);
-        setIsSingleVideoBuffering(singleStatus?.isBuffering ?? false);
-        if (singleStatus?.didJustFinish) setIsSingleVideoFinished(true);
-        if (singleStatus?.isPlaying) setIsSingleVideoFinished(false);
-    }, [singleStatus]);
-
-    useEffect(() => {
-        if (singlePlaying) setShowSinglePoster(false);
-    }, [singlePlaying]);
-
-    useEffect(() => {
-        if (preloadedSingle) setShowSinglePoster(false);
-    }, [preloadedSingle]);
+    const isNextVideo_store = useStore(state => state.isNextVideo);
 
 
+  
 
-    /** Delay video playback */
-    useEffect(() => {
-        let timer;
-        if (currentPlayingId === uniqueId && isFocused) {
-            timer = setTimeout(() => {
-                setShouldPlay(true);
-            }, 200);
-        } else {
-            setShouldPlay(false);
-        }
-        return () => clearTimeout(timer);
-    }, [currentPlayingId, uniqueId, isFocused]);
 
-    useEffect(() => {
-        return () => {
-            if (bufferTimeoutSingleRef.current) {
-                clearTimeout(bufferTimeoutSingleRef.current);
-                bufferTimeoutSingleRef.current = null;
-            }
-        };
-    }, []);
+    // const isMultiMedia = media.length > 1;
+    // const mediaItem = media.length > 0 ? media[0] : null;
+    
 
 
 
@@ -117,6 +59,169 @@ const VideoPostContent = ({ media, imageWidth, leftOffset, rightOffset, currentP
             setIsDownloadingSingle(false);
         }
     }, [isMultiMedia, mediaItem]);
+
+
+
+
+    // Player hooks for the single video (always call hooks in component body)
+    const player = useVideoPlayer(source || null, (p) => {
+        if (p && source) {
+            try { 
+                p.loop = true;
+            } catch (e) {
+
+            }
+        }
+    });
+
+
+
+
+
+
+    // const preloadedSingle = getPlayer(source) || getPlayer(mediaItem?.video_url);
+
+
+    // const singlePlayer = ;
+
+    // useEffect(() => {
+    //     if (player) {
+    //         player.muted = isMuted;
+    //     }
+    // }, [player, isMuted]);
+
+
+
+    const { isPlaying: singlePlaying } = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });
+    const { status: singleStatus } = useEvent(player, 'statusChange', { status: player?.status ?? {} });
+
+
+
+
+    useEffect(() => {
+
+        const registerPlayer = async () => {
+
+
+            if (!player) return;
+
+            const isReadyToPlay = player.status === 'readyToPlay';
+            setIsReadyToPlay(isReadyToPlay);
+            if (!isReadyToPlay) return;
+
+            try{
+
+                VideoManager.register(feedId, player);
+
+            }
+            catch(e){
+
+                console.log("Error registering video player:", e);
+            }
+
+        }
+
+        registerPlayer();
+    },[feedId, player?.status]);
+
+
+
+    useEffect(()=>{
+
+        if (isReadyToPlay){
+        
+            if (isNextVideo_store.shouldPlay && isNextVideo_store.feedId === feedId){
+                // console.log("Play!!", feedId)
+                    VideoManager.switchVideo(feedId);
+                    console.log("Playing video from VideoContent for feedId:", feedId);
+
+            }
+    }
+    },[isReadyToPlay, isNextVideo_store]);
+
+
+
+
+    useEffect(()=>{
+
+        console.log("From videocontent::"+isNextVideo_store.shouldPlay)
+
+
+    },[isNextVideo_store])
+
+
+
+
+    useEffect(()=>{
+
+        return () => {
+                console.log("render")
+                VideoManager.unregister(feedId);
+
+        };
+    },[feedId])
+
+    
+
+
+
+
+
+
+
+    // useEffect(() => {
+    //     if (!player) return;
+    //     try {
+    //         if (shouldPlay) player.play(); else player.pause();
+    //     } catch (e) {}
+    // }, [shouldPlay, player]);
+
+    
+
+    useEffect(() => {
+        setIsSingleVideoPlaying(singleStatus?.isPlaying ?? false);
+        setIsSingleVideoBuffering(singleStatus?.isBuffering ?? false);
+        if (singleStatus?.didJustFinish) setIsSingleVideoFinished(true);
+        if (singleStatus?.isPlaying) setIsSingleVideoFinished(false);
+    }, [singleStatus]);
+
+
+
+    useEffect(() => {
+        if (singlePlaying) setShowSinglePoster(false);
+    }, [singlePlaying]);
+
+    // useEffect(() => {
+    //     if (preloadedSingle) setShowSinglePoster(false);
+    // }, [preloadedSingle]);
+
+
+
+    /** Delay video playback */
+    // useEffect(() => {
+    //     let timer;
+    //     if (currentPlayingId === uniqueId && isFocused) {
+    //         timer = setTimeout(() => {
+    //             setShouldPlay(true);
+    //         }, 200);
+    //     } else {
+    //         setShouldPlay(false);
+    //     }
+    //     return () => clearTimeout(timer);
+    // }, [currentPlayingId, uniqueId, isFocused]);
+
+
+
+    useEffect(() => {
+        return () => {
+            if (bufferTimeoutSingleRef.current) {
+                clearTimeout(bufferTimeoutSingleRef.current);
+                bufferTimeoutSingleRef.current = null;
+            }
+        };
+    }, []);
+
+
 
 
 
@@ -178,8 +283,9 @@ const VideoPostContent = ({ media, imageWidth, leftOffset, rightOffset, currentP
                 <View style={{width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginLeft: leftOffset, borderRadius: 10, overflow: 'hidden', backgroundColor: '#000'}}>
                     {source ? (
                         <VideoView
+                            // ref={videoPlayerRefs}
                             style={{height:"100%", width: "100%"}}
-                            player={singlePlayer}
+                            player={player}
                             nativeControls={false}
                             contentFit="contain"
                             posterSource={{ uri: mediaItem.thumbnail }}

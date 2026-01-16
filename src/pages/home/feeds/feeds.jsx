@@ -18,6 +18,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import VideoPreloader from './VideoPreloader';
 import { clearRegistry } from './videoRegistry';
 import AppDetails from "../../../helpers/appdetails.js";
+import VideoManager from "../../../helpers/videomanager.js";
 
 
 
@@ -34,6 +35,27 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     const { token } = useAuth();
     const syncFeedData = useStore(state => state.syncFeedData);
     const feedsRef = useRef(feeds);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+    const isNextVideo_store = useStore(state => state.isNextVideo);
+    const setIsNextVideo = useStore(state => state.setIsNextVideo);
+
+    // setIsNextVideo({shouldPlay:false, feedId:null});
+
+   
+    // useState(()=>{
+
+    //     console.log("From Feeds Component::"+isNextVideo_store.shouldPlay)
+
+    //     if (isNextVideo_store.shouldPlay){
+    //         setIsNextVideo({shouldPlay:false, feedId:null});
+    //     }
+
+    // },[isNextVideo_store])
+
+
+
+
 
 
 
@@ -131,9 +153,9 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             setPage(nextPage);
         }
         setLoadingMore(false);
-
-
     };
+
+
 
 
     const renderFooter = () => (
@@ -163,16 +185,14 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             return (
               <FeedCard
                 feed={item.data}
-                currentPlayingId={currentPlayingId}
-                setCurrentPlayingId={setCurrentPlayingId}
-                isFocused={delayedFocus}
-                shouldPlay={shouldPlay}
               />
             );
           default:
             return null;
         }
     }, [currentPlayingId, delayedFocus]);
+
+
 
 
     {/* Preload next videos (non-blocking) */}
@@ -191,9 +211,17 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     
     
 
+    // useState(()=>{
+
+    //         console.log("Is next video", isNextVideo_store)
+
+    // },[isNextVideo_store])
+
     
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         // console.log("Viewable Items Changed:", viewableItems);
+
+
         const viewableVideoItem = viewableItems.find(item => {
             const feed = item.item;
                 // console.log( item);
@@ -206,6 +234,8 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                 } else if (feed.data?.type === 'video' || feed.data?.type === 'reel') {
                     if (feed.data.media && feed.data.media.length > 0) {
 
+                            
+
                         return true;
                     }
                 }
@@ -215,13 +245,34 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
         let playId = null;
 
+
+
         if (viewableVideoItem) {
+            console.log("Viewable Video Item");
+
+
+            setIsNextVideo({shouldPlay: true, feedId: viewableVideoItem.item.data.id});
+            setIsVideoPlaying(true);
+
             const feed = viewableVideoItem.item.data;
-            if (feed.type === 'shared' && feed.shared_post) {
+            if (feed.type === 'shared' && feed.shared_post){
                 playId = `${feed.id}_shared`;
             } else {
                 playId = `${feed.id}_video_0`;
             }
+
+            // VideoManager.switchVideo(viewableVideoItem.item.data.id);
+        }
+        else{   
+            console.log("isVideoPlaying: " + isVideoPlaying);   
+            if (isVideoPlaying){
+                console.log("No viewable video item - pausing video");
+
+                    // const p = 
+                // setIsNextVideo({...p});
+            }
+
+            //
         }
         
         setCurrentPlayingId(currentId => {
@@ -233,40 +284,10 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
         });
 
 
-
-
-
-        // Debounced prefetch: wait for scrolling to settle before starting downloads
-        try {
-            const startIndex = (viewableVideoItem && typeof viewableVideoItem.index === 'number') ? viewableVideoItem.index : null;
-            if (startIndex !== null) {
-                // collect up to 10 upcoming candidates, we'll let prefetch filter cacheable ones
-                const upcoming = feedsRef.current.slice(startIndex + 1, startIndex + 1 + 10);
-                const urls = upcoming.map(f => {
-                    if (!f) return null;
-                    if (f.type === 'shared' && f.shared_post && (f.shared_post.type === 'video' || f.shared_post.type === 'reel')) {
-                        return f.shared_post.media && f.shared_post.media[0] ? f.shared_post.media[0].video_url : null;
-                    }
-                    if ((f.type === 'video' || f.type === 'reel') && f.media && f.media[0]) {
-                        return f.media[0].video_url;
-                    }
-
-                    return null;
-                }).filter(Boolean);
-
-                if (urls.length > 0) {
-                    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
-                    prefetchTimerRef.current = setTimeout(() => {
-                        prefetchVideos(urls, { limit: 3, delayBetween: 500 });
-                        prefetchTimerRef.current = null;
-                    }, 700);
-                }
-            }
-        } catch (e) {
-            
-        }
     }).current;
 
+
+    
 
     const viewabilityConfig = useRef({
         itemVisiblePercentThreshold: 50, // Item must be 50% visible to be considered "viewable"
@@ -307,8 +328,8 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
                 onEndReachedThreshold={0.5}
                 initialNumToRender={3}
                 maxToRenderPerBatch={3}
-                windowSize={2}
-                // updateCellsBatchingPeriod={50}
+                windowSize={3}
+                updateCellsBatchingPeriod={50}
                 removeClippedSubviews={false}
                 contentContainerStyle={styles.containerFeeds}
                 onViewableItemsChanged={onViewableItemsChanged}
