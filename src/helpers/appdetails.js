@@ -14,7 +14,9 @@ const AppDetails = {
 
     APIs:{
         recentUpdates: `${baseUrl}/feed/list.php`,
-    }
+    },
+
+    mainTabNavigatorHeight: 60,
 
 
 

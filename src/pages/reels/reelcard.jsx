@@ -2,14 +2,11 @@ import { Dimensions, StyleSheet, View, StatusBar } from "react-native";
 import ReelMedia from "./reelmedia";
 import ReelInteractionContainer from "./reelinteractioncontainer";
 import { memo } from "react";
+import AppDetails from "../../helpers/appdetails";
 // import { StatusBar } from "expo-status-bar";
 
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-const statusBarHeight = Math.floor(StatusBar.currentHeight) || 0;
-
-console.log("Status Bar Height:", statusBarHeight);
-
 
 
 const ReelCard = ({ reel }) => {
@@ -32,7 +29,7 @@ const ReelCard = ({ reel }) => {
 const styles = StyleSheet.create({
 
     container:{
-        height: SCREEN_HEIGHT - statusBarHeight + 1,
+        height: SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight,
         width: '100%',
         backgroundColor: '#c7a391ff'
     }

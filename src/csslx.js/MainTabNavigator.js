@@ -13,6 +13,8 @@ import Profile from '../pages/Profile';
 import CreateReels from '../pages/createreels/createreelscreen'; // Add this import
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import App from '../../App';
+import AppDetails from '../helpers/appdetails';
 
 const Tab = createBottomTabNavigator();
 
@@ -153,7 +155,7 @@ const MainTabNavigator = () => {
 const styles = StyleSheet.create({
   tabBarContainer: {
     flexDirection: 'row',
-    height: 60,
+    height: AppDetails.mainTabNavigatorHeight,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
