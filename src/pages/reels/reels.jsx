@@ -19,7 +19,7 @@ import { Video } from 'expo-av';
 import { Ionicons, AntDesign, FontAwesome, Feather } from '@expo/vector-icons';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../../AuthContext';
 
 const { width, height } = Dimensions.get('window');
 const API_BASE = 'https://hafrik.com/api/v1/reels';
@@ -91,6 +91,8 @@ const CommentsModal = ({ visible, onClose, reelId, currentUser }) => {
       setLoading(false);
     }
   };
+
+  
 
   const submitComment = async () => {
     if (!currentUser?.id || !text.trim()) return;
