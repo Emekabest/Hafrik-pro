@@ -9,7 +9,6 @@ import CalculateElapsedTime from "../../../helpers/calculateelapsedtime";
 import EngagementBar from "./feedcardproperties/engagementbar.jsx";
 import ShareModal from "./share";
 import { Image as ExpoImage } from "expo-image";
-import { getPlayer } from './videoRegistry';
 import OptionsModal from "./options";
 import SvgIcon from "../../../assl.js/svg/svg";
 import useStore from "../../../repository/store";

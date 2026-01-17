@@ -77,6 +77,7 @@ const useStore = create((set) => ({
     }),
 
 
+    /** Controls muting of all videos in feeds ............................................... */
     isMuted: false,
     setIsMuted: (state)=> set({
         isMuted: state

@@ -5,7 +5,6 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { getPlayer } from '../videoRegistry';
 import CalculateElapsedTime from '../../../../helpers/calculateelapsedtime';
 import { SkeletonLoader } from './photocontent.jsx';
 
@@ -100,8 +99,8 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
         }
     });
 
-    const preloadedShared = getPlayer(source) || getPlayer(mediaItem?.video_url);
-    const sharedPlayer = preloadedShared || hookSharedPlayer;
+    // const preloadedShared = getPlayer(source) || getPlayer(mediaItem?.video_url);
+    const sharedPlayer = hookSharedPlayer;
 
     useEffect(() => {
         if (sharedPlayer) {
@@ -111,7 +110,6 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
 
 
     const { isPlaying: sharedPlaying } = useEvent(sharedPlayer, 'playingChange', { isPlaying: sharedPlayer?.playing ?? false });
-    const { status: sharedStatus } = useEvent(sharedPlayer, 'statusChange', { status: sharedPlayer?.status ?? {} });
 
 
     useEffect(() => {
@@ -127,11 +125,6 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
         if (sharedPlaying) setShowSharedPoster(false);
     }, [sharedPlaying]);
 
-
-
-    useEffect(() => {
-        if (preloadedShared) setShowSharedPoster(false);
-    }, [preloadedShared]);
 
     const handlePress = () => {
         navigation.navigate('CommentScreen', {feedId: post.id});

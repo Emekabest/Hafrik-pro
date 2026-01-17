@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform, AppState, Button } from "react-native"
 import FeedCard from "./feedcard.jsx";
-import React, { PureComponent } from "react";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import Banner from "../banner.jsx";
@@ -11,12 +10,6 @@ import { useAuth } from "../../../AuthContext.js";
 import FeedsHeader from "../feedsheader.jsx";
 import { useIsFocused } from '@react-navigation/native';
 import useStore from "../../../repository/store.js";
-import { clearCache, prefetchVideos } from "../../../helpers/cachemedia.js";
-import Quicklinks from "../quicklinks.jsx";
-import { useEvent } from 'expo';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import VideoPreloader from './VideoPreloader';
-import { clearRegistry } from './videoRegistry';
 import AppDetails from "../../../helpers/appdetails.js";
 import VideoManager from "../../../helpers/videomanager.js";
 
@@ -78,12 +71,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     useEffect(() => {
         feedsRef.current = feeds;
     }, [feeds]);
-    const prefetchTimerRef = useRef(null);
 
-    useEffect(() => {
-        // console.log("Whats wrong here")
-        clearCache();
-    }, []);
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
@@ -93,14 +81,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             subscription.remove();
         };
     }, []);
-
-
-    useEffect(() => {
-        // When app goes to background, clear prewarmed players to avoid native Activity issues
-        if (appState !== 'active') {
-            try { clearRegistry(); } catch (e) {}
-        }
-    }, [appState]);
 
 
 
@@ -115,16 +95,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             setDelayedFocus(false);
         }
     }, [isFocused, appState]);
-
-    useEffect(() => {
-        // Clear registry when screen loses focus or on unmount to free native resources
-        if (!isFocused) {
-            try { clearRegistry(); } catch (e) {}
-        }
-        return () => {
-            try { clearRegistry(); } catch (e) {}
-        };
-    }, [isFocused]);
 
 
 
@@ -158,11 +128,6 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
 
 
 
-    const renderFooter = () => (
-        <View style={styles.footerContainer}>
-            <ActivityIndicator size="small" color="#000" style={{ opacity: loadingMore ? 1 : 0 }} />
-        </View>
-    );
 
     
 
@@ -178,9 +143,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             return <FeedsHeader name={item.name} />
           case 'feed':
 
-            const shouldPlay = currentPlayingId === item.data.id && delayedFocus;
 
-            // console.log(currentPlayingId, item.data.id, shouldPlay);
             
             return (
               <FeedCard
@@ -190,25 +153,16 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
           default:
             return null;
         }
-    }, [currentPlayingId, delayedFocus]);
+    }, [delayedFocus]);
 
 
 
+    const renderFooter = () => (
+        <View style={styles.footerContainer}>
+            <ActivityIndicator size="small" color="#000" style={{ opacity: loadingMore ? 1 : 0 }} />
+        </View>
+    );
 
-    {/* Preload next videos (non-blocking) */}
-    {delayedFocus && appState === 'active' && (
-        <VideoPreloader urls={feeds.map(f => {
-            if (!f) return null;
-            if (f.type === 'shared' && f.shared_post && (f.shared_post.type === 'video' || f.shared_post.type === 'reel')) {
-                    return f.shared_post.media && f.shared_post.media[0] ? f.shared_post.media[0].video_url : null;
-            }
-            if ((f.type === 'video' || f.type === 'reel') && f.media && f.media[0]) {
-                    return f.media[0].video_url;
-            }
-            return null;
-    }).filter(Boolean)} limit={3} />
-    )}
-    
     
 
    
