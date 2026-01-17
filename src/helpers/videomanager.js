@@ -17,7 +17,6 @@ class VideoManager {
 
             this.playersRef.set(feedId, player);
 
-            console.log(`Registered video player for feedId: ${feedId}`);
         } 
     }
 
@@ -25,7 +24,6 @@ class VideoManager {
 
     unregister(feedId) {
         this.playersRef.delete(feedId);
-        console.log(`Unregistering video player for feedId: ${feedId}`);
 
     }
 
@@ -46,7 +44,6 @@ class VideoManager {
 
         if (video && video.status === 'readyToPlay') {
 
-            console.log(`Playing video for feedId: ${feedId}`);
             video.play();   
             this.currentlyPlayingVideoId = feedId;
         }
@@ -55,7 +52,6 @@ class VideoManager {
 
 
     singlePause(){
-        console.log("Currently Paused Video Id: " + this.currentlyPlayingVideoId);
         if (!this.currentlyPlayingVideoId) return;
         const video = this.playersRef.get(this.currentlyPlayingVideoId);
         if (video) {

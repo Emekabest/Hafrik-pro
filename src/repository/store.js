@@ -44,18 +44,13 @@ const useStore = create((set) => ({
     setSearchResultsVisible: (visible) => set({ isSearchResultsVisible: visible }),
 
 
-
-
     
 
     refreshSignal: 0,
     triggerRefresh: () => set((state) => ({ refreshSignal: state.refreshSignal + 1 })),
 
 
-
-
     /**Feeds Section............................................... */
-
     recentUpdateFeeds: [],
     setRecentUpdateFeeds: (state)=> set({
         recentUpdateFeeds: state
@@ -81,7 +76,7 @@ const useStore = create((set) => ({
         isNextVideo: state
     }),
 
-    
+
     isMuted: false,
     setIsMuted: (state)=> set({
         isMuted: state
