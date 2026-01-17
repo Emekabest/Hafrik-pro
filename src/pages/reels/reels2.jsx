@@ -22,14 +22,17 @@ const Reels2 = () => {
                 setReels(response.data);
             }
         }
-        getReelsData();
+        getReelsData();//Store!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     },[])
 
 
     
 
+
+    
+
     return(
-        <View>
+        <View style={{ flex: 1}}>
             <ReelHeader />
             <ReelCard />            
         </View>
