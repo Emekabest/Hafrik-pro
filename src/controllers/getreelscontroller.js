@@ -5,7 +5,7 @@ const GetReelsController = async(token) => {
 
     try{
 
-        const response = await axios.get(`https://hafrik.com/api/v1/feed/list.php?page=1`, {
+        const response = await axios.get(`https://hafrik.com/api/v1/reels/list.php?page=1`, {
             headers:{
                     Authorization: `Bearer ${token}`,
                     'Cache-Control': 'no-cache'

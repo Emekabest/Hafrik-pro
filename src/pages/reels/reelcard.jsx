@@ -4,7 +4,7 @@ import ReelInteractionContainer from "./reelinteractioncontainer";
 import { memo } from "react";
 
 
-const ReelCard = () => {
+const ReelCard = ({ reel }) => {
 
 
 
@@ -12,9 +12,9 @@ const ReelCard = () => {
 
     return(
         <View style={styles.container}>
-            <ReelMedia />
+            <ReelMedia media={reel.media} />
+
             <ReelInteractionContainer />
-        
         </View>
     )
 
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     container:{
         height: "100%",
         width: '100%',
-        backgroundColor: '#91c7b1ff'
+        backgroundColor: '#c7a391ff'
     }
 
 
