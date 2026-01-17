@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import GetReelsController from "../../controllers/getreelscontroller";
 import { useAuth } from "../../AuthContext";
+import ReelHeader from "./reelheader";
 
 
 
@@ -28,7 +29,8 @@ const Reels2 = () => {
 
     return(
         <View>
-            <Text></Text>
+            <ReelHeader />
+            
         </View>
     )
 
