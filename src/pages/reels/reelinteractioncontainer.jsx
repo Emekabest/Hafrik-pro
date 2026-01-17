@@ -2,6 +2,8 @@ import { memo } from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import ReelEngagementBar from "./reelengagementbar";
+import AppDetails from "../../helpers/appdetails";
+import { TouchableOpacity } from "react-native";
 
 
 const ReelInteractionContainer = () => {
@@ -17,8 +19,15 @@ const ReelInteractionContainer = () => {
                     <View style={styles.profileIconWrapper}>
                         <View style={styles.profileIconContainer}>
                             <Ionicons name="person" size={24} color="black" />
+
+                        </View>
+                        <View style={styles.crossIconWrapper}>
+                            <TouchableOpacity activeOpacity={1} style={styles.crossIconContainer}>
+                                <Ionicons name="add" size={20} color="#fff" />
+                            </TouchableOpacity>
                         </View>
                     </View>
+                    
                     <ReelEngagementBar />
                 </View>
             </View>
@@ -61,6 +70,7 @@ const styles = StyleSheet.create({
         width: "100%",
         justifyContent: 'center',
         alignItems: 'center',
+        position:"relative",
     },
 
     profileIconContainer: {
@@ -72,8 +82,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
-})
+    crossIconWrapper: {
+        height: "20%",
+        width: "100%",
+        position: "absolute",
+        bottom: 17,
+        left: 11,
+    },
 
+    crossIconContainer: {
+        width: 40,
+        height: 25,
+        borderRadius: 10,
+        backgroundColor: AppDetails.primaryColor,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+})
 
 const handleMemomize = (prevProps, nextProps) => {
 
