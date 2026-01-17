@@ -5,14 +5,18 @@ class VideoManager {
     constructor(){
         this.playersRef = new Map();
         this.currentlyPlayingVideoId = null;
-        
+
+        this.isMuted = false;
     }
 
 
-    register(feedId, ref) {
-        if (ref){
+    register(feedId, player) {
+        if (player){
 
-            this.playersRef.set(feedId, ref);
+            player.muted = this.isMuted;
+
+            this.playersRef.set(feedId, player);
+
             console.log(`Registered video player for feedId: ${feedId}`);
         } 
     }
@@ -50,8 +54,6 @@ class VideoManager {
 
 
 
-
-
     singlePause(){
         console.log("Currently Paused Video Id: " + this.currentlyPlayingVideoId);
         if (!this.currentlyPlayingVideoId) return;
@@ -62,8 +64,9 @@ class VideoManager {
     }
 
 
+
     pause(feedId) {
-        const video = this.playersRef.get(this.currentlyPlayingVideoId);
+        const video = this.playersRef.get(feedId);
         if (video) {
             video.pause();
             if (this.currentlyPlayingVideoId === feedId) this.currentlyPlayingVideoId = null;
@@ -83,9 +86,40 @@ class VideoManager {
         this.play(nextVideoId);
     }
 
+
+    toggleMute(){
+    
+        if (this.isMuted === false){
+            this.isMuted = true; 
+        }
+        else if (this.isMuted === true){
+            this.isMuted = false; 
+        }
+
+        const allPlayers = this.getAllVideoPlayers();
+        allPlayers.forEach((player)=>{
+
+            player.muted = this.isMuted;
+        
+        })
+    
+        
+    }
+
+    setMute(muteStatus){
+        this.isMuted = muteStatus;
+    }
+    getMute(){
+        return this.isMuted;
+    }
+
+    
     getVideoPlayer(feedId){
 
         return this.playersRef.get(feedId) || null;
+    }
+    getAllVideoPlayers(){
+        return Array.from(this.playersRef.values());
     }
 
 }

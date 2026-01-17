@@ -80,6 +80,8 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
         };
     }, []);
 
+
+    
     useEffect(() => {
         // Use direct source for shared post videos
         setSource(null);
@@ -88,6 +90,8 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
             setIsDownloadingShared(false);
         }
     }, [isVideo, mediaItem]);
+
+
 
     // Create player for shared post video (hooks called unconditionally)
     const hookSharedPlayer = useVideoPlayer(source || null, (p) => {
@@ -105,7 +109,7 @@ const SharedPostCard = ({ post, currentPlayingId, setCurrentPlayingId, parentFee
         }
     }, [sharedPlayer, isMuted]);
 
-    
+
     const { isPlaying: sharedPlaying } = useEvent(sharedPlayer, 'playingChange', { isPlaying: sharedPlayer?.playing ?? false });
     const { status: sharedStatus } = useEvent(sharedPlayer, 'statusChange', { status: sharedPlayer?.status ?? {} });
 

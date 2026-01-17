@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../helpers/appdetails';
 import { useAuth } from '../AuthContext';
 import useStore from '../repository/store';
+import VideoManager from '../helpers/videomanager';
 
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -22,7 +23,10 @@ const Header = ({ onOpenDrawer }) => {
 
     const { user, token, loading } = useAuth();
 
+    const handleSearch = () => {
     
+      setSearchVisible(true);
+    };
 
   return (
     <View style={styles.header}>
@@ -48,7 +52,7 @@ const Header = ({ onOpenDrawer }) => {
           </View>
 
           <View style={styles.headerRight}>
-            <TouchableOpacity onPress={() => setSearchVisible(true)} style={styles.headerSearch} activeOpacity={1}>
+            <TouchableOpacity onPress={handleSearch} style={styles.headerSearch} activeOpacity={1}>
               <Ionicons name="search" size={28} color={AppDetails.primaryColor} />
             </TouchableOpacity>
           </View>

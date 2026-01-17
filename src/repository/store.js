@@ -79,6 +79,12 @@ const useStore = create((set) => ({
     isNextVideo: {shouldPlay: false, feedId: null},
     setIsNextVideo: (state)=> set({
         isNextVideo: state
+    }),
+
+    
+    isMuted: false,
+    setIsMuted: (state)=> set({
+        isMuted: state
     })
 
 }));

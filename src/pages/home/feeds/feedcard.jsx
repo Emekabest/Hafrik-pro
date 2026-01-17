@@ -204,11 +204,6 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     leftOffset={leftOffset}
                     rightOffset={rightOffset}
                     onImagePress={setFullScreenImage}
-                    currentPlayingId={currentPlayingId}
-                    setCurrentPlayingId={setCurrentPlayingId}
-                    isMuted={isMuted}
-                    setIsMuted={setIsMuted}
-                    isFocused={isFocused}
                 />
 
 

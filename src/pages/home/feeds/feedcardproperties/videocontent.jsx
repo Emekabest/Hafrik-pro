@@ -7,13 +7,14 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import VideoManager from '../../../../helpers/videomanager';
 import useStore from "../../../../repository/store.js";
+import { Video } from 'expo-av';
 
 
 
 const MEDIA_HEIGHT = 470;
 const MEDIA_WIDTH = 240;
 
-const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId, isMuted, setIsMuted }) => {
+const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, currentPlayingId, setCurrentPlayingId, parentFeedId}) => {
    
     
    
@@ -39,6 +40,11 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
     const isNextVideo_store = useStore(state => state.isNextVideo);
     const isSearchVisible_store = useStore(state => state.isSearchVisible);
 
+    const isMuted_store = useStore(state => state.isMuted);
+    const setIsMuted_store = useStore(state => state.setIsMuted);
+
+    const [isMuted, setIsMuted] = useState(isMuted_store);
+
 
 
 
@@ -57,7 +63,7 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
     },[isFocused, isSearchVisible_store])
 
 
-    
+
 
 
     useEffect(() => {
@@ -131,7 +137,6 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
             }
 
 
-            // console.log(player.status)
         }
 
 
@@ -144,8 +149,6 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
 
 
     
-
-
 
 
     useEffect(()=>{
@@ -182,20 +185,7 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
         
     },[feedId])
 
-    
 
-
-
-
-
-
-
-    // useEffect(() => {
-    //     if (!player) return;
-    //     try {
-    //         if (shouldPlay) player.play(); else player.pause();
-    //     } catch (e) {}
-    // }, [shouldPlay, player]);
 
     
 
@@ -211,6 +201,8 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
     useEffect(() => {
         if (singlePlaying) setShowSinglePoster(false);
     }, [singlePlaying]);
+
+
 
     // useEffect(() => {
     //     if (preloadedSingle) setShowSinglePoster(false);
@@ -252,15 +244,25 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
         navigation.navigate('CommentScreen', {feedId: parentFeedId});
     };
 
-    // useEffect(() => {
-    //     if (mediaUrl && !aspectRatioCache.has(mediaUrl)) {
-    //         Image.getSize(mediaUrl, (width, height) => {
-    //             const ratio = width / height;
-    //             aspectRatioCache.set(mediaUrl, ratio);
-    //             setAspectRatio(ratio);
-    //         }, (error) => console.log(error));
-    //     }
-    // }, [mediaUrl]);
+
+
+
+    const handleToggleMute = () => {
+
+        VideoManager.toggleMute();
+
+        setIsMuted_store(VideoManager.getMute());
+    }
+
+
+
+    useEffect(()=>{
+
+        setIsMuted(isMuted_store);
+
+    },[isMuted_store])
+
+
 
     if (!media || media.length === 0) return null;
 
@@ -341,7 +343,7 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
                         <ActivityIndicator size="large" color="#fff" animating={isDownloadingSingle} />
                     </View>
 
-                    <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
+                    <TouchableOpacity onPress={handleToggleMute} style={styles.muteButton}>
                         <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={20} color="white" />
                     </TouchableOpacity>
                 </View>
@@ -371,18 +373,9 @@ const styles = StyleSheet.create({
 
 
 const handleMemomize = (prevProps, nextProps) => {
-    if (prevProps.parentFeedId !== nextProps.parentFeedId) return false;
-    if ((prevProps.media?.length ?? 0) !== (nextProps.media?.length ?? 0)) return false;
-    const prevFirst = prevProps.media?.[0] ?? {};
-    const nextFirst = nextProps.media?.[0] ?? {};
-    if (prevFirst.video_url !== nextFirst.video_url) return false;
-    if (prevFirst.thumbnail !== nextFirst.thumbnail) return false;
+
     if (prevProps.isMuted !== nextProps.isMuted) return false;
-    if (prevProps.isFocused !== nextProps.isFocused) return false;
-    if (prevProps.currentPlayingId !== nextProps.currentPlayingId) return false;
-    if (prevProps.imageWidth !== nextProps.imageWidth) return false;
-    if (prevProps.leftOffset !== nextProps.leftOffset) return false;
-    if (prevProps.rightOffset !== nextProps.rightOffset) return false;
+
     return true;
 }
 export default memo(VideoPostContent, handleMemomize);
