@@ -1,5 +1,8 @@
+import { Ionicons } from "@expo/vector-icons";
 import { memo } from "react";
+import { Text, TouchableOpacity } from "react-native";
 import { StyleSheet, View } from "react-native";
+import SvgIcon from "../../assl.js/svg/svg";
 
 
 const ReelEngagementBar = () => {
@@ -9,6 +12,21 @@ const ReelEngagementBar = () => {
     return(
         <View style={styles.container}> 
 
+            <TouchableOpacity activeOpacity={1} style={[styles.item]}>
+                        <Ionicons name={'heart-outline'} size={27} color='#fff'/>
+                        <Text style={styles.count}>10</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity activeOpacity={1} style={[styles.item]} >
+                {/* <SvgIcon name="comment" width={25} height={25} color="#fff" /> */}
+                <Ionicons name={'chatbubble'} size={27} color='#fff'/>
+                <Text style={styles.count}>20</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity activeOpacity={1} style={[styles.item]} >
+                {/* <SvgIcon name="share" width={25} height={25} color="#fff" /> */}
+                <Ionicons name={"share-social-outline"} size={27} color='#fff'/>
+            </TouchableOpacity>
 
         </View>
     )        
@@ -19,9 +37,25 @@ const ReelEngagementBar = () => {
 const styles = StyleSheet.create({
 
     container:{
-        height:"80%",
+        height:"60%",
         width:"100%",
-        backgroundColor:"#279a36ff"
+        flexDirection: 'column',
+        // justifyContent: 'center',
+        alignItems: 'center',
+        // paddingVertical: 5,
+        // backgroundColor:"#279a36ff"
+    },
+
+    item: {
+        alignItems: 'center',
+        marginVertical: 15,
+    },
+
+    count: {
+        color: '#fff',
+        fontFamily: "WorkSans_500Medium",
+        fontSize: 12,
+        marginTop: 2,
     }
 })
 

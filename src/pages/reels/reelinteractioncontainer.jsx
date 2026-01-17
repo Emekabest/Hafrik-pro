@@ -50,14 +50,14 @@ const styles = StyleSheet.create({
         width: '100%',
         display:"flex",
         flexDirection:"row",
-        backgroundColor:"#000000a0",
+        // backgroundColor:"#000000a0",
 
     },
 
     interactionContainerLeft:{
         height: '100%',
         width: '85%',
-        backgroundColor:"#fff",
+        // backgroundColor:"#fff",
     },
 
     interactionContainerRight:{
