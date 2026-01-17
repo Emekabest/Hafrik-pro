@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 // Import your screens
 import HomePage from '../pages/home/Home'; // Make sure this is the correct path
 import Reels from '../pages/reels/reels';
+import Reels2 from '../pages/reels/reels2';
 import Profile from '../pages/Profile';
 import CreateReels from '../pages/createreels/createreelscreen'; // Add this import
 
@@ -124,7 +125,7 @@ const MainTabNavigator = () => {
       
       <Tab.Screen 
         name="Reels" 
-        component={Reels}
+        component={Reels2}
         options={{
           tabBarLabel: 'Reels',
         }}

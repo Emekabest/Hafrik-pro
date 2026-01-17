@@ -93,7 +93,7 @@ const CommentsModal = ({ visible, onClose, reelId, currentUser }) => {
   };
 
   
-
+  
   const submitComment = async () => {
     if (!currentUser?.id || !text.trim()) return;
 
@@ -108,9 +108,14 @@ const CommentsModal = ({ visible, onClose, reelId, currentUser }) => {
     loadComments();
   };
 
+
+
   useEffect(() => {
     if (visible) loadComments();
   }, [visible]);
+
+
+
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -149,6 +154,7 @@ const CommentsModal = ({ visible, onClose, reelId, currentUser }) => {
                 placeholder="Add a comment..."
                 style={styles.commentInput}
               />
+
               <TouchableOpacity onPress={submitComment}>
                 <Text style={styles.postBtn}>Post</Text>
               </TouchableOpacity>

@@ -58,7 +58,7 @@ function AppNavigator() {
 
 
 
-  /**Pause or play any video playing in the feed */
+  /**Pause or any video playing in the feed */
   const isNextVideo = useSharedStore(state => state.isNextVideo);
   useEffect(() => {
 
