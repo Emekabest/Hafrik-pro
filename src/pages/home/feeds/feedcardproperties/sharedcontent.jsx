@@ -304,36 +304,36 @@ const styles = StyleSheet.create({
 
 
 const handleMemomize = (prevProps, nextProps) => {
-    const p = prevProps;
-    const n = nextProps;
+    // const p = prevProps;
+    // const n = nextProps;
 
-    // Different post -> re-render
-    if (p.post.id !== n.post.id) return false;
+    // // Different post -> re-render
+    // if (p.post.id !== n.post.id) return false;
 
-    // Counts changed
-    if ((p.post.likes_count || p.post.likes) !== (n.post.likes_count || n.post.likes)) return false;
-    if ((p.post.comments_count || 0) !== (n.post.comments_count || 0)) return false;
+    // // Counts changed
+    // if ((p.post.likes_count || p.post.likes) !== (n.post.likes_count || n.post.likes)) return false;
+    // if ((p.post.comments_count || 0) !== (n.post.comments_count || 0)) return false;
 
-    // Type or text changed
-    if (p.post.type !== n.post.type) return false;
-    if ((p.post.text || '') !== (n.post.text || '')) return false;
+    // // Type or text changed
+    // if (p.post.type !== n.post.type) return false;
+    // if ((p.post.text || '') !== (n.post.text || '')) return false;
 
-    // Media length changed
-    const pMediaLen = (p.post.media && p.post.media.length) || 0;
-    const nMediaLen = (n.post.media && n.post.media.length) || 0;
-    if (pMediaLen !== nMediaLen) return false;
+    // // Media length changed
+    // const pMediaLen = (p.post.media && p.post.media.length) || 0;
+    // const nMediaLen = (n.post.media && n.post.media.length) || 0;
+    // if (pMediaLen !== nMediaLen) return false;
 
-    // Derived shouldPlay flag for this shared post
-    const prevShouldPlay = !!(p.currentPlayingId && String(p.currentPlayingId).startsWith(`${p.parentFeedId}_`) && p.isFocused);
-    const nextShouldPlay = !!(n.currentPlayingId && String(n.currentPlayingId).startsWith(`${n.parentFeedId}_`) && n.isFocused);
-    if (prevShouldPlay !== nextShouldPlay) return false;
+    // // Derived shouldPlay flag for this shared post
+    // const prevShouldPlay = !!(p.currentPlayingId && String(p.currentPlayingId).startsWith(`${p.parentFeedId}_`) && p.isFocused);
+    // const nextShouldPlay = !!(n.currentPlayingId && String(n.currentPlayingId).startsWith(`${n.parentFeedId}_`) && n.isFocused);
+    // if (prevShouldPlay !== nextShouldPlay) return false;
 
-    // mute/focus changes
-    if (p.isMuted !== n.isMuted) return false;
-    if (p.isFocused !== n.isFocused) return false;
+    // // mute/focus changes
+    // if (p.isMuted !== n.isMuted) return false;
+    // if (p.isFocused !== n.isFocused) return false;
 
-    // No meaningful changes -> skip re-render
-    return true;
+    // // No meaningful changes -> skip re-render
+    // return true;
 }
 
 

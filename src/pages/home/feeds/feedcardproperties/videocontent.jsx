@@ -378,4 +378,4 @@ const handleMemomize = (prevProps, nextProps) => {
 
     return true;
 }
-export default memo(VideoPostContent, handleMemomize);
+export default memo(VideoPostContent);

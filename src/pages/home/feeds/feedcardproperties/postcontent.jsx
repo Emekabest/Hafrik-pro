@@ -79,4 +79,4 @@ const handleMemomize = (prevProps, nextProps) => {
 
     return true;
 };
-export default memo(PostContent, handleMemomize);
+export default memo(PostContent);

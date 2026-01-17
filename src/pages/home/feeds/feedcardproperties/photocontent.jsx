@@ -174,5 +174,5 @@ const handleMemomize = (prevProps, nextProps) => {
 
     return true;
 }
-export default memo(PhotoPostContent);
+export default memo(PhotoPostContent, handleMemomize);
 export { SkeletonLoader };
