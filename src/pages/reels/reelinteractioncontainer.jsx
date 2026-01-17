@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { StyleSheet, View } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 import ReelEngagementBar from "./reelengagementbar";
 
 
@@ -13,8 +14,10 @@ const ReelInteractionContainer = () => {
                     
                 </View>
                 <View style={styles.interactionContainerRight}>
-                    <View style={{height:"20%", width:"100%", backgroundColor:"#000000a0"}}>
-
+                    <View style={styles.profileIconWrapper}>
+                        <View style={styles.profileIconContainer}>
+                            <Ionicons name="person" size={24} color="black" />
+                        </View>
                     </View>
                     <ReelEngagementBar />
                 </View>
@@ -51,11 +54,26 @@ const styles = StyleSheet.create({
     interactionContainerRight:{
         height: '100%',
         width: '15%',
-        backgroundColor:"#dcdcdcff",
     },
 
+    profileIconWrapper: {
+        height: "20%",
+        width: "100%",
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    profileIconContainer: {
+        width: 50,
+        height: 50,
+        borderRadius: 30,
+        backgroundColor: 'white',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 
 })
+
 
 const handleMemomize = (prevProps, nextProps) => {
 
