@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import GetReelsController from "../../controllers/getreelscontroller";
 import { useAuth } from "../../AuthContext";
 import ReelHeader from "./reelheader";
+import ReelCard from "./reelcard";
 
 
 
@@ -21,7 +22,7 @@ const Reels2 = () => {
                 setReels(response.data);
             }
         }
-        getReelsData();////
+        getReelsData();
     },[])
 
 
@@ -30,7 +31,7 @@ const Reels2 = () => {
     return(
         <View>
             <ReelHeader />
-            
+            <ReelCard />            
         </View>
     )
 

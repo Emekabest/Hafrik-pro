@@ -6,11 +6,6 @@ const ReelHeader = () => {
     const [selectedTab, setSelectedTab] = useState('foryou'); // Default selected tab
 
 
-
-
-
-
-
     return (
         <View style={styles.header}>
             <TouchableOpacity activeOpacity={1} style={styles.iconButton}>
@@ -39,7 +34,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 10,
         paddingHorizontal: 20,
-        // backgroundColor: 'black',
+        backgroundColor: 'black',
     },
     iconButton: {
         padding: 5,
