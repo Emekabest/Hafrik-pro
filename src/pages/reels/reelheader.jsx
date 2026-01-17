@@ -1,6 +1,3 @@
-
-
-
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,10 +5,16 @@ import { Ionicons } from '@expo/vector-icons';
 const ReelHeader = () => {
     const [selectedTab, setSelectedTab] = useState('foryou'); // Default selected tab
 
+
+
+
+
+
+
     return (
         <View style={styles.header}>
             <TouchableOpacity activeOpacity={1} style={styles.iconButton}>
-                <Ionicons name="radio" size={15} color="white" />
+                <Ionicons name="radio" size={15} color="#333" />
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={1} onPress={() => setSelectedTab('following')} style={styles.tabButton}>
                 <Text style={[styles.tabText, selectedTab === 'following' && styles.selectedTabText]}>Following</Text>
@@ -23,7 +26,7 @@ const ReelHeader = () => {
                 <Text style={[styles.tabText, selectedTab === 'foryou' && styles.selectedTabText]}>For You</Text>
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={1} style={styles.iconButton}>
-                <Ionicons name="search" size={18} color="white" />
+                <Ionicons name="search" size={18} color="#333" />
             </TouchableOpacity>
         </View>
     );
@@ -36,7 +39,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 10,
         paddingHorizontal: 20,
-        backgroundColor: 'black',
+        // backgroundColor: 'black',
     },
     iconButton: {
         padding: 5,
@@ -45,7 +48,7 @@ const styles = StyleSheet.create({
         padding: 5,
     },
     tabText: {
-        color: 'white',
+        color: '#333',
         fontFamily: 'WorkSans_600SemiBold',
         fontSize: 13,
     },
