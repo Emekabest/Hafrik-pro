@@ -25,7 +25,7 @@ const ReelEngagementBar = () => {
 
             <TouchableOpacity activeOpacity={1} style={[styles.item]} >
                 {/* <SvgIcon name="share" width={25} height={25} color="#fff" /> */}
-                <Ionicons name={"share-social-outline"} size={27} color='#fff'/>
+                <Ionicons name={"share-social"} size={27} color='#fff'/>
             </TouchableOpacity>
 
         </View>

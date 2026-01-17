@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import ReelEngagementBar from "./reelengagementbar";
 import AppDetails from "../../helpers/appdetails";
@@ -13,6 +13,24 @@ const ReelInteractionContainer = () => {
 
             <View style ={styles.interactionContainer}>
                 <View style={styles.interactionContainerLeft}>
+                    <View style={styles.userInfo}>
+                        <Text style={styles.username}>Dr Taiwo Seyi</Text>
+                        <Text style={styles.time}> 2h ago </Text>
+                    </View>
+
+
+                    <View>
+                        <Text style={styles.caption}>
+                            This is the caption of the reel post...
+                            This is the caption of the reel post...
+                            This is the caption of the reel post...
+                            This is the caption of the reel post...
+                            This is the caption of the reel post...
+                            This is the caption of the reel post...
+                            This is the caption of the reel post...
+                        </Text>
+                    </View>
+
                     
                 </View>
                 <View style={styles.interactionContainerRight}>
@@ -58,6 +76,9 @@ const styles = StyleSheet.create({
         height: '100%',
         width: '85%',
         // backgroundColor:"#fff",
+        justifyContent: 'flex-end',
+        paddingBottom: 20,
+        paddingHorizontal: 10,
     },
 
     interactionContainerRight:{
@@ -97,6 +118,33 @@ const styles = StyleSheet.create({
         backgroundColor: AppDetails.primaryColor,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+
+    username: {
+        fontSize: 16,
+        fontFamily:"ReadexPro_600SemiBold",
+        color: '#fff',
+        marginBottom: 5,
+    },
+
+    userInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 5,
+    },
+
+    time: {
+        paddingBottom: 5,
+        fontSize: 12,
+        color: '#a2a2a2ff',
+        fontFamily: 'WorkSans_500Medium',
+    },
+
+    caption: {
+        fontSize: 14,
+        color: '#fff',
+        fontFamily:"WorkSans_500Medium",
+        lineHeight: 20,
     },
 
 })
