@@ -1,4 +1,4 @@
-import { Dimensions, StyleSheet, View, StatusBar } from "react-native";
+import { Dimensions, StyleSheet, View, StatusBar, Platform } from "react-native";
 import ReelMedia from "./reelmedia";
 import ReelInteractionContainer from "./reelinteractioncontainer";
 import { memo } from "react";
@@ -17,7 +17,7 @@ const ReelCard = ({ reel }) => {
 
     return(
         <View style={styles.container}>
-            <ReelMedia media={reel.media} />
+            <ReelMedia reelId={reel.id} media={ reel.media} />
 
             <ReelInteractionContainer />
         </View>
@@ -29,9 +29,9 @@ const ReelCard = ({ reel }) => {
 const styles = StyleSheet.create({
 
     container:{
-        height: SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight,
+        height: Platform.OS === 'android' ? SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight : SCREEN_HEIGHT,
         width: '100%',
-        backgroundColor: '#c7a391ff'
+        backgroundColor: '#000000'
     }
 
 

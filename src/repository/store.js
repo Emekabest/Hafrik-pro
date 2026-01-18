@@ -81,7 +81,20 @@ const useStore = create((set) => ({
     isMuted: false,
     setIsMuted: (state)=> set({
         isMuted: state
-    })
+    }),
+
+    /** Reels Section ............................................... */
+    reels:[],
+    setReels:(state)=> set({
+        reels: state
+    }),
+
+
+    currentReel:{shouldPlay: false, reelId: null},
+    setCurrentReel:(state)=> set({
+        currentReel: state
+    }),
+
 
 }));
 
