@@ -53,6 +53,34 @@ const Reels2 = () => {
         index
     }), []);
 
+    const gestureTriggeredRef = useRef(false);
+    const SWIPE_TRIGGER = Math.min(80, ITEM_HEIGHT * 0.15); // px threshold to trigger immediate snap
+
+    const onGestureEvent = useCallback(({ nativeEvent }) => {
+        const translationY = nativeEvent.translationY ?? 0;
+        if (gestureTriggeredRef.current) return;
+        // swipe up (negative translation) -> next
+        if (translationY <= -SWIPE_TRIGGER) {
+            gestureTriggeredRef.current = true;
+            const start = currentIndexRef.current;
+            const target = Math.min(reels.length - 1, start + 1);
+            if (target !== start && flatListRef.current) {
+                flatListRef.current.scrollToIndex({ index: target, animated: true });
+                currentIndexRef.current = target;
+            }
+        }
+        // swipe down (positive translation) -> prev
+        if (translationY >= SWIPE_TRIGGER) {
+            gestureTriggeredRef.current = true;
+            const start = currentIndexRef.current;
+            const target = Math.max(0, start - 1);
+            if (target !== start && flatListRef.current) {
+                flatListRef.current.scrollToIndex({ index: target, animated: true });
+                currentIndexRef.current = target;
+            }
+        }
+    }, [reels]);
+
     const onScrollBeginDrag = useRef(({ nativeEvent }) => {
 
         const offsetY = nativeEvent.contentOffset?.y ?? 0;
@@ -90,58 +118,7 @@ const Reels2 = () => {
     // set current playing id/state here if you use it
   }).current;
 
-    const onScrollEndDrag = useRef(({ nativeEvent }) => {
-        const endOffset = nativeEvent.contentOffset?.y ?? 0;
-        const start = startDragRef.current || { offset: 0 };
-        const dy = endOffset - (start.offset || 0);
-
-        // determine direction: prefer dy sign (finger movement)
-        const direction = dy === 0 ? 0 : Math.sign(dy);
-        const startIndex = startIndexRef.current;
-        let targetIndex = startIndex;
-
-        if (direction !== 0) {
-            targetIndex = startIndex + (direction > 0 ? 1 : -1);
-        } else {
-            // small drag, check half-item threshold
-            if (Math.abs(dy) > ITEM_HEIGHT / 2) targetIndex = startIndex + (dy > 0 ? 1 : -1);
-        }
-
-        // clamp
-        const maxIndex = Math.max(0, reels.length - 1);
-        targetIndex = Math.max(0, Math.min(maxIndex, targetIndex));
-
-        // cancel native momentum immediately by resetting to the current offset (no animation).
-        // if native endOffset is 0 (some platforms report 0) fall back to startIndex offset
-        const cancelOffset = (endOffset === 0 && startIndex > 0) ? startIndex * ITEM_HEIGHT : endOffset;
-        if (cancelOffset === 0 && startIndex > 0) {
-            console.log('[reels] endOffset was 0, using startIndex offset', { startIndex, cancelOffset });
-        }
-        if (flatListRef.current && typeof flatListRef.current.scrollToOffset === 'function') {
-            flatListRef.current.scrollToOffset({ offset: cancelOffset, animated: false });
-        }
-
-        // clear any pending snap
-        if (snapTimeoutRef.current) {
-            clearTimeout(snapTimeoutRef.current);
-            snapTimeoutRef.current = null;
-        }
-
-        // schedule a short delayed animated snap to avoid native overshoot
-        ignoreMomentumRef.current = true;
-        snapTimeoutRef.current = setTimeout(() => {
-            if (!flatListRef.current) return;
-            if (targetIndex !== startIndex) {
-                flatListRef.current.scrollToIndex({ index: targetIndex, animated: true });
-            } else {
-                flatListRef.current.scrollToIndex({ index: startIndex, animated: true });
-            }
-            snapTimeoutRef.current = null;
-            // reset ignore after animation settles
-            setTimeout(() => { ignoreMomentumRef.current = false; }, 250);
-        }, 50);
-        console.log('[reels] onScrollEndDrag computed', { startIndex, targetIndex, dy });
-    }).current;
+ 
 
     
 
@@ -165,6 +142,8 @@ const Reels2 = () => {
             let targetIndex = startIndex;
             if (translationY < 0) targetIndex = startIndex + 1; // swipe up -> next
             else if (translationY > 0) targetIndex = startIndex - 1; // swipe down -> prev
+
+
 
             const maxIndex = Math.max(0, reels.length - 1);
             targetIndex = Math.max(0, Math.min(maxIndex, targetIndex));
@@ -198,7 +177,7 @@ const Reels2 = () => {
                     <ReelHeader />
 
 
-                    <PanGestureHandler onHandlerStateChange={onHandlerStateChange} enabled={true}>
+                    <PanGestureHandler onGestureEvent={onGestureEvent} onHandlerStateChange={onHandlerStateChange} enabled={true}>
                         <FlatList
                             ref={flatListRef}
                             style={{backgroundColor:"#000"}}
