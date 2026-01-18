@@ -89,6 +89,13 @@ const useStore = create((set) => ({
         reels: state
     }),
 
+
+    currentReel:{shouldPlay: false, reelId: null},
+    setCurrentReel:(state)=> set({
+        currentReel: state
+    }),
+
+
 }));
 
 

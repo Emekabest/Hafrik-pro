@@ -5,46 +5,46 @@ import ReelsManager from "../../helpers/reelsmanager";
 import { useEffect, useState } from "react";
 import { useEvent } from "expo";
 import { useFocusEffect } from "@react-navigation/native";
+import useStore from "../../repository/store";
 
 const ReelMedia = ({reelId, media}) => {
 
     // const source = media.video_url ? media.video_url : null;
 
     const [source, setSource] = useState(null)
+    const [isReadyToPlay, setIsReadyToPlay] = useState(false);
+
+    const currentReel_store = useStore((state)=> state.currentReel);
 
 
 
 
-    const player = useVideoPlayer(source || null, (p) => {
-        if (p && source) {
-            try { 
-                p.loop = true;
-            } catch (e) {
 
-            }
-        }
-    });
+    // const player = useVideoPlayer(source || null, (p) => {
+    //     if (p && source) {
+    //         try { 
+    //             p.loop = true;
+    //         } catch (e) {
 
-
-    useFocusEffect(()=>{
-
-            // console.log(reelId, player?.status)
-
-    });
+    //         }
+    //     }
+    // });
 
 
-    // const { isPlaying: singlePlaying } = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });
     
+        const player = useVideoPlayer(source || null);
+    
+        useEffect(() => {
+            if (!player) return;
+            try { player.loop = true; }
+            catch (e) {}
+        }, [player]);
 
-    // console.log('This is isPlaying', singlePlaying);
-    
-        // const player = useVideoPlayer(source || null);
-    
-        // useEffect(() => {
-        //     if (!player) return;
-        //     try { player.loop = true; }
-        //     catch (e) {}
-        // }, [player]);
+    const { isPlaying: singlePlaying } = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });
+    const { status: singleStatus } = useEvent(player, 'statusChange', { status: player?.status ?? {} });
+
+
+        
     
     
 
@@ -62,14 +62,19 @@ const ReelMedia = ({reelId, media}) => {
 
 
 
+        /**Register video player on mount.......................... */
     useEffect(() => {
             const registerPlayer = async () => {
 
                 if (!player) return;
     
                 const isReadyToPlay = player.status === 'readyToPlay';
+                setIsReadyToPlay(isReadyToPlay);
+
                 if (!isReadyToPlay) return;
     
+
+
                 try{
 
                     // console.log("I tried to register video player for reelId:", reelId);
@@ -83,23 +88,60 @@ const ReelMedia = ({reelId, media}) => {
                 }
             }
     
+
     
             const videoPlayerExisting = ReelsManager.getVideoPlayer(reelId);
             if (!videoPlayerExisting){
                 registerPlayer();
             }
     
-        },[reelId, player?.status]);
+        },[reelId, singleStatus]);
+
+
+
+        useEffect(()=>{
+    
+            if (isReadyToPlay){
+            
+                if (currentReel_store.shouldPlay && currentReel_store.reelId === reelId){
+                    console.log("Playing reelId:", reelId);
+                        ReelsManager.switchVideo(reelId);
+    
+                }
+        }
+        },[isReadyToPlay, currentReel_store]);
+
+
+
+
+
+
+        /**Unregister video player on unmount.......................... */
+        useEffect(()=>{
+    
+        
+            return () => {
+                const videoPlayerExisting = ReelsManager.getVideoPlayer(reelId);
+    
+
+                if (videoPlayerExisting){
+                    ReelsManager.unregister(reelId);
+                }
+    
+            };
+            
+        },[reelId])
 
 
         
-        useEffect(()=>{
-
-            console.log(reelId, player?.status)
+        // useEffect(()=>{
             
-        },[reelId, player?.status])
+        //     console.log(reelId, player?.status)
+            
+        // },[singleStatus])
     
 
+        
     return(
         <View style={{flex: 1}}>
              {player.status === 'readyToPlay' ? (

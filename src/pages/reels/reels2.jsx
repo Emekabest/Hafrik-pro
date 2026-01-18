@@ -26,6 +26,8 @@ const Reels2 = () => {
     const reelsFromStore = useStore((state)=> state.reels);
     const setReelsToStore = useStore((state)=> state.setReels);
 
+    const setCurrentReel_store = useStore((state)=> state.setCurrentReel);
+
 
 
     useEffect(()=>{
@@ -59,7 +61,6 @@ const Reels2 = () => {
 
 
 
-
     const renderReels = ({item})=>{
 
         return(
@@ -70,12 +71,35 @@ const Reels2 = () => {
     }
 
 
-    
+        /** A function that mutate IsNextVideo in the store......................... */
+
+    // const lastCurrentReelRef = useRef({ shouldPlay: null, reelId: null });
+
+    // const setNextIfChanged = (next) => {
+
+    //     const prev = lastCurrentReelRef.current;
+    //     if (prev.shouldPlay === next.shouldPlay && prev.reelId === next.reelId) return;
+
+
+    //         setCurrentReel_store(next);
+    //         lastCurrentReelRef.current = next;
+    // };
+    // /**......................................................................... */
+
 
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
 
+        const visibleItems = viewableItems.filter(item => item.isViewable);
+        const currentVisibleItem = visibleItems.length > 0 ? visibleItems[0].item : null;
+
+        setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
+    }).current;
 
 
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 50, 
+        minimumViewTime: 100,
+        waitForInteraction: true,
     }).current;
 
 
@@ -108,6 +132,7 @@ const Reels2 = () => {
                         // onScrollBeginDrag={onScrollBeginDrag}
                         // onMomentumScrollEnd={onMomentumScrollEnd}
                         onViewableItemsChanged={onViewableItemsChanged}
+                        viewabilityConfig={viewabilityConfig}
                         pagingEnabled
                         initialNumToRender={1}
                         maxToRenderPerBatch={1}
