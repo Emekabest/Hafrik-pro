@@ -21,7 +21,7 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
     const navigation = useNavigation();
     const isMultiMedia = media.length > 1;
     const mediaItem = media.length > 0 ? media[0] : null;
-    const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
+    // const mediaUrl = mediaItem ? mediaItem.thumbnail : null;
     
 
     
@@ -63,7 +63,7 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
     },[isFocused, isSearchVisible_store])
 
 
-
+    
 
 
     useEffect(() => {
@@ -97,8 +97,6 @@ const VideoPostContent = ({feedId, media, imageWidth, leftOffset, rightOffset, c
 
     // const preloadedSingle = getPlayer(source) || getPlayer(mediaItem?.video_url);
 
-
-    // const singlePlayer = ;
 
     // useEffect(() => {
     //     if (player) {
