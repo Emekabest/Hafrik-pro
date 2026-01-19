@@ -49,8 +49,6 @@ const Reels2 = () => {
 
 
     useEffect(()=>{
-
-        console.log("Reels From Store Changed::"+reelsFromStore.length);
         // append a dummy skeleton item at the end so it behaves like a reel
         const skeletonId = '__skeleton_end__';
         const data = Array.isArray(reelsFromStore) ? [...reelsFromStore] : [];
@@ -61,6 +59,18 @@ const Reels2 = () => {
 
     },[reelsFromStore])
 
+
+
+
+    const handleLoadMoreReels = async () => {
+
+        console.log("Load more reels called");
+
+        
+
+
+
+    }
 
 
     const getItemLayout = useCallback((_, index) => ({
@@ -95,8 +105,11 @@ const Reels2 = () => {
     }, [reels, onViewableItemsChanged]);
 
 
+    
+
+
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
-        ReelsManager.singlePause();
+        ReelsManager.singlePause();//Pause the current playing reel
 
         const visibleItems = viewableItems.filter(item => item.isViewable);
         const primary = visibleItems.length > 0 ? visibleItems[0] : null;
@@ -106,6 +119,12 @@ const Reels2 = () => {
         if (currentVisibleItem && currentVisibleItem.type !== 'skeleton') {
             setCurrentReel_store({ shouldPlay: true, reelId: currentVisibleItem.id });
         }
+        else{
+            setCurrentReel_store({ shouldPlay: false, reelId: null });
+        }
+
+        // console.log()
+
     }).current;
 
 
@@ -114,6 +133,10 @@ const Reels2 = () => {
         minimumViewTime: 100,
         waitForInteraction: true,
     }).current;
+
+
+
+
 
 
     return(
@@ -135,21 +158,15 @@ const Reels2 = () => {
                         data={reels}
                         keyExtractor={(item)=> String(item.id)}
                         renderItem={renderReels}
-                        // snapToAlignment="start"
-                        // snapToInterval={
-                        //     Platform.OS === 'android' ? ITEM_HEIGHT : undefined
-                        // }
                         decelerationRate="fast"
                         getItemLayout={getItemLayout}
                         showsVerticalScrollIndicator={false}
-                        // onScrollBeginDrag={onScrollBeginDrag}
-                        // onMomentumScrollEnd={onMomentumScrollEnd}
                         onViewableItemsChanged={onViewableItemsChanged}
                         viewabilityConfig={viewabilityConfig}
                         pagingEnabled
                         initialNumToRender={1}
                         maxToRenderPerBatch={1}
-                        windowSize={5}  
+                        windowSize={10}  
                 
                     />
                </>

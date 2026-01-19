@@ -31,7 +31,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
     const isNextVideo_store = useStore(state => state.isNextVideo);
-    const setIsNextVideo = useStore(state => state.setIsNextVideo);
+    const setIsNextVideo_store = useStore(state => state.setIsNextVideo);
 
     // setIsNextVideo({shouldPlay:false, feedId:null});
 
@@ -176,7 +176,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
         if (prev.shouldPlay === next.shouldPlay && prev.feedId === next.feedId) return;
 
 
-            setIsNextVideo(next);
+            setIsNextVideo_store(next);
             lastNextRef.current = next;
     };
     /**......................................................................... */
