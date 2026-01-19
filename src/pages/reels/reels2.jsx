@@ -20,8 +20,12 @@ const Reels2 = () => {
     const { token } = useAuth();
 
     const [reels, setReels] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    
+    const [page, setPage] = useState(1);
     const reelsRef = useRef(reels);
+
+    const isLoadingMore = useRef(false);
+    
 
     useEffect(() => {
         reelsRef.current = reels;
@@ -36,15 +40,14 @@ const Reels2 = () => {
 
     useEffect(()=>{
         const getReelsData = async()=>{
-            setIsLoading(true);
-            const response = await GetReelsController(token)
+            
+            const response = await GetReelsController(token, 1)
 
             if (response.status === 200){
                 setReelsToStore(response.data);
             }
-            setIsLoading(false);
         }
-        getReelsData();//Store!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        getReelsData()
     },[])
 
 
@@ -64,13 +67,26 @@ const Reels2 = () => {
 
     const handleLoadMoreReels = async () => {
 
-        console.log("Load more reels called");
+        if (isLoadingMore.current) return; // prevent multiple calls
+        console.log("Triggered Load More Reels");
 
+
+        isLoadingMore.current = true;
         
+        const nextPage = page + 1;
 
+        const response = await GetReelsController(token, nextPage);
 
+        if (response.status === 200){
+            console.log("Successfully loaded more reels, page: "+nextPage);
 
+            setReelsToStore([...reelsRef.current, ...response.data]);
+            setPage(nextPage);
+        }
+        isLoadingMore.current = false;
     }
+
+
 
 
     const getItemLayout = useCallback((_, index) => ({
@@ -78,7 +94,6 @@ const Reels2 = () => {
         offset: ITEM_HEIGHT * index,
         index
     }), []);
-
 
 
     const renderReels = ({item})=>{
@@ -105,9 +120,6 @@ const Reels2 = () => {
     }, [reels, onViewableItemsChanged]);
 
 
-    
-
-
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
         ReelsManager.singlePause();//Pause the current playing reel
 
@@ -115,15 +127,28 @@ const Reels2 = () => {
         const primary = visibleItems.length > 0 ? visibleItems[0] : null;
         const currentVisibleItem = primary ? primary.item : null;
 
+
         // only trigger playing for real reels (not the skeleton placeholder)
         if (currentVisibleItem && currentVisibleItem.type !== 'skeleton') {
             setCurrentReel_store({ shouldPlay: true, reelId: currentVisibleItem.id });
+            
         }
         else{
             setCurrentReel_store({ shouldPlay: false, reelId: null });
         }
 
-        // console.log()
+
+        //Trigger load more when second last reel is visible
+
+        if (primary.index === reelsRef.current.length -3 ){
+            console.log("Next reel will trigger Loading more")
+
+        }
+
+        if (primary.index === reelsRef.current.length -2 ){
+            handleLoadMoreReels();
+        }
+
 
     }).current;
 
@@ -143,13 +168,7 @@ const Reels2 = () => {
 
         <View style={{ flex: 1}}>
 
-            {
-                isLoading ?
-                    <MainLoader visible={isLoading} />
-
-                :
-
-               <>
+       
                     <ReelHeader />
 
 
@@ -169,11 +188,7 @@ const Reels2 = () => {
                         windowSize={10}  
                 
                     />
-               </>
-
-            }
-            
-            
+          
         </View>
     )
 

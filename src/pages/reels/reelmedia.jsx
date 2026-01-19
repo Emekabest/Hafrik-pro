@@ -20,7 +20,7 @@ const ReelMedia = ({reelId, media}) => {
     const currentReel_store = useStore((state)=> state.currentReel);
     const setCurrentReel_store = useStore((state)=> state.setCurrentReel);
 
-    
+
     
     const player = useVideoPlayer(source || null);
 
@@ -113,7 +113,7 @@ const ReelMedia = ({reelId, media}) => {
             if (isReadyToPlay){
             
                 if (currentReel_store.shouldPlay && currentReel_store.reelId === reelId){
-                    console.log("Playing reelId:", reelId);
+                    // console.log("Playing reelId:", reelId);
                         ReelsManager.switchVideo(reelId);
     
                 }

@@ -16,7 +16,7 @@ class ReelsManager {
             player.muted = this.isMuted;
 
             this.playersRef.set(feedId, player);
-            console.log("Registered video player for feedId:", feedId);
+            // console.log("Registered video player for feedId:", feedId);
 
         } 
     }
@@ -25,7 +25,7 @@ class ReelsManager {
 
     unregister(feedId) {
         this.playersRef.delete(feedId);
-        console.log("Unregistered video player for feedId:", feedId);
+        // console.log("Unregistered video player for feedId:", feedId);
 
     }
 
