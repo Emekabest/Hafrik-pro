@@ -28,10 +28,10 @@ const SkeletonReelCard = () => {
       </View>
 
       <View style={styles.rightColumn}>
-        <View style={styles.iconPlaceholder} />
-        <View style={[styles.iconPlaceholder, { marginTop: 16 }]} />
-        <View style={[styles.iconPlaceholder, { marginTop: 16 }]} />
-        <View style={[styles.iconPlaceholder, { marginTop: 16 }]} />
+        <Animated.View style={[styles.iconPlaceholder, { opacity: pulse }]} />
+        <Animated.View style={[styles.iconPlaceholder, { marginTop: 16, opacity: pulse }]} />
+        <Animated.View style={[styles.iconPlaceholder, { marginTop: 16, opacity: pulse }]} />
+        <Animated.View style={[styles.iconPlaceholder, { marginTop: 16, opacity: pulse }]} />
       </View>
 
       <View style={styles.bottomInfo}>
