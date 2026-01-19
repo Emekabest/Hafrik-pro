@@ -50,6 +50,7 @@ const ReelMedia = ({reelId, media}) => {
         useEffect(()=>{
             
             if (!isFocused ){
+                console.log("Pausing reelId:", reelId, "as screen is not focused");
     
                 ReelsManager.singlePause();
             }
@@ -112,11 +113,21 @@ const ReelMedia = ({reelId, media}) => {
     
             if (isReadyToPlay){
             
+
+             try {
+
                 if (currentReel_store.shouldPlay && currentReel_store.reelId === reelId){
                     // console.log("Playing reelId:", reelId);
                         ReelsManager.switchVideo(reelId);
     
                 }
+                
+             } catch (error) {
+
+                console.log("Error switching video:", error);
+                
+             }   
+     
         }
         },[isReadyToPlay, currentReel_store]);
 
@@ -130,12 +141,22 @@ const ReelMedia = ({reelId, media}) => {
     
         
             return () => {
-                const videoPlayerExisting = ReelsManager.getVideoPlayer(reelId);
     
+                try {
 
-                if (videoPlayerExisting){
-                    ReelsManager.unregister(reelId);
+                    const videoPlayerExisting = ReelsManager.getVideoPlayer(reelId);
+
+                    if (videoPlayerExisting){
+                      ReelsManager.unregister(reelId);
+                    }
+                    
+                } catch (error) {
+
+                    console.log("Error unregistering video player:", error);
+                    
                 }
+
+             
     
             };
             

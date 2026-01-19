@@ -49,7 +49,7 @@ const Reels2 = () => {
 
     useEffect(()=>{
         const getReelsData = async()=>{
-            
+            console.log("Fetching initial reels data");
             const response = await GetReelsController(token, 1)
 
             if (response.status === 200){
@@ -80,35 +80,39 @@ const Reels2 = () => {
 
 
     const handleLoadMoreReels = async () => {
-        console.log("This is Page " + pageRef.current);
-
-        if (isLoadingMore.current) return; // prevent multiple calls
-        console.log("Triggered Load More Reels");
-
-
+        if (isLoadingMore.current) return;
         isLoadingMore.current = true;
-        
-        const nextPage = pageRef.current + 1;
 
+
+        console.log("Loading more reels...")
+
+        // pause to avoid register/unregister race while we modify the list
+        ReelsManager.singlePause();
+
+        const nextPage = pageRef.current + 1;
         const response = await GetReelsController(token, nextPage);
 
+        if (response.status === 200) {
+            // base list WITHOUT skeleton placeholders
+            const base = (reelsRef.current || []).filter(
+            r => r && r.type !== 'skeleton' && String(r.id) !== '__skeleton_end__'
+            );
 
-        if (response.status === 200){
-            console.log("Successfully loaded more reels, page: "+ nextPage);
+            // dedupe incoming items against base ids
+            const existingIds = new Set(base.map(r => String(r.id)));
+            const newItems = (response.data || []).filter(i => i && !existingIds.has(String(i.id)));
 
-            const existingIds = new Set(reelsRef.current.map(r => String(r.id)));
-            const newItems = (response.data || []).filter(i => !existingIds.has(String(i.id)));
-
-            setReelsToStore([...reelsRef.current, ...newItems]);
-
-            console.log("This is next page "+ nextPage);
+            if (newItems.length > 0) {
+            setReelsToStore([...base, ...newItems]);
             pageRef.current = nextPage;
+            console.log("New reels Loaded, new page:", nextPage);
+            }
+        } else {
+            console.log("Failed to load more reels at page:", nextPage);
         }
-        else{
-            console.log("Failed to load more reels at page: "+nextPage);
-        }
+
         isLoadingMore.current = false;
-    }
+    };
 
 
 
@@ -168,14 +172,14 @@ const Reels2 = () => {
 
         //Trigger load more when second last reel is visible
 
-        if (primary.index === reelsRef.current.length -3 ){
-            console.log("Next reel will trigger Loading more")
+        // if (primary.index === reelsRef.current.length -3 ){
+        //     console.log("Next reel will trigger Loading more")
 
-        }
+        // }
 
-        if (primary.index === reelsRef.current.length -2 ){
-            handleLoadMoreReels();
-        }
+        // if (primary.index === reelsRef.current.length -2 ){
+        //     handleLoadMoreReels();
+        // }
 
 
     }).current;
