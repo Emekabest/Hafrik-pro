@@ -8,6 +8,7 @@ import MainLoader from "../mainloader";
 import AppDetails from "../../helpers/appdetails";
 import useStore from "../../repository/store";
 import ReelsManager from "../../helpers/reelsmanager";
+import SkeletonReelCard from "./skelentonreelcard";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ITEM_HEIGHT = SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight;
@@ -63,7 +64,8 @@ const Reels2 = () => {
 
         return(
 
-            <ReelCard reel={item} /> 
+            // <ReelCard reel={item} /> 
+            <SkeletonReelCard />
 
         )
     }
