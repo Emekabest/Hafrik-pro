@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   mediaPlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#222",
+    backgroundColor: "#000",
   },
   rightColumn: {
     position: "absolute",

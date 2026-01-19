@@ -21,6 +21,11 @@ const Reels2 = () => {
 
     const [reels, setReels] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const reelsRef = useRef(reels);
+
+    useEffect(() => {
+        reelsRef.current = reels;
+    }, [reels]);
 
     const reelsFromStore = useStore((state)=> state.reels);
     const setReelsToStore = useStore((state)=> state.setReels);
@@ -46,7 +51,13 @@ const Reels2 = () => {
     useEffect(()=>{
 
         console.log("Reels From Store Changed::"+reelsFromStore.length);
-        setReels(reelsFromStore);
+        // append a dummy skeleton item at the end so it behaves like a reel
+        const skeletonId = '__skeleton_end__';
+        const data = Array.isArray(reelsFromStore) ? [...reelsFromStore] : [];
+        if (!data.length || data[data.length - 1]?.id !== skeletonId) {
+            data.push({ id: skeletonId, type: 'skeleton' });
+        }
+        setReels(data);
 
     },[reelsFromStore])
 
@@ -62,12 +73,13 @@ const Reels2 = () => {
 
     const renderReels = ({item})=>{
 
-        return(
+        if (item && item.type === 'skeleton') {
+            return <SkeletonReelCard />;
+        }
 
-            // <ReelCard reel={item} /> 
-            <SkeletonReelCard />
-
-        )
+        return (
+            <ReelCard reel={item} />
+        );
     }
 
 
@@ -87,10 +99,13 @@ const Reels2 = () => {
         ReelsManager.singlePause();
 
         const visibleItems = viewableItems.filter(item => item.isViewable);
-        const currentVisibleItem = visibleItems.length > 0 ? visibleItems[0].item : null;
+        const primary = visibleItems.length > 0 ? visibleItems[0] : null;
+        const currentVisibleItem = primary ? primary.item : null;
 
-
-        setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
+        // only trigger playing for real reels (not the skeleton placeholder)
+        if (currentVisibleItem && currentVisibleItem.type !== 'skeleton') {
+            setCurrentReel_store({ shouldPlay: true, reelId: currentVisibleItem.id });
+        }
     }).current;
 
 
