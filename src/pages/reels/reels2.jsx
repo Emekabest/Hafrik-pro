@@ -19,22 +19,31 @@ const ITEM_HEIGHT = SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight;
 const Reels2 = () => {
     const { token } = useAuth();
 
+
+    const reelsFromStore = useStore((state)=> state.reels);
+    const setReelsToStore = useStore((state)=> state.setReels);
+
+    const setCurrentReel_store = useStore((state)=> state.setCurrentReel);
+
     const [reels, setReels] = useState([]);
+
+
     
-    const [page, setPage] = useState(1);
+
+    
     const reelsRef = useRef(reels);
+    const pageRef = useRef(1);
 
     const isLoadingMore = useRef(false);
+
+
     
 
     useEffect(() => {
         reelsRef.current = reels;
     }, [reels]);
 
-    const reelsFromStore = useStore((state)=> state.reels);
-    const setReelsToStore = useStore((state)=> state.setReels);
 
-    const setCurrentReel_store = useStore((state)=> state.setCurrentReel);
 
 
 
@@ -52,9 +61,14 @@ const Reels2 = () => {
 
 
     useEffect(()=>{
+
         // append a dummy skeleton item at the end so it behaves like a reel
         const skeletonId = '__skeleton_end__';
-        const data = Array.isArray(reelsFromStore) ? [...reelsFromStore] : [];
+        const raw = Array.isArray(reelsFromStore) ? [...reelsFromStore] : [];
+
+        const filteredData = raw.filter(item => item && item.type !== 'skeleton' && String(item.id) !== skeletonId);
+        const data = [...filteredData];
+
         if (!data.length || data[data.length - 1]?.id !== skeletonId) {
             data.push({ id: skeletonId, type: 'skeleton' });
         }
@@ -66,6 +80,7 @@ const Reels2 = () => {
 
 
     const handleLoadMoreReels = async () => {
+        console.log("This is Page " + pageRef.current);
 
         if (isLoadingMore.current) return; // prevent multiple calls
         console.log("Triggered Load More Reels");
@@ -73,15 +88,24 @@ const Reels2 = () => {
 
         isLoadingMore.current = true;
         
-        const nextPage = page + 1;
+        const nextPage = pageRef.current + 1;
 
         const response = await GetReelsController(token, nextPage);
 
-        if (response.status === 200){
-            console.log("Successfully loaded more reels, page: "+nextPage);
 
-            setReelsToStore([...reelsRef.current, ...response.data]);
-            setPage(nextPage);
+        if (response.status === 200){
+            console.log("Successfully loaded more reels, page: "+ nextPage);
+
+            const existingIds = new Set(reelsRef.current.map(r => String(r.id)));
+            const newItems = (response.data || []).filter(i => !existingIds.has(String(i.id)));
+
+            setReelsToStore([...reelsRef.current, ...newItems]);
+
+            console.log("This is next page "+ nextPage);
+            pageRef.current = nextPage;
+        }
+        else{
+            console.log("Failed to load more reels at page: "+nextPage);
         }
         isLoadingMore.current = false;
     }
@@ -108,16 +132,20 @@ const Reels2 = () => {
     }
 
 
-    useEffect(() => {
-        if (!reels || reels.length === 0) return;
-        // call viewable callback for the first item on mount
-        const firstReel = { index: 0, isViewable: true, item: reels[0], key: String(reels[0].id) };
-        // run on next tick so FlatList and children have mounted
-        const t = setTimeout(() => {
-            onViewableItemsChanged({ viewableItems: [firstReel], changed: [firstReel] });
-        }, 0);
-        return () => clearTimeout(t);
-    }, [reels, onViewableItemsChanged]);
+    // const isReelMounted = useRef(false);
+    // useEffect(() => {
+    //     if (!reels || reels.length === 0 || isReelMounted.current) return;
+    //     console.log("I triggered", reels.length)
+    //     // call viewable callback for the first item on mount
+    //     const firstReel = { index: 0, isViewable: true, item: reels[0], key: String(reels[0].id) };
+    //     // run on next tick so FlatList and children have mounted
+
+    //     isReelMounted.current = true;
+    //     const t = setTimeout(() => {
+    //         onViewableItemsChanged({ viewableItems: [firstReel], changed: [firstReel] });
+    //     }, 0);
+    //     return () => clearTimeout(t);
+    // }, [reels, onViewableItemsChanged]);
 
 
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
