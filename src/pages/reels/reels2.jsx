@@ -7,6 +7,7 @@ import ReelCard from "./reelcard";
 import MainLoader from "../mainloader";
 import AppDetails from "../../helpers/appdetails";
 import useStore from "../../repository/store";
+import ReelsManager from "../../helpers/reelsmanager";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ITEM_HEIGHT = SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight;
@@ -81,12 +82,11 @@ const Reels2 = () => {
 
 
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
-
-    console.log(viewableItems)
+        ReelsManager.singlePause();
 
         const visibleItems = viewableItems.filter(item => item.isViewable);
         const currentVisibleItem = visibleItems.length > 0 ? visibleItems[0].item : null;
-    
+
 
         setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
     }).current;
