@@ -17,14 +17,6 @@ const ITEM_HEIGHT = SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight;
 const Reels2 = () => {
     const { token } = useAuth();
 
-    const flatListRef = useRef(null);
-    const startIndexRef = useRef(0);
-    const currentIndexRef = useRef(0);
-    const startDragRef = useRef({ offset: 0, t: 0 });
-    const ignoreMomentumRef = useRef(false);
-    const snapTimeoutRef = useRef(null);
-
-
     const [reels, setReels] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -76,26 +68,25 @@ const Reels2 = () => {
     }
 
 
-        /** A function that mutate IsNextVideo in the store......................... */
-
-    // const lastCurrentReelRef = useRef({ shouldPlay: null, reelId: null });
-
-    // const setNextIfChanged = (next) => {
-
-    //     const prev = lastCurrentReelRef.current;
-    //     if (prev.shouldPlay === next.shouldPlay && prev.reelId === next.reelId) return;
-
-
-    //         setCurrentReel_store(next);
-    //         lastCurrentReelRef.current = next;
-    // };
-    // /**......................................................................... */
+    useEffect(() => {
+        if (!reels || reels.length === 0) return;
+        // call viewable callback for the first item on mount
+        const firstReel = { index: 0, isViewable: true, item: reels[0], key: String(reels[0].id) };
+        // run on next tick so FlatList and children have mounted
+        const t = setTimeout(() => {
+            onViewableItemsChanged({ viewableItems: [firstReel], changed: [firstReel] });
+        }, 0);
+        return () => clearTimeout(t);
+    }, [reels, onViewableItemsChanged]);
 
 
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
 
+    console.log(viewableItems)
+
         const visibleItems = viewableItems.filter(item => item.isViewable);
         const currentVisibleItem = visibleItems.length > 0 ? visibleItems[0].item : null;
+    
 
         setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
     }).current;

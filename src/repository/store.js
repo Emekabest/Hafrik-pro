@@ -90,7 +90,7 @@ const useStore = create((set) => ({
     }),
 
 
-    currentReel:{shouldPlay: false, reelId: null},
+    currentReel:{shouldPlay: false, reelId: null}, //Keep monitoring incase of a future bug
     setCurrentReel:(state)=> set({
         currentReel: state
     }),

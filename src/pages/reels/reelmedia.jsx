@@ -4,7 +4,7 @@ import { Image as ExpoImage } from 'expo-image';
 import ReelsManager from "../../helpers/reelsmanager";
 import { useEffect, useState } from "react";
 import { useEvent } from "expo";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import useStore from "../../repository/store";
 
 const ReelMedia = ({reelId, media}) => {
@@ -13,41 +13,51 @@ const ReelMedia = ({reelId, media}) => {
 
     const [source, setSource] = useState(null)
     const [isReadyToPlay, setIsReadyToPlay] = useState(false);
+    const [showThumbnail, setShowThumbnail] = useState(true);
+    const isFocused = useIsFocused();
+    
 
     const currentReel_store = useStore((state)=> state.currentReel);
-
-
-
-
-
-    // const player = useVideoPlayer(source || null, (p) => {
-    //     if (p && source) {
-    //         try { 
-    //             p.loop = true;
-    //         } catch (e) {
-
-    //         }
-    //     }
-    // });
-
+    const setCurrentReel_store = useStore((state)=> state.setCurrentReel);
 
     
-        const player = useVideoPlayer(source || null);
     
-        useEffect(() => {
-            if (!player) return;
-            try { player.loop = true; }
-            catch (e) {}
-        }, [player]);
+    const player = useVideoPlayer(source || null);
+
+    useEffect(() => {
+        if (!player) return;
+        try { player.loop = true; }
+        catch (e) {}
+    }, [player]);
 
     const { isPlaying: singlePlaying } = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });
     const { status: singleStatus } = useEvent(player, 'statusChange', { status: player?.status ?? {} });
 
 
         
-    
-    
 
+
+    // useFocusEffect(()=>{
+
+    //     if (currentReel_store.reelId === null){
+
+    //         setCurrentReel_store({ shouldPlay: true, reelId } );
+    //     }
+
+    // })
+
+
+        useEffect(()=>{
+            
+            if (!isFocused ){
+    
+                ReelsManager.singlePause();
+            }
+            else if((isFocused && currentReel_store.shouldPlay && currentReel_store.reelId !== null)){
+                ReelsManager.play(currentReel_store.reelId);
+            }
+        },[isFocused])
+    
 
 
     useEffect(()=>{
@@ -57,7 +67,6 @@ const ReelMedia = ({reelId, media}) => {
             setSource(media.video_url)
 
         }
-
     },[media])
 
 
@@ -134,11 +143,10 @@ const ReelMedia = ({reelId, media}) => {
 
 
         
-        // useEffect(()=>{
-            
-        //     console.log(reelId, player?.status)
-            
-        // },[singleStatus])
+            useEffect(() => {
+                if (singlePlaying) setShowThumbnail(false);
+
+            }, [singlePlaying]);
     
 
         
@@ -150,7 +158,7 @@ const ReelMedia = ({reelId, media}) => {
                 player={player}
                 nativeControls={false}
                 contentFit="contain"
-                posterSource={{ uri: media.thumbnail }}
+                // posterSource={{ uri: media.thumbnail }}
                 usePoster={false}
                 onError={(error) => {
                     console.log('Single VideoView onError', error);

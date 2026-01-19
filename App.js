@@ -22,6 +22,7 @@ import { WorkSans_300Light, WorkSans_400Regular, WorkSans_500Medium, WorkSans_60
 import { ReadexPro_200ExtraLight,  ReadexPro_300Light, ReadexPro_400Regular, ReadexPro_500Medium, ReadexPro_600SemiBold, ReadexPro_700Bold, } from "@expo-google-fonts/readex-pro"
 import { Video } from 'expo-av';
 import VideoManager from './src/helpers/videomanager';
+import ReelsManager from './src/helpers/reelsmanager';
 
 
 
@@ -60,10 +61,12 @@ function AppNavigator() {
 
   /**Pause or any video playing in the feed */
   const isNextVideo = useSharedStore(state => state.isNextVideo);
+  const currentReel = useSharedStore(state => state.currentReel);
   useEffect(() => {
 
     if (isAppMinimized){
-        VideoManager.singlePause(); 
+        VideoManager.singlePause();
+        ReelsManager.singlePause(); 
 
     }
     else{
@@ -71,6 +74,10 @@ function AppNavigator() {
             VideoManager.play(isNextVideo.feedId); //Resume playing the video if app is restored
 
         }
+        if (currentReel.shouldPlay && currentReel.reelId){
+            ReelsManager.play(currentReel.reelId); //Resume playing the reel if app is restored
+        }
+
     } 
 
     

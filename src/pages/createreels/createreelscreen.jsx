@@ -11,6 +11,9 @@ import { useIsFocused } from '@react-navigation/native';
 import AppDetails from '../../helpers/appdetails';
 import Gallery from './gallery';
 import Preview from './preview';
+import ReelsManager from '../../helpers/reelsmanager';
+import VideoManager from '../../helpers/videomanager';
+import useStore from '../../repository/store';
 
 const CreateReels = ({ navigation, route }) => {
     const { token } = useAuth();
@@ -21,10 +24,34 @@ const CreateReels = ({ navigation, route }) => {
     const [posting, setPosting] = useState(false);
     const [step, setStep] = useState('gallery'); // 'gallery' | 'preview' | 'details'
     const [uploadProgress, setUploadProgress] = useState(0);
+
+    const currentReel_store = useStore((state)=> state.currentReel);
+    const isNextVideo_store = useStore((state) => state.isNextVideo);
+
     
     const isFocused = useIsFocused();
     const [appState, setAppState] = useState(AppState.currentState);
     const uploadIdRef = useRef(0);
+
+
+    useEffect(() => {
+
+        console.log(isFocused, isNextVideo_store)
+            VideoManager.singlePause()
+            ReelsManager.singlePause();
+
+        // if (isFocused  && isNextVideo_store.feedId !== null){
+        //     console.log("I Reached...")
+        //     VideoManager.singlePause()
+        // }
+        // if (isFocused && currentReel_store.reelId !== null){
+        //         ReelsManager.singlePause();//
+
+        // }
+
+    },[isFocused, isNextVideo_store, currentReel_store]);
+
+
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
@@ -32,6 +59,11 @@ const CreateReels = ({ navigation, route }) => {
         });
         return () => subscription.remove();
     }, []);
+
+
+
+
+
 
     useEffect(() => {
         if (route.params?.videoAsset) {
@@ -258,6 +290,14 @@ const CreateReels = ({ navigation, route }) => {
             />
         );
     }
+
+
+
+
+
+
+
+
 
     return (
         <SafeAreaView style={styles.container}>
