@@ -1,5 +1,5 @@
-import React from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, StyleSheet, Dimensions, Animated } from "react-native";
 import AppDetails from "../../helpers/appdetails";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -8,6 +8,19 @@ const MEDIA_WIDTH = SCREEN_WIDTH;
 const RIGHT_COLUMN_WIDTH = 64;
 
 const SkeletonReelCard = () => {
+  const pulse = useRef(new Animated.Value(0.85)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.6, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
   return (
     <View style={[styles.container, { height: ITEM_HEIGHT }]}>
       <View style={styles.mediaWrapper}>
@@ -22,8 +35,8 @@ const SkeletonReelCard = () => {
       </View>
 
       <View style={styles.bottomInfo}>
-        <View style={styles.usernamePlaceholder} />
-        <View style={styles.captionPlaceholder} />
+        <Animated.View style={[styles.usernamePlaceholder, { opacity: pulse }]} />
+        <Animated.View style={[styles.captionPlaceholder, { opacity: pulse }]} />
       </View>
     </View>
   );
