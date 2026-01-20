@@ -143,7 +143,9 @@ const Reels2 = () => {
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
 
         const visibleItems = viewableItems.filter(item => item.isViewable);
-        const currentVisibleItem = visibleItems.length > 0 ? visibleItems[0].item : null;
+        const primary = visibleItems.length > 0 ? visibleItems[0] : null;
+        const currentVisibleItem = primary ? primary.item : null;
+
 
         setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
 
