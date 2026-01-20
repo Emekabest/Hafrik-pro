@@ -78,6 +78,8 @@ const Reels2 = () => {
 
     const renderReels = ({item})=>{
 
+
+        
         return(
 
             <ReelCard reel={item} /> 
