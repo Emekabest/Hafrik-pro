@@ -10,16 +10,13 @@ import useStore from "../../repository/store";
 
 const ReelMedia = ({reelId, media}) => {
 
-    // const source = media.video_url ? media.video_url : null;
-
     const [source, setSource] = useState(null)
     const [isReadyToPlay, setIsReadyToPlay] = useState(false);
     const isFocused = useIsFocused();
 
     const currentReel_store = useStore((state)=> state.currentReel);
 
-
-
+    
 
 
     // const player = useVideoPlayer(source || null, (p) => {
@@ -34,7 +31,7 @@ const ReelMedia = ({reelId, media}) => {
 
         const prevFocusedRef = useRef(true);
         useEffect(()=>{
-            
+
             if (!isFocused && prevFocusedRef.current){
                 console.log("Pausing reelId:", reelId, "as screen is not focused");
     

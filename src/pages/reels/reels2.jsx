@@ -170,14 +170,11 @@ const Reels2 = () => {
             if (currentVisibleItem?.id){
 
                 setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
-
             }
             else if (!currentVisibleItem && currentVisibleItem.type === 'skeleton'){
                 setCurrentReel_store({shouldPlay: false, reelId: null});
             }
-            else{
-
-            }
+            
 
 
         // only access primary.index when primary is not null
