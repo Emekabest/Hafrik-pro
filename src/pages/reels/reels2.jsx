@@ -161,6 +161,7 @@ const Reels2 = () => {
 
 
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
+        ReelsManager.singlePause();
 
         const visibleItems = viewableItems.filter(item => item.isViewable);
         const primary = visibleItems.length > 0 ? visibleItems[0] : null;
@@ -170,6 +171,9 @@ const Reels2 = () => {
 
                 setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
 
+            }
+            else{
+                setCurrentReel_store({shouldPlay: false, reelId: null});
             }
 
 
@@ -213,21 +217,15 @@ const Reels2 = () => {
                         data={reels}
                         keyExtractor={(item)=> String(item.id)}
                         renderItem={renderReels}
-                        // snapToAlignment="start"
-                        // snapToInterval={
-                        //     Platform.OS === 'android' ? ITEM_HEIGHT : undefined
-                        // }
                         decelerationRate="fast"
                         getItemLayout={getItemLayout}
                         showsVerticalScrollIndicator={false}
-                        // onScrollBeginDrag={onScrollBeginDrag}
-                        // onMomentumScrollEnd={onMomentumScrollEnd}
                         onViewableItemsChanged={onViewableItemsChanged}
                         viewabilityConfig={viewabilityConfig}
                         pagingEnabled
                         initialNumToRender={1}
                         maxToRenderPerBatch={1}
-                        windowSize={10}  
+                        windowSize={3}  
                 
                     />
                </>

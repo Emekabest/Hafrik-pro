@@ -140,11 +140,18 @@ const ReelMedia = ({reelId, media}) => {
             
         // },[singleStatus])
     
+    // track whether this video has started playing at least once
+    const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
 
-        
-    return(
+    useEffect(() => {
+        if (singlePlaying) setHasPlayedOnce(true);
+    }, [singlePlaying]);
+
+    const showVideo = Boolean(player && (hasPlayedOnce || player?.status === 'readyToPlay'));
+
+    return (
         <View style={{flex: 1}}>
-             {player.status === 'readyToPlay' ? (
+             {showVideo ? (
             <VideoView
                 style={{height:"100%", width: "100%"}}
                 player={player}
