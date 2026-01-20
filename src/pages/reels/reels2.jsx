@@ -7,6 +7,7 @@ import ReelCard from "./reelcard";
 import MainLoader from "../mainloader";
 import AppDetails from "../../helpers/appdetails";
 import useStore from "../../repository/store";
+import ReelsManager from "../../helpers/reelsmanager";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ITEM_HEIGHT = SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight;
@@ -146,8 +147,22 @@ const Reels2 = () => {
         const primary = visibleItems.length > 0 ? visibleItems[0] : null;
         const currentVisibleItem = primary ? primary.item : null;
 
+            if (currentVisibleItem){
 
-        setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
+                setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
+
+            }
+
+
+
+            if (primary.index === reelsRef.current.length -2 ){
+                console.log("Next reel will trigger Loading more")
+
+            }
+
+            if (primary.index === reelsRef.current.length -1 ){
+                handleLoadMoreReels();
+            }
 
         
 
@@ -195,7 +210,7 @@ const Reels2 = () => {
                         pagingEnabled
                         initialNumToRender={1}
                         maxToRenderPerBatch={1}
-                        windowSize={5}  
+                        windowSize={10}  
                 
                     />
                </>
