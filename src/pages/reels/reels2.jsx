@@ -28,11 +28,20 @@ const Reels2 = () => {
     const [reels, setReels] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const isLoadingMore = useRef(false);
+    const pageRef = useRef(1);
+    const reelsRef = useRef(reels);
+
     const reelsFromStore = useStore((state)=> state.reels);
     const setReelsToStore = useStore((state)=> state.setReels);
 
     const setCurrentReel_store = useStore((state)=> state.setCurrentReel);
 
+
+
+    useEffect(()=>{
+        reelsRef.current = reels;
+    },[reels])
 
 
     useEffect(()=>{
@@ -76,20 +85,59 @@ const Reels2 = () => {
     }
 
 
-        /** A function that mutate IsNextVideo in the store......................... */
+    useEffect(()=>{
 
-    // const lastCurrentReelRef = useRef({ shouldPlay: null, reelId: null });
+        // append a dummy skeleton item at the end so it behaves like a reel
+        const skeletonId = '__skeleton_end__';
+        const raw = Array.isArray(reelsFromStore) ? [...reelsFromStore] : [];
 
-    // const setNextIfChanged = (next) => {
+        const filteredData = raw.filter(item => item && item.type !== 'skeleton' && String(item.id) !== skeletonId);
+        const data = [...filteredData];
 
-    //     const prev = lastCurrentReelRef.current;
-    //     if (prev.shouldPlay === next.shouldPlay && prev.reelId === next.reelId) return;
+        if (!data.length || data[data.length - 1]?.id !== skeletonId) {
+            // data.push({ id: skeletonId, type: 'skeleton' });
+        }
+        setReels(data);
+
+    },[reelsFromStore])
 
 
-    //         setCurrentReel_store(next);
-    //         lastCurrentReelRef.current = next;
-    // };
-    // /**......................................................................... */
+
+
+    const handleLoadMoreReels = async () => {
+        if (isLoadingMore.current) return;
+        isLoadingMore.current = true;
+
+
+        console.log("Loading more reels...")
+
+        // pause to avoid register/unregister race while we modify the list
+        ReelsManager.singlePause();
+
+        const nextPage = pageRef.current + 1;
+        const response = await GetReelsController(token, nextPage);
+
+        if (response.status === 200) {
+            // base list WITHOUT skeleton placeholders
+            const base = (reelsRef.current || []).filter(
+            r => r && r.type !== 'skeleton' && String(r.id) !== '__skeleton_end__'
+            );
+
+            // dedupe incoming items against base ids
+            const existingIds = new Set(base.map(r => String(r.id)));
+            const newItems = (response.data || []).filter(i => i && !existingIds.has(String(i.id)));
+
+            if (newItems.length > 0) {
+            setReelsToStore([...base, ...newItems]);
+            pageRef.current = nextPage;
+            console.log("New reels Loaded, new page:", nextPage);
+            }
+        } else {
+            console.log("Failed to load more reels at page:", nextPage);
+        }
+
+        isLoadingMore.current = false;
+    };
 
 
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
@@ -98,6 +146,10 @@ const Reels2 = () => {
         const currentVisibleItem = visibleItems.length > 0 ? visibleItems[0].item : null;
 
         setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
+
+        
+
+
     }).current;
 
 
