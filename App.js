@@ -32,14 +32,14 @@ const Stack = createStackNavigator();
 // Create a component that handles the navigation based on auth state
 function AppNavigator() {
 
-  const [isAppMinimized, setIsAppMinimized] = useState(false);
+  const [isAppStateActive, setIsAppStateActive] = useState(true);
 
   /**..................App State Listener..............................*/
 
     const handleAppStateChange = (AppState) => {
-        const minimized = AppState !== 'active';
+        const appState = AppState === 'active';
 
-        setIsAppMinimized(minimized);
+        setIsAppStateActive(appState);
 
     };
 
@@ -64,12 +64,16 @@ function AppNavigator() {
   const currentReel = useSharedStore(state => state.currentReel);
   useEffect(() => {
 
-    if (isAppMinimized){
+    if (!isAppStateActive){
+
+      console.log("App is minimized, pausing all media players");
+
         VideoManager.singlePause();
         ReelsManager.singlePause(); 
 
     }
     else{
+        console.log("App is restored, resuming media players if needed");
         if (isNextVideo.shouldPlay && isNextVideo.feedId){
             VideoManager.play(isNextVideo.feedId); //Resume playing the video if app is restored
 
@@ -81,7 +85,7 @@ function AppNavigator() {
     } 
 
     
-  },[isAppMinimized])
+  },[isAppStateActive])
   
 
 

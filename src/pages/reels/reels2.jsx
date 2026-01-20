@@ -70,7 +70,7 @@ const Reels2 = () => {
         const data = [...filteredData];
 
         if (!data.length || data[data.length - 1]?.id !== skeletonId) {
-            data.push({ id: skeletonId, type: 'skeleton' });
+            // data.push({ id: skeletonId, type: 'skeleton' });
         }
         setReels(data);
 
@@ -126,9 +126,10 @@ const Reels2 = () => {
 
     const renderReels = ({item})=>{
 
-        if (item && item.type === 'skeleton') {
-            return <SkeletonReelCard />;
-        }
+        // if (item && item.type === 'skeleton') {
+            
+        //     return <SkeletonReelCard />;
+        // }
 
         return (
             <ReelCard reel={item} />
@@ -170,16 +171,16 @@ const Reels2 = () => {
         }
 
 
-        //Trigger load more when second last reel is visible
+        // Trigger load more when second last reel is visible
 
-        // if (primary.index === reelsRef.current.length -3 ){
-        //     console.log("Next reel will trigger Loading more")
+        if (primary.index === reelsRef.current.length -3 ){
+            console.log("Next reel will trigger Loading more")
 
-        // }
+        }
 
-        // if (primary.index === reelsRef.current.length -2 ){
-        //     handleLoadMoreReels();
-        // }
+        if (primary.index === reelsRef.current.length -2 ){
+            handleLoadMoreReels();
+        }
 
 
     }).current;

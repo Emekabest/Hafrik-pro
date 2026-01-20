@@ -46,8 +46,17 @@ class ReelsManager {
 
         if (video && video.status === 'readyToPlay') {
 
-            video.play();   
-            this.currentlyPlayingVideoId = feedId;
+            try{
+
+                video.play();   
+                this.currentlyPlayingVideoId = feedId;
+
+            }
+            catch(e){
+                console.log("Error playing video for feedId:", feedId, e);
+            }
+
+            
         }
     }
 
@@ -57,7 +66,12 @@ class ReelsManager {
         if (!this.currentlyPlayingVideoId) return;
         const video = this.playersRef.get(this.currentlyPlayingVideoId);
         if (video) {
-            video.pause();
+            try{
+                video.pause();
+            }
+            catch(e){
+                console.log("Error pausing video for feedId:", this.currentlyPlayingVideoId, e);
+            }
         }
     }
 
@@ -66,7 +80,12 @@ class ReelsManager {
     pause(feedId) {
         const video = this.playersRef.get(feedId);
         if (video) {
-            video.pause();
+            try{
+                video.pause();
+            }
+            catch(e){
+                console.log("Error pausing video for feedId:", feedId, e);
+            }
             if (this.currentlyPlayingVideoId === feedId) this.currentlyPlayingVideoId = null;
         }
     }
@@ -75,15 +94,24 @@ class ReelsManager {
 
     switchVideo(nextVideoId) {
 
-        if (this.currentlyPlayingVideoId === null || this.currentlyPlayingVideoId === nextVideoId){
+        try{
+
+            if (this.currentlyPlayingVideoId === null || this.currentlyPlayingVideoId === nextVideoId){
+                this.play(nextVideoId);
+                return;
+            }
+
+            this.pause(this.currentlyPlayingVideoId);
             this.play(nextVideoId);
-            return;
+
+        }
+        catch(e){
+            console.log("Error switching video to feedId:", nextVideoId, e);
+
         }
 
-        this.pause(this.currentlyPlayingVideoId);
-        this.play(nextVideoId);
+ 
     }
-
 
     toggleMute(){
     

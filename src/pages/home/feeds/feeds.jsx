@@ -83,7 +83,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
     }, []);
 
 
-
+    
 
     useEffect(() => {
         if (isFocused && appState === 'active') {
