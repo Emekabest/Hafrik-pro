@@ -171,7 +171,7 @@ const Reels2 = () => {
 
                 setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
             }
-            else if (!currentVisibleItem && currentVisibleItem.type === 'skeleton'){
+            else if (!currentVisibleItem && currentVisibleItem?.type === 'skeleton'){
                 setCurrentReel_store({shouldPlay: false, reelId: null});
             }
             
