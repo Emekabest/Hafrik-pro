@@ -11,7 +11,7 @@ import WebViewScreen from './src/pages/WebViewScreen';
 import CategoriesScreen from './src/pages/CategoriesScreen';
 import EventsScreen from './src/pages/EventsScreen';
 import GroupsScreen from './src/pages/GroupsScreen';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppDetails from './src/helpers/appdetails';
 import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
@@ -22,6 +22,7 @@ import { WorkSans_300Light, WorkSans_400Regular, WorkSans_500Medium, WorkSans_60
 import { ReadexPro_200ExtraLight,  ReadexPro_300Light, ReadexPro_400Regular, ReadexPro_500Medium, ReadexPro_600SemiBold, ReadexPro_700Bold, } from "@expo-google-fonts/readex-pro"
 import { Video } from 'expo-av';
 import VideoManager from './src/helpers/videomanager';
+import ReelsManager from './src/helpers/reelsmanager';
 
 
 
@@ -31,14 +32,17 @@ const Stack = createStackNavigator();
 // Create a component that handles the navigation based on auth state
 function AppNavigator() {
 
-  const [isAppMinimized, setIsAppMinimized] = useState(false);
+  const isAppActiveRef = useRef(true);
+  const isAppActive_store = useSharedStore(state => state.isAppActive);
+  const setIsAppActive_store = useSharedStore(state => state.setIsAppActive);
 
   /**..................App State Listener..............................*/
 
     const handleAppStateChange = (AppState) => {
-        const minimized = AppState !== 'active';
+        const appState = AppState === 'active';
 
-        setIsAppMinimized(minimized);
+        isAppActiveRef.current = appState;
+        setIsAppActive_store(appState);
 
     };
 
@@ -60,21 +64,33 @@ function AppNavigator() {
 
   /**Pause or any video playing in the feed */
   const isNextVideo = useSharedStore(state => state.isNextVideo);
+  const currentReel_store = useSharedStore((state)=> state.currentReel);
   useEffect(() => {
 
-    if (isAppMinimized){
+    if (!isAppActiveRef.current){
+      console.log("App is in background - Pausing video");
         VideoManager.singlePause(); 
+        ReelsManager.singlePause();
 
     }
     else{
+            console.log("App is active - Resuming video");
         if (isNextVideo.shouldPlay && isNextVideo.feedId){
             VideoManager.play(isNextVideo.feedId); //Resume playing the video if app is restored
 
         }
+
+        if (currentReel_store.shouldPlay && currentReel_store.reelId){
+            ReelsManager.play(currentReel_store.reelId); //Resume playing the reel video if app is restored
+        }
+
     } 
 
     
-  },[isAppMinimized])
+  },[isAppActiveRef.current])
+
+
+
   
 
 

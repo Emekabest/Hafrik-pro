@@ -1,5 +1,5 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, FlatList, Platform, Text, View } from "react-native";
+import { AppState, Dimensions, FlatList, Platform, Text, View } from "react-native";
 import GetReelsController from "../../controllers/getreelscontroller";
 import { useAuth } from "../../AuthContext";
 import ReelHeader from "./reelheader";
@@ -8,6 +8,8 @@ import MainLoader from "../mainloader";
 import AppDetails from "../../helpers/appdetails";
 import useStore from "../../repository/store";
 import ReelsManager from "../../helpers/reelsmanager";
+import SkeletonReelCard from "./skelentonreelcard";
+import { useIsFocused } from "@react-navigation/native";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ITEM_HEIGHT = SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight;
@@ -29,12 +31,18 @@ const Reels2 = () => {
     const [reels, setReels] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const [delayedFocus, setDelayedFocus] = useState(false);
+
+
     const isLoadingMore = useRef(false);
     const pageRef = useRef(1);
     const reelsRef = useRef(reels);
 
     const reelsFromStore = useStore((state)=> state.reels);
     const setReelsToStore = useStore((state)=> state.setReels);
+
+    const isFocused = useIsFocused();
+    const isAppActive_store = useStore(state => state.isAppActive);
 
     const setCurrentReel_store = useStore((state)=> state.setCurrentReel);
 
@@ -59,13 +67,6 @@ const Reels2 = () => {
     },[])
 
 
-    useEffect(()=>{
-
-        console.log("Reels From Store Changed::"+reelsFromStore.length);
-        setReels(reelsFromStore);
-
-    },[reelsFromStore])
-
 
 
     const getItemLayout = useCallback((_, index) => ({
@@ -75,17 +76,33 @@ const Reels2 = () => {
     }), []);
 
 
+        useEffect(() => {
+        if (isFocused && isAppActive_store) {
+            console.log("Reels Screen is focused and App is active");
+            // Delay setting focus to true to allow navigation transition to complete
+            const timer = setTimeout(() => setDelayedFocus(true), 500);
+            return () => clearTimeout(timer);
+        } else {
+            // Immediately set to false when leaving
+            setDelayedFocus(false);
+        }
+    }, [isFocused, isAppActive_store]);
 
-    const renderReels = ({item})=>{
 
 
+    const renderReels = useCallback(({ item }) => {
         
-        return(
+        if (item && item.type === 'skeleton') {
+            
+            return <SkeletonReelCard />;
+        }
 
-            <ReelCard reel={item} /> 
+        return (
+            <ReelCard reel={item} />
+        );
+    }, [delayedFocus]);
 
-        )
-    }
+
 
 
     useEffect(()=>{
@@ -98,7 +115,7 @@ const Reels2 = () => {
         const data = [...filteredData];
 
         if (!data.length || data[data.length - 1]?.id !== skeletonId) {
-            // data.push({ id: skeletonId, type: 'skeleton' });
+            data.push({ id: skeletonId, type: 'skeleton' });
         }
         setReels(data);
 
@@ -157,18 +174,16 @@ const Reels2 = () => {
 
 
 
-            if (primary.index === reelsRef.current.length -2 ){
+            if (primary.index === reelsRef.current.length -3 ){
                 console.log("Next reel will trigger Loading more")
 
             }
 
-            if (primary.index === reelsRef.current.length -1 ){
+            if (primary.index === reelsRef.current.length -2 ){
                 handleLoadMoreReels();
             }
 
         
-
-
     }).current;
 
 
