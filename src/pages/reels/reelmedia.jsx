@@ -8,7 +8,7 @@ import { useEvent } from "expo";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import useStore from "../../repository/store";
 
-const ReelMedia = ({reelId, media}) => {
+const ReelMedia = ({reelId, media, isActive}) => {
 
     const [source, setSource] = useState(null)
     const [isReadyToPlay, setIsReadyToPlay] = useState(false);
@@ -16,19 +16,9 @@ const ReelMedia = ({reelId, media}) => {
 
     const currentReel_store = useStore((state)=> state.currentReel);
 
-    
+    const setIsReelMediaFocused_store = useStore((state)=> state.setIsReelMediaFocused);
 
-
-    // const player = useVideoPlayer(source || null, (p) => {
-    //     if (p && source) {
-    //         try { 
-    //             p.loop = true;
-    //         } catch (e) {
-
-    //         }
-    //     }
-    // });
-
+  
         const prevFocusedRef = useRef(true);
         useEffect(()=>{
 
@@ -38,12 +28,15 @@ const ReelMedia = ({reelId, media}) => {
                 ReelsManager.singlePause();
             }
             else if((isFocused && currentReel_store.shouldPlay && currentReel_store.reelId !== null)){
+                // console.log("Ran...")
                 ReelsManager.play(currentReel_store.reelId);
+                
             }
               prevFocusedRef.current = isFocused;
         },[isFocused])
 
 
+   
 
     
         const player = useVideoPlayer(source || null);
@@ -132,19 +125,20 @@ const ReelMedia = ({reelId, media}) => {
 
         /**Unregister video player on unmount.......................... */
         useEffect(()=>{
-    
-        
+            
             return () => {
-                const videoPlayerExisting = ReelsManager.getVideoPlayer(reelId);
-    
-
-                if (videoPlayerExisting){
-                    ReelsManager.unregister(reelId);
+                try {
+                    const registered = ReelsManager.getVideoPlayer(reelId);
+                    // only unregister if the registered player is exactly our `player` instance
+                    if (registered && registered === player) {
+                        ReelsManager.unregister(reelId);
+                    }
+                    } catch (e) {
+                    console.log('unregister guard error', e);
                 }
-    
             };
             
-        },[reelId])
+        },[reelId, player])
 
 
         
@@ -161,8 +155,9 @@ const ReelMedia = ({reelId, media}) => {
         if (singlePlaying) setHasPlayedOnce(true);
     }, [singlePlaying]);
 
-    const showVideo = Boolean(player && (hasPlayedOnce || player?.status === 'readyToPlay'));
+    const showVideo = Boolean(player && isActive && (hasPlayedOnce || player?.status === 'readyToPlay'));
 
+    
     return (
         <View style={{flex: 1}}>
              {showVideo ? (
@@ -194,6 +189,7 @@ const handleMemomize = (prev, next)=>{
     // Return true to skip re-render when props are effectively equal.
     if (!prev || !next) return false;
     if (prev.reelId !== next.reelId) return false;
+    if (prev.isActive !== next.isActive) return false;
     
     // No relevant prop changed — skip render
     return true;

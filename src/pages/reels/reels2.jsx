@@ -32,6 +32,7 @@ const Reels2 = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     const [delayedFocus, setDelayedFocus] = useState(false);
+    const [activeIndex, setActiveIndex] = useState(0);
 
 
     const isLoadingMore = useRef(false);
@@ -90,7 +91,7 @@ const Reels2 = () => {
 
 
 
-    const renderReels = useCallback(({ item }) => {
+    const renderReels = useCallback(({ item, index }) => {
         
         if (item && item.type === 'skeleton') {
             
@@ -98,9 +99,9 @@ const Reels2 = () => {
         }
 
         return (
-            <ReelCard reel={item} />
+            <ReelCard reel={item} isActive={index === activeIndex} />
         );
-    }, [delayedFocus]);
+    }, [delayedFocus, activeIndex]);
 
 
 
@@ -163,18 +164,22 @@ const Reels2 = () => {
    const onViewableItemsChanged = useRef(({ viewableItems, changed }) => {
         ReelsManager.singlePause();
 
+
+
         const visibleItems = viewableItems.filter(item => item.isViewable);
         const primary = visibleItems.length > 0 ? visibleItems[0] : null;
         const currentVisibleItem = primary ? primary.item : null;
 
-            if (currentVisibleItem?.id){
+        setActiveIndex(primary ? primary.index : 0);
 
-                setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
-            }
-            else if (!currentVisibleItem && currentVisibleItem?.type === 'skeleton'){
-                setCurrentReel_store({shouldPlay: false, reelId: null});
-            }
-            
+        if (currentVisibleItem?.id){
+
+            setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
+        }
+        else if (!currentVisibleItem && currentVisibleItem?.type === 'skeleton'){
+            setCurrentReel_store({shouldPlay: false, reelId: null});
+        }
+        
 
 
         // only access primary.index when primary is not null
@@ -225,7 +230,7 @@ const Reels2 = () => {
                         initialNumToRender={1}
                         maxToRenderPerBatch={1}
                         windowSize={3}  
-                
+                        extraData={activeIndex}
                     />
                </>
 

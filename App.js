@@ -47,6 +47,8 @@ function AppNavigator() {
     };
 
 
+
+
     useEffect(() => {
 
       const subscription = AppState.addEventListener('change', handleAppStateChange);
@@ -64,7 +66,7 @@ function AppNavigator() {
 
   /**Pause or any video playing in the feed */
   const isNextVideo = useSharedStore(state => state.isNextVideo);
-  const currentReel_store = useSharedStore((state)=> state.currentReel);
+  
   useEffect(() => {
 
     if (!isAppActiveRef.current){
@@ -79,11 +81,6 @@ function AppNavigator() {
             VideoManager.play(isNextVideo.feedId); //Resume playing the video if app is restored
 
         }
-
-        if (currentReel_store.shouldPlay && currentReel_store.reelId){
-            ReelsManager.play(currentReel_store.reelId); //Resume playing the reel video if app is restored
-        }
-
     } 
 
     

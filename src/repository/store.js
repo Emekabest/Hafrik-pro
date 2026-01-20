@@ -73,6 +73,11 @@ const useStore = create((set) => ({
         currentReel: state
     }),
 
+    isReelMediaFocused: false,
+    setIsReelMediaFocused:(state)=> set({
+        isReelMediaFocused: state
+    }),
+
 
 }));
 

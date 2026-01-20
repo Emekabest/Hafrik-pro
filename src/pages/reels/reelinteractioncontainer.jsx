@@ -9,8 +9,6 @@ import { Image as ExpoImage } from "expo-image";
 
 const ReelInteractionContainer = ({ user, created, caption, likesCount, commentCount, views }) => {
 
-    console.log(user)
-
     return (
         <View style={styles.container}>
 
