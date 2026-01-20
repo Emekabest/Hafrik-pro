@@ -2,9 +2,10 @@ import { View } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Image as ExpoImage } from 'expo-image';
 import ReelsManager from "../../helpers/reelsmanager";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
+
 import { useEvent } from "expo";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import useStore from "../../repository/store";
 
 const ReelMedia = ({reelId, media}) => {
@@ -13,6 +14,7 @@ const ReelMedia = ({reelId, media}) => {
 
     const [source, setSource] = useState(null)
     const [isReadyToPlay, setIsReadyToPlay] = useState(false);
+    const isFocused = useIsFocused();
 
     const currentReel_store = useStore((state)=> state.currentReel);
 
@@ -29,6 +31,21 @@ const ReelMedia = ({reelId, media}) => {
     //         }
     //     }
     // });
+
+        const prevFocusedRef = useRef(true);
+        useEffect(()=>{
+            
+            if (!isFocused && prevFocusedRef.current){
+                console.log("Pausing reelId:", reelId, "as screen is not focused");
+    
+                ReelsManager.singlePause();
+            }
+            else if((isFocused && currentReel_store.shouldPlay && currentReel_store.reelId !== null)){
+                ReelsManager.play(currentReel_store.reelId);
+            }
+              prevFocusedRef.current = isFocused;
+        },[isFocused])
+
 
 
     
@@ -176,4 +193,13 @@ const ReelMedia = ({reelId, media}) => {
 }
 
 
-export default ReelMedia;
+const handleMemomize = (prev, next)=>{
+    // Return true to skip re-render when props are effectively equal.
+    if (!prev || !next) return false;
+    if (prev.reelId !== next.reelId) return false;
+    
+    // No relevant prop changed — skip render
+    return true;
+}
+
+export default memo(ReelMedia, handleMemomize);

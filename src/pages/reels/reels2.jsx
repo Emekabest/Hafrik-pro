@@ -167,26 +167,28 @@ const Reels2 = () => {
         const primary = visibleItems.length > 0 ? visibleItems[0] : null;
         const currentVisibleItem = primary ? primary.item : null;
 
-            if (currentVisibleItem){
+            if (currentVisibleItem?.id){
 
                 setCurrentReel_store({shouldPlay: true, reelId: currentVisibleItem.id});
 
             }
-            else{
+            else if (!currentVisibleItem && currentVisibleItem.type === 'skeleton'){
                 setCurrentReel_store({shouldPlay: false, reelId: null});
             }
-
-
-
-            if (primary.index === reelsRef.current.length -3 ){
-                console.log("Next reel will trigger Loading more")
+            else{
 
             }
 
-            if (primary.index === reelsRef.current.length -2 ){
-                handleLoadMoreReels();
-            }
 
+        // only access primary.index when primary is not null
+        if (primary) {
+            if (primary.index === reelsRef.current.length - 3) {
+            console.log("Next reel will trigger Loading more");
+            }
+            if (primary.index === reelsRef.current.length - 2) {
+            handleLoadMoreReels();
+            }
+        }
         
     }).current;
 
