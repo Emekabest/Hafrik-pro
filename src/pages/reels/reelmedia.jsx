@@ -2,24 +2,40 @@ import { View } from "react-native";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { Image as ExpoImage } from 'expo-image';
 import ReelsManager from "../../helpers/reelsmanager";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
+
 import { useEvent } from "expo";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import useStore from "../../repository/store";
 
-const ReelMedia = ({reelId, media}) => {
-
-    // const source = media.video_url ? media.video_url : null;
+const ReelMedia = ({reelId, media, isActive}) => {
 
     const [source, setSource] = useState(null)
     const [isReadyToPlay, setIsReadyToPlay] = useState(false);
-    const [showThumbnail, setShowThumbnail] = useState(true);
     const isFocused = useIsFocused();
-    
 
     const currentReel_store = useStore((state)=> state.currentReel);
-    const setCurrentReel_store = useStore((state)=> state.setCurrentReel);
 
+    const setIsReelMediaFocused_store = useStore((state)=> state.setIsReelMediaFocused);
+
+  
+        const prevFocusedRef = useRef(true);
+        useEffect(()=>{
+
+            if (!isFocused && prevFocusedRef.current){
+    
+                ReelsManager.singlePause();
+            }
+            else if((isFocused && currentReel_store.shouldPlay && currentReel_store.reelId !== null)){
+
+                ReelsManager.play(currentReel_store.reelId);
+                
+            }
+              prevFocusedRef.current = isFocused;
+        },[isFocused])
+
+
+   
 
     
     const player = useVideoPlayer(source || null);
@@ -117,7 +133,6 @@ const ReelMedia = ({reelId, media}) => {
              try {
 
                 if (currentReel_store.shouldPlay && currentReel_store.reelId === reelId){
-                    // console.log("Playing reelId:", reelId);
                         ReelsManager.switchVideo(reelId);
     
                 }
@@ -138,42 +153,44 @@ const ReelMedia = ({reelId, media}) => {
 
         /**Unregister video player on unmount.......................... */
         useEffect(()=>{
-    
-        
+            
             return () => {
-    
                 try {
-
-                    const videoPlayerExisting = ReelsManager.getVideoPlayer(reelId);
-
-                    if (videoPlayerExisting){
-                      ReelsManager.unregister(reelId);
+                    const registered = ReelsManager.getVideoPlayer(reelId);
+                    // only unregister if the registered player is exactly our `player` instance
+                    if (registered && registered === player) {
+                        ReelsManager.unregister(reelId);
                     }
-                    
-                } catch (error) {
-
-                    console.log("Error unregistering video player:", error);
-                    
+                    } catch (e) {
+                    console.log('unregister guard error', e);
                 }
-
-             
-    
             };
             
-        },[reelId])
+        },[reelId, player])
 
 
         
-            useEffect(() => {
-                if (singlePlaying) setShowThumbnail(false);
-
-            }, [singlePlaying]);
+        // useEffect(()=>{
+            
+        //     console.log(reelId, player?.status)
+            
+        // },[singleStatus])
     
+    // track whether this video has started playing at least once
+    const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
 
-        
-    return(
+    useEffect(() => {
+        if (singlePlaying) setHasPlayedOnce(true);
+    }, [singlePlaying]);
+
+
+    //Responsible for showing either video or thumbnail
+    const showVideo = Boolean(player && isActive && (hasPlayedOnce || player?.status === 'readyToPlay'));
+
+    
+    return (
         <View style={{flex: 1}}>
-             {player.status === 'readyToPlay' ? (
+             {showVideo ? (
             <VideoView
                 style={{height:"100%", width: "100%"}}
                 player={player}
@@ -198,4 +215,14 @@ const ReelMedia = ({reelId, media}) => {
 }
 
 
-export default ReelMedia;
+const handleMemomize = (prev, next)=>{
+    // Return true to skip re-render when props are effectively equal.
+    if (!prev || !next) return false;
+    if (prev.reelId !== next.reelId) return false;
+    if (prev.isActive !== next.isActive) return false;
+    
+    // No relevant prop changed — skip render
+    return true;
+}
+
+export default memo(ReelMedia, handleMemomize);

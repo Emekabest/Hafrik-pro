@@ -5,7 +5,7 @@ import { StyleSheet, View } from "react-native";
 import SvgIcon from "../../assl.js/svg/svg";
 
 
-const ReelEngagementBar = () => {
+const ReelEngagementBar = ({ likesCount, commentCount }) => {
 
 
 
@@ -14,13 +14,13 @@ const ReelEngagementBar = () => {
 
             <TouchableOpacity activeOpacity={1} style={[styles.item]}>
                         <Ionicons name={'heart-outline'} size={27} color='#fff'/>
-                        <Text style={styles.count}>10</Text>
+                        <Text style={styles.count}>{likesCount}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity activeOpacity={1} style={[styles.item]} >
                 {/* <SvgIcon name="comment" width={25} height={25} color="#fff" /> */}
                 <Ionicons name={'chatbubble'} size={27} color='#fff'/>
-                <Text style={styles.count}>20</Text>
+                <Text style={styles.count}>{commentCount}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity activeOpacity={1} style={[styles.item]} >

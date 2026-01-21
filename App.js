@@ -11,7 +11,7 @@ import WebViewScreen from './src/pages/WebViewScreen';
 import CategoriesScreen from './src/pages/CategoriesScreen';
 import EventsScreen from './src/pages/EventsScreen';
 import GroupsScreen from './src/pages/GroupsScreen';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppDetails from './src/helpers/appdetails';
 import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
@@ -32,16 +32,21 @@ const Stack = createStackNavigator();
 // Create a component that handles the navigation based on auth state
 function AppNavigator() {
 
-  const [isAppStateActive, setIsAppStateActive] = useState(true);
+  const isAppActiveRef = useRef(true);
+  const isAppActive_store = useSharedStore(state => state.isAppActive);
+  const setIsAppActive_store = useSharedStore(state => state.setIsAppActive);
 
   /**..................App State Listener..............................*/
 
     const handleAppStateChange = (AppState) => {
         const appState = AppState === 'active';
 
-        setIsAppStateActive(appState);
+        isAppActiveRef.current = appState;
+        setIsAppActive_store(appState);
 
     };
+
+
 
 
     useEffect(() => {
@@ -61,15 +66,12 @@ function AppNavigator() {
 
   /**Pause or any video playing in the feed */
   const isNextVideo = useSharedStore(state => state.isNextVideo);
-  const currentReel = useSharedStore(state => state.currentReel);
+  
   useEffect(() => {
 
-    if (!isAppStateActive){
-
-      console.log("App is minimized, pausing all media players");
-
-        VideoManager.singlePause();
-        ReelsManager.singlePause(); 
+    if (!isAppActiveRef.current){
+        VideoManager.singlePause(); 
+        ReelsManager.singlePause();
 
     }
     else{
@@ -78,14 +80,14 @@ function AppNavigator() {
             VideoManager.play(isNextVideo.feedId); //Resume playing the video if app is restored
 
         }
-        if (currentReel.shouldPlay && currentReel.reelId){
-            ReelsManager.play(currentReel.reelId); //Resume playing the reel if app is restored
-        }
 
     } 
 
     
-  },[isAppStateActive])
+  },[isAppActiveRef.current])
+
+
+
   
 
 

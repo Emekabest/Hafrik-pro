@@ -1,12 +1,13 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import ReelEngagementBar from "./reelengagementbar";
 import AppDetails from "../../helpers/appdetails";
 import { TouchableOpacity } from "react-native";
+import CalculateElapsedTime from "../../helpers/calculateelapsedtime";
+import { Image as ExpoImage } from "expo-image";
 
-
-const ReelInteractionContainer = () => {
+const ReelInteractionContainer = ({ user, created, caption, likesCount, commentCount, views }) => {
 
     return (
         <View style={styles.container}>
@@ -14,30 +15,24 @@ const ReelInteractionContainer = () => {
             <View style ={styles.interactionContainer}>
                 <View style={styles.interactionContainerLeft}>
                     <View style={styles.userInfo}>
-                        <Text style={styles.username}>Dr Taiwo Seyi</Text>
-                        <Text style={styles.time}> 2h ago </Text>
+                        <Text style={styles.username}>{user?.username}</Text>
+                        <Text style={styles.time}> {CalculateElapsedTime(created)} </Text>
                     </View>
-
 
                     <View>
-                        <Text style={styles.caption}>
-                            This is the caption of the reel post...
-                            This is the caption of the reel post...
-                            This is the caption of the reel post...
-                            This is the caption of the reel post...
-                            This is the caption of the reel post...
-                            This is the caption of the reel post...
-                            This is the caption of the reel post...
-                        </Text>
+                        <Text style={styles.caption}>{caption}</Text>
                     </View>
-
                     
                 </View>
                 <View style={styles.interactionContainerRight}>
                     <View style={styles.profileIconWrapper}>
                         <View style={styles.profileIconContainer}>
-                            <Ionicons name="person" size={24} color="black" />
-
+                            <ExpoImage
+                                source={{ uri: user?.avatar }}
+                                style={{ width: "100%", height: "100%", }}
+                                cachePolicy="memory-disk"
+                                contentFit="cover"
+                            />
                         </View>
                         <View style={styles.crossIconWrapper}>
                             <TouchableOpacity activeOpacity={1} style={styles.crossIconContainer}>
@@ -46,7 +41,7 @@ const ReelInteractionContainer = () => {
                         </View>
                     </View>
                     
-                    <ReelEngagementBar />
+                    <ReelEngagementBar likesCount={likesCount} commentCount={commentCount} views={views} />
                 </View>
             </View>
         </View>
@@ -101,6 +96,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         justifyContent: 'center',
         alignItems: 'center',
+        overflow: 'hidden',
     },
 
     crossIconWrapper: {

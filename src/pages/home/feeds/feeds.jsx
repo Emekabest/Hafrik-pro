@@ -143,7 +143,7 @@ const Feeds = ( { combinedData, feeds, setFeeds, API_URL, feedsController } )=>{
             return <FeedsHeader name={item.name} />
           case 'feed':
 
-
+            
             
             return (
               <FeedCard
