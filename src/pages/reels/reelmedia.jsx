@@ -23,12 +23,11 @@ const ReelMedia = ({reelId, media, isActive}) => {
         useEffect(()=>{
 
             if (!isFocused && prevFocusedRef.current){
-                console.log("Pausing reelId:", reelId, "as screen is not focused");
     
                 ReelsManager.singlePause();
             }
             else if((isFocused && currentReel_store.shouldPlay && currentReel_store.reelId !== null)){
-                // console.log("Ran...")
+
                 ReelsManager.play(currentReel_store.reelId);
                 
             }
@@ -111,7 +110,6 @@ const ReelMedia = ({reelId, media, isActive}) => {
             if (isReadyToPlay){
             
                 if (currentReel_store.shouldPlay && currentReel_store.reelId === reelId){
-                    console.log("Playing reelId:", reelId);
                         ReelsManager.switchVideo(reelId);
     
                 }

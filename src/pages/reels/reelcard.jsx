@@ -28,7 +28,7 @@ const ReelCard = ({ reel, isActive }) => {
 
     if (AppState === 'active'){
 
-            console.log(reel.id, isActive)
+            // console.log(reel.id, isActive) Check why this is always logging!!!
 
             if (isFocusedRef.current){
                 ReelsManager.singlePlay()

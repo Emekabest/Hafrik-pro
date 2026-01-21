@@ -70,13 +70,11 @@ function AppNavigator() {
   useEffect(() => {
 
     if (!isAppActiveRef.current){
-      console.log("App is in background - Pausing video");
         VideoManager.singlePause(); 
         ReelsManager.singlePause();
 
     }
     else{
-            console.log("App is active - Resuming video");
         if (isNextVideo.shouldPlay && isNextVideo.feedId){
             VideoManager.play(isNextVideo.feedId); //Resume playing the video if app is restored
 
