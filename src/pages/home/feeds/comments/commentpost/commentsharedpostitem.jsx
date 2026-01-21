@@ -11,6 +11,8 @@ const CommentSharedPostItem = ({ post }) => {
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
 
+    console.log("Logging")
+
     return (
         <View style={{ borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10, marginTop: 10, padding: 10, overflow: 'hidden' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>

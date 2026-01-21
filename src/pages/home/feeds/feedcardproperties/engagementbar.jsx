@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SvgIcon from '../../../../assl.js/svg/svg';
@@ -16,9 +16,6 @@ const EngagementBar = ({ feedId, initialLiked = false, initialLikeCount = 0, com
   const [likeCount, setLikeCount] = useState(initialLikeCount || 0);
 
 
-
-//   console.log("Liked::",feedId)
-
   useEffect(() => {
     const loadInteraction = async () => {
       try {
@@ -32,7 +29,6 @@ const EngagementBar = ({ feedId, initialLiked = false, initialLikeCount = 0, com
     };
     loadInteraction();
   }, [feedId, token]);
-
 
   
   const handleLike = async () => {
@@ -51,8 +47,6 @@ const EngagementBar = ({ feedId, initialLiked = false, initialLikeCount = 0, com
       setLikeCount(c => (liked ? Math.max(0, c - 1) : c + 1));
     }
   };
-
-
 
 
 
@@ -115,10 +109,6 @@ const handleMemomize = (prevProps, nextProps) => {
   if ((p.initialLikeCount || 0) !== (n.initialLikeCount || 0)) return false;
   if ((p.commentsCount || 0) !== (n.commentsCount || 0)) return false;
 
-  // If handler references changed, re-render (unlikely but safe)..
-  if (p.onOpenShare !== n.onOpenShare) return false;
-  if (p.onCommentPress !== n.onCommentPress) return false;
-
   return true;
 };
-export default React.memo(EngagementBar, handleMemomize);
+export default memo(EngagementBar, handleMemomize);

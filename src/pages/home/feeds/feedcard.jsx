@@ -27,9 +27,8 @@ const MEDIA_WIDTH = 240;
 
 
 //MAIN CARD.........................................................
-const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
+const FeedCard = ({ feed })=>{
     const navigation = useNavigation();
-    const [isMuted, setIsMuted] = useState(false);
     const [showProfileOptions, setShowProfileOptions] = useState(false);
     const [showPostOptions, setShowPostOptions] = useState(false); 
     const [showShareOptions, setShowShareOptions] = useState(false);
@@ -42,7 +41,6 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
     const maxFeedTextLength = 200;
     const [isExpanded, setIsExpanded] = useState(false);
     const hasMedia = (feed.media && feed.media.length > 0) || ['video', 'reel', 'shared', 'product', 'article', 'poll'].includes(feed.type);
-    const shouldTruncate = hasMedia && feed.text && feed.text.length > maxFeedTextLength && !isExpanded;
 
     
     
@@ -159,19 +157,19 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
             <View style = {styles.containerRight}>
                 <View style = {styles.firstSection}>
                     <View style = {styles.nameSection}>
-                        <Text style={{marginBottom: 4, flexWrap: 'wrap'}}>
-                            <Text numberOfLines={1} ellipsizeMode="tail" style = { {color:"#000", fontFamily:"WorkSans_600SemiBold"}}>{feed.user.full_name}</Text>
+                        <Text style={styles.userDetails}>
+                            <Text numberOfLines={1} ellipsizeMode="tail" style = {styles.userFullname}>{feed.user.full_name}</Text>
                             {
                                 feed.user.verified ? (
-                                    <View style={{ transform: [{ translateY: 6}, { translateX: 2 }], marginHorizontal: 3, marginRight:5 }}>
+                                    <View style={styles.verifiedIconContainer}>
                                         <SvgIcon name="verified" width={16} height={16} color={AppDetails.primaryColor} />
                                     </View>
                                 ) : null
                             }
-                            <Text style={{fontSize: 12, color: 'gray', fontFamily:"WorkSans_400Regular" }}> @{feed.user.username}</Text>
-                            <Text style={{color: "#333", fontFamily:"WorkSans_400Regular"}}>{getActionText()}</Text>
+                            <Text style={styles.userUsername}> @{feed.user.username}</Text>
+                            <Text style={styles.actionText}>{getActionText()}</Text>
                         </Text>
-                        <Text style = {{color:"#787878ff", fontSize: 12, fontFamily:"WorkSans_400Regular"}}>{CalculateElapsedTime(feed.created)}</Text>
+                        <Text style={styles.elapsedTime}>{CalculateElapsedTime(feed.created)}</Text>
                     </View>
 
 
@@ -180,21 +178,20 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     </TouchableOpacity>
                 </View>
 
-
+                
 
                 {feed.text ? (
                     <TouchableOpacity onPress={() => navigation.navigate('CommentScreen', {feedId: feed.id})} activeOpacity={1} style={styles.textSection}>
-                        <Text style = {{fontSize:14, color:"#000", fontFamily:"WorkSans_400Regular"}}>
+                        <Text style = {styles.postText}>
                             {(feed.text && feed.text.length > maxFeedTextLength && !isExpanded) ? `${feed.text.substring(0, maxFeedTextLength)}...` : feed.text}
                             {(feed.text && feed.text.length > maxFeedTextLength) && (
-                                <Text onPress={() => setIsExpanded(prev => !prev)} style={{ color: '#787878', fontWeight: '600' }}>
+                                <Text onPress={() => setIsExpanded(prev => !prev)} style={styles.textSeeMore}>
                                     {isExpanded ? ' See less' : ' See more'}
                                 </Text>
                             )}
                         </Text>
                     </TouchableOpacity>
                 ) : <View style = {styles.textSection} />}
-
 
 
                 <PostContent 
@@ -205,11 +202,9 @@ const FeedCard = ({ feed, currentPlayingId, setCurrentPlayingId, isFocused })=>{
                     onImagePress={setFullScreenImage}
                 />
 
-
-
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 }}>
-                    <Ionicons name="eye-outline" size={16} style={{color:"#787878ff", marginRight: 4}} />
-                    <Text style={{ fontSize: 12, color: "#787878ff", fontFamily:"WorkSans_400Regular" }}>{feed.views}</Text>
+                <View style={styles.viewsIconContainer}>
+                    <Ionicons name="eye-outline" size={16} style={styles.viewsIcon} />
+                    <Text style={styles.viewsCountText}>{feed.views}</Text>
                 </View>
 
 
@@ -294,18 +289,44 @@ const styles = StyleSheet.create({
         alignItems:"flex-end",
     },
 
+    userDetails:{marginBottom: 4, flexWrap: 'wrap'},
+
+    userFullname:{color:"#000", fontFamily:"WorkSans_600SemiBold"},
+
+    verifiedIconContainer:{ transform: [{ translateY: 6}, { translateX: 2 }], marginHorizontal: 3, marginRight:5 },
+
+    userUsername:{fontSize: 12, color: 'gray', fontFamily:"WorkSans_400Regular" },
+
+    actionText:{color: "#333", fontFamily:"WorkSans_400Regular"},
+
+    elapsedTime:{color:"#787878ff", fontSize: 12, fontFamily:"WorkSans_400Regular"},
+
+    postText:{
+        fontSize:14,
+        color:"#000", 
+        fontFamily:"WorkSans_400Regular"
+    },
+
+
+    textSeeMore:{
+        color: '#787878',
+        fontWeight: '600'
+    },
+
     textSection:{
         paddingVertical:5,
-
     },
 
     mediaSection:{
-        // width:"80%",
-        // width:"100%",
-        // borderRadius:10,
         overflow:"hidden",
         backgroundColor:'#b1aaaaff'
     },
+
+    viewsIconContainer:{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 2 },
+
+    viewsIcon:{color:"#787878ff", marginRight: 4},
+
+    viewsCountText:{ fontSize: 12, color: "#787878ff", fontFamily:"WorkSans_400Regular" },
 
     engagementBar:{
         height:30,
@@ -458,13 +479,15 @@ export default React.memo(FeedCard, (prev, next) => {
         return String(playingId).startsWith(`${feedId}_`);
     };
 
+
     const prevShouldPlay = isPlayingForFeed(prev.currentPlayingId, prev.feed.id) && prev.isFocused;
     const nextShouldPlay = isPlayingForFeed(next.currentPlayingId, next.feed.id) && next.isFocused;
 
-    return (
-        prev.feed.id === next.feed.id &&               // same post
+    const isRendered = prev.feed.id === next.feed.id &&               // same post
         prev.feed.likes === next.feed.likes &&         // no like change
         prev.feed.comments === next.feed.comments &&   // no comment change
-        prevShouldPlay === nextShouldPlay              // playback didn't change
+        prevShouldPlay === nextShouldPlay  
+    return (
+        isRendered
     );
 });

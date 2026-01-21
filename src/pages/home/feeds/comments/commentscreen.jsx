@@ -39,7 +39,7 @@ const CommentScreen = ({ route }) => {
     const [localLiked, setLocalLiked] = useState(null);
     const [localLikeCount, setLocalLikeCount] = useState(null);
 
-    
+
 
     useEffect(() => {
         const getData = async () => {

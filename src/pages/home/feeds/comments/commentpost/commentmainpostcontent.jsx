@@ -4,10 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import SvgIcon from '../../../../../assl.js/svg/svg';
 import CalculateElapsedTime from '../../../../../helpers/calculateelapsedtime';
 import PhotoPostContent from '../../feedcardproperties/photocontent';
-import CommentVideoItem from './commentvideoitem';
 import PollContent from '../../feedcardproperties/pollcontent';
 import ProductPostContent from '../../feedcardproperties/productcontent';
 import AppDetails from '../../../../../helpers/appdetails';
+import CommentSharedPostItem from './commentsharedpostitem';
 
 const MEDIA_HEIGHT = 520;
 const MEDIA_WIDTH = 270;
@@ -46,9 +46,8 @@ const CommentMainPostContent = ({ post, liked, likeCount, onLike, onReply, textI
             
 
             <Text style={{ fontSize: 15, color: '#000', lineHeight: 21, marginBottom: 10, marginTop: 12 }}>{post.text}</Text>
-            {post.type === 'shared' && post.shared_post ? (
-                // Parent will render a shared post
-                null
+            {post.type === 'shared' ? (
+                <CommentSharedPostItem post={post} />
             ) : post.type === 'article' ? (
                 <Text />
             ) : post.type === 'poll' ? (
@@ -60,7 +59,7 @@ const CommentMainPostContent = ({ post, liked, likeCount, onLike, onReply, textI
                     const isVideo = post.type === 'video' || post.type === 'reel';
                     if (isVideo) {
                         const mediaItem = post.media && post.media[0];
-                        return mediaItem ? <CommentVideoItem videoUrl={mediaItem.video_url} thumbnail={mediaItem.thumbnail} /> : null;
+                        return mediaItem ? <PhotoPostContent media={[mediaItem]} imageWidth={MEDIA_WIDTH} leftOffset={15} rightOffset={15} onImagePress={() => {}} /> : null;
                     }
 
                     if (post.media && post.media.length > 0) {
