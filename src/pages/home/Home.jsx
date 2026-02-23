@@ -34,10 +34,10 @@ const HomePage = ({ navigation }) => {
 
   const homeViewHeight = height - (AppDetails.headerHeight + AppDetails.mainTabNavigatorHeight + (tabletMode ? StatusBar.currentHeight : 0));
 
-  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const [drawerVisible,   setDrawerVisible]   = useState(false);
   const [activeTab, setActiveTab] = useState(2);
 
-  
+
   const isSearchVisible        = useStore((state) => state.isSearchVisible);
   const isSearchResultsVisible = useStore((state) => state.isSearchResultsVisible);
   const setFeedWidth           = useStore((state) => state.setFeedWidth);
@@ -58,8 +58,8 @@ const HomePage = ({ navigation }) => {
     getUserAvatar();
   }, [token]);
 
-  const openDrawer  = useCallback(() => setIsDrawerVisible(true),  []);
-  const closeDrawer = useCallback(() => setIsDrawerVisible(false), []);
+  // const openDrawer  = useCallback(() => setIsDrawerVisible(true),  []);
+  const closeDrawer = useCallback(() => setDrawerVisible(false), []);
 
   const handleFeedLayout = useCallback((e) => {
     const w = e.nativeEvent.layout.width;
@@ -81,7 +81,7 @@ const HomePage = ({ navigation }) => {
           {activeTab === 2 && <RecentUpdatesScreen feedWidth={feedWidthRef.current} />}
         </>
       )}
-      <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
+      <DrawerNavigation isVisible={drawerVisible} onClose={closeDrawer} />
       {isSearchVisible && <SearchModal />}
     </>
   );
@@ -90,11 +90,7 @@ const HomePage = ({ navigation }) => {
     // View (not SafeAreaView) — Header handles top inset via useSafeAreaInsets internally
     <View style={styles.container}>
 
-      {/* <Header
-        onOpenDrawer={openDrawer}
-        onOpenNotifications={() => navigation.navigate('Notifications')}
-        onOpenMessages={() => navigation.navigate('Inbox')}
-      /> */}
+      <Header onOpenDrawer={() => setDrawerVisible(true)} />
 
       {tabletMode ? (
         <View style={[styles.homeContainer, { height: homeViewHeight, flexDirection: 'row' }]}>
@@ -120,6 +116,7 @@ const HomePage = ({ navigation }) => {
       </TouchableOpacity>
 
       <PostComposerModal />
+       
     </View>
   );
 };

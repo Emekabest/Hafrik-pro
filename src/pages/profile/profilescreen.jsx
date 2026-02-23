@@ -31,7 +31,8 @@ const ProfileScreen = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState({label: "Timeline", value: "timeline"});
     const [isTabLoading, setIsTabLoading] = useState(false);
-    const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+    const [drawerVisible,   setDrawerVisible]   = useState(false);
+    
 
     const setSearchVisible = useStore((state) => state.setSearchVisible);
     const setProfileTabMode = useStore((state) => state.setProfileTabMode);
@@ -91,7 +92,7 @@ const ProfileScreen = () => {
     }, []);
 
     const closeDrawer = useCallback(() => {
-        setIsDrawerVisible(false);
+        setDrawerVisible(false);
     }, []);
 
 
@@ -138,12 +139,9 @@ const ProfileScreen = () => {
             <StatusBar barStyle="light-content" />
             <ProgressBarLoader visible={isTabLoading} />
             {/* Header already handles top safe-area via useSafeAreaInsets internally */}
-            {/* <Header
-                onOpenDrawer={openDrawer}
-                onOpenNotifications={() => navigation.navigate('Notifications')}
-                onOpenMessages={() => navigation.navigate('Inbox')}
-            /> */}
-            <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
+            <Header onOpenDrawer={() => setDrawerVisible(true)} />
+
+            <DrawerNavigation isVisible={drawerVisible} onClose={closeDrawer} />
             {loading ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="large" color={AppDetails.primaryColor} />

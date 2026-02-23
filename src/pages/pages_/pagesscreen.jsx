@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppDetails from '../../helpers/appdetails';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
+import Header from '../header';
 import StaticShortcutRow from '../home/quicklinks';
 import DrawerNavigation from '../home/drawernavigation';
 import PostComposerModal from '../home/PostComposerModal';
@@ -902,62 +903,7 @@ export default function DiscoveryScreen() {
       {/* ════════════════════════════════════════════════════════════════════
           FIXED HEADER — always visible, outside scroll
           ════════════════════════════════════════════════════════════════════ */}
-      <LinearGradient
-        colors={[BRAND, '#0A5A62']}
-        style={[ss.header, { paddingTop: top + 6 }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={ss.headerInner}>
-          {/* Hamburger — opens DrawerNavigation */}
-          <TouchableOpacity
-            style={ss.iconBtn}
-            activeOpacity={0.85}
-            onPress={() => setDrawerVisible(true)}
-          >
-            <Ionicons name="menu-outline" size={22} color="#fff" />
-          </TouchableOpacity>
-
-          <View style={ss.headerRight}>
-            {/* Notifications */}
-            <TouchableOpacity
-              style={ss.iconBtn}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate('Notifications')}
-            >
-              <Ionicons name="notifications-outline" size={20} color="#fff" />
-              {notificationCount > 0 && (
-                <View style={ss.badge}>
-                  <Text style={ss.badgeText}>{notificationCount > 99 ? '99+' : notificationCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {/* Messages */}
-            <TouchableOpacity
-              style={ss.iconBtn}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate('Inbox')}
-            >
-              <Ionicons name="chatbubbles-outline" size={20} color="#fff" />
-              {messageCount > 0 && (
-                <View style={ss.badge}>
-                  <Text style={ss.badgeText}>{messageCount > 99 ? '99+' : messageCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {/* Search */}
-            <TouchableOpacity
-              style={ss.iconBtn}
-              activeOpacity={0.85}
-              onPress={() => goSearchScreen('')}
-            >
-              <Ionicons name="search-outline" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </LinearGradient>
+      <Header onOpenDrawer={() => setDrawerVisible(true)} />
 
       {/* ════════════════════════════════════════════════════════════════════
           SCROLLABLE CONTENT
