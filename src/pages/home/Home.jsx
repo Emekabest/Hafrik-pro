@@ -37,6 +37,7 @@ const HomePage = ({ navigation }) => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState(2);
 
+  
   const isSearchVisible        = useStore((state) => state.isSearchVisible);
   const isSearchResultsVisible = useStore((state) => state.isSearchResultsVisible);
   const setFeedWidth           = useStore((state) => state.setFeedWidth);
@@ -88,11 +89,12 @@ const HomePage = ({ navigation }) => {
   return (
     // View (not SafeAreaView) — Header handles top inset via useSafeAreaInsets internally
     <View style={styles.container}>
-      <Header
+
+      {/* <Header
         onOpenDrawer={openDrawer}
         onOpenNotifications={() => navigation.navigate('Notifications')}
         onOpenMessages={() => navigation.navigate('Inbox')}
-      />
+      /> */}
 
       {tabletMode ? (
         <View style={[styles.homeContainer, { height: homeViewHeight, flexDirection: 'row' }]}>

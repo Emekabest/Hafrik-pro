@@ -138,11 +138,11 @@ const ProfileScreen = () => {
             <StatusBar barStyle="light-content" />
             <ProgressBarLoader visible={isTabLoading} />
             {/* Header already handles top safe-area via useSafeAreaInsets internally */}
-            <Header
+            {/* <Header
                 onOpenDrawer={openDrawer}
                 onOpenNotifications={() => navigation.navigate('Notifications')}
                 onOpenMessages={() => navigation.navigate('Inbox')}
-            />
+            /> */}
             <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
             {loading ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

@@ -72,9 +72,11 @@ const TOPIC_POOL = [
   'Starting a restaurant', 'Starting a salon', 'Logistics business', 'E-commerce tips',
 ];
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
 const exploreApiFetch = async (path, token, extraParams = {}) => {
   try {
     const url = new URL(`${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`);
