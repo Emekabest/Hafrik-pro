@@ -1,0 +1,531 @@
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  Animated,
+  RefreshControl,
+  TextInput,
+  StatusBar,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Swipeable } from 'react-native-gesture-handler';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../AuthContext';
+import useStore from '../../repository/store';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const BASE_URL = 'https://hafrik.com';
+const BRAND    = '#0C3F44';
+const ACCENT   = '#13C296';
+const DARK     = '#0D1B1E';
+const MUTED    = '#7A9198';
+const BG       = '#F0F4F4';
+
+const apiFetch = async (path, token, opts = {}) => {
+  try {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      ...opts,
+    });
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
+
+const timeAgo = (dateStr) => {
+  if (!dateStr) return '';
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60)    return 'now';
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
+  return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+/* ─── Online pulse dot ─── */
+const OnlineDot = () => {
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.5, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return (
+    <View style={styles.onlineDotWrap}>
+      <Animated.View style={[styles.onlineDotRing, { transform: [{ scale: pulse }] }]} />
+      <View style={styles.onlineDot} />
+    </View>
+  );
+};
+
+/* ─── Conversation card ─── */
+const ConvCard = React.memo(({ item, index, onDelete, onPin }) => {
+  const navigation = useNavigation();
+  const anim       = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      delay: Math.min(index * 35, 250),
+      useNativeDriver: true,
+      tension: 80,
+      friction: 10,
+    }).start();
+  }, []);
+
+  const other      = item.other_user ?? item.user ?? {};
+  const avatar     = other.avatar ?? null;
+  const name       = other.username ?? 'User';
+  const unread     = !item.seen || item.seen === 0 || item.seen === '0';
+  const unreadCount = Number(item.unread_count ?? 0);
+  const isOnline   = item.online === 1;
+  const typing     = item.typing === 1;
+  const timeStr    = timeAgo(item.last_message_at ?? item.updated_at);
+  const pinned     = item.pinned === 1;
+
+  const handlePress = () => {
+    Haptics.selectionAsync();
+    navigation.navigate('Thread', {
+      conversationId: item.conversation_id ?? item.id,
+      otherUser: other,
+    });
+  };
+
+  const renderRightActions = () => (
+    <View style={styles.swipeActions}>
+      <TouchableOpacity
+        style={[styles.swipeBtn, { backgroundColor: ACCENT }]}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onPin(item.conversation_id);
+        }}
+      >
+        <Ionicons name={pinned ? 'pin' : 'pin-outline'} size={18} color="#fff" />
+        <Text style={styles.swipeBtnText}>{pinned ? 'Unpin' : 'Pin'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.swipeBtn, { backgroundColor: '#EF4444' }]}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onDelete(item.conversation_id);
+        }}
+      >
+        <Ionicons name="trash-outline" size={18} color="#fff" />
+        <Text style={styles.swipeBtnText}>Delete</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <Animated.View
+      style={{
+        opacity: anim,
+        transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
+      }}
+    >
+      <Swipeable renderRightActions={renderRightActions} overshootRight={false} friction={2}>
+        <TouchableOpacity
+          style={[styles.card, unread && styles.cardUnread]}
+          activeOpacity={0.88}
+          onPress={handlePress}
+        >
+          {/* Avatar */}
+          <View style={styles.avatarWrap}>
+            <Image
+              source={{ uri: avatar ?? 'https://ui-avatars.com/api/?name=U' }}
+              style={styles.avatar}
+            />
+            {isOnline && <OnlineDot />}
+            {pinned && (
+              <View style={styles.pinnedBadge}>
+                <Ionicons name="pin" size={9} color="#fff" />
+              </View>
+            )}
+          </View>
+
+          {/* Content */}
+          <View style={styles.cardContent}>
+            <View style={styles.cardRow}>
+              <Text style={[styles.cardName, unread && styles.cardNameBold]} numberOfLines={1}>
+                {name}
+              </Text>
+              <Text style={[styles.cardTime, unread && { color: ACCENT }]}>{timeStr}</Text>
+            </View>
+
+            <View style={styles.cardRow}>
+              <Text
+                style={[styles.cardPreview, typing && { color: ACCENT, fontStyle: 'italic' }]}
+                numberOfLines={1}
+              >
+                {typing ? 'typing…' : item.last_message ?? 'Say hello 👋'}
+              </Text>
+
+              {unreadCount > 0 && (
+                <LinearGradient
+                  colors={[ACCENT, '#0A8F6E']}
+                  style={styles.badge}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </LinearGradient>
+              )}
+            </View>
+          </View>
+
+          {/* Unread strip */}
+          {unread && <View style={styles.unreadStrip} />}
+        </TouchableOpacity>
+      </Swipeable>
+    </Animated.View>
+  );
+});
+
+/* ─── Section label ─── */
+const SectionLabel = ({ label }) => (
+  <View style={styles.sectionLabel}>
+    <Ionicons name="pin" size={11} color={ACCENT} />
+    <Text style={styles.sectionLabelText}>{label}</Text>
+  </View>
+);
+
+/* ─── Empty state ─── */
+const EmptyState = () => (
+  <View style={styles.empty}>
+    <LinearGradient colors={[ACCENT + '33', BRAND + '22']} style={styles.emptyCircle}>
+      <Ionicons name="chatbubbles-outline" size={44} color={MUTED} />
+    </LinearGradient>
+    <Text style={styles.emptyTitle}>No conversations yet</Text>
+    <Text style={styles.emptySubtitle}>Start a conversation with someone on Hafrik.</Text>
+  </View>
+);
+
+/* ─── Main screen ─── */
+export default function InboxScreen() {
+  const navigation    = useNavigation();
+  const { top }       = useSafeAreaInsets();
+  const { token }     = useAuth();
+  const setMsgCount   = useStore((s) => s.setMessageCount);
+
+  const [items,      setItems]      = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search,     setSearch]     = useState('');
+  const [searchFocus, setSearchFocus] = useState(false);
+
+  const headerAnim    = useRef(new Animated.Value(0)).current;
+  const searchWidth   = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    load();
+  }, []);
+
+  useEffect(() => {
+    Animated.spring(searchWidth, {
+      toValue: searchFocus ? 1 : 0,
+      useNativeDriver: false,
+      tension: 80,
+      friction: 10,
+    }).start();
+  }, [searchFocus]);
+
+  const load = useCallback(async () => {
+    const res = await apiFetch('/api/v1/messages/inbox.php?page=1&limit=30', token);
+
+    const raw = Array.isArray(res?.data?.items)
+      ? res.data.items
+      : Array.isArray(res?.data)
+      ? res.data
+      : [];
+
+    const seen = new Set();
+    const unique = raw.filter((c) => {
+      const id = c.conversation_id ?? c.id;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
+    setItems(unique);
+    const unread = unique.filter((c) => !c.seen || c.seen === 0 || c.seen === '0').length;
+    setMsgCount(unread);
+    setRefreshing(false);
+  }, [token]);
+
+  const onRefresh = () => { setRefreshing(true); load(); };
+
+  const handleDelete = useCallback((id) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setItems((prev) => prev.filter((i) => i.conversation_id !== id));
+  }, []);
+
+  const handlePin = useCallback((id) => {
+    setItems((prev) =>
+      prev.map((c) =>
+        c.conversation_id === id ? { ...c, pinned: c.pinned === 1 ? 0 : 1 } : c
+      )
+    );
+  }, []);
+
+  const filtered = useMemo(() => {
+    return items.filter((c) => {
+      const other = c.other_user ?? c.user ?? {};
+      return (other.username ?? '').toLowerCase().includes(search.toLowerCase());
+    });
+  }, [items, search]);
+
+  const pinned = filtered.filter((c) => c.pinned === 1);
+  const normal = filtered.filter((c) => c.pinned !== 1);
+
+  const flatData = useMemo(() => {
+    const rows = [];
+    if (pinned.length > 0) {
+      rows.push({ _type: 'label', label: 'Pinned' });
+      pinned.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
+    }
+    if (normal.length > 0) {
+      if (pinned.length > 0) rows.push({ _type: 'label', label: 'All Messages' });
+      normal.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
+    }
+    return rows;
+  }, [pinned, normal]);
+
+  const renderRow = ({ item: row }) => {
+    if (row._type === 'label') return <SectionLabel label={row.label} />;
+    return (
+      <ConvCard
+        item={row.item}
+        index={row._i}
+        onDelete={handleDelete}
+        onPin={handlePin}
+      />
+    );
+  };
+
+  return (
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" />
+
+      {/* ── Header ── */}
+      <LinearGradient
+        colors={[BRAND, '#0A5560']}
+        style={[styles.header, { paddingTop: top + 6 }]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Animated.View
+          style={[
+            styles.headerRow,
+            {
+              opacity: headerAnim,
+              transform: [
+                { translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) },
+              ],
+            },
+          ]}
+        >
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+            <Ionicons name="arrow-back" size={20} color="#fff" />
+          </TouchableOpacity>
+
+          <Text style={styles.headerTitle}>Messages</Text>
+
+          <TouchableOpacity style={styles.composeBtn} activeOpacity={0.8}>
+            <Ionicons name="create-outline" size={20} color="#fff" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Search bar */}
+        <View style={[styles.searchBar, searchFocus && styles.searchBarFocused]}>
+          <Ionicons name="search" size={16} color={searchFocus ? ACCENT : MUTED} />
+          <TextInput
+            placeholder="Search messages…"
+            value={search}
+            onChangeText={setSearch}
+            onFocus={() => setSearchFocus(true)}
+            onBlur={() => setSearchFocus(false)}
+            style={styles.searchInput}
+            placeholderTextColor={MUTED}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close-circle" size={16} color={MUTED} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </LinearGradient>
+
+      {/* ── List ── */}
+      <FlatList
+        data={flatData}
+        keyExtractor={(row, i) =>
+          row._type === 'label' ? `lbl-${row.label}` : `conv-${row.item?.conversation_id ?? i}`
+        }
+        renderItem={renderRow}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />
+        }
+        ListEmptyComponent={<EmptyState />}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 40, flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
+
+  /* Header */
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 10,
+  },
+  backBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerTitle: {
+    flex: 1, fontSize: 18, fontWeight: '800', color: '#fff',
+    letterSpacing: 0.3,
+  },
+  composeBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(19,194,150,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  /* Search */
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 14, paddingHorizontal: 14, height: 44,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
+  searchBarFocused: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: ACCENT + '55',
+  },
+  searchInput: {
+    flex: 1, fontSize: 14, color: '#fff',
+  },
+
+  /* Section label */
+  sectionLabel: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginHorizontal: 16, marginTop: 16, marginBottom: 6,
+  },
+  sectionLabelText: {
+    fontSize: 11, fontWeight: '900', color: MUTED,
+    textTransform: 'uppercase', letterSpacing: 1.4,
+  },
+
+  /* Card */
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 18,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  cardUnread: {
+    backgroundColor: '#EBF9F5',
+    shadowColor: ACCENT,
+    shadowOpacity: 0.1,
+  },
+
+  /* Avatar */
+  avatarWrap: { position: 'relative', marginRight: 14 },
+  avatar: { width: 56, height: 56, borderRadius: 28 },
+
+  onlineDotWrap: { position: 'absolute', bottom: 1, right: 1 },
+  onlineDotRing: {
+    position: 'absolute',
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: ACCENT + '40',
+    top: -3, left: -3,
+  },
+  onlineDot: {
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: ACCENT,
+    borderWidth: 2, borderColor: '#fff',
+  },
+
+  pinnedBadge: {
+    position: 'absolute', top: -2, right: -2,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: ACCENT,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#fff',
+  },
+
+  /* Card content */
+  cardContent: { flex: 1 },
+  cardRow: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 5,
+  },
+  cardName: { fontSize: 15, fontWeight: '600', color: DARK, flex: 1, marginRight: 8 },
+  cardNameBold: { fontWeight: '800' },
+  cardTime: { fontSize: 11, color: MUTED, fontWeight: '500' },
+  cardPreview: { fontSize: 13, color: MUTED, flex: 1, marginRight: 8 },
+
+  badge: {
+    minWidth: 22, height: 22, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
+  },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+
+  unreadStrip: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    width: 3.5, backgroundColor: ACCENT, borderRadius: 2,
+  },
+
+  /* Swipe actions */
+  swipeActions: { flexDirection: 'row', marginBottom: 8, gap: 6, paddingRight: 16 },
+  swipeBtn: {
+    width: 64, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8,
+  },
+  swipeBtnText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+
+  /* Empty */
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 16 },
+  emptyCircle: {
+    width: 100, height: 100, borderRadius: 50,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  emptyTitle:    { fontSize: 18, fontWeight: '800', color: DARK },
+  emptySubtitle: { fontSize: 13, color: MUTED, textAlign: 'center', maxWidth: 220, lineHeight: 20 },
+});
