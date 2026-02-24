@@ -9,7 +9,7 @@
       "icon": "./src/assl.js/icon.png"
     },
     "ios": {
-      "bundleIdentifier": "com.jojo104.hafrikpro",
+      "bundleIdentifier": "com.jojo104.hafrikpro1",
       "icon": "./src/assl.js/icon.png",
       "supportsTablet": true,
       "infoPlist": {
