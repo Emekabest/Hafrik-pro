@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "hafrik",
+    "name": "Hafrik Pro",
     "slug": "hafrik",
     "version": "1.0.0",
     "icon": "./src/assl.js/icon.png",
@@ -9,7 +9,7 @@
       "icon": "./src/assl.js/icon.png"
     },
     "ios": {
-      "bundleIdentifier": "com.jojo104.hafrik",
+      "bundleIdentifier": "com.jojo104.hafrikpro",
       "icon": "./src/assl.js/icon.png",
       "supportsTablet": true,
       "infoPlist": {
