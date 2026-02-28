@@ -10,7 +10,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { getGroupFeed } from "./services/groupApi";
-import FeedCard from "../feed/feedcard.jsx"; // ← adjust path to your FeedCard
+import { useAuth } from '../../AuthContext';
+import FeedCard from "../home/feeds/feedcard";
 
 const ACCENT     = '#13C296';
 const BG         = '#F0F5F5';
@@ -22,6 +23,7 @@ const TEXT_MUTED = '#8A9BA8';
 export default function GroupFeed({ route }) {
   const { groupId } = route.params || {};
   const navigation  = useNavigation();
+  const { token }   = useAuth();
 
   const [posts,       setPosts]       = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -38,7 +40,7 @@ export default function GroupFeed({ route }) {
     else setLoadingMore(true);
 
     try {
-      const payload = await getGroupFeed(groupId, pageNum, 10);
+      const payload = await getGroupFeed(groupId, pageNum, 10, token);
       console.log("GROUP FEED:", JSON.stringify(payload));
 
       if (payload?.status === "success") {

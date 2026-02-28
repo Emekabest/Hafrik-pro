@@ -141,6 +141,9 @@ const Feeds = ({
   API_URL,
   feedsController,
   stickyHeaderIndices,
+  refreshing = false,
+  onRefresh,
+  onPostPress,
 }) => {
   const pageRef        = useRef(1);
   const loadingMoreRef = useRef(false);
@@ -148,6 +151,23 @@ const Feeds = ({
   const [initialLoading, setInitialLoading] = useState(true);
   const [visibleFeedId,  setVisibleFeedId]  = useState(null); // ✅ track visible video
   const { token } = useAuth();
+
+  const BASE_URL = 'https://hafrik.com';
+  const viewedPosts = useRef(new Set());
+
+  const addView = useCallback(async (postId) => {
+    try {
+      await fetch(`${BASE_URL}/api/v1/feed/add_view.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ post_id: postId }),
+      });
+    } catch (e) {
+      console.log('View error:', e);
+    }
+  }, []);
 
   const addFeedsToList_store = useStore(state => state.addFeedsToList);
 
@@ -184,11 +204,24 @@ const Feeds = ({
     }
   }, [feeds.length, initialLoading, feedsController, API_URL, token]);
 
-  // ✅ Track which feed item is visible on screen
-  const onViewableItemsChanged = useCallback(({ viewableItems }) => {
+  // ✅ Track which feed item is visible on screen (video) + send view to backend once per session
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
     const firstFeed = viewableItems.find(v => v.item?.type === 'feed');
     setVisibleFeedId(firstFeed?.item?.data?.id ?? null);
-  }, []);
+
+    viewableItems.forEach((v) => {
+      const postId = v?.item?.type === 'feed' ? v?.item?.data?.id : null;
+      if (!v?.isViewable || !postId) return;
+
+      const key = String(postId);
+      if (viewedPosts.current.has(key)) return;
+      viewedPosts.current.add(key);
+
+      // If needed for debugging:
+      // console.log('View triggered for:', postId);
+      addView(postId);
+    });
+  });
 
   const viewabilityConfig = useMemo(() => ({
     itemVisiblePercentThreshold: 60,
@@ -237,14 +270,17 @@ const Feeds = ({
             <FeedCard
               feed={item.data}
               isVisible={visibleFeedId === item.data.id}
+              onPostPress={onPostPress}
             />
           </View>
         );
 
       default:
+        // Generic catch-all: lets Explore/profile sections pass a renderComponent fn
+        if (typeof item?.renderComponent === 'function') return item.renderComponent();
         return null;
     }
-  }, [visibleFeedId]); // ✅ visibleFeedId in deps
+  }, [visibleFeedId, onPostPress]); // ✅ visibleFeedId and onPostPress in deps
 
   const renderFooter = useCallback(
     () => <FooterLoader visible={loadingMore} />,
@@ -269,7 +305,9 @@ const Feeds = ({
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
         showsVerticalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged} // ✅
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        onViewableItemsChanged={onViewableItemsChanged.current} // ✅
         viewabilityConfig={viewabilityConfig}           // ✅
         ListFooterComponent={renderFooter}
         contentContainerStyle={styles.listContent}

@@ -15,8 +15,7 @@ const GetFeedsController = async (url, token, page = 1) => {
 
   const API_URL = parsedUrl.toString();
 
-  // ✅ Log to confirm full URL with all params
-  console.log("🔍 FULL URL BEING CALLED:", API_URL);
+  // (debug log removed)
 
   try {
     const response = await axios.get(API_URL, {
@@ -25,10 +24,38 @@ const GetFeedsController = async (url, token, page = 1) => {
         'Cache-Control': 'no-cache',
       },
     });
-    return { status: response.status, data: response.data.data.data };
+    
+    // NOTE: Avoid logging full payload here (can be extremely large)
+    
+    // API returns { status: "success", data: { page, limit, content, data: [...] } }
+    // The actual feeds array is at response.data.data.data
+    const json = response.data;
+    let feedsArray = [];
+    
+    if (json?.status === "success") {
+      // Nested structure: json.data.data contains the feeds array
+      if (Array.isArray(json?.data?.data)) {
+        feedsArray = json.data.data;
+      }
+      // Flat structure: json.data is the feeds array directly
+      else if (Array.isArray(json?.data)) {
+        feedsArray = json.data;
+      }
+    } else if (Array.isArray(json?.data?.data)) {
+      feedsArray = json.data.data;
+    } else if (Array.isArray(json?.data)) {
+      feedsArray = json.data;
+    } else if (Array.isArray(json)) {
+      feedsArray = json;
+    }
+    
+    // (debug log removed)
+    
+    return { status: response.status, data: feedsArray };
   } catch (error) {
     console.log("❌ REQUEST FAILED:", error?.response?.status, error?.message);
-    return { status: error?.response?.status, data: error };
+    console.log("❌ ERROR DETAILS:", error?.response?.data);
+    return { status: error?.response?.status ?? 500, data: [] };
   }
 
 };

@@ -13,7 +13,7 @@ import VideoPreloader from "../../helpers/VideoPreloader";
  * ReelMedia - Wrapper that only mounts the heavy video player when needed
  * This prevents memory issues from creating players for all reels
  */
-const ReelMedia = ({ reelId, media, isActive, isPaused = false }) => {
+const ReelMedia = ({ reelId, media, isActive, isPaused = false, isMuted = false, onTimeUpdate }) => {
     const isFocused = useIsFocused();
     const isAppActive = useStore((state) => state.isAppActive);
     
@@ -89,6 +89,8 @@ const ReelMedia = ({ reelId, media, isActive, isPaused = false }) => {
                     media={media}
                     isActive={isActive}
                     isPaused={isPaused}
+                    isMuted={isMuted}
+                    onTimeUpdate={onTimeUpdate}
                 />
             ) : null}
         </View>
@@ -100,7 +102,7 @@ const ReelMedia = ({ reelId, media, isActive, isPaused = false }) => {
  * ActiveReelPlayer - The actual video player component
  * Only mounted when the reel is active or recently active
  */
-const ActiveReelPlayer = memo(({ reelId, media, isActive, isPaused = false }) => {
+const ActiveReelPlayer = memo(({ reelId, media, isActive, isPaused = false, isMuted = false, onTimeUpdate }) => {
     const isFocused = useIsFocused();
     const isAppActive_store = useStore((state) => state.isAppActive);
 
@@ -140,8 +142,9 @@ const ActiveReelPlayer = memo(({ reelId, media, isActive, isPaused = false }) =>
 
     // Event subscriptions
     const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });
-    const { status } = useEvent(player, 'statusChange', { status: player?.status ?? 'idle' });
-    
+    const { status }    = useEvent(player, 'statusChange', { status: player?.status ?? 'idle' });
+    const { currentTime } = useEvent(player, 'timeUpdate', { currentTime: 0 });
+
     const isReady = status === 'readyToPlay';
 
     // Register player when ready
@@ -166,24 +169,35 @@ const ActiveReelPlayer = memo(({ reelId, media, isActive, isPaused = false }) =>
 
         if (shouldPlay) {
             try {
-                if (!player.playing) {
-                    player.play();
-                }
+                if (!player.playing) player.play();
             } catch (e) {
                 isReleasedRef.current = true;
                 playerValidRef.current = false;
             }
         } else {
             try {
-                if (player.playing) {
-                    player.pause();
-                }
+                if (player.playing) player.pause();
             } catch (e) {
                 isReleasedRef.current = true;
                 playerValidRef.current = false;
             }
         }
-    }, [isActive, isFocused, isAppActive_store, isReady, player, isPlayerSafe]);
+    }, [isActive, isPaused, isFocused, isAppActive_store, isReady, player, isPlayerSafe]);
+
+    // Mute / unmute
+    useEffect(() => {
+        if (!player || !isPlayerSafe()) return;
+        try { player.muted = isMuted; } catch (_) {}
+    }, [isMuted, player, isPlayerSafe]);
+
+    // Progress → onTimeUpdate callback
+    useEffect(() => {
+        if (!onTimeUpdate || !player) return;
+        try {
+            const dur = player.duration;
+            if (dur && dur > 0) onTimeUpdate(currentTime / dur);
+        } catch (_) {}
+    }, [currentTime, player, onTimeUpdate]);
 
     // Handle screen focus changes
     const prevFocusedRef = useRef(isFocused);
@@ -284,8 +298,10 @@ const styles = StyleSheet.create({
 
 const handleMemoize = (prev, next) => {
     if (!prev || !next) return false;
-    if (prev.reelId !== next.reelId) return false;
+    if (prev.reelId   !== next.reelId)   return false;
     if (prev.isActive !== next.isActive) return false;
+    if (prev.isPaused !== next.isPaused) return false;
+    if (prev.isMuted  !== next.isMuted)  return false;
     return true;
 };
 

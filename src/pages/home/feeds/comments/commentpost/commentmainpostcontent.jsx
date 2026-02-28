@@ -16,7 +16,7 @@ import CommentPollItem from './commentpollitem';
 import CommentPageCoverItem from './commentpagecoveritem';
 import CleanText from '../../../../../helpers/cleantext';
 import getActionText from '../../../../../helpers/getactiontext';
-import { Link } from '@react-navigation/native';
+import { Link, useNavigation } from '@react-navigation/native';
 import EventPostContent from '../../feedcardproperties/eventpostcontent';
 import CommentEventPostCoverContent from './commenteventpostcovercontent';
 import CommentJobPostContent from './commentjobpostcontent';
@@ -32,9 +32,17 @@ const horizontalPadding = 15;
 
 
 const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
-    if (!post) return null;
+    const navigation = useNavigation();
 
-    
+    const handleAuthorPress = () => {
+        if (!post?.user?.id) return;
+        navigation.navigate('UserProfile', {
+            userId: post.user.id,
+            username: post.user.username ?? '',
+        });
+    };
+
+    if (!post) return null;
 
     const { text } = post.type === "media" || post.type === "link" ? parseLinkFromText(post.text || '') : {text: post.text || '', url: null};
     const postText = post.text ? CleanText(text) : '';
@@ -50,7 +58,7 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
             <View>
                     <View style={{ flexDirection: 'row',  marginHorizontal:horizontalPadding, }}>
                         <View style={{ width:"15%", alignItems:"center"}}>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={handleAuthorPress} activeOpacity={0.8}>
                                 <Image source={{ uri: post.user.avatar }} style={{ width: 55, height: 55, borderRadius: 50, backgroundColor: '#eee'}} />
                             </TouchableOpacity>
                         </View>
@@ -60,7 +68,7 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                             <View style={styles.topUserRow}>
                             
                                 
-                                <TouchableOpacity>
+                                <TouchableOpacity onPress={handleAuthorPress} activeOpacity={0.7}>
                                     <Text style={{ fontFamily: AppDetails.fontFamily.heading, fontSize: 17, color: '#000' }}>
                                         {post.user.full_name}
                                     </Text>

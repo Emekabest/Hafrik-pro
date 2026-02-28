@@ -16,7 +16,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppDetails from '../../helpers/appdetails';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
-import Header from '../header';
 import StaticShortcutRow from '../home/quicklinks';
 import DrawerNavigation from '../home/drawernavigation';
 import PostComposerModal from '../home/PostComposerModal';
@@ -54,30 +53,80 @@ const DEFAULT_COUNTRY = { country_id: 'all', name: 'All' };
 // Topic pool
 // ─────────────────────────────────────────────────────────────────────────────
 const TOPIC_POOL = [
+  // Living & Community
   'Jobs in China', 'Student life in China', 'Best cities to live', 'How to find roommates',
-  'Shipping from China to Africa', 'Business ideas in China', 'Visa renewal tips',
-  'Part-time jobs', 'Best African restaurants', 'Guangzhou markets', 'Yiwu sourcing',
-  'How to register a business', 'Freight forwarders', 'Agent recommendations',
-  'How to learn Chinese fast', 'Networking events', 'China trade fairs',
-  'Canton Fair tips', 'How to avoid scams', 'China banking tips',
-  'WeChat pay setup', 'Alipay setup', 'Accommodation hacks', 'Cheap flights',
-  'Scholarships', 'Internships', 'Side hustles', 'Importing goods',
-  'Exporting from China', 'Marketing for small business', 'How to build connections',
-  'Best phones to buy', 'Best laptops deals', 'Fashion suppliers', 'Jewelry suppliers',
-  'Sneakers suppliers', 'Perfume sourcing', 'How to price products', 'Customer service tips',
-  'Dating culture', 'Making friends', 'Mental health abroad', 'Fitness in China',
-  'African community in Shanghai', 'African community in Guangzhou',
-  'African community in Shenzhen', 'How to find churches', 'Best halal food',
-  'Food delivery apps', 'How to save money', 'Best SIM cards', 'Where to buy furniture',
-  'Apartment contracts', 'Work permits', 'Residence permits', 'Tax basics',
-  'Starting a restaurant', 'Starting a salon', 'Logistics business', 'E-commerce tips',
-];
+  'Making friends in China', 'Mental health abroad', 'Fitness in China', 'Dating culture',
+  'African community in Shanghai', 'African community in Guangzhou', 'African community in Shenzhen',
+  'African community in Beijing', 'African community in Yiwu', 'African community in Hangzhou',
+  'How to find churches', 'Best halal food', 'Best African restaurants', 'African hair salons',
+  'African food shops', 'Nigerian community events', 'Ghanaian community events',
+  'East African community groups', 'Francophone Africans in China', 'Pan-African events',
 
+  // Business & Trade
+  'Shipping from China to Africa', 'Business ideas in China', 'How to register a business',
+  'Freight forwarders', 'Agent recommendations', 'China trade fairs', 'Canton Fair tips',
+  'Guangzhou markets', 'Yiwu sourcing', 'Importing goods', 'Exporting from China',
+  'Marketing for small business', 'How to price products', 'Customer service tips',
+  'Starting a restaurant', 'Starting a salon', 'Logistics business', 'E-commerce tips',
+  '1688 wholesale sourcing', 'Taobao shopping tips', 'AliExpress guide', 'JD.com deals',
+  'Pinduoduo wholesale', 'Drop shipping from China', 'Product quality control',
+  'Customs clearance tips', 'Import duties guide', 'How to find reliable suppliers',
+  'Building a brand from China', 'Online reselling', 'Affiliate marketing',
+
+  // Visa & Legal
+  'Visa renewal tips', 'Work permits', 'Residence permits', 'Student visa tips',
+  'Business visa guide', 'X1 visa requirements', 'Z visa guide', 'Embassy contacts Africa',
+  'Embassy registration in China', 'How to extend a visa', 'Overstay fines China',
+  'Green card equivalent China', 'Permanent residency China', 'Travel documents tips',
+  'International driving license', 'Chinese driving license', 'Car ownership in China',
+
+  // Finance & Banking
+  'China banking tips', 'How to open a bank account', 'Best banks for foreigners',
+  'WeChat pay setup', 'Alipay setup', 'Sending money back home', 'Best remittance apps',
+  'Currency exchange tips', 'Crypto in China', 'International transfers',
+  'Tax basics for foreigners', 'Tax filing in China', 'Managing finances abroad',
+
+  // Tech & Apps
+  'Best VPN in China', 'VPN recommendations 2025', 'Best SIM cards', 'Getting a Chinese number',
+  'Internet in China guide', 'DiDi ride guide', 'Meituan food delivery', 'Eleme delivery tips',
+  'Bicycle sharing apps', 'Metro apps China', 'High speed train booking', 'Ctrip travel tips',
+  'YouTube alternatives China', 'WhatsApp alternatives China', 'Instagram alternatives China',
+  'WeChat official accounts for Africans', 'WeChat groups for Africans', 'TikTok in China',
+  'Best translation apps', 'Baidu Maps vs Google Maps',
+
+  // Jobs & Education
+  'Part-time jobs', 'Teaching English in China', 'TEFL certification', 'HSK exam tips',
+  'Learning Chinese fast', 'Chinese language schools', 'Scholarships', 'Internships',
+  'Job interviews in China', 'Resume tips for China', 'Networking events',
+  'How to build connections', 'LinkedIn in China', 'Finding a job as a foreigner',
+
+  // Housing & Lifestyle
+  'How to find roommates', 'Apartment contracts tips', 'Where to buy furniture',
+  'Accommodation hacks', 'Cheap flights Africa-China', 'Travel insurance guide',
+  'Emergency contacts in China', 'Health check requirements', 'International health insurance',
+  'Bringing family to China', 'Schools for African kids in China', 'Pet ownership in China',
+
+  // Products & Sourcing
+  'Fashion suppliers', 'Jewelry suppliers', 'Sneakers suppliers', 'Perfume sourcing',
+  'Electronics wholesale', 'Best phones to buy in China', 'Best laptops deals',
+  'Hair extensions suppliers', 'Cosmetics suppliers', 'Baby products wholesale',
+  'Furniture suppliers China', 'Building materials import', 'Solar panels sourcing',
+  'Auto parts suppliers', 'Textile suppliers', 'Fabric sourcing guide',
+
+  // Side Hustles & Income
+  'Side hustles for Africans in China', 'Freelancing online', 'Content creation tips',
+  'YouTube monetization', 'Dropshipping guide', 'Print on demand', 'Amazon FBA tips',
+  'Selling on Jumia from China', 'Selling on Konga from China',
+
+  // Food & Culture
+  'Food delivery apps', 'Best halal restaurants', 'African food recipes', 'Chinese cuisine guide',
+  'Best street food China', 'Vegetarian food in China', 'Cooking African food in China',
+  'Where to find African spices', 'African groceries online China',
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
 const exploreApiFetch = async (path, token, extraParams = {}) => {
   try {
     const url = new URL(`${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`);
@@ -394,6 +443,281 @@ const MarketplaceCard = memo(({ item, onPress }) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Reel grid card — 3-col square thumbnail with play overlay
+// ─────────────────────────────────────────────────────────────────────────────
+const REEL_COLS    = 3;
+const REEL_GAP     = 4;
+const REEL_SIZE    = (SCREEN_W - H_PAD * 2 - SEC_PAD * 2 - REEL_GAP * (REEL_COLS - 1)) / REEL_COLS;
+
+const fmtViews = (n) => {
+  const v = Number(n ?? 0);
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+  if (v >= 1_000)     return (v / 1_000).toFixed(1) + 'k';
+  return v > 0 ? String(v) : '';
+};
+
+const ReelGridCard = memo(({ item, onPress }) => {
+  // reels API returns media as object: { video_url, thumbnail, ... }
+  // feed API returns media as array: [{ video_url, thumbnail, ... }]
+  const thumb    = item?.media?.thumbnail ?? item?.media?.[0]?.thumbnail ?? item?.thumbnail ?? item?.cover ?? null;
+  const views    = fmtViews(item?.views);
+  const username = item?.user?.username ?? item?.username ?? null;
+
+  return (
+    <TouchableOpacity
+      style={[rg.card, { width: REEL_SIZE, height: REEL_SIZE * 1.55 }]}
+      activeOpacity={0.88}
+      onPress={onPress}
+    >
+      {isRealImage(thumb) ? (
+        <Image source={{ uri: thumb }} style={rg.img} resizeMode="cover" />
+      ) : (
+        <LinearGradient colors={[BRAND, '#1a5c63']} style={[rg.img, rg.imgFallback]}>
+          <Ionicons name="play-circle-outline" size={28} color="rgba(255,255,255,0.45)" />
+        </LinearGradient>
+      )}
+
+      {/* Gradient overlay */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.72)']}
+        style={rg.overlay}
+      >
+        {/* Play badge top-left */}
+        <View style={rg.playBadge}>
+          <Ionicons name="play" size={9} color="#fff" />
+        </View>
+
+        {/* Bottom info */}
+        <View style={rg.bottomRow}>
+          {!!views && (
+            <View style={rg.viewChip}>
+              <Ionicons name="eye-outline" size={9} color="rgba(255,255,255,0.8)" />
+              <Text style={rg.viewTxt}>{views}</Text>
+            </View>
+          )}
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+});
+
+const rg = StyleSheet.create({
+  card: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#D6E4E6',
+  },
+  img: {
+    width: '100%',
+    height: '100%',
+  },
+  imgFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '55%',
+    padding: 6,
+    justifyContent: 'flex-end',
+  },
+  playBadge: {
+    position: 'absolute',
+    top: -REEL_SIZE * 0.6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 99,
+    padding: 3,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  viewTxt: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '700',
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Trending post compact card
+// ─────────────────────────────────────────────────────────────────────────────
+const TrendingPostCard = memo(({ item, onPress }) => {
+  const thumb    = item?.thumbnail ?? item?.image ?? item?.cover ?? null;
+  const username = decodeHtml(item?.username ?? item?.user?.username ?? item?.name ?? 'User');
+  const title    = decodeHtml(item?.title ?? item?.text ?? item?.caption ?? '');
+  const likes    = Number(item?.likes_count ?? item?.likes ?? 0);
+  const comments = Number(item?.comments_count ?? item?.comments ?? 0);
+  const avatar   = item?.user?.avatar ?? item?.avatar ?? null;
+  return (
+    <TouchableOpacity style={ss.tpCard} activeOpacity={0.88} onPress={onPress}>
+      {isRealImage(thumb) ? (
+        <Image source={{ uri: thumb }} style={ss.tpThumb} resizeMode="cover" />
+      ) : (
+        <View style={[ss.tpThumb, ss.imgFallback]}>
+          <Ionicons name="flame-outline" size={22} color={MUTED} />
+        </View>
+      )}
+      <View style={ss.tpBadge}>
+        <Ionicons name="trending-up" size={9} color={ACCENT} />
+        <Text style={ss.tpBadgeText}>Trending</Text>
+      </View>
+      <View style={ss.tpBody}>
+        <View style={ss.tpUserRow}>
+          {isRealImage(avatar) ? (
+            <Image source={{ uri: avatar }} style={ss.tpAvatar} />
+          ) : (
+            <View style={[ss.tpAvatar, ss.imgFallback]}>
+              <Ionicons name="person-outline" size={10} color={BRAND} />
+            </View>
+          )}
+          <Text numberOfLines={1} style={ss.tpUsername}>{username}</Text>
+        </View>
+        {!!title && <Text numberOfLines={2} style={ss.tpTitle}>{title}</Text>}
+        <View style={ss.tpStats}>
+          <View style={ss.tpStat}><Ionicons name="heart-outline" size={12} color={MUTED} /><Text style={ss.tpStatText}>{likes.toLocaleString()}</Text></View>
+          <View style={ss.tpStat}><Ionicons name="chatbubble-outline" size={12} color={MUTED} /><Text style={ss.tpStatText}>{comments.toLocaleString()}</Text></View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Featured business horizontal card
+// ─────────────────────────────────────────────────────────────────────────────
+const FeaturedBizCard = memo(({ item, onPress }) => {
+  const avatar    = item?.avatar ?? item?.image ?? item?.logo ?? null;
+  const name      = decodeHtml(item?.title ?? item?.name ?? 'Business');
+  const cat       = item?.category ?? item?.type ?? null;
+  const desc      = decodeHtml(item?.description ?? item?.about ?? '');
+  const followers = Number(item?.followers_count ?? item?.followers ?? 0);
+  return (
+    <TouchableOpacity style={ss.fbCard} activeOpacity={0.88} onPress={onPress}>
+      {isRealImage(avatar) ? (
+        <Image source={{ uri: avatar }} style={ss.fbAvatar} resizeMode="cover" />
+      ) : (
+        <View style={[ss.fbAvatar, ss.imgFallback]}><Text style={{fontSize:24}}>🏢</Text></View>
+      )}
+      <View style={ss.fbBody}>
+        <View style={ss.fbNameRow}>
+          <Text numberOfLines={1} style={ss.fbName}>{name}</Text>
+          {!!item?.verified && <Ionicons name="checkmark-circle" size={14} color={ACCENT} />}
+        </View>
+        {!!cat  && <Text numberOfLines={1} style={ss.fbCat}>{cat}</Text>}
+        {!!desc && <Text numberOfLines={2} style={ss.fbDesc}>{desc}</Text>}
+        <Text style={ss.fbFollowers}>{followers.toLocaleString()} followers</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={ACCENT} />
+    </TouchableOpacity>
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Featured Business Section — horizontal scroll, featured=1
+// ─────────────────────────────────────────────────────────────────────────────
+const FeaturedBusinessSection = ({ navigation, token }) => {
+  const [items,   setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetch('https://hafrik.com/api/v1/business/list.php?limit=8&featured=1', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(r => r.json())
+      .then(j => {
+        const raw = j?.data?.businesses || j?.data?.pages || j?.data?.data || j?.data || [];
+        setItems(Array.isArray(raw) ? raw.slice(0, 8) : []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+  if (!loading && items.length === 0) return null;
+  return (
+    <View style={[ss.section, { paddingHorizontal: 0, overflow: 'hidden' }]}>
+      <View style={{ paddingHorizontal: 14, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={ss.sectionTitleRow}>
+          <View style={ss.sectionAccent} />
+          <Text style={ss.sectionTitle}>Featured Business</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(19,194,150,0.1)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <Ionicons name="shield-checkmark" size={10} color={ACCENT} />
+          <Text style={{ fontSize: 9, fontWeight: '800', color: ACCENT, letterSpacing: 0.8 }}>FEATURED</Text>
+        </View>
+      </View>
+      {loading ? (
+        <View style={[ss.sectionLoader, { paddingHorizontal: 14 }]}><ActivityIndicator size="small" color={BRAND} /></View>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingHorizontal: 14 }}>
+          {items.map((biz, i) => (
+            <FeaturedBizCard key={biz.id ?? `fb-${i}`} item={biz} onPress={() => navigation.navigate('BusinessDetails', { pageId: biz.id })} />
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quick Access Section — merged, shuffled on every reload
+// ─────────────────────────────────────────────────────────────────────────────
+const QUICK_ACCESS_ALL = [
+  { id: 'hotels',          label: 'Hotels',          icon: '🏨', tab: 'posts',     tag: 'hotels'            },
+  { id: 'restaurants',     label: 'Restaurants',     icon: '🍽️', tab: 'posts',     tag: 'restaurants'       },
+  { id: 'hospitals',       label: 'Hospitals',       icon: '🏥', tab: 'posts',     tag: 'hospitals'         },
+  { id: 'parks',           label: 'Parks',           icon: '🌳', tab: 'posts',     tag: 'parks'             },
+  { id: 'bars',            label: 'Bars & Lounges',  icon: '🍺', tab: 'posts',     tag: 'bars'              },
+  { id: 'nightlife',       label: 'Nightlife',       icon: '🎶', tab: 'posts',     tag: 'nightlife'         },
+  { id: 'shopping',        label: 'Shopping',        icon: '🛍️', tab: 'posts',     tag: 'shopping'          },
+  { id: 'banks',           label: 'Banks & Finance', icon: '🏦', tab: 'posts',     tag: 'banks'             },
+  { id: 'visa-help',       label: 'Visa Help',       icon: '📋', tab: 'posts',     tag: 'visa help support' },
+  { id: 'halal-food',      label: 'Halal Food',      icon: '🍜', tab: 'posts',     tag: 'best halal food'   },
+  { id: 'new-to-china',    label: 'New to China',    icon: '🇨🇳', tab: 'hashtags', tag: 'newtochina'         },
+  { id: 'business-tips',   label: 'Business Tips',   icon: '💼', tab: 'hashtags', tag: 'businesstips'      },
+  { id: 'jobs',            label: 'Jobs',            icon: '🎯', tab: 'hashtags', tag: 'jobs'              },
+  { id: 'study',           label: 'Study',           icon: '📚', tab: 'hashtags', tag: 'study'             },
+  { id: 'logistics',       label: 'Logistics',       icon: '🚢', tab: 'hashtags', tag: 'shipping'          },
+  { id: 'currency',        label: 'Exchange Rates',  icon: '💱', tab: 'hashtags', tag: 'currency exchange' },
+];
+
+const QuickAccessSection = memo(({ navigation, shuffleKey }) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const items = useMemo(() => shuffle(QUICK_ACCESS_ALL), [shuffleKey]);
+  return (
+    <View style={ss.section}>
+      <View style={ss.sectionHeader}>
+        <View style={ss.sectionTitleRow}>
+          <View style={ss.sectionAccent} />
+          <Text style={ss.sectionTitle}>Quick Access</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
+        {items.map(item => (
+          <TouchableOpacity
+            key={item.id}
+            style={ss.qaChip}
+            activeOpacity={0.78}
+            onPress={() => navigation.navigate('SearchScreen', { initialTab: item.tab, initialQuery: item.tag })}
+          >
+            <Text style={{ fontSize: 15 }}>{item.icon}</Text>
+            <Text style={ss.qaChipLabel} numberOfLines={1}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Article card — horizontal card with image + content + category tag
 // ─────────────────────────────────────────────────────────────────────────────
 const ExploreArticleCard = memo(({ item, onPress }) => {
@@ -612,7 +936,6 @@ export default function DiscoveryScreen() {
   const { top }           = useSafeAreaInsets();
   const { token }         = useAuth();
   const notificationCount = useStore((s) => s.notificationCount ?? 0);
-  const messageCount      = useStore((s) => s.messageCount ?? 0);
   const setSearchQuery    = useStore((s) => s.setSearchQuery);
   const openComposer      = useStore((s) => s.openComposer);
 
@@ -638,8 +961,11 @@ export default function DiscoveryScreen() {
   const marketAbortRef = useRef(null);
 
   // ── Real articles state ────────────────────────────────────────────────────
-  const [articleItems,    setArticleItems]    = useState([]);
-  const [articleLoading,  setArticleLoading]  = useState(false);
+  const [articleItems,       setArticleItems]       = useState([]);
+  const [articleLoading,     setArticleLoading]     = useState(false);
+  const [articlePage,        setArticlePage]        = useState(1);
+  const [articleHasMore,     setArticleHasMore]     = useState(true);
+  const [articleLoadingMore, setArticleLoadingMore] = useState(false);
   const articleAbortRef = useRef(null);
 
   // ── Trending articles state ────────────────────────────────────────────────
@@ -650,6 +976,20 @@ export default function DiscoveryScreen() {
   const [people,        setPeople]        = useState([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   const peopleAbortRef = useRef(null);
+
+  // -- Trending posts state
+  const [trendingPosts, setTrendingPosts] = useState([]);
+  const trendingPostsRef = useRef(null);
+  const [trendingDisplayKey, setTrendingDisplayKey] = useState(0);
+
+  // -- Sponsored businesses state
+  const [sponsoredBiz, setSponsoredBiz] = useState([]);
+  const sponsoredBizRef = useRef(null);
+
+  // -- Reels preview state
+  const [reels,        setReels]        = useState([]);
+  const [reelsLoading, setReelsLoading] = useState(false);
+  const reelsAbortRef = useRef(null);
 
   // ── Left-edge swipe → open drawer ─────────────────────────────────────────
   const panResponder = useRef(
@@ -672,9 +1012,12 @@ export default function DiscoveryScreen() {
     });
     fetchCountries();
     loadMarketplace();
+    loadTrendingPosts();
+    loadSponsoredBiz();
     loadArticles();
     loadTrendingArticles();
     loadPeople();
+    loadReels();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchCountries = useCallback(async () => {
@@ -730,18 +1073,21 @@ export default function DiscoveryScreen() {
   
 
   // ── Load articles via real endpoint ────────────────────────────────────────
-  const loadArticles = useCallback(async () => {
+  const loadArticles = useCallback(async (pageNum = 1, append = false) => {
     if (articleAbortRef.current) articleAbortRef.current.abort();
     const ctrl = new AbortController();
     articleAbortRef.current = ctrl;
-    setArticleLoading(true);
+    if (append) setArticleLoadingMore(true); else setArticleLoading(true);
     try {
-      const items = await fetchArticles({ page: 1, limit: 4 }, ctrl.signal);
-      setArticleItems(Array.isArray(items) ? items : []);
+      const items = await fetchArticles({ page: pageNum, limit: 10 }, ctrl.signal);
+      const list = Array.isArray(items) ? items : [];
+      if (append) setArticleItems((p) => [...p, ...list]); else setArticleItems(list);
+      setArticleHasMore(list.length >= 10);
+      setArticlePage(pageNum);
     } catch (e) {
-      if (e.name !== 'AbortError') setArticleItems([]);
+      if (e.name !== 'AbortError' && !append) setArticleItems([]);
     } finally {
-      setArticleLoading(false);
+      if (append) setArticleLoadingMore(false); else setArticleLoading(false);
     }
   }, []);
 
@@ -783,7 +1129,65 @@ export default function DiscoveryScreen() {
     }
   }, [token]);
 
-  // ── Follow toggle with optimistic update ────────────────────────────────────
+  // -- Load trending posts (3 only) ──────────────────────────────────────────
+  const loadTrendingPosts = useCallback(async () => {
+    if (trendingPostsRef.current) trendingPostsRef.current.abort();
+    const ctrl = new AbortController();
+    trendingPostsRef.current = ctrl;
+    try {
+      const res  = await fetch(`${BASE_URL}/api/v1/feed/trending.php?limit=3`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: ctrl.signal,
+      });
+      const json = await res.json();
+      const list = json?.data?.data ?? json?.data ?? [];
+      setTrendingPosts(Array.isArray(list) ? list.slice(0, 3) : []);
+    } catch (e) {
+      if (e?.name !== 'AbortError') setTrendingPosts([]);
+    }
+  }, [token]);
+
+  // -- Load sponsored/trending businesses ────────────────────────────────────
+  const loadSponsoredBiz = useCallback(async () => {
+    if (sponsoredBizRef.current) sponsoredBizRef.current.abort();
+    const ctrl = new AbortController();
+    sponsoredBizRef.current = ctrl;
+    try {
+      const res  = await fetch(`${BASE_URL}/api/v1/business/list.php?limit=5&sponsored=1`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: ctrl.signal,
+      });
+      const json = await res.json();
+      const list = json?.data?.businesses || json?.data?.pages || json?.data?.data || json?.data || [];
+      setSponsoredBiz(Array.isArray(list) ? list.slice(0, 3) : []);
+    } catch (e) {
+      if (e?.name !== 'AbortError') setSponsoredBiz([]);
+    }
+  }, [token]);
+
+  // -- Load reels for preview grid ───────────────────────────────────────────
+  const loadReels = useCallback(async () => {
+    if (reelsAbortRef.current) reelsAbortRef.current.abort();
+    const ctrl = new AbortController();
+    reelsAbortRef.current = ctrl;
+    setReelsLoading(true);
+    try {
+      const seed = Math.floor(Math.random() * 2147483647);
+      const res  = await fetch(
+        `${BASE_URL}/api/v1/reels/list.php?page=1&limit=6&mode=for_you&seed=${seed}`,
+        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, signal: ctrl.signal },
+      );
+      const json = await res.json();
+      const list = json?.data?.data ?? json?.data ?? [];
+      setReels(Array.isArray(list) ? list.slice(0, 6) : []);
+    } catch (e) {
+      if (e?.name !== 'AbortError') setReels([]);
+    } finally {
+      setReelsLoading(false);
+    }
+  }, [token]);
+
+    // ── Follow toggle with optimistic update ────────────────────────────────────
   const toggleFollowPerson = useCallback(async (userId) => {
     setPeople(prev => prev.map(p =>
       (p.id ?? p.user_id) === userId
@@ -825,9 +1229,9 @@ export default function DiscoveryScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     reshuffleAll();
-    await Promise.all([loadExplore(), loadMarketplace(), loadArticles(), loadTrendingArticles(), loadPeople()]);
+    await Promise.all([loadExplore(), loadTrendingPosts(), loadSponsoredBiz(), loadArticles(), loadTrendingArticles(), loadPeople(), loadReels()]);
     setRefreshing(false);
-  }, [loadExplore, loadMarketplace, loadArticles, loadTrendingArticles, loadPeople, reshuffleAll]);
+  }, [loadExplore, loadTrendingPosts, loadSponsoredBiz, loadArticles, loadTrendingArticles, loadPeople, reshuffleAll]);
 
   // ── Raw explore data ───────────────────────────────────────────────────────
   const counts          = explorePayload?.counts          ?? {};
@@ -838,9 +1242,10 @@ export default function DiscoveryScreen() {
 
   // ── Shuffled & sliced (re-runs when shuffleKey changes) ───────────────────
   /* eslint-disable react-hooks/exhaustive-deps */
-  const hotCommunities = useMemo(() => shuffle(suggestedGroups).slice(0, 3), [suggestedGroups, shuffleKey]);
-  const hotEvents      = useMemo(() => shuffle(events).slice(0, 8),           [events,          shuffleKey]);
-  const ads            = useMemo(() => shuffle(rawAds),                        [rawAds,          shuffleKey]);
+  const hotCommunities  = useMemo(() => shuffle(suggestedGroups).slice(0, 3), [suggestedGroups, shuffleKey]);
+  const hotEvents       = useMemo(() => shuffle(events).slice(0, 8),           [events,          shuffleKey]);
+  const ads             = useMemo(() => shuffle(rawAds),                        [rawAds,          shuffleKey]);
+  const displayTrending = useMemo(() => shuffle(trendingPosts).slice(0, 3),    [trendingPosts,   trendingDisplayKey]); // eslint-disable-line
 
   const businessesInChina = useMemo(() => {
     const arr   = shuffle(suggestedPages);
@@ -857,12 +1262,12 @@ export default function DiscoveryScreen() {
     [marketProducts, shuffleKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  // Trending businesses — shuffled pages (skip first 5 already used in businesses section)
-  const trendingBusinesses = useMemo(() => shuffle(suggestedPages).slice(0, 5), [suggestedPages, shuffleKey]); // eslint-disable-line
-
   // Community highlights — additional communities beyond the first 3 shown
   const communityHighlights = useMemo(() => shuffle(suggestedGroups).slice(3, 8), [suggestedGroups, shuffleKey]); // eslint-disable-line
   /* eslint-enable react-hooks/exhaustive-deps */
+
+  // Popular This Week — 3 shuffled trending articles
+  const popularThisWeek = useMemo(() => shuffle(trendingArticles).slice(0, 3), [trendingArticles, shuffleKey]); // eslint-disable-line
 
   // ── Navigation helpers ─────────────────────────────────────────────────────
   const goSearchScreen = useCallback((query) => {
@@ -903,7 +1308,48 @@ export default function DiscoveryScreen() {
       {/* ════════════════════════════════════════════════════════════════════
           FIXED HEADER — always visible, outside scroll
           ════════════════════════════════════════════════════════════════════ */}
-      <Header onOpenDrawer={() => setDrawerVisible(true)} />
+      <LinearGradient
+        colors={[BRAND, '#0A5A62']}
+        style={[ss.header, { paddingTop: top + 6 }]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={ss.headerInner}>
+          {/* Hamburger — opens DrawerNavigation */}
+          <TouchableOpacity
+            style={ss.iconBtn}
+            activeOpacity={0.85}
+            onPress={() => setDrawerVisible(true)}
+          >
+            <Ionicons name="menu-outline" size={22} color="#fff" />
+          </TouchableOpacity>
+
+          <View style={ss.headerRight}>
+            {/* Notifications */}
+            <TouchableOpacity
+              style={ss.iconBtn}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Ionicons name={notificationCount > 0 ? 'notifications' : 'notifications-outline'} size={20} color="#fff" />
+              {notificationCount > 0 && (
+                <View style={ss.badge}>
+                  <Text style={ss.badgeText}>{notificationCount > 99 ? '99+' : notificationCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* Search */}
+            <TouchableOpacity
+              style={ss.iconBtn}
+              activeOpacity={0.85}
+              onPress={() => goSearchScreen('')}
+            >
+              <Ionicons name="search-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </LinearGradient>
 
       {/* ════════════════════════════════════════════════════════════════════
           SCROLLABLE CONTENT
@@ -927,7 +1373,7 @@ export default function DiscoveryScreen() {
             {counts?.communities != null && (
               <View style={ss.countPill}>
                 <Ionicons name="people-outline" size={12} color={ACCENT} />
-                <Text style={ss.countText}>{counts.communities} Groups</Text>
+                <Text style={ss.countText}>{counts.communities} Communities</Text>
               </View>
             )}
             {counts?.events != null && (
@@ -963,44 +1409,95 @@ export default function DiscoveryScreen() {
           </View>
         </View>
 
-        {/* ── 2. QUICK LINKS ── */}
+        {/* ─── QUICK LINKS ─── */}
         <StaticShortcutRow />
 
-        {/* ── BODY ── */}
+        {/* ─── BODY ─── */}
         <View style={ss.body}>
 
-          {/* ── 3. HOT TOPICS ── */}
+          {/* ─── 1. TRENDING NOW ─── */}
+          {trendingPosts.length > 0 && (
+            <View style={ss.section}>
+              <View style={ss.sectionHeader}>
+                <View style={ss.sectionTitleRow}>
+                  <View style={ss.sectionAccent} />
+                  <Text style={ss.sectionTitle}>🔥 Trending Now</Text>
+                  <View style={[ss.trendingBadge, { marginLeft: 8 }]}>
+                    <View style={ss.liveDot} />
+                    <Text style={ss.trendingBadgeTxt}>LIVE</Text>
+                  </View>
+                </View>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setTrendingDisplayKey((k) => k + 1)} style={ss.shuffleBtn}>
+                  <Ionicons name="shuffle" size={18} color={BRAND} />
+                </TouchableOpacity>
+              </View>
+              <Text style={ss.sectionSubtitle}>What the community is talking about</Text>
+              <View style={{ gap: 10 }}>
+                {displayTrending.map((post, i) => (
+                  <TrendingPostCard
+                    key={post.id ?? post.post_id ?? `tp-${i}`}
+                    item={post}
+                    onPress={() => navigation.navigate('PostDetail', { postId: post.id ?? post.post_id })}
+                  />
+                ))}
+              </View>
+              <TouchableOpacity
+                style={ss.viewMoreBtn}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('TrendingOnHafrik')}
+              >
+                <Ionicons name="flame-outline" size={14} color={ACCENT} />
+                <Text style={ss.viewMoreText}>View All Trending Posts</Text>
+                <Ionicons name="arrow-forward" size={14} color={ACCENT} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ─── 2. FEATURED BUSINESS ─── */}
+          <FeaturedBusinessSection navigation={navigation} token={token} />
+
+          {/* ─── 3. HOT TOPICS ─── */}
           <View style={ss.section}>
             <View style={ss.hotHeader}>
-              <Text style={ss.hotTitle}>Hot Topics</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={ss.hotTitle}>🔥 Hot Topics</Text>
+                <View style={ss.hotBadge}><Text style={ss.hotBadgeTxt}>{hotTopics.length}</Text></View>
+              </View>
               <TouchableOpacity activeOpacity={0.8} onPress={reshuffleAll} style={ss.shuffleBtn}>
                 <Ionicons name="shuffle" size={18} color={BRAND} />
               </TouchableOpacity>
             </View>
-            <Text style={ss.hotSub}>Tap a topic to instantly search Hafrik.</Text>
+            <Text style={ss.hotSub}>Tap any tag to dive into trending conversations</Text>
             <View style={ss.hotTopicsWrap}>
-              {hotTopics.map((t, i) => (
-                <TouchableOpacity
-                  key={`${t}-${i}`}
-                  onPress={() => goSearchScreen(t)}
-                  activeOpacity={0.85}
-                  style={[ss.topicPill, i === 0 && { backgroundColor: ACCENT }]}
-                >
-                  <Text style={ss.topicPillText}>{t}</Text>
-                </TouchableOpacity>
-              ))}
+              {hotTopics.map((t, i) => {
+                const palettes = [
+                  { bg: BRAND,                   text: '#fff',    border: BRAND },
+                  { bg: ACCENT,                  text: DARK,      border: ACCENT },
+                  { bg: 'rgba(232,93,4,0.10)',   text: '#C04A00', border: '#E85D04' },
+                  { bg: 'rgba(114,9,183,0.10)',  text: '#6200AA', border: '#7209B7' },
+                  { bg: 'rgba(0,119,182,0.10)',  text: '#005A8F', border: '#0077B6' },
+                  { bg: 'rgba(19,194,150,0.12)', text: '#0A7C60', border: ACCENT },
+                ];
+                const pal = palettes[i % palettes.length];
+                return (
+                  <TouchableOpacity
+                    key={`${t}-${i}`}
+                    onPress={() => {
+                      try { setSearchQuery?.(t); } catch {}
+                      navigation.navigate('SearchScreen', { initialQuery: t, initialTab: 'posts' });
+                    }}
+                    activeOpacity={0.78}
+                    style={[ss.topicPill, { backgroundColor: pal.bg, borderColor: pal.border }]}
+                  >
+                    <Text style={[ss.topicHashtag, { color: pal.text, opacity: 0.6 }]}>#</Text>
+                    <Text style={[ss.topicPillText, { color: pal.text }]}>{t}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
-          {/* ── 4. UPGRADE TO PRO CTA ── */}
-          <UpgradeToProCard
-            onPress={() => openInBrowser('https://hafrik.com/packages', 'Upgrade to Pro')}
-          />
-
-          {/* ── 5. ADS BANNER ── */}
-          <AdsBanner ads={ads} onPress={handleAdPress} />
-
-          {/* ── 6. PEOPLE YOU MAY KNOW ── */}
+          {/* ─── 4. PEOPLE YOU MAY KNOW ─── */}
           {Array.isArray(people) && (people.length > 0 || peopleLoading) && (
             <View style={ss.section}>
               <SectionHeader
@@ -1008,22 +1505,14 @@ export default function DiscoveryScreen() {
                 onSeeAll={() => navigation.navigate('SearchScreen', { initialQuery: '' })}
               />
               {peopleLoading && people.length === 0 ? (
-                <View style={ss.sectionLoader}>
-                  <ActivityIndicator size="small" color={BRAND} />
-                </View>
+                <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
               ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 12, paddingRight: 4 }}
-                >
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
                   {people.map((p, i) => (
                     <PersonHCard
                       key={`person-${p.id ?? p.user_id ?? i}`}
                       item={p}
-                      onPress={() =>
-                        navigation.navigate('UserProfile', { userId: p.id ?? p.user_id })
-                      }
+                      onPress={() => navigation.navigate('UserProfile', { userId: p.id ?? p.user_id })}
                       onFollow={() => toggleFollowPerson(p.id ?? p.user_id)}
                     />
                   ))}
@@ -1032,289 +1521,172 @@ export default function DiscoveryScreen() {
             </View>
           )}
 
-          {/* ── 7. SUGGESTED COMMUNITIES ── */}
-          <View style={ss.section}>
-            <SectionHeader
-              title="Suggested Communities"
-              onSeeAll={() => navigation.navigate('GroupScreen', { initialTab: 0 })}
-            />
-            {hotCommunities.length ? (
-              <View style={{ gap: 10 }}>
-                {hotCommunities.map((g) => (
-                  <MiniCard
-                    key={g.id}
-                    title={g.title ?? g.name ?? 'Community'}
-                    subtitle={`${(g.members_count ?? g.members ?? 0).toLocaleString()} members`}
-                    image={g.avatar ?? g.image}
-                    iconName="people-outline"
-                    badge="Join"
-                    onPress={() => navigation.navigate('GroupDetails', { groupId: g.id })}
-                  />
-                ))}
-              </View>
-            ) : (
-              <Text style={ss.emptyText}>No communities yet.</Text>
-            )}
-          </View>
-
-          {/* ── 8. MARKETPLACE — real endpoint, 2-col grid ── */}
-          {(displayProducts.length > 0 || marketLoading) && (
+          {/* ─── 5. SUGGESTED COMMUNITIES ─── */}
+          {hotCommunities.length > 0 && (
             <View style={ss.section}>
-              <SectionHeader
-                title="Marketplace"
-                onSeeAll={() => navigation.navigate('MarketplaceScreen')}
-              />
-              {marketLoading && displayProducts.length === 0 ? (
-                <View style={ss.sectionLoader}>
-                  <ActivityIndicator size="small" color={BRAND} />
-                </View>
-              ) : (
-                <View style={ss.marketGrid}>
-                  {displayProducts.map((m) => (
-                    <MarketplaceCard
-                      key={String(m.id)}
-                      item={m}
-                      onPress={() => navigation.navigate('ProductDetail', { product: m })}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* ── 9. HAFRIK EXCHANGE CTA ── */}
-          <HafrikExchangeCTA
-            onPress={() => openInBrowser('https://exchange.hafrik.com/', 'Hafrik Exchange')}
-          />
-
-          {/* ── 10. ARTICLES — real endpoint ── */}
-          {(articleItems.length > 0 || articleLoading) && (
-            <View style={ss.section}>
-              <SectionHeader
-                title="Guides & Articles"
-                onSeeAll={() => navigation.navigate('ArticlesScreen')}
-              />
-              {articleLoading && articleItems.length === 0 ? (
-                <View style={ss.sectionLoader}>
-                  <ActivityIndicator size="small" color={BRAND} />
-                </View>
-              ) : (
-                <View style={{ gap: 10 }}>
-                  {articleItems.map((a) => (
-                    <ExploreArticleCard
-                      key={String(a.id ?? a.post_id)}
-                      item={a}
-                      onPress={() =>
-                        navigation.navigate('ArticleDetails', { postId: a.post_id ?? a.id })
-                      }
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* ── 11. EVENTS ── */}
-          {hotEvents.length > 0 && (
-            <View style={ss.section}>
-              <SectionHeader
-                title="Events"
-                onSeeAll={() => navigation.navigate('EventsScreen')}
-              />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12 }}
-              >
-                {hotEvents.map((e) => {
-                  const cover = e.cover ?? e.image ?? e.thumbnail;
-                  return (
-                    <TouchableOpacity
-                      key={e.id}
-                      style={ss.eventCard}
-                      activeOpacity={0.88}
-                      onPress={() => navigation.navigate('EventDetail', { event: e })}
-                    >
-                      {isRealImage(cover) ? (
-                        <Image source={{ uri: cover }} style={ss.eventImg} />
-                      ) : (
-                        <View style={[ss.eventImg, ss.imgFallback]}>
-                          <Ionicons name="calendar-outline" size={26} color={BRAND} />
-                        </View>
-                      )}
-                      <View style={{ padding: 12 }}>
-                        <Text numberOfLines={1} style={ss.eventTitle}>
-                          {decodeHtml(e.title ?? 'Event')}
-                        </Text>
-                        <Text numberOfLines={1} style={ss.eventMeta}>
-                          {decodeHtml(e.location ?? (e.is_online ? 'Online' : 'Hafrik Events'))}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* ── 12. TRENDING BUSINESSES ── */}
-          {trendingBusinesses.length > 0 && (
-            <View style={ss.section}>
-              <SectionHeader
-                title="Trending Businesses"
-                onSeeAll={() => navigation.navigate('PagesScreen')}
-              />
-              <View style={{ gap: 10 }}>
-                {trendingBusinesses.map((p, i) => (
-                  <MiniCard
-                    key={p.id ?? `biz-${i}`}
-                    title={p.title ?? p.name ?? 'Business'}
-                    subtitle={`${(p.followers_count ?? p.followers ?? 0).toLocaleString()} followers`}
-                    image={p.avatar ?? p.image}
-                    iconName="business-outline"
-                    badge="Follow"
-                    onPress={() => navigation.navigate('BusinessDetails', { pageId: p.id })}
-                  />
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* ── 13. POPULAR THIS WEEK (trending articles) ── */}
-          {trendingArticles.length > 0 && (
-            <View style={ss.section}>
-              <SectionHeader
-                title="Popular This Week"
-                onSeeAll={() => navigation.navigate('ArticlesScreen')}
-              />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12 }}
-              >
-                {trendingArticles.map((a, i) => {
-                  const img = a.image ?? a.thumbnail ?? null;
-                  return (
-                    <TouchableOpacity
-                      key={a.id ?? a.post_id ?? i}
-                      style={ss.trendCard}
-                      activeOpacity={0.88}
-                      onPress={() =>
-                        navigation.navigate('ArticleDetails', { postId: a.post_id ?? a.id })
-                      }
-                    >
-                      {isRealImage(img) ? (
-                        <Image source={{ uri: img }} style={ss.trendImg} resizeMode="cover" />
-                      ) : (
-                        <View style={[ss.trendImg, ss.imgFallback]}>
-                          <Ionicons name="flame-outline" size={24} color={MUTED} />
-                        </View>
-                      )}
-                      {/* Trending badge */}
-                      <View style={ss.trendBadge}>
-                        <Ionicons name="trending-up" size={9} color={ACCENT} />
-                        <Text style={ss.trendBadgeText}>Trending</Text>
-                      </View>
-                      <View style={ss.trendBody}>
-                        <Text numberOfLines={2} style={ss.trendTitle}>
-                          {decodeHtml(a.title ?? '')}
-                        </Text>
-                        {a.views != null && (
-                          <Text style={ss.trendMeta}>
-                            {Number(a.views).toLocaleString()} views
-                          </Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* ── 14. COMMUNITY HIGHLIGHTS ── */}
-          {communityHighlights.length > 0 && (
-            <View style={ss.section}>
-              <SectionHeader
-                title="Community Highlights"
-                onSeeAll={() => navigation.navigate('GroupScreen')}
-              />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 12 }}
-              >
-                {communityHighlights.map((g, i) => {
-                  const cover = g.cover ?? g.banner ?? g.image ?? null;
+              <SectionHeader title="Suggested Communities" onSeeAll={() => navigation.navigate('GroupScreen', { initialTab: 0 })} />
+              <View style={{ gap: 10, marginTop: 4 }}>
+                {hotCommunities.map((g, i) => {
+                  const cover  = g.cover ?? g.banner ?? g.image ?? null;
                   const avatar = g.avatar ?? g.image ?? null;
+                  const name   = decodeHtml(g.title ?? g.name ?? 'Community');
+                  const members = (g.members_count ?? g.members ?? 0).toLocaleString();
                   return (
                     <TouchableOpacity
                       key={g.id ?? i}
-                      style={ss.communityCard}
+                      style={ss.communityRow}
                       activeOpacity={0.88}
                       onPress={() => navigation.navigate('GroupDetails', { groupId: g.id })}
                     >
-                      {isRealImage(cover) ? (
-                        <Image source={{ uri: cover }} style={ss.communityBanner} resizeMode="cover" />
-                      ) : (
-                        <LinearGradient
-                          colors={[BRAND, '#1a5c63']}
-                          style={ss.communityBanner}
-                        />
-                      )}
-                      <View style={ss.communityBody}>
-                        {isRealImage(avatar) ? (
-                          <Image source={{ uri: avatar }} style={ss.communityAvatar} />
-                        ) : (
-                          <View style={[ss.communityAvatar, ss.imgFallback]}>
-                            <Ionicons name="people-outline" size={14} color={BRAND} />
-                          </View>
-                        )}
-                        <Text numberOfLines={1} style={ss.communityName}>
-                          {decodeHtml(g.title ?? g.name ?? 'Community')}
-                        </Text>
-                        <Text style={ss.communitySub}>
-                          {(g.members_count ?? g.members ?? 0).toLocaleString()} members
-                        </Text>
-                        <View style={ss.communityJoinBtn}>
-                          <Text style={ss.communityJoinText}>Join</Text>
+                      {/* Avatar */}
+                      {isRealImage(avatar)
+                        ? <Image source={{ uri: avatar }} style={ss.communityRowAvatar} resizeMode="cover" />
+                        : <LinearGradient colors={[BRAND, '#1a5c63']} style={[ss.communityRowAvatar, { alignItems: 'center', justifyContent: 'center' }]}>
+                            <Ionicons name="people" size={20} color="#fff" />
+                          </LinearGradient>
+                      }
+                      {/* Info */}
+                      <View style={{ flex: 1 }}>
+                        <Text numberOfLines={1} style={ss.communityRowName}>{name}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                          <Ionicons name="people-outline" size={12} color={MUTED} />
+                          <Text style={ss.communityRowSub}>{members} members</Text>
                         </View>
+                        {!!(g.description ?? g.bio ?? g.summary) && (
+                          <Text numberOfLines={2} style={ss.communityRowDesc}>
+                            {(g.description ?? g.bio ?? g.summary ?? '').trim()}
+                          </Text>
+                        )}
+                      </View>
+                      {/* Join button */}
+                      <View style={ss.communityRowJoin}>
+                        <Text style={ss.communityRowJoinTxt}>Join</Text>
                       </View>
                     </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
+              </View>
             </View>
           )}
 
-          {/* ── 15. VISA & ADMISSION CTA ── */}
-          <VisaCTA onPress={() => setVisaModalVisible(true)} />
+          {/* ─── REELS PREVIEW ─── */}
+          {(reels.length > 0 || reelsLoading) && (
+            <View style={ss.section}>
+              <View style={ss.sectionHeader}>
+                <View style={ss.sectionTitleRow}>
+                  <View style={ss.sectionAccent} />
+                  <Text style={ss.sectionTitle}>🎬 Reels</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Reels')}
+                  activeOpacity={0.8}
+                  style={ss.seeAllBtn}
+                >
+                  <Text style={ss.seeAllText}>See all</Text>
+                  <Ionicons name="chevron-forward" size={14} color={ACCENT} />
+                </TouchableOpacity>
+              </View>
+              <Text style={ss.sectionSubtitle}>Short videos from your community</Text>
 
-          {/* ── 16. SPONSORED SECTION ── */}
-          <View style={[ss.section, { marginBottom: 28 }]}>
-            <View style={ss.sponsoredHeader}>
-              <Ionicons name="megaphone-outline" size={14} color={MUTED} />
-              <Text style={ss.sponsoredTitle}>Sponsored</Text>
+              {reelsLoading && reels.length === 0 ? (
+                <View style={ss.sectionLoader}>
+                  <ActivityIndicator size="small" color={BRAND} />
+                </View>
+              ) : (
+                <>
+                  {/* 3-column grid */}
+                  <View style={ss.reelGrid}>
+                    {reels.slice(0, 6).map((r, i) => (
+                      <ReelGridCard
+                        key={r.id ?? `reel-${i}`}
+                        item={r}
+                        onPress={() => {
+                          navigation.navigate('PostDetail', { postId: r.id ?? r.reel_id ?? r.post_id });
+                        }}
+                      />
+                    ))}
+                  </View>
+
+                  <TouchableOpacity
+                    style={ss.viewMoreBtn}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate('Reels')}
+                  >
+                    <Ionicons name="play-circle-outline" size={14} color={ACCENT} />
+                    <Text style={ss.viewMoreText}>View All Reels</Text>
+                    <Ionicons name="arrow-forward" size={14} color={ACCENT} />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
-            <TouchableOpacity
-              style={ss.sponsoredCard}
-              activeOpacity={0.88}
-              onPress={() => openInBrowser('https://hafrik.com/packages', 'Advertise on Hafrik')}
-            >
-              <LinearGradient colors={['#F0F9F6', '#E6F5F0']} style={ss.sponsoredInner}>
-                <View style={ss.sponsoredIconWrap}>
-                  <Ionicons name="rocket-outline" size={24} color={ACCENT} />
+          )}
+
+          {/* ─── 6. QUICK ACCESS — Hashtag categories ─── */}
+          <QuickAccessSection navigation={navigation} shuffleKey={shuffleKey} />
+
+          {/* ─── 7. VISA CTA ─── */}
+          <VisaCTA onPress={() => navigation.navigate('SearchScreen', { initialQuery: 'visa help support', initialTab: 'pages' })} />
+
+          {/* ─── 8. (removed – Trending Businesses) ─── */}
+
+          {/* ─── 9. POPULAR THIS WEEK ─── */}
+          {popularThisWeek.length > 0 && (
+            <View style={ss.section}>
+              <SectionHeader title="🌟 Popular This Week" onSeeAll={() => navigation.navigate('ArticlesScreen')} />
+              <View style={{ gap: 10 }}>
+                {popularThisWeek.map((a, i) => (
+                  <ExploreArticleCard
+                    key={a.id ?? a.post_id ?? i}
+                    item={a}
+                    onPress={() => navigation.navigate('ArticleDetails', { postId: a.post_id ?? a.id })}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* ─── 10. HAFRIK EXCHANGE CTA ─── */}
+          <HafrikExchangeCTA onPress={() => navigation.navigate('SearchScreen', { initialQuery: 'HafrikExchange', initialTab: 'pages' })} />
+
+          {/* ─── 11. GUIDES & TIPS — FINAL SECTION, paginated + ads ─── */}
+          {(articleItems.length > 0 || articleLoading) && (
+            <View style={[ss.section, { marginBottom: 28 }]}>
+              <SectionHeader title="Guides & Tips" onSeeAll={() => navigation.navigate('ArticlesScreen')} />
+              {articleLoading && articleItems.length === 0 ? (
+                <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  {articleItems.map((a, idx) => (
+                    <React.Fragment key={String(a.id ?? a.post_id)}>
+                      <ExploreArticleCard
+                        item={a}
+                        onPress={() => navigation.navigate('ArticleDetails', { postId: a.post_id ?? a.id })}
+                      />
+                      {(idx + 1) % 4 === 0 && ads.length > 0 && (
+                        <AdsBanner ads={ads} onPress={handleAdPress} />
+                      )}
+                    </React.Fragment>
+                  ))}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={ss.sponsoredCTA}>Advertise your business here</Text>
-                  <Text style={ss.sponsoredSub}>Reach thousands of Africans in China</Text>
-                </View>
-                <View style={ss.sponsoredBtn}>
-                  <Text style={ss.sponsoredBtnText}>Learn more</Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+              )}
+              {articleHasMore && (
+                <TouchableOpacity
+                  style={[ss.viewMoreBtn, { marginTop: 8 }]}
+                  activeOpacity={0.85}
+                  onPress={() => { if (!articleLoadingMore && !articleLoading) loadArticles(articlePage + 1, true); }}
+                >
+                  {articleLoadingMore
+                    ? <ActivityIndicator size="small" color={ACCENT} />
+                    : <>
+                        <Ionicons name="book-outline" size={14} color={ACCENT} />
+                        <Text style={ss.viewMoreText}>Load More Guides</Text>
+                        <Ionicons name="chevron-down" size={14} color={ACCENT} />
+                      </>
+                  }
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
           <View style={{ height: 90 }} />
         </View>
@@ -1354,6 +1726,59 @@ const ss = StyleSheet.create({
   scroll: { flex: 1 },
 
   // ── FAB ──────────────────────────────────────────────────────────────────
+  // ── Trending badge ────────────────────────────────────────────────────────
+  trendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,50,50,0.1)',
+    borderRadius: 99,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,50,50,0.2)',
+  },
+  trendingBadgeTxt: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#E53935',
+    letterSpacing: 1,
+  },
+
+  // ── Section subtitle ─────────────────────────────────────────────────────
+  sectionSubtitle: {
+    fontSize: 12,
+    color: MUTED,
+    marginTop: -6,
+    marginBottom: 12,
+  },
+
+  // ── View More button ─────────────────────────────────────────────────────
+  viewMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: `${ACCENT}12`,
+    borderWidth: 1,
+    borderColor: `${ACCENT}22`,
+  },
+  viewMoreText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: ACCENT,
+  },
+
+  // ── Reel grid ─────────────────────────────────────────────────────────────
+  reelGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: REEL_GAP,
+  },
+
   fab: {
     position: 'absolute',
     bottom: 24,
@@ -1452,11 +1877,14 @@ const ss = StyleSheet.create({
   // ── Hot topics ────────────────────────────────────────────────────────────
   hotHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hotTitle:      { fontSize: 16, fontWeight: '900', color: DARK },
+  hotBadge:      { backgroundColor: ACCENT, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  hotBadgeTxt:   { fontSize: 10, fontWeight: '900', color: '#fff' },
   shuffleBtn:    { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(12,63,68,0.06)', alignItems: 'center', justifyContent: 'center' },
-  hotSub:        { marginTop: 6, color: MUTED, fontSize: 12 },
-  hotTopicsWrap: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  topicPill:     { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: BRAND },
-  topicPillText: { fontSize: 12.5, fontWeight: '800', color: '#fff' },
+  hotSub:        { marginTop: 5, color: MUTED, fontSize: 12 },
+  hotTopicsWrap: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  topicPill:     { flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, borderWidth: 1.5, gap: 2 },
+  topicHashtag:  { fontSize: 12, fontWeight: '900' },
+  topicPillText: { fontSize: 12.5, fontWeight: '800' },
 
   // ── Upgrade to Pro ────────────────────────────────────────────────────────
   proWrap: { marginTop: 12 },
@@ -1778,27 +2206,25 @@ const ss = StyleSheet.create({
   trendTitle: { fontSize: 13, fontWeight: '800', color: DARK, lineHeight: 18 },
   trendMeta:  { marginTop: 5, fontSize: 10, color: MUTED },
 
-  // ── Community highlight card (horizontal) ────────────────────────────────
-  communityCard: {
-    width: 160, backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden',
+  // ── Community list row ─────────────────────────────────────────────────────
+  communityRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fff', borderRadius: 16, padding: 12,
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
-  communityBanner: { width: '100%', height: 72 },
-  communityBody:   { padding: 10, alignItems: 'center' },
-  communityAvatar: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: 'rgba(12,63,68,0.08)',
-    marginTop: -22, borderWidth: 2, borderColor: '#fff',
+  communityRowAvatar: { width: 52, height: 52, borderRadius: 14 },
+  communityRowName:   { fontSize: 14, fontWeight: '800', color: DARK },
+  communityRowSub:    { fontSize: 11, color: MUTED },
+  communityRowDesc:   { fontSize: 11, color: MUTED, marginTop: 5, lineHeight: 15 },
+  communityRowCoverWrap: { marginTop: 6, borderRadius: 8, overflow: 'hidden' },
+  communityRowCover:  { width: '100%', height: 36, borderRadius: 8 },
+  communityRowJoin: {
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: BRAND, borderRadius: 999,
   },
-  communityName: { marginTop: 6, fontSize: 12, fontWeight: '800', color: DARK, textAlign: 'center' },
-  communitySub:  { fontSize: 10, color: MUTED, marginTop: 2, textAlign: 'center' },
-  communityJoinBtn: {
-    marginTop: 8, backgroundColor: BRAND,
-    borderRadius: 999, paddingHorizontal: 18, paddingVertical: 5,
-  },
-  communityJoinText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  communityRowJoinTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
   // ── Left-edge swipe zone ──────────────────────────────────────────────────
   swipeZone: {
@@ -1873,4 +2299,58 @@ const ss = StyleSheet.create({
     marginTop: 10, paddingVertical: 13, alignItems: 'center',
   },
   visaCloseBtnText: { color: MUTED, fontSize: 14, fontWeight: '700' },
+  // ── Trending post card ────────────────────────────────────────────────────
+  tpCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  tpThumb: { width: 80, height: 80, backgroundColor: 'rgba(12,63,68,0.06)' },
+  tpBadge: { position: 'absolute', top: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.92)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 },
+  tpBadgeText: { fontSize: 8, fontWeight: '800', color: ACCENT },
+  tpBody:     { flex: 1, padding: 10, justifyContent: 'center', gap: 4 },
+  tpUserRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tpAvatar:   { width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(12,63,68,0.08)' },
+  tpUsername: { fontSize: 11, fontWeight: '700', color: MUTED },
+  tpTitle:    { fontSize: 13, fontWeight: '800', color: DARK, lineHeight: 18 },
+  tpStats:    { flexDirection: 'row', gap: 12 },
+  tpStat:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  tpStatText: { fontSize: 11, color: MUTED },
+
+  // ── Featured business horizontal card ────────────────────────────────────
+  fbCard:     { width: 240, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
+  fbAvatar:   { width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(12,63,68,0.08)', alignItems: 'center', justifyContent: 'center' },
+  fbBody:     { flex: 1, gap: 2 },
+  fbNameRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  fbName:     { fontSize: 13, fontWeight: '900', color: DARK, flex: 1 },
+  fbCat:      { fontSize: 11, color: ACCENT, fontWeight: '600' },
+  fbDesc:     { fontSize: 11, color: MUTED, lineHeight: 15 },
+  fbFollowers:{ fontSize: 10, color: MUTED, marginTop: 2 },
+
+  // ── Quick Access chips ────────────────────────────────────────────────────
+  qaChip:      { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(12,63,68,0.06)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(12,63,68,0.08)' },
+  qaChipLabel: { fontSize: 12, fontWeight: '700', color: DARK },
+  // Enhanced Quick Access
+  qaSection:       { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginTop: 12, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
+  qaGroupCard:     { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: 'rgba(12,63,68,0.07)', shadowColor: '#0C3F44', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  qaGroupHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  qaGroupIconWrap: { width: 26, height: 26, borderRadius: 8, backgroundColor: 'rgba(12,63,68,0.08)', alignItems: 'center', justifyContent: 'center' },
+  qaGroupTitle:    { fontSize: 13, fontWeight: '800', color: BRAND, flex: 1 },
+  qaGroupSub:      { fontSize: 10, fontWeight: '600', color: MUTED, letterSpacing: 0.3 },
+  // Place chips (horizontal scroll)
+  qaPlaceChip:     { alignItems: 'center', gap: 5, backgroundColor: 'rgba(12,63,68,0.05)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(12,63,68,0.09)', minWidth: 72 },
+  qaPlaceIcon:     { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(12,63,68,0.07)', alignItems: 'center', justifyContent: 'center' },
+  qaPlaceLabel:    { fontSize: 10, fontWeight: '700', color: BRAND, textAlign: 'center', maxWidth: 72 },
+  // Topic chips (wrap)
+  qaTopicChip:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(19,194,150,0.08)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: 'rgba(19,194,150,0.18)' },
+  qaTopicLabel:    { fontSize: 12, fontWeight: '700', color: BRAND },
+
+  // ── Sponsored biz (horizontal scroll cards) ───────────────────────────────
+  sponsoredChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(122,145,152,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  sponsoredChipText: { fontSize: 9, fontWeight: '700', color: MUTED, letterSpacing: 0.5 },
+  sponsBizCard: { width: 200, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: BORDER, overflow: 'hidden' },
+  sponsBizImg:  { width: '100%', height: 100, backgroundColor: 'rgba(12,63,68,0.06)' },
+  sponsBizBody: { padding: 10 },
+  sponsBizName: { fontSize: 13, fontWeight: '900', color: DARK },
+  sponsBizSub:  { fontSize: 11, color: MUTED, marginTop: 2 },
+  sponsBizBtn:  { marginHorizontal: 10, marginBottom: 10, backgroundColor: BRAND, borderRadius: 10, paddingVertical: 7, alignItems: 'center' },
+  sponsBizBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+
+
 });

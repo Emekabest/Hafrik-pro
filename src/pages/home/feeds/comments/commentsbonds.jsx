@@ -1,109 +1,240 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import {
+  View, Text, Image, ActivityIndicator, StyleSheet,
+  TouchableOpacity, Animated, Alert,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
 import { GetCommentsController } from '../../../../controllers/commentscontroller';
 import CalculateElapsedTime from '../../../../helpers/calculateelapsedtime';
-import SvgIcon from '../../../../assl.js/svg/svg';
-import { Ionicons } from '@expo/vector-icons';
 
+const BASE   = 'https://hafrik.com';
+const BRAND  = '#0C3F44';
+const ACCENT = '#13C296';
+const CREAM  = '#F5F7F7';
+const DARK   = '#0D1B1E';
+const MUTED  = '#7A9198';
 
-const CommentBonds = ({ postId, token }) => {
-    const [comments, setComments] = useState([]);
-    const [loading, setLoading] = useState(true);
+// ------------------------------------------------------------------
+// Single comment card
+// ------------------------------------------------------------------
+const CommentItem = React.memo(({ comment, token, onReply }) => {
+  const navigation = useNavigation();
+  const [liked,     setLiked]     = useState(!!comment.is_liked);
+  const [likeCount, setLikeCount] = useState(Number(comment.likes_count ?? comment.like_count ?? 0));
+  const [showReplies, setShowReplies] = useState(false);
+  const scale = useState(new Animated.Value(1))[0];
 
-    useEffect(() => {
-        let mounted = true;
-        const load = async () => {
-            setLoading(true);
-            try {
-                const response = await GetCommentsController(postId, token);
-                if (!mounted) return;
-                if (response && response.status === 200) setComments(Array.isArray(response.data) ? response.data : []);
-                else setComments([]);
-            } catch (e) {
-                if (!mounted) return;
-                // Error loading comments - silent fail
-                setComments([]);
-            }
-            if (mounted) setLoading(false);
-        };
-        load();
-        return () => { mounted = false; };
-    }, [postId, token]);
+  const handleUserPress = useCallback(() => {
+    if (!comment.user?.id) return;
+    navigation.navigate('UserProfile', {
+      userId: comment.user.id,
+      username: comment.user.username ?? '',
+    });
+  }, [comment.user, navigation]);
 
-    if (loading) {
-        return (
-            <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color="#888" />
-            </View>
-        );
+  const pulse = () => {
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 1.35, duration: 100, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1,    duration: 100, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleLike = useCallback(async () => {
+    pulse();
+    const next = !liked;
+    setLiked(next);
+    setLikeCount((c) => c + (next ? 1 : -1));
+    try {
+      await axios.post(
+        `${BASE}/api/v1/feed/like_comment.php`,
+        { comment_id: comment.id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch {
+      // Roll back
+      setLiked(!next);
+      setLikeCount((c) => c + (next ? -1 : 1));
     }
+  }, [liked, comment.id, token]);
 
+  const replies = Array.isArray(comment.replies) ? comment.replies : [];
+  const hasReplies = replies.length > 0;
 
+  return (
+    <View style={cs.card}>
+      {/* Avatar — tap to view profile */}
+      <TouchableOpacity onPress={handleUserPress} activeOpacity={0.8}>
+        <Image
+          source={{ uri: comment.user?.avatar }}
+          style={cs.avatar}
+        />
+      </TouchableOpacity>
 
-    if (!comments || comments.length === 0) {
-        return (
-            <View style={{ paddingHorizontal: 15, paddingTop: 10,  justifyContent: 'center', alignItems: 'center', height:"100%" }}>
-                <Text style={{ color: '#777' , fontFamily:"WorkSans_400Regular" }}>Be the first to comment!</Text>
-            </View>
-        );
-    }
+      {/* Right content */}
+      <View style={cs.cardBody}>
+        {/* Name bubble — tap to view profile */}
+        <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7} style={cs.nameBubble}>
+          <Text style={cs.nameText} numberOfLines={1}>
+            {comment.user?.full_name || comment.user?.username || 'User'}
+          </Text>
+          <Text style={cs.timeText}>{CalculateElapsedTime(comment.created)}</Text>
+        </TouchableOpacity>
 
-    return (
-        <View>
-            {comments.map((c, i) => (
-                <View key={c.id || i} style={styles.commentContainer}>
-                    <View style={styles.avatarColumn}>
-                        <Image source={{ uri: c.user?.avatar }} style={styles.avatar} />
-                    </View>
+        {/* Comment text */}
+        <Text style={cs.commentText}>{comment.text}</Text>
 
-                    <View style={styles.contentColumn}>
-                        <View style={styles.headerRow}>
-                            <Text style={styles.username}>{c.user?.full_name || c.user?.username}</Text>
-                            <View style={styles.spacer} />
-                            <Text style={styles.timeText}>{CalculateElapsedTime(c.created)}</Text>
-                        </View>
-                        <Text style={styles.commentText}>{c.text}</Text>
+        {/* Actions row */}
+        <View style={cs.actionsRow}>
+          {/* Like */}
+          <TouchableOpacity style={cs.actionBtn} onPress={handleLike} activeOpacity={0.7}>
+            <Animated.View style={{ transform: [{ scale }] }}>
+              <Ionicons
+                name={liked ? 'heart' : 'heart-outline'}
+                size={16}
+                color={liked ? '#E8485A' : MUTED}
+              />
+            </Animated.View>
+            {likeCount > 0 && <Text style={[cs.actionCount, liked && { color: '#E8485A' }]}>{likeCount}</Text>}
+          </TouchableOpacity>
 
-                        <View style={styles.actionsRow}>
-                            <TouchableOpacity style={styles.actionItemRow}>
-                                <Ionicons name={'heart-outline'} size={17} color={'#333'} />
-                            </TouchableOpacity>
+          {/* Reply */}
+          <TouchableOpacity
+            style={cs.actionBtn}
+            onPress={() => onReply?.(comment.id, comment.user?.full_name || comment.user?.username || 'User')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chatbubble-outline" size={15} color={MUTED} />
+            <Text style={cs.actionLabel}>Reply</Text>
+          </TouchableOpacity>
 
-                            <TouchableOpacity style={styles.actionItemRow}>
-                                <SvgIcon name="comment" width={16} height={16} color="#333" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            ))}
+          {/* Toggle replies */}
+          {hasReplies && (
+            <TouchableOpacity style={cs.actionBtn} onPress={() => setShowReplies((v) => !v)} activeOpacity={0.7}>
+              <Ionicons name={showReplies ? 'chevron-up' : 'chevron-down'} size={14} color={ACCENT} />
+              <Text style={[cs.actionLabel, { color: ACCENT }]}>
+                {showReplies ? 'Hide' : `${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
+
+        {/* Inline reply thread */}
+        {showReplies && replies.map((r, i) => (
+          <View key={r.id ?? i} style={cs.replyRow}>
+            <Image source={{ uri: r.user?.avatar }} style={cs.replyAvatar} />
+            <View style={{ flex: 1 }}>
+              <View style={cs.replyNameRow}>
+                <Text style={cs.replyName}>{r.user?.full_name || r.user?.username}</Text>
+                <Text style={cs.timeText}>{CalculateElapsedTime(r.created)}</Text>
+              </View>
+              <Text style={cs.replyText}>{r.text ?? r.reply}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+});
+
+// ------------------------------------------------------------------
+// List of comments
+// ------------------------------------------------------------------
+const CommentBonds = ({ postId, token, onReply }) => {
+  const [comments, setComments] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await GetCommentsController(postId, token);
+        if (!mounted) return;
+        setComments(Array.isArray(res?.data) ? res.data : []);
+      } catch {
+        if (mounted) setComments([]);
+      }
+      if (mounted) setLoading(false);
+    };
+    load();
+    return () => { mounted = false; };
+  }, [postId, token]);
+
+  if (loading) {
+    return (
+      <View style={cs.loaderWrap}>
+        <ActivityIndicator size="small" color={ACCENT} />
+      </View>
     );
+  }
+
+  if (!comments.length) {
+    return (
+      <View style={cs.emptyWrap}>
+        <Ionicons name="chatbubbles-outline" size={40} color="#d8e0e2" />
+        <Text style={cs.emptyTitle}>No comments yet</Text>
+        <Text style={cs.emptySub}>Be the first to share your thoughts!</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      {comments.map((c, i) => (
+        <CommentItem key={c.id ?? i} comment={c} token={token} onReply={onReply} />
+      ))}
+    </View>
+  );
 };
 
+const cs = StyleSheet.create({
+  // Card
+  card: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  avatar: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#dde6e8', marginRight: 12, marginTop: 2,
+    borderWidth: 1.5, borderColor: 'rgba(12,63,68,0.12)',
+  },
+  cardBody: { flex: 1 },
 
+  nameBubble: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
+  nameText: { fontSize: 13.5, fontWeight: '800', color: DARK, flexShrink: 1 },
+  timeText: { fontSize: 11.5, color: MUTED },
 
-const styles = StyleSheet.create({
-    commentContainer: { flexDirection: 'row', paddingHorizontal: 15, paddingTop: 12, alignItems: 'flex-start' },
-    avatarColumn: { alignItems: 'center', marginRight: 12, width: 40 },
-    avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#eee' },
-    contentColumn: { flex: 1, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: '#f0f0f0' },
-    headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-    username: { fontWeight: '600', marginRight: 3, color: '#000' },
-    spacer: { flex: 1 },
-    timeText: { color: '#999', fontSize: 13 },
-    commentText: { fontSize: 15, color: '#000', lineHeight: 20, marginBottom: 8 },
-    loadingRow: { padding: 12, alignItems: 'center', justifyContent: 'center' },
-        actionsRow: {
-            flexDirection: 'row',
-            marginTop: 8,
-            alignItems: 'center'
-        },
+  commentText: { fontSize: 14.5, color: '#1a2527', lineHeight: 21, marginBottom: 8 },
 
-        actionItemRow: {
-            marginRight: 14,
-            alignItems: 'center',
-            justifyContent: 'center'
-        }
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  actionCount: { fontSize: 12, color: MUTED, fontWeight: '600' },
+  actionLabel: { fontSize: 12, color: MUTED, fontWeight: '600' },
+
+  // Replies
+  replyRow: {
+    flexDirection: 'row', marginTop: 10, paddingTop: 10,
+    borderTopWidth: 0.5, borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingLeft: 4,
+  },
+  replyAvatar: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#dde6e8', marginRight: 10,
+  },
+  replyNameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2, gap: 6 },
+  replyName: { fontSize: 12.5, fontWeight: '700', color: DARK },
+  replyText: { fontSize: 13.5, color: '#2a3d40', lineHeight: 19 },
+
+  // States
+  loaderWrap: { paddingVertical: 30, alignItems: 'center' },
+  emptyWrap:  { paddingVertical: 40, alignItems: 'center', gap: 6 },
+  emptyTitle: { fontSize: 15, fontWeight: '800', color: '#9bb0b4' },
+  emptySub:   { fontSize: 13, color: '#b8c9cc' },
 });
 
 export default CommentBonds;

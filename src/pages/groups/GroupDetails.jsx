@@ -1,356 +1,808 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Dimensions,
-  Animated,
-  Alert
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Image as ExpoImage } from "expo-image";
-import { useNavigation } from "@react-navigation/native";
+  View, Text, StyleSheet, TouchableOpacity, FlatList, Image,
+  ActivityIndicator, Dimensions, Animated, Alert, Modal, TextInput,
+  KeyboardAvoidingView, Platform, ScrollView, StatusBar,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../AuthContext';
 
-import FeedCard from "../home/feeds/feedcard";
+import FeedCard from '../home/feeds/feedcard';
+import GroupMedia from './GroupMedia';
 import {
-  getGroupDetails,
-  getGroupFeed,
-  getGroupMembers,
-  joinGroup,
-  leaveGroup
-} from "./services/groupApi";
+  getGroupDetails, getGroupFeed, getGroupMembers,
+  joinGroup, leaveGroup,
+} from './services/groupApi';
 
-const { width } = Dimensions.get("window");
+const { width: W } = Dimensions.get('window');
 
-const PRIMARY = "#0C3F44";
-const ACCENT = "#13C296";
-const BG = "#F7F9FA";
-const MUTED = "#6B7280";
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const BRAND  = '#0C3F44';
+const ACCENT = '#13C296';
+const CREAM  = '#F5F7F7';
+const DARK   = '#0D1B1E';
+const MUTED  = '#7A9198';
+const BORDER = 'rgba(12,63,68,0.09)';
 
-const TABS = ["posts", "media", "members"];
-const TAB_WIDTH = width / 3;
+const TAB_W = W / 4;
 
-export default function GroupDetails({ route }) {
-  const { groupId } = route.params;
-  const navigation = useNavigation();
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const decodeHtml = (t = '') =>
+  String(t)
+    .replace(/&amp;/g,   '&').replace(/&lt;/g,    '<').replace(/&gt;/g,   '>')
+    .replace(/&quot;/g,  '"').replace(/&#39;/g,   "'").replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '—').replace(/&rsquo;/g, "'").replace(/&lsquo;/g,"'")
+    .replace(/&ndash;/g, '–').replace(/&hellip;/g,'…').replace(/&amp;amp;/g,'&');
 
-  const [group, setGroup] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [activeTab, setActiveTab] = useState(0);
-  const [isMember, setIsMember] = useState(false);
-  const [loading, setLoading] = useState(true);
+const cleanText = (t = '') =>
+  decodeHtml(t).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 
-  const indicatorX = useRef(new Animated.Value(0)).current;
+const fmtCount = (n) => {
+  const v = Number(n ?? 0);
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+  if (v >= 1_000)     return (v / 1_000).toFixed(1) + 'k';
+  return String(v);
+};
 
+const isRealImg = (url) =>
+  typeof url === 'string' && url.trim().length > 6 &&
+  !url.includes('default-avatar') && !url.includes('blank_profile');
+
+// ── Post-in-group compose modal ───────────────────────────────────────────────
+const ComposeModal = ({ visible, group, token, onClose, onPosted }) => {
+  const [text,    setText]    = useState('');
+  const [posting, setPosting] = useState(false);
+
+  const submit = async () => {
+    if (!text.trim()) return;
+    setPosting(true);
+    try {
+      const body = new FormData();
+      body.append('content',  text.trim());
+      body.append('group_id', String(group?.id ?? ''));
+      body.append('type',     'text');
+      const res  = await fetch('https://hafrik.com/api/v1/posts/create.php', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json?.status === 'success' || json?.data?.id) {
+        onPosted && onPosted(json.data);
+        setText('');
+        onClose();
+      } else {
+        Alert.alert('Oops!', json?.message ?? 'Could not post. Try again.');
+      }
+    } catch {
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={cs.modalOverlay}
+      >
+        <View style={cs.modalSheet}>
+          <View style={cs.handle} />
+          <View style={cs.modalHeader}>
+            <TouchableOpacity onPress={onClose} style={cs.modalClose}>
+              <Ionicons name="close" size={20} color={MUTED} />
+            </TouchableOpacity>
+            <Text style={cs.modalTitle}>Post in {cleanText(group?.title ?? 'Group')}</Text>
+            <TouchableOpacity
+              style={[cs.postBtn, (!text.trim() || posting) && cs.postBtnDisabled]}
+              onPress={submit}
+              disabled={!text.trim() || posting}
+            >
+              {posting
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={cs.postBtnTxt}>Post</Text>
+              }
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={cs.textArea}
+            placeholder={`Share something with ${cleanText(group?.title ?? 'this group')}…`}
+            placeholderTextColor={MUTED}
+            multiline
+            value={text}
+            onChangeText={setText}
+            autoFocus
+            scrollEnabled
+            textAlignVertical="top"
+          />
+          <View style={cs.modalActions}>
+            <TouchableOpacity
+              style={cs.mediaAction}
+              onPress={() => Alert.alert('Coming soon', 'Photo upload coming soon.')}
+            >
+              <Ionicons name="image-outline" size={22} color={BRAND} />
+              <Text style={cs.mediaActionTxt}>Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={cs.mediaAction}
+              onPress={() => Alert.alert('Coming soon', 'Video upload coming soon.')}
+            >
+              <Ionicons name="videocam-outline" size={22} color={BRAND} />
+              <Text style={cs.mediaActionTxt}>Video</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
+
+// ── Member row ────────────────────────────────────────────────────────────────
+const MemberRow = ({ item, index }) => {
+  const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    loadData();
+    Animated.spring(anim, {
+      toValue: 1, delay: Math.min(index * 30, 300),
+      useNativeDriver: true, tension: 80, friction: 10,
+    }).start();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const name    = cleanText(item.full_name ?? item.username ?? 'Member');
+  const avatar  = item.avatar ?? null;
+  const role    = item.role ?? item.type ?? '';
+  const isAdmin = role === 'admin' || role === 'owner';
 
-    const [groupRes, feedRes, memberRes] = await Promise.all([
-      getGroupDetails(groupId),
-      getGroupFeed(groupId, 1, 20),
-      getGroupMembers(groupId, 1, 50),
-    ]);
-
-    if (groupRes?.status === "success") {
-      setGroup(groupRes.data);
-      setIsMember(groupRes.data?.is_member === true);
-    }
-
-    if (feedRes?.status === "success") {
-      const data = Array.isArray(feedRes.data?.data)
-        ? feedRes.data.data
-        : feedRes.data || [];
-      setPosts(data);
-    }
-
-    if (memberRes?.status === "success") {
-      const data = Array.isArray(memberRes.data?.data)
-        ? memberRes.data.data
-        : memberRes.data || [];
-      setMembers(data);
-    }
-
-    setLoading(false);
-  };
-
-  const switchTab = (index) => {
-    setActiveTab(index);
-    Animated.spring(indicatorX, {
-      toValue: index * TAB_WIDTH,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const mediaPosts = posts.filter(
-    p =>
-      p.type === "media" ||
-      p.type === "video" ||
-      p.type === "reel" ||
-      (p.photos && p.photos.length > 0)
+  return (
+    <Animated.View style={[
+      ms.row,
+      { opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] },
+    ]}>
+      {isRealImg(avatar) ? (
+        <Image source={{ uri: avatar }} style={ms.avatar} />
+      ) : (
+        <LinearGradient colors={[BRAND, '#1a6b75']} style={[ms.avatar, ms.avatarFb]}>
+          <Ionicons name="person" size={18} color="#fff" />
+        </LinearGradient>
+      )}
+      <View style={{ flex: 1 }}>
+        <Text style={ms.name} numberOfLines={1}>{name}</Text>
+        {!!cleanText(item.bio ?? '') && (
+          <Text style={ms.bio} numberOfLines={1}>{cleanText(item.bio)}</Text>
+        )}
+      </View>
+      {isAdmin && (
+        <View style={ms.rolePill}>
+          <Text style={ms.roleTxt}>{role.toUpperCase()}</Text>
+        </View>
+      )}
+    </Animated.View>
   );
+};
 
-  if (loading) {
+// ── Compose prompt (top of posts tab) ────────────────────────────────────────
+const ComposePrompt = ({ group, onOpen }) => (
+  <TouchableOpacity style={cpr.row} activeOpacity={0.85} onPress={onOpen}>
+    <LinearGradient colors={[BRAND, '#0a5560']} style={cpr.avatar}>
+      <Ionicons name="person" size={14} color="#fff" />
+    </LinearGradient>
+    <View style={cpr.input}>
+      <Text style={cpr.placeholder}>
+        Share something with {cleanText(group?.title ?? 'this group')}…
+      </Text>
+    </View>
+    <Ionicons name="send" size={16} color={ACCENT} />
+  </TouchableOpacity>
+);
+
+// ── About section (tab 3) ─────────────────────────────────────────────────────
+const AboutSection = ({ group }) => {
+  const rows = [
+    { icon: 'information-circle-outline', label: 'About',    value: cleanText(group?.about ?? '') },
+    { icon: 'lock-closed-outline',        label: 'Privacy',  value: (() => { const p = (group?.privacy ?? group?.type ?? ''); return p ? p.charAt(0).toUpperCase() + p.slice(1) : null; })() },
+    { icon: 'grid-outline',               label: 'Category', value: cleanText(group?.category ?? '') || null },
+    { icon: 'location-outline',           label: 'Location', value: cleanText(group?.location ?? '') || null },
+    { icon: 'link-outline',               label: 'Website',  value: group?.website ?? null },
+    { icon: 'calendar-outline',           label: 'Created',  value: group?.created_at ? String(group.created_at).split(' ')[0] : null },
+  ].filter((r) => !!r.value);
+
+  if (rows.length === 0) {
     return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={ACCENT} />
+      <View style={abt.emptyWrap}>
+        <Ionicons name="information-circle-outline" size={36} color={MUTED} />
+        <Text style={abt.emptyTxt}>No additional info yet</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={abt.wrap}>
+      {rows.map(({ icon, label, value }) => (
+        <View key={label} style={abt.row}>
+          <View style={abt.iconBox}>
+            <Ionicons name={icon} size={18} color={BRAND} />
+          </View>
+          <View style={abt.col}>
+            <Text style={abt.label}>{label}</Text>
+            <Text style={abt.value}>{value}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
 
-      <FlatList
-        ListHeaderComponent={
-          <>
-            <ExpoImage
-              source={{ uri: group?.cover }}
-              style={styles.cover}
-              contentFit="cover"
+// ── GroupDetails main ─────────────────────────────────────────────────────────
+export default function GroupDetails({ route }) {
+  const { groupId, openCompose: autoCompose } = route.params ?? {};
+  const navigation = useNavigation();
+  const { top }    = useSafeAreaInsets();
+  const { token }  = useAuth();
+
+  const [group,           setGroup]           = useState(null);
+  const [posts,           setPosts]           = useState([]);
+  const [members,         setMembers]         = useState([]);
+  const [activeTab,       setActiveTab]       = useState(0);
+  const [isMember,        setIsMember]        = useState(false);
+  const [joining,         setJoining]         = useState(false);
+  const [loading,         setLoading]         = useState(true);
+  const [refreshing,      setRefreshing]      = useState(false);
+  const [compose,         setCompose]         = useState(false);
+  const [feedPage,        setFeedPage]        = useState(1);
+  const [feedHasMore,     setFeedHasMore]     = useState(true);
+  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
+  const [membersPage,     setMembersPage]     = useState(1);
+  const [membersHasMore,  setMembersHasMore]  = useState(true);
+
+  const indX       = useRef(new Animated.Value(0)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const scrollY    = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    loadData();
+    Animated.timing(headerAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+  }, []);
+
+  useEffect(() => {
+    if (autoCompose && isMember) setCompose(true);
+  }, [autoCompose, isMember]);
+
+  const loadData = async () => {
+    const [gRes, fRes, mRes] = await Promise.all([
+      getGroupDetails(groupId, token),
+      getGroupFeed(groupId, 1, 20, token),
+      getGroupMembers(groupId, 1, 50, token),
+    ]);
+    if (gRes?.status === 'success') {
+      setGroup(gRes.data);
+      const d = gRes.data;
+      setIsMember(
+        d?.is_joined === true || d?.is_joined === 1 ||
+        d?.is_member === true || d?.is_member === 1 ||
+        d?._isMember === true
+      );
+    }
+    if (fRes?.status === 'success') {
+      const data = Array.isArray(fRes.data?.data) ? fRes.data.data : (Array.isArray(fRes.data) ? fRes.data : []);
+      setPosts(data);
+      setFeedPage(1);
+      setFeedHasMore(data.length === 20);
+    }
+    if (mRes?.status === 'success') {
+      const data = Array.isArray(mRes.data?.data) ? mRes.data.data : (Array.isArray(mRes.data) ? mRes.data : []);
+      setMembers(data);
+      setMembersPage(1);
+      setMembersHasMore(data.length === 50);
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
+
+  const loadMoreFeed = useCallback(async () => {
+    if (feedLoadingMore || !feedHasMore) return;
+    setFeedLoadingMore(true);
+    const nextPage = feedPage + 1;
+    try {
+      const res = await getGroupFeed(groupId, nextPage, 20, token);
+      if (res?.status === 'success') {
+        const data = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        if (data.length > 0) {
+          setPosts((prev) => [...prev, ...data]);
+          setFeedPage(nextPage);
+          setFeedHasMore(data.length === 20);
+        } else {
+          setFeedHasMore(false);
+        }
+      }
+    } catch { /* ignore */ }
+    finally { setFeedLoadingMore(false); }
+  }, [feedLoadingMore, feedHasMore, feedPage, groupId, token]);
+
+  const loadMoreMembers = useCallback(async () => {
+    if (!membersHasMore) return;
+    const nextPage = membersPage + 1;
+    try {
+      const res = await getGroupMembers(groupId, nextPage, 50, token);
+      if (res?.status === 'success') {
+        const data = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        if (data.length > 0) {
+          setMembers((prev) => [...prev, ...data]);
+          setMembersPage(nextPage);
+          setMembersHasMore(data.length === 50);
+        } else {
+          setMembersHasMore(false);
+        }
+      }
+    } catch { /* ignore */ }
+  }, [membersHasMore, membersPage, groupId, token]);
+
+  const onRefresh = () => { setRefreshing(true); loadData(); };
+
+  const switchTab = (i) => {
+    setActiveTab(i);
+    Animated.spring(indX, {
+      toValue: i * TAB_W, useNativeDriver: true, tension: 120, friction: 9,
+    }).start();
+  };
+
+  const handleJoinLeave = async () => {
+    if (joining) return;
+    setJoining(true);
+    const was = isMember;
+    try {
+      if (was) { await leaveGroup(groupId, token); setIsMember(false); }
+      else     { await joinGroup(groupId, token);  setIsMember(true);  }
+    } catch {
+      Alert.alert('Error', 'Could not update membership.');
+      setIsMember(was);
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const handlePosted = (newPost) => {
+    if (newPost?.id) setPosts((prev) => [newPost, ...prev]);
+    else loadData();
+  };
+
+  const coverTranslate = scrollY.interpolate({
+    inputRange: [0, 180], outputRange: [0, -60], extrapolate: 'clamp',
+  });
+
+  const aboutText = cleanText(group?.about ?? '');
+  const title     = cleanText(group?.title ?? '');
+  const isPrivate = (group?.privacy ?? group?.type ?? '') === 'private';
+
+  // ── List header component ─────────────────────────────────────────────────
+  const ListHeader = (
+    <>
+      {/* ── Hero: full cover with group name + stats overlaid at bottom ── */}
+      <View style={ds.hero}>
+        <Animated.View style={[ds.coverAnimWrap, { transform: [{ translateY: coverTranslate }] }]}>
+          {isRealImg(group?.cover) ? (
+            <ExpoImage source={{ uri: group.cover }} style={ds.cover} contentFit="cover" />
+          ) : (
+            <LinearGradient
+              colors={[BRAND, '#0b5a65', '#117a84', ACCENT + '70']}
+              style={ds.cover}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             />
+          )}
+          <LinearGradient
+            colors={['rgba(8,26,30,0.05)', 'rgba(8,26,30,0.55)', 'rgba(4,14,18,0.94)']}
+            style={ds.heroGrad}
+          />
+        </Animated.View>
 
-            <View style={styles.infoSection}>
-              <Text style={styles.title}>{group?.title}</Text>
-
-              <Text style={styles.description}>
-                {group?.about
-                  ?.replace(/<\/?[^>]+(>|$)/g, "")
-                  .replace(/&mdash;/g, "—")
-                  .replace(/&rsquo;/g, "'")}
-              </Text>
-
-              <View style={styles.statsRow}>
-                <Text style={styles.stat}>
-                  {group?.members || 0} Members
-                </Text>
-                <Text style={styles.stat}>
-                  {group?.posts_count || 0} Posts
-                </Text>
+        {/* Group name, category, stats at bottom of cover */}
+        <View style={ds.heroBottom}>
+          <View style={ds.heroTitleRow}>
+            <Text style={ds.heroTitle} numberOfLines={2}>{title || 'Community'}</Text>
+            {isPrivate && (
+              <Ionicons name="lock-closed" size={16} color="rgba(255,255,255,0.65)" style={{ marginLeft: 8, marginTop: 3 }} />
+            )}
+          </View>
+          <View style={ds.heroMeta}>
+            {!!cleanText(group?.category ?? '') && (
+              <View style={ds.heroCatChip}>
+                <Text style={ds.heroCatTxt}>{cleanText(group.category)}</Text>
               </View>
+            )}
+            <Ionicons name="people" size={13} color="rgba(255,255,255,0.75)" />
+            <Text style={ds.heroMetaTxt}>{fmtCount(group?.members ?? 0)} members</Text>
+            <Text style={ds.heroDot}>·</Text>
+            <Text style={ds.heroMetaTxt}>{fmtCount(group?.posts_count ?? posts.length)} posts</Text>
+            {isMember && (
+              <View style={ds.memberPill}>
+                <Ionicons name="checkmark-circle" size={12} color={ACCENT} />
+                <Text style={ds.memberPillTxt}>Member</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
 
-              {!isMember ? (
-                <TouchableOpacity style={styles.joinBtn}>
-                  <Text style={styles.joinText}>Join Community</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.joinedBadge}>
-                  <Ionicons name="checkmark" size={14} color="#fff" />
-                  <Text style={{ color: "#fff", marginLeft: 4 }}>
-                    Joined
+      {/* ── Info strip: avatar + about + join ── */}
+      <View style={ds.infoStrip}>
+        <View style={ds.avatarWrap}>
+          {isRealImg(group?.avatar) ? (
+            <Image source={{ uri: group.avatar }} style={ds.avatar} />
+          ) : (
+            <LinearGradient colors={[BRAND, '#1a6b75']} style={[ds.avatar, ds.avatarFb]}>
+              <Ionicons name="people" size={28} color="#fff" />
+            </LinearGradient>
+          )}
+        </View>
+        <View style={ds.stripRight}>
+          {!!aboutText && (
+            <Text style={ds.stripAbout} numberOfLines={2}>{aboutText}</Text>
+          )}
+          <TouchableOpacity
+            style={[ds.joinBtn, isMember && ds.leaveBtn]}
+            onPress={handleJoinLeave}
+            disabled={joining}
+            activeOpacity={0.85}
+          >
+            {joining
+              ? <ActivityIndicator size="small" color={isMember ? BRAND : '#fff'} />
+              : (
+                <>
+                  <Ionicons
+                    name={isMember ? 'exit-outline' : 'people-outline'}
+                    size={15} color={isMember ? BRAND : '#fff'}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[ds.joinTxt, isMember && ds.leaveTxt]}>
+                    {isMember ? 'Leave Community' : 'Join Community'}
                   </Text>
-                </View>
+                </>
+              )
+            }
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Tab bar ── */}
+      <View style={ds.tabBar}>
+        {['FEED', 'MEDIA', 'MEMBERS', 'ABOUT'].map((t, i) => (
+          <TouchableOpacity key={t} style={ds.tabBtn} onPress={() => switchTab(i)} activeOpacity={0.8}>
+            <Text style={[ds.tabTxt, activeTab === i && ds.tabTxtOn]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+        <Animated.View style={[ds.tabInd, { transform: [{ translateX: indX }] }]} />
+      </View>
+
+      {/* Compose prompt — members only, feed tab */}
+      {isMember && activeTab === 0 && (
+        <ComposePrompt group={group} onOpen={() => setCompose(true)} />
+      )}
+    </>
+  );
+
+  const renderItem = useCallback(({ item, index }) => {
+    if (activeTab === 0) return <FeedCard feed={item} />;
+    if (activeTab === 2) return <MemberRow item={item} index={index} />;
+    return null;
+  }, [activeTab]);
+
+  const listData = activeTab === 0 ? posts : members;
+
+  if (loading) {
+    return (
+      <View style={ds.loaderWrap}>
+        <StatusBar barStyle="light-content" />
+        <LinearGradient colors={[BRAND, '#0a5560']} style={ds.loaderGrad}>
+          <ActivityIndicator size="large" color={ACCENT} />
+          <Text style={ds.loaderTxt}>Loading community…</Text>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  return (
+    <View style={ds.root}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Floating back + compose buttons */}
+      <Animated.View
+        style={[ds.floatRow, { top: top + 10, opacity: headerAnim, transform: [{ scale: headerAnim }] }]}
+        pointerEvents="box-none"
+      >
+        <TouchableOpacity style={ds.floatBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+          <Ionicons name="arrow-back" size={20} color="#fff" />
+        </TouchableOpacity>
+        {isMember && (
+          <TouchableOpacity style={[ds.floatBtn, ds.floatBtnRight]} onPress={() => setCompose(true)} activeOpacity={0.85}>
+            <Ionicons name="create-outline" size={18} color="#fff" />
+          </TouchableOpacity>
+        )}
+      </Animated.View>
+
+      {/* MEDIA → GroupMedia (self-scrolling, drives parallax via onScroll prop)  */}
+      {/* ABOUT → ScrollView with info fields                                       */}
+      {/* FEED + MEMBERS → shared Animated.FlatList                                 */}
+      {activeTab === 1 ? (
+        <GroupMedia
+          groupId={groupId}
+          token={token}
+          listHeaderComponent={ListHeader}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+          )}
+        />
+      ) : activeTab === 3 ? (
+        <Animated.ScrollView
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+          scrollEventThrottle={16}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+        >
+          {ListHeader}
+          <AboutSection group={group} />
+        </Animated.ScrollView>
+      ) : (
+        <Animated.FlatList
+          data={listData}
+          keyExtractor={(item, i) => String(item.id ?? i)}
+          renderItem={renderItem}
+          ListHeaderComponent={ListHeader}
+          contentContainerStyle={ds.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onEndReached={activeTab === 0 ? loadMoreFeed : loadMoreMembers}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            (activeTab === 0 && feedLoadingMore)
+              ? <ActivityIndicator size="small" color={ACCENT} style={{ marginVertical: 16 }} />
+              : null
+          }
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+          scrollEventThrottle={16}
+          ListEmptyComponent={
+            <View style={ds.emptyWrap}>
+              <LinearGradient colors={[ACCENT + '22', BRAND + '11']} style={ds.emptyCircle}>
+                <Ionicons
+                  name={activeTab === 2 ? 'people-outline' : 'document-text-outline'}
+                  size={36} color={MUTED}
+                />
+              </LinearGradient>
+              <Text style={ds.emptyTxt}>{activeTab === 2 ? 'No members found' : 'No posts yet'}</Text>
+              {isMember && activeTab === 0 && (
+                <TouchableOpacity style={ds.emptyPostBtn} onPress={() => setCompose(true)}>
+                  <Text style={ds.emptyPostBtnTxt}>Be the first to post</Text>
+                </TouchableOpacity>
               )}
             </View>
-
-            {/* Animated Tabs */}
-            <View style={styles.tabs}>
-              {TABS.map((tab, index) => (
-                <TouchableOpacity
-                  key={tab}
-                  style={styles.tab}
-                  onPress={() => switchTab(index)}
-                >
-                  <Text
-                    style={{
-                      color:
-                        activeTab === index ? PRIMARY : MUTED,
-                      fontWeight:
-                        activeTab === index ? "700" : "500"
-                    }}
-                  >
-                    {tab.toUpperCase()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-
-              <Animated.View
-                style={[
-                  styles.indicator,
-                  { transform: [{ translateX: indicatorX }] }
-                ]}
-              />
-            </View>
-          </>
-        }
-        data={
-          activeTab === 0
-            ? posts
-            : activeTab === 1
-            ? mediaPosts
-            : members
-        }
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => {
-          if (activeTab === 1) {
-            return null;
           }
-
-          if (activeTab === 2) {
-            return (
-              <View style={styles.memberRow}>
-                <ExpoImage
-                  source={{ uri: item.avatar }}
-                  style={styles.memberAvatar}
-                />
-                <Text style={styles.memberName}>
-                  {item.full_name || item.username}
-                </Text>
-              </View>
-            );
-          }
-
-          return <FeedCard feed={item} />;
-        }}
-        ListFooterComponent={
-          activeTab === 1 && (
-            <View style={styles.mediaGrid}>
-              {mediaPosts.map((item, index) => (
-                <ExpoImage
-                  key={index}
-                  source={{ uri: item.photos?.[0] }}
-                  style={styles.mediaItem}
-                  contentFit="cover"
-                />
-              ))}
-            </View>
-          )
-        }
-        contentContainerStyle={{ paddingBottom: 140 }}
-      />
-
-      {isMember && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() =>
-            navigation.navigate("CreatePost", { group_id: groupId })
-          }
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
+        />
       )}
+
+      {/* Compose Modal */}
+      <ComposeModal
+        visible={compose}
+        group={group}
+        token={token}
+        onClose={() => setCompose(false)}
+        onPosted={handlePosted}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: BG },
+// ── Styles ────────────────────────────────────────────────────────────────────
+const ds = StyleSheet.create({
+  root:       { flex: 1, backgroundColor: CREAM },
+  loaderWrap: { flex: 1 },
+  loaderGrad: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
+  loaderTxt:  { color: '#fff', fontSize: 14, fontWeight: '600' },
 
-  loader: { flex: 1, justifyContent: "center", alignItems: "center" },
+  // ── Hero ──
+  hero:         { height: 260, overflow: 'hidden', position: 'relative' },
+  coverAnimWrap:{ position: 'absolute', top: 0, left: 0, right: 0, height: 320 },
+  cover:        { width: '100%', height: 320 },
+  heroGrad:     { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
 
-  cover: { width, height: 160 },
-
-  infoSection: {
-    padding: 20,
-    backgroundColor: "#fff"
+  heroBottom: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    paddingHorizontal: 16, paddingBottom: 20,
   },
-
-  title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: PRIMARY
+  heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
+  heroTitle:    { fontSize: 24, fontWeight: '900', color: '#fff', lineHeight: 30, flex: 1 },
+  heroMeta:     { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  heroCatChip: {
+    backgroundColor: 'rgba(19,194,150,0.28)', borderRadius: 100,
+    paddingHorizontal: 9, paddingVertical: 3,
+    borderWidth: 1, borderColor: 'rgba(19,194,150,0.5)',
   },
-
-  description: {
-    marginTop: 10,
-    fontSize: 14,
-    color: MUTED,
-    lineHeight: 22
+  heroCatTxt:  { fontSize: 10, fontWeight: '800', color: ACCENT },
+  heroMetaTxt: { fontSize: 12, color: 'rgba(255,255,255,0.82)', fontWeight: '600' },
+  heroDot:     { fontSize: 15, color: 'rgba(255,255,255,0.35)', lineHeight: 18 },
+  memberPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(19,194,150,0.22)', borderRadius: 100,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderWidth: 1, borderColor: 'rgba(19,194,150,0.5)',
   },
+  memberPillTxt: { fontSize: 10, fontWeight: '800', color: ACCENT },
 
-  statsRow: {
-    flexDirection: "row",
-    marginTop: 14,
-    gap: 20
+  // ── Info strip ──
+  infoStrip: {
+    backgroundColor: '#fff',
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    paddingTop: 6, paddingHorizontal: 14, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
   },
+  avatarWrap: {
+    width: 72, height: 72, borderRadius: 20,
+    overflow: 'hidden', borderWidth: 4, borderColor: '#fff',
+    marginTop: -36,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18, shadowRadius: 12, elevation: 8,
+  },
+  avatar:     { width: '100%', height: '100%' },
+  avatarFb:   { alignItems: 'center', justifyContent: 'center' },
+  stripRight: { flex: 1, paddingTop: 4, gap: 8 },
+  stripAbout: { fontSize: 13, color: '#4a6068', lineHeight: 19 },
 
-  stat: { fontSize: 13, color: MUTED },
+  // ── Floating back/compose buttons ──
+  floatRow: {
+    position: 'absolute', left: 14, right: 14, zIndex: 50,
+    flexDirection: 'row', alignItems: 'center',
+  },
+  floatBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(12,63,68,0.65)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+  },
+  floatBtnRight: { marginLeft: 'auto' },
 
+  // ── Join / Leave ──
   joinBtn: {
-    marginTop: 16,
-    backgroundColor: PRIMARY,
-    paddingVertical: 10,
-    borderRadius: 25,
-    alignItems: "center"
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: BRAND, borderRadius: 100, paddingVertical: 10,
+  },
+  leaveBtn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: BRAND },
+  joinTxt:  { fontSize: 13, fontWeight: '800', color: '#fff' },
+  leaveTxt: { color: BRAND },
+
+  // ── Tab bar ──
+  tabBar: {
+    flexDirection: 'row', backgroundColor: '#fff',
+    borderBottomWidth: 1, borderBottomColor: BORDER, position: 'relative',
+  },
+  tabBtn:  { width: TAB_W, alignItems: 'center', paddingVertical: 13 },
+  tabTxt:  { fontSize: 10.5, fontWeight: '700', color: MUTED, letterSpacing: 0.8 },
+  tabTxtOn:{ color: BRAND },
+  tabInd: {
+    position: 'absolute', bottom: 0, width: TAB_W, height: 3,
+    backgroundColor: ACCENT, borderRadius: 2,
   },
 
-  joinText: { color: "#fff", fontWeight: "700" },
+  listContent: { paddingBottom: 120 },
 
-  joinedBadge: {
-    marginTop: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: ACCENT,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20
+  emptyWrap:       { alignItems: 'center', paddingTop: 56, paddingHorizontal: 24, gap: 12 },
+  emptyCircle:     { width: 86, height: 86, borderRadius: 43, alignItems: 'center', justifyContent: 'center' },
+  emptyTxt:        { fontSize: 15, fontWeight: '700', color: DARK },
+  emptyPostBtn:    { backgroundColor: BRAND, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 100 },
+  emptyPostBtnTxt: { fontSize: 13, fontWeight: '800', color: '#fff' },
+});
+
+const cpr = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#fff', padding: 14,
+    borderBottomWidth: 1, borderBottomColor: BORDER, marginBottom: 2,
   },
-
-  tabs: {
-    flexDirection: "row",
-    position: "relative",
-    backgroundColor: "#fff"
+  avatar: {
+    width: 38, height: 38, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
   },
-
-  tab: {
-    width: TAB_WIDTH,
-    alignItems: "center",
-    paddingVertical: 14
+  input: {
+    flex: 1, height: 40, backgroundColor: CREAM, borderRadius: 20,
+    paddingHorizontal: 14, justifyContent: 'center',
+    borderWidth: 1, borderColor: BORDER,
   },
+  placeholder: { fontSize: 13, color: MUTED },
+});
 
-  indicator: {
-    position: "absolute",
-    bottom: 0,
-    width: TAB_WIDTH,
-    height: 3,
-    backgroundColor: PRIMARY
+const cs = StyleSheet.create({
+  modalOverlay: {
+    flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)',
   },
-
-  mediaGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap"
+  modalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingBottom: 34, minHeight: 340,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.12, shadowRadius: 20, elevation: 20,
   },
-
-  mediaItem: {
-    width: width / 3,
-    height: width / 3
+  handle: {
+    width: 40, height: 5, backgroundColor: 'rgba(12,63,68,0.15)',
+    borderRadius: 3, alignSelf: 'center', marginTop: 10, marginBottom: 4,
   },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  modalClose: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: CREAM, alignItems: 'center', justifyContent: 'center',
+    marginRight: 10,
+  },
+  modalTitle:      { flex: 1, fontSize: 15, fontWeight: '800', color: DARK },
+  postBtn:         { backgroundColor: BRAND, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 100 },
+  postBtnDisabled: { opacity: 0.4 },
+  postBtnTxt:      { color: '#fff', fontSize: 13, fontWeight: '800' },
+  textArea: {
+    minHeight: 120, paddingHorizontal: 20, paddingTop: 14,
+    fontSize: 15, color: DARK, lineHeight: 22,
+  },
+  modalActions: {
+    flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: BORDER,
+  },
+  mediaAction: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100,
+    backgroundColor: CREAM, borderWidth: 1, borderColor: BORDER,
+  },
+  mediaActionTxt: { fontSize: 12, fontWeight: '700', color: BRAND },
+});
 
-  memberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#fff",
+const ms = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  avatar:   { width: 46, height: 46, borderRadius: 14 },
+  avatarFb: { alignItems: 'center', justifyContent: 'center' },
+  name:     { fontSize: 14, fontWeight: '700', color: DARK },
+  bio:      { fontSize: 12, color: MUTED, marginTop: 2 },
+  rolePill: {
+    backgroundColor: ACCENT + '22', borderRadius: 100,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  roleTxt: { fontSize: 9, fontWeight: '900', color: '#0a7a5a', letterSpacing: 0.5 },
+});
+
+const abt = StyleSheet.create({
+  wrap: {
+    backgroundColor: '#fff',
+    marginHorizontal: 0,
+    paddingVertical: 8,
+    paddingBottom: 100,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
     borderBottomWidth: 1,
-    borderColor: "#eee"
+    borderBottomColor: BORDER,
   },
-
-  memberAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: ACCENT + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
   },
-
-  memberName: { fontWeight: "600" },
-
-  fab: {
-    position: "absolute",
-    bottom: 30,
-    right: 20,
-    backgroundColor: PRIMARY,
-    width: 55,
-    height: 55,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 6
-  }
+  col:   { flex: 1 },
+  label: { fontSize: 11, fontWeight: '700', color: MUTED, marginBottom: 3, letterSpacing: 0.4 },
+  value: { fontSize: 13.5, color: DARK, lineHeight: 20 },
+  emptyWrap: { alignItems: 'center', paddingTop: 56, gap: 12 },
+  emptyTxt:  { fontSize: 14, fontWeight: '700', color: MUTED },
 });

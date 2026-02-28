@@ -9,9 +9,11 @@ import SkeletonReelCard from "./skelentonreelcard";
 import { useIsFocused, useNavigation, useRoute } from "@react-navigation/native";
 import VideoPreloader from "../../helpers/VideoPreloader";
 import { fetchReels } from "./reelsApi";
+import AppDetails from "../../helpers/appdetails";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-const ITEM_HEIGHT = SCREEN_HEIGHT;
+// Estimate: full screen minus tab bar. Will be corrected by onLayout.
+const ESTIMATED_HEIGHT = SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight;
 const SKELETON_ID = "__skeleton_end__";
 
 const Reels2 = () => {
@@ -24,6 +26,17 @@ const Reels2 = () => {
   const [reels, setReels] = useState([]);
   const [mode, setMode] = useState(initialMode);
   const [delayedFocus, setDelayedFocus] = useState(false);
+  // Measured height of the container (excludes tab bar + safe area)
+  const [itemHeight, setItemHeight] = useState(ESTIMATED_HEIGHT);
+  const itemHeightRef = useRef(ESTIMATED_HEIGHT);
+
+  const handleContainerLayout = useCallback((e) => {
+    const h = Math.floor(e.nativeEvent.layout.height);
+    if (h > 0 && h !== itemHeightRef.current) {
+      itemHeightRef.current = h;
+      setItemHeight(h);
+    }
+  }, []);
 
   const isLoadingMore = useRef(false);
   const pageRef = useRef(1);
@@ -79,9 +92,10 @@ const Reels2 = () => {
     load();
   }, [mode, token, setReelsToStore]);
 
-  // ✅ make list stable
+  // ✅ make list stable — uses ref so getItemLayout stays stable even after height updates
   const getItemLayout = useCallback((_, index) => {
-    return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index };
+    const h = itemHeightRef.current;
+    return { length: h, offset: h * index, index };
   }, []);
 
   // ✅ focus handling
@@ -97,9 +111,9 @@ const Reels2 = () => {
   }, [isFocused, isAppActive_store, setCurrentReel_store]);
 
   const renderReels = useCallback(({ item, index }) => {
-    if (item?.type === "skeleton") return <SkeletonReelCard />;
-    return <ReelCard reel={item} index={index} />;
-  }, []);
+    if (item?.type === "skeleton") return <SkeletonReelCard height={itemHeight} />;
+    return <ReelCard reel={item} index={index} height={itemHeight} />;
+  }, [itemHeight]);
 
   // ✅ always append skeleton at the end
   useEffect(() => {
@@ -224,7 +238,7 @@ const Reels2 = () => {
   }).current;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={{ flex: 1, backgroundColor: "#000" }} onLayout={handleContainerLayout}>
       <ReelHeader
         mode={mode}
         onModeChange={handleModeChange}
@@ -241,7 +255,7 @@ const Reels2 = () => {
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        snapToInterval={ITEM_HEIGHT}
+        snapToInterval={itemHeight}
         snapToAlignment="start"
         removeClippedSubviews
         initialNumToRender={2}

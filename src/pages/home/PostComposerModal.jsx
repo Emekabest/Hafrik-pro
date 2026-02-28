@@ -5,7 +5,7 @@ import {
     ImageBackground, ActivityIndicator, AppState,
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from "../../AuthContext";
@@ -88,14 +88,19 @@ const PostComposerModal = () => {
     const [postText,           setPostText]           = useState("");
     const [locationText,       setLocationText]       = useState("");
 
-    const videoRef = useRef(null);
+    // expo-video player (source is replaced when selectedVideo changes)
+    const videoPlayer = useVideoPlayer(null, p => { if (p) p.loop = true; });
+    useEffect(() => {
+        if (selectedVideo?.uri) {
+            videoPlayer.replaceAsync({ uri: selectedVideo.uri }).catch(() => {});
+        } else {
+            videoPlayer.pause();
+        }
+    }, [selectedVideo?.uri]); // eslint-disable-line
 
     // ── Cleanup video + reset all form state ────────────────────────────────────
     const resetState = useCallback(async () => {
-        if (videoRef.current) {
-            try { await videoRef.current.pauseAsync();  } catch (_) {}
-            try { await videoRef.current.unloadAsync(); } catch (_) {}
-        }
+        try { videoPlayer.pause(); } catch (_) {}
         setPostText("");
         setSelectedImages([]);
         setSelectedVideo(null);
@@ -117,10 +122,7 @@ const PostComposerModal = () => {
     useEffect(() => {
         const sub = AppState.addEventListener('change', (nextState) => {
             if (nextState === 'background' || nextState === 'inactive') {
-                if (videoRef.current) {
-                    videoRef.current.pauseAsync().catch(() => {});
-                    videoRef.current.unloadAsync().catch(() => {});
-                }
+                try { videoPlayer.pause(); } catch (_) {}
                 setSelectedVideo(null);
                 closeComposer();
             }
@@ -382,18 +384,15 @@ const PostComposerModal = () => {
                                                     <ActivityIndicator size="small" color={AppDetails.primaryColor} />
                                                 </View>
                                             ) : (
-                                                <Video
-                                                    ref={videoRef}
-                                                    source={{ uri: selectedVideo.uri }}
+                                                <VideoView
+                                                    player={videoPlayer}
                                                     style={styles.videoPreview}
-                                                    useNativeControls
-                                                    resizeMode={ResizeMode.COVER}
-                                                    isLooping
+                                                    nativeControls
+                                                    contentFit="cover"
                                                 />
                                             )}
                                             <TouchableOpacity style={styles.removeImageButton} onPress={() => {
-                                                videoRef.current?.pauseAsync().catch(() => {});
-                                                videoRef.current?.unloadAsync().catch(() => {});
+                                                videoPlayer.pause();
                                                 setSelectedVideo(null);
                                                 setSelectedThumbnail(null);
                                                 setMiddleIconStates(prev => ({ ...prev, video: false }));

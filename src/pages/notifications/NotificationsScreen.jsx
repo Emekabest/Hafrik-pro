@@ -1,15 +1,8 @@
 // src/pages/notifications/NotificationsScreen.jsx
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  Animated,
-  RefreshControl,
-  StatusBar,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  Image, Animated, RefreshControl, StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,27 +14,35 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const BASE_URL = 'https://hafrik.com';
-const BRAND = '#0C3F44';
-const ACCENT = '#13C296';
-const DARK = '#0D1B1E';
-const MUTED = '#7A9198';
-const BG = '#F0F4F4';
-const CARD = '#FFFFFF';
-
-const FILTER_TABS = ['All', 'Unread', 'Mentions'];
+const BRAND    = '#0C3F44';
+const ACCENT   = '#13C296';
+const DARK     = '#0D1B1E';
+const MUTED    = '#9BA8AD';
+const BG       = '#F7F9F9';
+const CARD     = '#FFFFFF';
 
 const TYPE_META = {
-  follow: { icon: 'person-add', color: '#7C3AED', bg: '#EDE9FE' },
-  react_like: { icon: 'heart', color: '#EF4444', bg: '#FEE2E2' },
-  like: { icon: 'heart', color: '#EF4444', bg: '#FEE2E2' },
-  comment: { icon: 'chatbubble', color: ACCENT, bg: '#D1FAF0' },
-  reply: { icon: 'return-down-back', color: '#F59E0B', bg: '#FEF3C7' },
-  mention: { icon: 'at', color: '#3B82F6', bg: '#DBEAFE' },
-  default: { icon: 'notifications', color: BRAND, bg: '#D4E8EA' },
+  follow:     { icon: 'person-add',       color: '#8B5CF6', bg: '#EDE9FE', label: 'followed you'            },
+  react_like: { icon: 'heart',            color: '#EF4444', bg: '#FEE2E2', label: 'liked your post'         },
+  like:       { icon: 'heart',            color: '#EF4444', bg: '#FEE2E2', label: 'liked your post'         },
+  comment:    { icon: 'chatbubble',       color: ACCENT,   bg: '#D1FAF0', label: 'commented on your post'   },
+  reply:      { icon: 'return-down-back', color: '#F59E0B', bg: '#FEF3C7', label: 'replied to your comment' },
+  mention:    { icon: 'at',              color: '#3B82F6', bg: '#DBEAFE', label: 'mentioned you'             },
+  message:    { icon: 'paper-plane',      color: '#0EA5E9', bg: '#E0F2FE', label: 'sent you a message'      },
+  share:      { icon: 'arrow-redo',       color: '#10B981', bg: '#D1FAE5', label: 'shared your post'        },
+  default:    { icon: 'notifications',    color: BRAND,    bg: '#D4E8EA', label: 'sent a notification'      },
 };
+const getMeta = (action) =>
+  TYPE_META[String(action ?? '').toLowerCase()] ?? TYPE_META.default;
 
-const getTypeMeta = (action) => TYPE_META[String(action || '').toLowerCase()] ?? TYPE_META.default;
+const FILTER_TABS = [
+  { id: 'All',      label: 'All',      icon: 'layers-outline'           },
+  { id: 'Unread',   label: 'Unread',   icon: 'radio-button-on-outline'  },
+  { id: 'Mentions', label: 'Mentions', icon: 'at-outline'               },
+  { id: 'Messages', label: 'Messages', icon: 'paper-plane-outline'      },
+];
 
+// ── Helpers ────────────────────────────────────────────────────────────────
 const apiFetch = async (path, token, opts = {}) => {
   try {
     const res = await fetch(`${BASE_URL}${path}`, {
@@ -49,371 +50,318 @@ const apiFetch = async (path, token, opts = {}) => {
       ...opts,
     });
     return await res.json();
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 };
 
-const timeAgo = (dateStr) => {
-  if (!dateStr) return '';
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return 'now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
+const timeAgo = (d) => {
+  if (!d) return '';
+  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+  if (s < 60)     return 'now';
+  if (s < 3600)   return `${Math.floor(s / 60)}m`;
+  if (s < 86400)  return `${Math.floor(s / 3600)}h`;
+  if (s < 604800) return `${Math.floor(s / 86400)}d`;
+  return `${Math.floor(s / 604800)}w`;
 };
 
 const sectionize = (items) => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const yest = today - 86400000;
-  const sections = { Today: [], Yesterday: [], Earlier: [] };
-
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const yest  = new Date(today); yest.setDate(yest.getDate() - 1);
+  const week  = new Date(today); week.setDate(week.getDate() - 7);
+  const g = { Today: [], Yesterday: [], 'This week': [], Earlier: [] };
   items.forEach((n) => {
     const t = new Date(n.created_at ?? n.time ?? 0).getTime();
-    if (t >= today) sections.Today.push(n);
-    else if (t >= yest) sections.Yesterday.push(n);
-    else sections.Earlier.push(n);
+    if      (t >= today.getTime()) g['Today'].push(n);
+    else if (t >= yest.getTime())  g['Yesterday'].push(n);
+    else if (t >= week.getTime())  g['This week'].push(n);
+    else                            g['Earlier'].push(n);
   });
-
-  return Object.entries(sections)
-    .filter(([, data]) => data.length > 0)
-    .map(([title, data]) => ({ title, data }));
+  return Object.entries(g).filter(([, d]) => d.length > 0).map(([title, data]) => ({ title, data }));
 };
 
-/* ─── Animated notification card ─── */
-const NotifCard = React.memo(({ item, index, onDelete }) => {
+// ── Inline avatar ─────────────────────────────────────────────────────────
+const Avatar = ({ url, name, size = 47 }) => {
+  const r = size / 2;
+  if (url && url.length > 8) {
+    return <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: r }} />;
+  }
+  return (
+    <LinearGradient colors={[BRAND, '#1a6b75']} style={{ width: size, height: size, borderRadius: r, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: '#fff', fontWeight: '900', fontSize: size * 0.38 }}>
+        {(name ?? 'U').slice(0, 1).toUpperCase()}
+      </Text>
+    </LinearGradient>
+  );
+};
+
+// ── Notification row (TikTok-style) ──────────────────────────────────────
+const NotifRow = React.memo(({ item, index, onDelete }) => {
   const navigation = useNavigation();
-  const anim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fade  = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.spring(anim, {
-      toValue: 1,
-      delay: Math.min(index * 40, 300),
-      useNativeDriver: true,
-      tension: 70,
-      friction: 10,
+    Animated.spring(fade, {
+      toValue: 1, delay: Math.min(index * 35, 240),
+      useNativeDriver: true, tension: 80, friction: 12,
     }).start();
-  }, [anim, index]);
+  }, []);
 
-  // --- FIX: normalize fields without changing design ---
-  const action = String(item.action ?? item.type ?? item.node_type ?? '').toLowerCase();
-  const meta = getTypeMeta(action);
+  const action   = String(item.action ?? item.type ?? item.node_type ?? '').toLowerCase();
+  const meta     = getMeta(action);
+  const actor    = item.actor ?? item.from_user ?? item.user ?? {};
+  const name     = actor.username ?? actor.full_name ?? actor.name ?? item.username ?? 'Someone';
+  const avatar   = (actor.avatar ?? actor.user_picture ?? item.avatar ?? '').trim() || null;
+  const unread   = !item.seen || item.seen === 0 || item.seen === '0';
+  const ts       = timeAgo(item.created_at ?? item.time);
+  const body     = item.message ?? item.text ?? item.notify_text ?? '';
+  const postImg  = (() => { const v = item.post_image ?? item.postImage ?? item.post_thumbnail ?? null; return typeof v === 'string' && v.trim().length > 8 ? v.trim() : null; })();
+  const notifId  = item.id ?? item.notification_id ?? item.notify_id;
 
-  // try multiple shapes (actor/user/from_user)
-  const actor = item.actor ?? item.from_user ?? item.user ?? {};
-  const name = actor.username ?? actor.full_name ?? actor.name ?? item.username ?? 'Someone';
-
-  const avatarRaw = actor.avatar ?? actor.user_picture ?? item.avatar ?? null;
-  const avatar = typeof avatarRaw === 'string' ? avatarRaw.trim() : null;
-
-  const unread = !item.seen || item.seen === 0 || item.seen === '0';
-  const timeStr = timeAgo(item.created_at ?? item.time);
-
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     Animated.sequence([
-      Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 300 }),
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 300 }),
+      Animated.spring(press, { toValue: 0.97, useNativeDriver: true, tension: 300, friction: 10 }),
+      Animated.spring(press, { toValue: 1,    useNativeDriver: true, tension: 300, friction: 10 }),
     ]).start();
-
-    Haptics.selectionAsync();
-
-    // --- FIX: keep your routes, just correct params + fallbacks ---
+    Haptics.selectionAsync().catch(() => {});
     if (action === 'follow') {
-      const userId = actor?.id ?? actor?.user_id ?? item?.from_user_id ?? item?.user_id;
-      if (userId) navigation.navigate('UserProfile', { userId });
+      const uid = actor?.id ?? actor?.user_id ?? item?.from_user_id ?? item?.user_id;
+      if (uid) navigation.navigate('UserProfile', { userId: uid });
       return;
     }
-
-    const postId = item.post_id ?? item.postId ?? item.node_id ?? item.notify_id;
-    if (postId) {
-      // IMPORTANT: your app earlier uses feedId for CommentScreen
-      navigation.navigate('CommentScreen', { feedId: postId });
-      return;
-    }
-  };
-
-  const notifId = item.id ?? item.notification_id ?? item.notify_id;
-
-  const renderSwipe = () => (
-    <TouchableOpacity
-      style={styles.swipeDelete}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        onDelete(notifId);
-      }}
-      activeOpacity={0.9}
-    >
-      <View style={styles.swipeDeleteInner}>
-        <Ionicons name="trash-outline" size={20} color="#fff" />
-        <Text style={styles.swipeDeleteText}>Delete</Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // optional post thumb: avoid empty string uri warnings
-  const postImageRaw = item.post_image ?? item.postImage ?? item.post_thumbnail ?? null;
-  const postImage = typeof postImageRaw === 'string' ? postImageRaw.trim() : null;
+    if (action === 'message') { navigation.navigate('Inbox'); return; }
+    const pid = item.post_id ?? item.postId ?? item.node_id ?? item.notify_id;
+    if (pid) navigation.navigate('CommentScreen', { feedId: pid });
+  }, [action, actor, item, navigation]);
 
   return (
-    <Animated.View
-      style={{
-        opacity: anim,
-        transform: [
-          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) },
-          { scale: scaleAnim },
-        ],
-      }}
-    >
-      <Swipeable renderRightActions={renderSwipe} overshootRight={false} friction={2}>
-        <TouchableOpacity
-          style={[styles.card, unread && styles.cardUnread]}
-          activeOpacity={0.92}
-          onPress={handlePress}
-        >
-          {/* Left type strip */}
-          <View style={[styles.typeStrip, { backgroundColor: meta.color }]} />
+    <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }, { scale: press }] }}>
+      <Swipeable
+        friction={2}
+        overshootRight={false}
+        renderRightActions={() => (
+          <View style={ns.swipeBox}>
+            <TouchableOpacity
+              style={ns.swipeBtn}
+              activeOpacity={0.9}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); onDelete(notifId); }}
+            >
+              <Ionicons name="trash-outline" size={21} color="#fff" />
+              <Text style={ns.swipeTxt}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      >
+        <TouchableOpacity style={[ns.row, unread && ns.rowUnread]} activeOpacity={0.7} onPress={handlePress}>
+          {unread && <View style={[ns.bar, { backgroundColor: meta.color }]} />}
 
-          {/* Avatar + type icon */}
-          <View style={styles.avatarBlock}>
-            {/* FIX: never pass empty uri */}
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={styles.avatar} />
-            ) : (
-              <Image
-                source={{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}` }}
-                style={styles.avatar}
-              />
-            )}
-
-            <View style={[styles.typeIcon, { backgroundColor: meta.bg }]}>
-              <Ionicons name={meta.icon} size={11} color={meta.color} />
+          <View style={ns.avatarWrap}>
+            <Avatar url={avatar} name={name} size={47} />
+            <View style={[ns.actionBadge, { backgroundColor: meta.color }]}>
+              <Ionicons name={meta.icon} size={9} color="#fff" />
             </View>
           </View>
 
-          {/* Content */}
-          <View style={styles.content}>
-            <View style={styles.contentRow}>
-              <Text style={styles.notifName} numberOfLines={1}>
-                {name}
-              </Text>
-              <Text style={styles.notifTime}>{timeStr}</Text>
+          <View style={ns.textCol}>
+            <View style={ns.topRow}>
+              <Text style={ns.nameText} numberOfLines={1}>{name}</Text>
+              <Text style={ns.timeText}>{ts}</Text>
             </View>
-
-            <Text style={styles.notifBody} numberOfLines={2}>
-              {item.message ?? item.text ?? item.notify_text ?? 'New notification'}
+            <Text style={ns.bodyText} numberOfLines={2}>
+              <Text style={ns.actionText}>{meta.label} </Text>
+              {body && body !== meta.label ? body : ''}
             </Text>
-
-            {postImage ? <Image source={{ uri: postImage }} style={styles.postThumb} /> : null}
           </View>
 
-          {/* Unread dot */}
-          {unread && <View style={styles.unreadDot} />}
+          {postImg
+            ? <Image source={{ uri: postImg }} style={ns.postThumb} />
+            : <View style={[ns.iconBox, { backgroundColor: meta.bg }]}><Ionicons name={meta.icon} size={16} color={meta.color} /></View>
+          }
         </TouchableOpacity>
       </Swipeable>
     </Animated.View>
   );
 });
 
-/* ─── Section header ─── */
-const SectionHead = ({ title }) => (
-  <View style={styles.sectionHead}>
-    <Text style={styles.sectionHeadText}>{title}</Text>
-    <View style={styles.sectionLine} />
+// ── Section label ────────────────────────────────────────────────────────
+const SectionLabel = ({ title }) => (
+  <View style={ns.sectionRow}><Text style={ns.sectionTxt}>{title}</Text></View>
+);
+
+// ── Empty state ───────────────────────────────────────────────────────────
+const Empty = () => {
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1.1, duration: 900, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 1,   duration: 900, useNativeDriver: true }),
+    ])).start();
+  }, []);
+  return (
+    <View style={ns.emptyWrap}>
+      <Animated.View style={{ transform: [{ scale: pulse }] }}>
+        <LinearGradient colors={[ACCENT + '33', BRAND + '22']} style={ns.emptyCircle}>
+          <Ionicons name="notifications-off-outline" size={46} color={MUTED} />
+        </LinearGradient>
+      </Animated.View>
+      <Text style={ns.emptyTitle}>All caught up!</Text>
+      <Text style={ns.emptySub}>Your notifications will show up here.</Text>
+    </View>
+  );
+};
+
+// ── Filter bar ────────────────────────────────────────────────────────────
+const FilterBar = ({ tabs, active, onChange, counts }) => (
+  <View style={ns.filterBar}>
+    {tabs.map((t) => {
+      const on  = active === t.id;
+      const cnt = counts[t.id] ?? 0;
+      return (
+        <TouchableOpacity key={t.id} onPress={() => onChange(t.id)} activeOpacity={0.8} style={ns.filterTab}>
+          {on && <View style={ns.filterLine} />}
+          <Ionicons name={t.icon} size={14} color={on ? ACCENT : 'rgba(255,255,255,0.4)'} />
+          <Text style={[ns.filterTxt, on && ns.filterTxtOn]}>{t.label}</Text>
+          {cnt > 0 && !on && (
+            <View style={ns.filterBadge}><Text style={ns.filterBadgeTxt}>{cnt > 9 ? '9+' : cnt}</Text></View>
+          )}
+        </TouchableOpacity>
+      );
+    })}
   </View>
 );
 
-/* ─── Empty state ─── */
-const EmptyState = () => (
-  <View style={styles.empty}>
-    <LinearGradient colors={[ACCENT + '33', BRAND + '22']} style={styles.emptyCircle}>
-      <Ionicons name="notifications-off-outline" size={44} color={MUTED} />
-    </LinearGradient>
-    <Text style={styles.emptyTitle}>All caught up!</Text>
-    <Text style={styles.emptySubtitle}>No notifications yet. Check back later.</Text>
-  </View>
-);
-
-/* ─── Filter tab ─── */
-const FilterTab = ({ label, active, onPress, count }) => (
-  <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.tabWrap}>
-    {active ? (
-      <LinearGradient
-        colors={[ACCENT, '#0A8F6E']}
-        style={styles.tabActive}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
-        <Text style={styles.tabTextActive}>{label}</Text>
-        {count > 0 && (
-          <View style={styles.tabBadge}>
-            <Text style={styles.tabBadgeText}>{count > 9 ? '9+' : count}</Text>
-          </View>
-        )}
-      </LinearGradient>
-    ) : (
-      <View style={styles.tabInactive}>
-        <Text style={styles.tabTextInactive}>{label}</Text>
-      </View>
-    )}
-  </TouchableOpacity>
-);
-
-/* ─── Main screen ─── */
+// ── Main screen ───────────────────────────────────────────────────────────
 export default function NotificationsScreen() {
-  const navigation = useNavigation();
-  const { top } = useSafeAreaInsets();
-  const { token } = useAuth();
+  const navigation    = useNavigation();
+  const { top }       = useSafeAreaInsets();
+  const { token }     = useAuth();
   const setNotifCount = useStore((s) => s.setNotificationCount);
 
-  const [allItems, setAllItems] = useState([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('All');
-  const headerAnim = useRef(new Animated.Value(0)).current;
+  const [allItems,    setAllItems]    = useState([]);
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [filter,      setFilter]      = useState('All');
+  const [page,        setPage]        = useState(1);
+  const [hasMore,     setHasMore]     = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const hdrAnim = useRef(new Animated.Value(0)).current;
 
-  const load = useCallback(async () => {
-    const res = await apiFetch('/api/v1/notifications/list.php?page=1&limit=60', token);
-
-    // FIX: accept either {data:[...]} or {data:{items:[...]}}
+  const load = useCallback(async (pageNum = 1, append = false) => {
+    if (!append) setRefreshing(pageNum === 1); else setLoadingMore(true);
+    const res = await apiFetch(`/api/v1/notifications/list.php?page=${pageNum}&limit=20`, token);
     let items = [];
     if (Array.isArray(res?.data?.items)) items = res.data.items;
-    else if (Array.isArray(res?.data)) items = res.data;
-    else if (Array.isArray(res?.items)) items = res.items;
-
-    setAllItems(items);
-
-    const unread = items.filter((n) => !n.seen || n.seen === 0 || n.seen === '0').length;
-    setNotifCount(unread);
-
-    setRefreshing(false);
-
-    // keep your behavior: mark seen on load
-    apiFetch('/api/v1/notifications/mark_seen.php', token, { method: 'POST' });
+    else if (Array.isArray(res?.data))   items = res.data;
+    else if (Array.isArray(res?.items))  items = res.items;
+    if (append) setAllItems((p) => [...p, ...items]); else setAllItems(items);
+    setHasMore(items.length >= 20);
+    if (!append) setNotifCount(items.filter((n) => !n.seen || n.seen === 0 || n.seen === '0').length);
+    setRefreshing(false); setLoadingMore(false);
+    if (pageNum === 1) {
+      apiFetch('/api/v1/notifications/mark_seen.php', token, { method: 'POST' });
+      if (!append) setNotifCount(0);
+    }
   }, [token, setNotifCount]);
 
   useEffect(() => {
-    Animated.timing(headerAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    Animated.timing(hdrAnim, { toValue: 1, duration: 450, useNativeDriver: true }).start();
     load();
-  }, [load, headerAnim]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    load();
-  };
-
-  const handleDelete = useCallback((id) => {
-    if (!id) return;
-    setAllItems((prev) => prev.filter((n) => (n.id ?? n.notification_id ?? n.notify_id) !== id));
   }, []);
 
+  const onRefresh   = useCallback(() => { setPage(1); setHasMore(true); load(1, false); }, [load]);
+  const loadMore    = useCallback(() => { if (!hasMore || loadingMore || refreshing) return; const n = page + 1; setPage(n); load(n, true); }, [hasMore, loadingMore, refreshing, page, load]);
+  const handleDel   = useCallback((id) => { if (!id) return; setAllItems((p) => p.filter((n) => (n.id ?? n.notification_id ?? n.notify_id) !== id)); }, []);
   const markAllRead = useCallback(async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setAllItems((prev) => prev.map((n) => ({ ...n, seen: 1 })));
-    setNotifCount(0);
-    await apiFetch('/api/v1/notifications/mark_seen.php', token, { method: 'POST' });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setAllItems((p) => p.map((n) => ({ ...n, seen: 1 }))); setNotifCount(0);
+    apiFetch('/api/v1/notifications/mark_seen.php', token, { method: 'POST' });
   }, [token, setNotifCount]);
 
+  const unread   = useMemo(() => allItems.filter((n) => !n.seen || n.seen === 0 || n.seen === '0').length, [allItems]);
+  const mentions = useMemo(() => allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'mention').length, [allItems]);
+  const messages = useMemo(() => allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'message').length, [allItems]);
+
   const filtered = useMemo(() => {
-    if (filter === 'Unread') return allItems.filter((n) => !n.seen || n.seen === 0 || n.seen === '0');
-    if (filter === 'Mentions')
-      return allItems.filter((n) => String(n.action ?? n.type ?? n.node_type).toLowerCase() === 'mention');
+    if (filter === 'Unread')   return allItems.filter((n) => !n.seen || n.seen === 0 || n.seen === '0');
+    if (filter === 'Mentions') return allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'mention');
+    if (filter === 'Messages') return allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'message');
     return allItems;
   }, [allItems, filter]);
 
-  const unreadCount = useMemo(
-    () => allItems.filter((n) => !n.seen || n.seen === 0 || n.seen === '0').length,
-    [allItems]
-  );
-
-  const mentionCount = useMemo(
-    () => allItems.filter((n) => String(n.action ?? n.type ?? n.node_type).toLowerCase() === 'mention').length,
-    [allItems]
-  );
-
-  const sections = useMemo(() => sectionize(filtered), [filtered]);
-
   const flatData = useMemo(() => {
     const rows = [];
-    sections.forEach(({ title, data }) => {
+    sectionize(filtered).forEach(({ title, data }) => {
       rows.push({ _type: 'header', title });
       data.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
     });
     return rows;
-  }, [sections]);
+  }, [filtered]);
 
-  const renderRow = ({ item: row }) => {
-    if (row._type === 'header') return <SectionHead title={row.title} />;
-    return <NotifCard item={row.item} index={row._i} onDelete={handleDelete} />;
-  };
+  const renderRow = useCallback(({ item: row }) => {
+    if (row._type === 'header') return <SectionLabel title={row.title} />;
+    return <NotifRow item={row.item} index={row._i} onDelete={handleDel} />;
+  }, [handleDel]);
 
   return (
-    <View style={styles.root}>
+    <View style={ns.root}>
       <StatusBar barStyle="light-content" />
 
       {/* ── Header ── */}
-      <LinearGradient
-        colors={[BRAND, '#0A5560']}
-        style={[styles.header, { paddingTop: top + 6 }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Animated.View
-          style={[
-            styles.headerRow,
-            {
-              opacity: headerAnim,
-              transform: [
-                { translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) },
-              ],
-            },
-          ]}
-        >
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+      <LinearGradient colors={[BRAND, '#0A5560']} style={[ns.header, { paddingTop: top + 8 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <View style={ns.decorCircle} pointerEvents="none" />
+
+        <Animated.View style={[ns.headerRow, { opacity: hdrAnim, transform: [{ translateY: hdrAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }] }]}>
+          <TouchableOpacity style={ns.hBtn} activeOpacity={0.8}
+            onPress={() => navigation.canGoBack() && navigation.goBack()}>
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
 
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Notifications</Text>
-            {unreadCount > 0 && (
-              <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>{unreadCount}</Text>
-              </View>
+          <View style={ns.titleRow}>
+            <Text style={ns.title}>Notifications</Text>
+            {unread > 0 && (
+              <View style={ns.titleBadge}><Text style={ns.titleBadgeTxt}>{unread > 99 ? '99+' : unread}</Text></View>
             )}
           </View>
 
-          <TouchableOpacity style={styles.markBtn} onPress={markAllRead} activeOpacity={0.8}>
-            <Ionicons name="checkmark-done" size={18} color={ACCENT} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity style={ns.hBtn} activeOpacity={0.8} onPress={() => navigation.navigate('Inbox')}>
+              <Ionicons name="chatbubbles-outline" size={20} color="#fff" />
+              {messages > 0 && <View style={ns.hBtnDot}><Text style={ns.hBtnDotTxt}>{messages > 9 ? '9+' : messages}</Text></View>}
+            </TouchableOpacity>
+            <TouchableOpacity style={[ns.hBtn, { backgroundColor: 'rgba(19,194,150,0.18)' }]} activeOpacity={0.8} onPress={markAllRead}>
+              <Ionicons name="checkmark-done" size={18} color={ACCENT} />
+            </TouchableOpacity>
+          </View>
         </Animated.View>
 
-        {/* Filter tabs */}
-        <View style={styles.tabRow}>
-          {FILTER_TABS.map((t) => (
-            <FilterTab
-              key={t}
-              label={t}
-              active={filter === t}
-              onPress={() => setFilter(t)}
-              count={t === 'Unread' ? unreadCount : t === 'Mentions' ? mentionCount : 0}
-            />
-          ))}
-        </View>
+        <FilterBar
+          tabs={FILTER_TABS}
+          active={filter}
+          onChange={setFilter}
+          counts={{ Unread: unread, Mentions: mentions, Messages: messages }}
+        />
       </LinearGradient>
 
       {/* ── List ── */}
       <FlatList
         data={flatData}
-        // FIX: stable unique keys (prevents duplicates/omissions)
-        keyExtractor={(row, i) => {
-          if (row._type === 'header') return `hd-${row.title}`;
-          const key = row.item?.id ?? row.item?.notification_id ?? row.item?.notify_id ?? `idx-${i}`;
-          return `item-${key}`;
-        }}
+        keyExtractor={(row, i) =>
+          row._type === 'header'
+            ? `hdr-${row.title}`
+            : `n-${row.item?.id ?? row.item?.notification_id ?? row.item?.notify_id ?? i}`
+        }
         renderItem={renderRow}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
-        ListEmptyComponent={<EmptyState />}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: 40, flexGrow: 1 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} colors={[ACCENT]} />}
+        ListEmptyComponent={<Empty />}
+        ListFooterComponent={loadingMore
+          ? () => (
+              <View style={{ paddingVertical: 22, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                {[0, 1, 2].map((i) => <View key={i} style={[ns.dot, { opacity: 0.3 + i * 0.2 }]} />)}
+              </View>
+            )
+          : null
+        }
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.3}
+        contentContainerStyle={{ paddingBottom: 60, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews
       />
@@ -421,200 +369,106 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// ── Styles ────────────────────────────────────────────────────────────────
+const ns = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
 
-  /* Header */
+  // Header
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    shadowColor: BRAND,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 12,
+    paddingHorizontal: 16, paddingBottom: 0, overflow: 'hidden',
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 14,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+  decorCircle: {
+    position: 'absolute', width: 220, height: 220, borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.04)', top: -90, right: -70,
   },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
+  hBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center',
   },
-  headerCenter: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+  hBtnDot: {
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: '#EF4444', borderRadius: 8, minWidth: 14, height: 14,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+    borderWidth: 1.5, borderColor: BRAND,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 0.3,
+  hBtnDotTxt: { color: '#fff', fontSize: 8, fontWeight: '900' },
+  titleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  title: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
+  titleBadge: {
+    backgroundColor: ACCENT, borderRadius: 10, minWidth: 22, height: 20,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
   },
-  headerBadge: {
-    backgroundColor: ACCENT,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  headerBadgeText: { color: '#fff', fontSize: 11, fontWeight: '900' },
-  markBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(19,194,150,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  titleBadgeTxt: { color: '#fff', fontSize: 10, fontWeight: '900' },
 
-  /* Filter tabs */
-  tabRow: { flexDirection: 'row', gap: 8 },
-  tabWrap: {},
-  tabActive: {
+  // Filter
+  filterBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.1)',
   },
-  tabInactive: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  filterTab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 4, paddingVertical: 13, position: 'relative',
   },
-  tabTextActive: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  tabTextInactive: { color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '600' },
-  tabBadge: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
+  filterLine: {
+    position: 'absolute', bottom: 0, left: '15%', right: '15%',
+    height: 2.5, borderRadius: 99, backgroundColor: ACCENT,
   },
-  tabBadgeText: { color: BRAND, fontSize: 10, fontWeight: '900' },
+  filterTxt:   { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.42)' },
+  filterTxtOn: { color: '#fff', fontWeight: '800' },
+  filterBadge: {
+    backgroundColor: '#EF4444', borderRadius: 8, minWidth: 14, height: 14,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+  },
+  filterBadgeTxt: { color: '#fff', fontSize: 8, fontWeight: '900' },
 
-  /* Section header */
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginHorizontal: 16,
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  sectionHeadText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: MUTED,
-    textTransform: 'uppercase',
-    letterSpacing: 1.4,
-  },
-  sectionLine: { flex: 1, height: 1, backgroundColor: 'rgba(12,63,68,0.08)' },
+  // Section
+  sectionRow:  { paddingHorizontal: 18, paddingTop: 22, paddingBottom: 8 },
+  sectionTxt:  { fontSize: 11, fontWeight: '800', color: MUTED, letterSpacing: 1.2, textTransform: 'uppercase' },
 
-  /* Card */
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // Row
+  row: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 13,
     backgroundColor: CARD,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(12,63,68,0.07)',
   },
-  cardUnread: {
-    backgroundColor: '#EBF9F5',
-    shadowColor: ACCENT,
-    shadowOpacity: 0.1,
-  },
-  typeStrip: { width: 4, alignSelf: 'stretch' },
+  rowUnread: { backgroundColor: '#F0FBF8' },
+  bar: { position: 'absolute', left: 0, top: 14, bottom: 14, width: 3, borderRadius: 99 },
 
-  avatarBlock: { marginHorizontal: 14, position: 'relative' },
-  avatar: { width: 50, height: 50, borderRadius: 25 },
-  typeIcon: {
-    position: 'absolute',
-    bottom: -2,
-    right: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: CARD,
+  // Avatar
+  avatarWrap: { marginRight: 13, position: 'relative' },
+  actionBadge: {
+    position: 'absolute', bottom: -3, right: -3,
+    width: 19, height: 19, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: CARD,
   },
 
-  content: { flex: 1, paddingVertical: 14, paddingRight: 14 },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  notifName: { fontSize: 14, fontWeight: '800', color: DARK, flex: 1, marginRight: 8 },
-  notifTime: { fontSize: 11, color: MUTED, fontWeight: '500' },
-  notifBody: { fontSize: 13, color: '#4A6063', lineHeight: 18 },
-  postThumb: { width: 48, height: 48, borderRadius: 10, marginTop: 8, backgroundColor: BG },
+  // Text
+  textCol:    { flex: 1, paddingRight: 10 },
+  topRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
+  nameText:   { fontSize: 14, fontWeight: '800', color: DARK, flex: 1, marginRight: 8 },
+  timeText:   { fontSize: 11, color: MUTED, fontWeight: '500' },
+  bodyText:   { fontSize: 13, color: '#4A6063', lineHeight: 18 },
+  actionText: { fontWeight: '600', color: '#2A4A4F' },
 
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: ACCENT,
-    marginRight: 14,
-    alignSelf: 'center',
-  },
+  // Right element
+  postThumb: { width: 50, height: 50, borderRadius: 10, backgroundColor: BG },
+  iconBox:   { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 
-  /* Swipe delete */
-  swipeDelete: {
-    width: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginRight: 16,
-  },
-  swipeDeleteInner: {
-    flex: 1,
-    width: '100%',
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    borderRadius: 16,
-  },
-  swipeDeleteText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  // Swipe
+  swipeBox: { width: 80, justifyContent: 'center', alignItems: 'center' },
+  swipeBtn: { flex: 1, width: '100%', backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  swipeTxt: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
-  /* Empty */
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 16 },
-  emptyCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // Empty
+  emptyWrap:  { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100, gap: 14 },
+  emptyCircle:{ width: 104, height: 104, borderRadius: 52, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: DARK },
-  emptySubtitle: { fontSize: 13, color: MUTED, textAlign: 'center', maxWidth: 220, lineHeight: 20 },
+  emptySub:   { fontSize: 13, color: MUTED, textAlign: 'center', maxWidth: 230, lineHeight: 20 },
+
+  // Loading dots
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT },
 });

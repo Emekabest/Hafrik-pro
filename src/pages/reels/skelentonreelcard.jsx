@@ -3,11 +3,11 @@ import { View, StyleSheet, Dimensions, Animated } from "react-native";
 import AppDetails from "../../helpers/appdetails";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
-const ITEM_HEIGHT = SCREEN_HEIGHT - (AppDetails.mainTabNavigatorHeight || 0);
+const FALLBACK_HEIGHT = SCREEN_HEIGHT - (AppDetails.mainTabNavigatorHeight || 0);
 const MEDIA_WIDTH = SCREEN_WIDTH;
 const RIGHT_COLUMN_WIDTH = 64;
 
-const SkeletonReelCard = () => {
+const SkeletonReelCard = ({ height = FALLBACK_HEIGHT }) => {
   const pulse = useRef(new Animated.Value(0.85)).current;
 
   useEffect(() => {
@@ -22,7 +22,7 @@ const SkeletonReelCard = () => {
   }, [pulse]);
 
   return (
-    <View style={[styles.container, { height: ITEM_HEIGHT }]}>
+    <View style={[styles.container, { height }]}>
       <View style={styles.mediaWrapper}>
         <View style={styles.mediaPlaceholder} />
       </View>

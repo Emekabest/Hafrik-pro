@@ -3,6 +3,7 @@ import {
   Animated,
   Dimensions,
   StyleSheet,
+  TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
@@ -22,9 +23,8 @@ import { useViewCounter } from './useViewCounter';
 import { recordWatch } from './reelsApi';
 
 const { height: SCREEN_H } = Dimensions.get('window');
-const ITEM_HEIGHT = SCREEN_H;
 
-const ReelCard = ({ reel }) => {
+const ReelCard = ({ reel, height = SCREEN_H }) => {
   const { token } = useAuth();
 
   const currentReelId = useStore((s) => s.currentReel?.reelId);
@@ -34,7 +34,11 @@ const ReelCard = ({ reel }) => {
   const progress      = useRef(new Animated.Value(0)).current;
   const [heartKey,  setHeartKey]  = useState('');
   const [isPaused,  setIsPaused]  = useState(false);
-  const [pauseIcon, setPauseIcon] = useState('pause');
+  const [pauseIcon, setPauseIcon] = useState('pause-circle');
+  const [isMuted,   setIsMuted]   = useState(false);
+
+  // Mute animation
+  const muteScale = useRef(new Animated.Value(1)).current;
 
   // Pause indicator animation
   const indicatorOpacity = useRef(new Animated.Value(0)).current;
@@ -91,10 +95,10 @@ const ReelCard = ({ reel }) => {
         friction: 7,
       }),
       Animated.sequence([
-        Animated.delay(550),
+        Animated.delay(500),
         Animated.timing(indicatorOpacity, {
           toValue: 0,
-          duration: 280,
+          duration: 260,
           useNativeDriver: true,
         }),
       ]),
@@ -112,10 +116,24 @@ const ReelCard = ({ reel }) => {
   const handleSingleTap = useCallback(() => {
     setIsPaused(prev => {
       const next = !prev;
-      showIndicator(next ? 'pause' : 'play');
+      showIndicator(next ? 'pause-circle' : 'play-circle');
       return next;
     });
   }, [showIndicator]);
+
+  // ── Mute toggle ──────────────────────────────────────────────────────────
+  const handleMuteToggle = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(muteScale, { toValue: 0.75, duration: 80, useNativeDriver: true }),
+      Animated.spring(muteScale, { toValue: 1, tension: 200, friction: 6, useNativeDriver: true }),
+    ]).start();
+    setIsMuted(prev => !prev);
+  }, [muteScale]);
+
+  // ── Progress callback ────────────────────────────────────────────────────
+  const handleTimeUpdate = useCallback((ratio) => {
+    progress.setValue(Math.min(1, Math.max(0, ratio)));
+  }, [progress]);
 
   const handlePress   = useDoubleTap(handleDoubleTap, handleSingleTap);
   const handleSwipeRight = useCallback(() => {
@@ -126,7 +144,7 @@ const ReelCard = ({ reel }) => {
   return (
     <ReelGestures onSwipeRight={handleSwipeRight}>
       <TouchableWithoutFeedback onPress={handlePress}>
-        <View style={styles.container}>
+        <View style={[styles.container, { height }]}>
 
           {/* Video */}
           <ReelMedia
@@ -134,6 +152,8 @@ const ReelCard = ({ reel }) => {
             media={reel.media}
             isActive={isActive}
             isPaused={isPaused}
+            isMuted={isMuted}
+            onTimeUpdate={handleTimeUpdate}
           />
 
           {/* Bottom gradient — improves text readability */}
@@ -148,7 +168,7 @@ const ReelCard = ({ reel }) => {
             <ReelProgressBar progress={progress} />
           </View>
 
-          {/* Pause / play indicator */}
+          {/* Tap-feedback pause/play indicator (centre, fades out) */}
           <Animated.View
             style={[
               styles.indicator,
@@ -159,7 +179,31 @@ const ReelCard = ({ reel }) => {
             ]}
             pointerEvents="none"
           >
-            <Ionicons name={pauseIcon} size={34} color="#fff" />
+            <Ionicons name={pauseIcon} size={52} color="#fff" />
+          </Animated.View>
+
+          {/* Persistent pause/play button — bottom-left corner */}
+          <TouchableOpacity
+            style={[styles.pauseBtn, isPaused && styles.pauseBtnActive]}
+            onPress={handleSingleTap}
+            activeOpacity={0.75}
+          >
+            <Ionicons
+              name={isPaused ? 'play' : 'pause'}
+              size={13}
+              color="#fff"
+            />
+          </TouchableOpacity>
+
+          {/* Mute / unmute button */}
+          <Animated.View style={[styles.muteBtn, { transform: [{ scale: muteScale }] }]}>
+            <TouchableOpacity onPress={handleMuteToggle} activeOpacity={0.8} style={styles.muteBtnInner}>
+              <Ionicons
+                name={isMuted ? 'volume-mute' : 'volume-high'}
+                size={15}
+                color="#fff"
+              />
+            </TouchableOpacity>
           </Animated.View>
 
           <HeartBurst visibleKey={heartKey} />
@@ -177,9 +221,9 @@ const ReelCard = ({ reel }) => {
 
 const styles = StyleSheet.create({
   container: {
-    height: ITEM_HEIGHT,
     width: '100%',
     backgroundColor: '#000',
+    overflow: 'hidden',
   },
   gradient: {
     position: 'absolute',
@@ -199,15 +243,50 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     alignSelf: 'center',
-    top: '45%',
-    width: 68,
-    height: 68,
-    marginLeft: -34,
-    borderRadius: 34,
-    backgroundColor: 'rgba(0,0,0,0.48)',
+    top: '42%',
+    width: 80,
+    height: 80,
+    marginLeft: -40,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,
+  },
+  // Persistent pause/play button — bottom-left corner, above interaction panel
+  pauseBtn: {
+    position: 'absolute',
+    left: 14,
+    bottom: 200,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 25,
+  },
+  pauseBtnActive: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  muteBtn: {
+    position: 'absolute',
+    left: 56,
+    bottom: 200,
+    zIndex: 25,
+  },
+  muteBtnInner: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

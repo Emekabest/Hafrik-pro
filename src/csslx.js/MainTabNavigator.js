@@ -5,22 +5,25 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Screens
-import HomePage         from '../pages/home/Home';
-import ProfileScreen    from '../pages/profile/profilescreen';
-import DiscoveryScreen  from '../pages/pages_/pagesscreen';
-import MarketplaceScreen from '../pages/marketplace/index';
-import Reels2           from '../pages/reels/reels2';
+import HomePage             from '../pages/home/Home';
+import ProfileScreen        from '../pages/profile/profilescreen';
+import DiscoveryScreen      from '../pages/pages_/pagesscreen';
+import InboxScreen          from '../pages/messages/InboxScreen';
+import Reels2               from '../pages/reels/reels2';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppDetails from '../helpers/appdetails';
 import SvgIcon    from '../assl.js/svg/svg';
+import { useAuth } from '../AuthContext';
+import useStore   from '../repository/store';
 
-const Tab  = createBottomTabNavigator();
-const BRAND = '#0C3F44';
-const MUTED = '#9BA8AD';
+const Tab     = createBottomTabNavigator();
+const BRAND   = '#0C3F44';
+const MUTED   = '#9BA8AD';
+const ACCENT  = '#13C296';
 
 // ─── Custom Tab Bar ─────────────────────────────────────────
-const CustomTabBar = ({ state, navigation }) => {
+const CustomTabBar = ({ state, navigation, unreadCount }) => {
   const { bottom } = useSafeAreaInsets();
 
   return (
@@ -63,14 +66,23 @@ const CustomTabBar = ({ state, navigation }) => {
           );
         }
 
-        else if (route.name === 'Marketplace') {
-          label = 'Market';
+        else if (route.name === 'Messages') {
+          label = 'Messages';
           icon = (
-            <Ionicons
-              name={isFocused ? 'storefront' : 'storefront-outline'}
-              size={23}
-              color={isFocused ? BRAND : MUTED}
-            />
+            <View>
+              <Ionicons
+                name={isFocused ? 'chatbubbles' : 'chatbubbles-outline'}
+                size={23}
+                color={isFocused ? BRAND : MUTED}
+              />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           );
         }
 
@@ -125,24 +137,29 @@ const FeedFab = ({ onPress }) => {
 };
 
 // ─── Navigator ────────────────────────────────────
-const MainTabNavigator = () => (
-  <Tab.Navigator
-    initialRouteName="Home"
-    tabBar={props => <CustomTabBar {...props} />}
-    screenOptions={{ headerShown: false }}
-  >
-    {/* Home tab → Explore / Discovery (new landing screen) */}
-    <Tab.Screen name="Home"        component={DiscoveryScreen} />
+const MainTabNavigator = () => {
+  const { token }      = useAuth();
+  const unreadCount    = useStore((s) => s.messageCount ?? 0);
 
-    <Tab.Screen name="Reels"       component={Reels2} />
+  return (
+    <Tab.Navigator
+      initialRouteName="Home"
+      tabBar={props => <CustomTabBar {...props} unreadCount={unreadCount} />}
+      screenOptions={{ headerShown: false }}
+    >
+      {/* Home tab → Explore / Discovery */}
+      <Tab.Screen name="Home"          component={DiscoveryScreen} />
+      <Tab.Screen name="Reels"         component={Reels2} />
 
-    {/* BIG CENTER FAB → Feed */}
-    <Tab.Screen name="Feed"        component={HomePage} />
+      {/* BIG CENTER FAB → Feed */}
+      <Tab.Screen name="Feed"          component={HomePage} />
 
-    <Tab.Screen name="Marketplace" component={MarketplaceScreen} />
-    <Tab.Screen name="Profile"     component={ProfileScreen} />
-  </Tab.Navigator>
-);
+      {/* Messages tab */}
+      <Tab.Screen name="Messages" component={InboxScreen} />
+      <Tab.Screen name="Profile"       component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+};
 
 // ─── Styles ───────────────────────────────────────
 const styles = StyleSheet.create({
@@ -204,6 +221,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 12,
+  },
+
+  // Unread badge on Notifications icon
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
   },
 });
 

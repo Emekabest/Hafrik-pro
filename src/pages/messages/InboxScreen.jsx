@@ -10,6 +10,7 @@ import {
   RefreshControl,
   TextInput,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -191,6 +192,40 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin }) => {
   );
 });
 
+/* ─── Filter tabs (All / Unread) ─── */
+const FilterTabs = ({ active, onChange }) => (
+  <View style={styles.filterRow}>
+    {['All', 'Unread'].map((f) => (
+      <TouchableOpacity
+        key={f}
+        style={[styles.filterTab, active === f && styles.filterTabOn]}
+        onPress={() => onChange(f)}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.filterTabTxt, active === f && styles.filterTabTxtOn]}>{f}</Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+);
+
+/* ─── Online story bubble ─── */
+const StoryBubble = ({ item }) => {
+  const other = item.other_user ?? item.user ?? {};
+  const name  = (other.username ?? 'User').split(' ')[0];
+  return (
+    <View style={styles.storyWrap}>
+      <View style={styles.storyRing}>
+        <Image
+          source={{ uri: other.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0C3F44&color=fff` }}
+          style={styles.storyAvatar}
+        />
+        <View style={styles.storyDot} />
+      </View>
+      <Text style={styles.storyName} numberOfLines={1}>{name}</Text>
+    </View>
+  );
+};
+
 /* ─── Section label ─── */
 const SectionLabel = ({ label }) => (
   <View style={styles.sectionLabel}>
@@ -221,6 +256,8 @@ export default function InboxScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search,     setSearch]     = useState('');
   const [searchFocus, setSearchFocus] = useState(false);
+
+  const [filter, setFilter] = useState('All');
 
   const headerAnim    = useRef(new Animated.Value(0)).current;
   const searchWidth   = useRef(new Animated.Value(0)).current;
@@ -287,18 +324,26 @@ export default function InboxScreen() {
   const pinned = filtered.filter((c) => c.pinned === 1);
   const normal = filtered.filter((c) => c.pinned !== 1);
 
+  // apply unread filter on top
+  const applyFilter = (arr) =>
+    filter === 'Unread' ? arr.filter((c) => !c.seen || c.seen === 0 || c.seen === '0') : arr;
+
+  const activeConvs = items.filter((c) => c.online === 1).slice(0, 12);
+
   const flatData = useMemo(() => {
     const rows = [];
-    if (pinned.length > 0) {
+    const pinnedF = applyFilter(pinned);
+    const normalF = applyFilter(normal);
+    if (pinnedF.length > 0) {
       rows.push({ _type: 'label', label: 'Pinned' });
-      pinned.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
+      pinnedF.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
     }
-    if (normal.length > 0) {
-      if (pinned.length > 0) rows.push({ _type: 'label', label: 'All Messages' });
-      normal.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
+    if (normalF.length > 0) {
+      if (pinnedF.length > 0) rows.push({ _type: 'label', label: 'All Messages' });
+      normalF.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
     }
     return rows;
-  }, [pinned, normal]);
+  }, [pinned, normal, filter]);
 
   const renderRow = ({ item: row }) => {
     if (row._type === 'label') return <SectionLabel label={row.label} />;
@@ -334,13 +379,14 @@ export default function InboxScreen() {
             },
           ]}
         >
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={20} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerEyebrow}>HAFRIK</Text>
+            <Text style={styles.headerTitle}>Messages</Text>
+          </View>
 
-          <Text style={styles.headerTitle}>Messages</Text>
-
-          <TouchableOpacity style={styles.composeBtn} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.composeBtn} activeOpacity={0.8}
+            onPress={() => Alert.alert('New message', 'New conversation feature coming soon!')}
+          >
             <Ionicons name="create-outline" size={20} color="#fff" />
           </TouchableOpacity>
         </Animated.View>
@@ -372,6 +418,29 @@ export default function InboxScreen() {
           row._type === 'label' ? `lbl-${row.label}` : `conv-${row.item?.conversation_id ?? i}`
         }
         renderItem={renderRow}
+        ListHeaderComponent={
+          <>
+            {/* Active now stories */}
+            {activeConvs.length > 0 && (
+              <View>
+                <View style={styles.activeLabelRow}>
+                  <View style={styles.activeDot} />
+                  <Text style={styles.activeLabel}>Active Now</Text>
+                </View>
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  data={activeConvs}
+                  keyExtractor={(c, i) => `story-${c.conversation_id ?? i}`}
+                  renderItem={({ item }) => <StoryBubble item={item} />}
+                  contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 12, gap: 12 }}
+                />
+              </View>
+            )}
+            {/* Filter tabs */}
+            <FilterTabs active={filter} onChange={setFilter} />
+          </>
+        }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />
         }
@@ -528,4 +597,45 @@ const styles = StyleSheet.create({
   },
   emptyTitle:    { fontSize: 18, fontWeight: '800', color: DARK },
   emptySubtitle: { fontSize: 13, color: MUTED, textAlign: 'center', maxWidth: 220, lineHeight: 20 },
+
+  /* Header eyebrow */
+  headerEyebrow: { fontSize: 9, fontWeight: '800', letterSpacing: 2.5, color: ACCENT, marginBottom: 1 },
+
+  /* Filter tabs */
+  filterRow: {
+    flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, gap: 8,
+  },
+  filterTab: {
+    paddingHorizontal: 16, paddingVertical: 7, borderRadius: 100,
+    backgroundColor: 'rgba(12,63,68,0.06)', borderWidth: 1, borderColor: 'rgba(12,63,68,0.08)',
+  },
+  filterTabOn:    { backgroundColor: BRAND, borderColor: BRAND },
+  filterTabTxt:   { fontSize: 12, fontWeight: '700', color: DARK },
+  filterTabTxtOn: { color: '#fff' },
+
+  /* Active now stories */
+  activeLabelRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
+  },
+  activeDot: {
+    width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT,
+  },
+  activeLabel: {
+    fontSize: 11, fontWeight: '900', color: MUTED,
+    textTransform: 'uppercase', letterSpacing: 1.4,
+  },
+  storyWrap:   { alignItems: 'center', width: 62, gap: 5 },
+  storyRing: {
+    width: 58, height: 58, borderRadius: 29, position: 'relative',
+    borderWidth: 2.5, borderColor: ACCENT,
+    padding: 2,
+  },
+  storyAvatar: { width: '100%', height: '100%', borderRadius: 26 },
+  storyDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: ACCENT, borderWidth: 2.5, borderColor: '#fff',
+  },
+  storyName: { fontSize: 10, fontWeight: '600', color: DARK, textAlign: 'center' },
 });

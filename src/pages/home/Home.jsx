@@ -5,10 +5,12 @@ import {
   Dimensions,
   StatusBar,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import DrawerNavigation from './drawernavigation.jsx';
-import Header from '../../pages/header.jsx';
+import AppHeader from '../../pages/AppHeader.jsx';
 import QuickActions from './quickactions.jsx';
 import RecentUpdatesScreen from './recentupdatescreen.jsx';
 import WhatsNearbyScreen from './whatsnearbyscreen.jsx';
@@ -24,7 +26,7 @@ import { useLiveCounts } from '../../hooks/useLiveCounts.js';
 
 const BRAND = '#0C3F44';
 
-const HomePage = ({ navigation }) => {
+const HomePage = () => {
   const { height } = Dimensions.get("window");
   const { token } = useAuth();
 
@@ -34,9 +36,8 @@ const HomePage = ({ navigation }) => {
 
   const homeViewHeight = height - (AppDetails.headerHeight + AppDetails.mainTabNavigatorHeight + (tabletMode ? StatusBar.currentHeight : 0));
 
-  const [drawerVisible,   setDrawerVisible]   = useState(false);
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState(2);
-
 
   const isSearchVisible        = useStore((state) => state.isSearchVisible);
   const isSearchResultsVisible = useStore((state) => state.isSearchResultsVisible);
@@ -58,8 +59,34 @@ const HomePage = ({ navigation }) => {
     getUserAvatar();
   }, [token]);
 
-  // const openDrawer  = useCallback(() => setIsDrawerVisible(true),  []);
-  const closeDrawer = useCallback(() => setDrawerVisible(false), []);
+  const openDrawer  = useCallback(() => setIsDrawerVisible(true),  []);
+  const closeDrawer = useCallback(() => setIsDrawerVisible(false), []);
+
+  // ── Swipe-to-switch tabs ───────────────────────────────────────────────────
+  const swipeX = useRef(new Animated.Value(0)).current;
+
+  const handleScreenSwipe = Animated.event(
+    [{ nativeEvent: { translationX: swipeX } }],
+    { useNativeDriver: true },
+  );
+
+  const handleScreenSwipeEnd = useCallback((event) => {
+    const { translationX, velocityX, state } = event.nativeEvent;
+    if (state === State.END || state === State.FAILED || state === State.CANCELLED) {
+      const swipe = translationX + velocityX * 0.1;
+      if (swipe < -60 && activeTab < 2) {
+        setActiveTab(prev => prev + 1);
+      } else if (swipe > 60 && activeTab > 0) {
+        setActiveTab(prev => prev - 1);
+      }
+      Animated.spring(swipeX, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 200,
+        friction: 20,
+      }).start();
+    }
+  }, [activeTab, swipeX]); // eslint-disable-line);
 
   const handleFeedLayout = useCallback((e) => {
     const w = e.nativeEvent.layout.width;
@@ -76,12 +103,26 @@ const HomePage = ({ navigation }) => {
       ) : (
         <>
           <QuickActions activeTab={activeTab} onTabChange={setActiveTab} />
-          {activeTab === 0 && <WhatsNearbyScreen />}
-          {activeTab === 1 && <TrendingOnHafrikScreen />}
-          {activeTab === 2 && <RecentUpdatesScreen feedWidth={feedWidthRef.current} />}
+          <PanGestureHandler
+            onGestureEvent={handleScreenSwipe}
+            onHandlerStateChange={handleScreenSwipeEnd}
+            activeOffsetX={[-15, 15]}
+            failOffsetY={[-20, 20]}
+          >
+            <Animated.View
+              style={[
+                styles.screenArea,
+                { transform: [{ translateX: swipeX }] },
+              ]}
+            >
+              {activeTab === 0 && <WhatsNearbyScreen />}
+              {activeTab === 1 && <TrendingOnHafrikScreen />}
+              {activeTab === 2 && <RecentUpdatesScreen feedWidth={feedWidthRef.current} />}
+            </Animated.View>
+          </PanGestureHandler>
         </>
       )}
-      <DrawerNavigation isVisible={drawerVisible} onClose={closeDrawer} />
+      <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
       {isSearchVisible && <SearchModal />}
     </>
   );
@@ -89,8 +130,7 @@ const HomePage = ({ navigation }) => {
   return (
     // View (not SafeAreaView) — Header handles top inset via useSafeAreaInsets internally
     <View style={styles.container}>
-
-      <Header onOpenDrawer={() => setDrawerVisible(true)} />
+      <AppHeader onOpenDrawer={openDrawer} />
 
       {tabletMode ? (
         <View style={[styles.homeContainer, { height: homeViewHeight, flexDirection: 'row' }]}>
@@ -116,7 +156,6 @@ const HomePage = ({ navigation }) => {
       </TouchableOpacity>
 
       <PostComposerModal />
-       
     </View>
   );
 };
@@ -127,6 +166,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   homeContainer: { width: '100%' },
+  screenArea: { flex: 1 },
   fab: {
     position: 'absolute',
     bottom: 24,

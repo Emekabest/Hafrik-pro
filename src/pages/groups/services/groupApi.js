@@ -1,181 +1,171 @@
 import axios from "axios";
 
-const BASE_URL = "https://hafrik.com/api/v1";
+const BASE_URL = "https://hafrik.com/api/v1/communities";
+
+// ── Build per-request auth headers ───────────────────────────────────────────
+const authHeaders = (token) =>
+  token ? { Authorization: `Bearer ${token}` } : {};
 
 /* =================================
-   AXIOS INSTANCE
-================================= */
-
-const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10000,
-});
-
-/* =================================
-   HELPER (optional auth header)
-   If you use token auth, attach it here
-================================= */
-
-// Example if you store token somewhere
-// api.interceptors.request.use(async (config) => {
-//   const token = await getToken();
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
-
-/* =================================
-   GROUP LIST
+   COMMUNITY LIST
    GET /communities/list.php
 ================================= */
-
-export const getGroups = async (page = 1, limit = 10, filters = {}) => {
+export const getGroups = async (page = 1, limit = 15, filters = {}, token = null) => {
   try {
-    const params = {
-      page,
-      limit,
-      ...filters,
-    };
-
-    const response = await api.get("/communities/list.php", { params });
-
+    const response = await axios.get(`${BASE_URL}/list.php`, {
+      params: { page, limit, ...filters },
+      headers: authHeaders(token),
+      timeout: 12000,
+    });
     return response.data;
-
   } catch (error) {
-    console.log("GROUP API ERROR (getGroups):", error?.response?.data || error);
+    console.log("COMMUNITIES API (getGroups):", error?.response?.data || error.message);
     throw error;
   }
 };
 
-
+/* =================================
+   COMMUNITY CATEGORIES
+   GET /communities/categories.php
+================================= */
+export const getCategories = async (token = null) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/categories.php`, {
+      headers: authHeaders(token),
+      timeout: 10000,
+    });
+    return response.data;
+  } catch (error) {
+    console.log("COMMUNITIES API (getCategories):", error?.response?.data || error.message);
+    throw error;
+  }
+};
 
 /* =========================
    GROUP DETAILS
    GET /communities/view.php?group_id=
 ========================= */
-
-export const getGroupDetails = async (groupId) => {
+export const getGroupDetails = async (groupId, token = null) => {
   try {
-    const response = await api.get("/communities/view.php", {
+    const response = await axios.get(`${BASE_URL}/view.php`, {
       params: { group_id: groupId },
+      headers: authHeaders(token),
+      timeout: 10000,
     });
-
-    console.log("DETAIL RESPONSE:", response.data);
-
     return response.data;
-
   } catch (error) {
-    console.log(
-      "GROUP API ERROR (getGroupDetails):",
-      error?.response?.data || error
-    );
+    console.log("COMMUNITIES API (getGroupDetails):", error?.response?.data || error.message);
     throw error;
   }
 };
 
+/* =================================
+   GROUP MEDIA
+   GET /communities/group_media.php
+================================= */
+export const getGroupMedia = async (groupId, type = 'all', page = 1, limit = 24, token = null) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/group_media.php`, {
+      params: { group_id: groupId, type, page, limit },
+      headers: authHeaders(token),
+      timeout: 12000,
+    });
+    return response.data;
+  } catch (error) {
+    console.log("COMMUNITIES API (getGroupMedia):", error?.response?.data || error.message);
+    throw error;
+  }
+};
 
 /* =========================
    GROUP FEED
    GET /communities/group_feed.php
 ========================= */
-
-export const getGroupFeed = async (groupId, page = 1, limit = 10) => {
+export const getGroupFeed = async (groupId, page = 1, limit = 10, token = null) => {
   try {
-    const response = await api.get("/communities/group_feed.php", {
-      params: {
-        group_id: groupId,
-        page,
-        limit,
-      },
+    const response = await axios.get(`${BASE_URL}/group_feed.php`, {
+      params: { group_id: groupId, page, limit },
+      headers: authHeaders(token),
+      timeout: 12000,
     });
-
-    console.log("FEED RESPONSE:", response.data);
-
     return response.data;
-
   } catch (error) {
     console.log(
-      "GROUP API ERROR (getGroupFeed):",
-      error?.response?.data || error
+      "COMMUNITIES API (getGroupFeed):",
+      error?.response?.data || error.message
     );
     throw error;
   }
 };
+
 /* =================================
    GROUP MEMBERS
-   GET /groups/members.php
+   GET /communities/members.php
 ================================= */
-
-export const getGroupMembers = async (groupId, page = 1, limit = 20) => {
+export const getGroupMembers = async (groupId, page = 1, limit = 20, token = null) => {
   try {
-    const response = await api.get("/communities/members.php", {
-      params: {
-        group_id: groupId,
-        page,
-        limit,
-      },
+    const response = await axios.get(`${BASE_URL}/members.php`, {
+      params: { group_id: groupId, page, limit },
+      headers: authHeaders(token),
+      timeout: 10000,
     });
-
     return response.data;
-
   } catch (error) {
-    console.log("GROUP API ERROR (getGroupMembers):", error?.response?.data || error);
+    console.log("COMMUNITIES API (getGroupMembers):", error?.response?.data || error.message);
     throw error;
   }
 };
 
 /* =================================
    JOIN GROUP
-   POST /groups/join.php
+   POST /communities/join.php
 ================================= */
-
-export const joinGroup = async (groupId) => {
+export const joinGroup = async (groupId, token = null) => {
   try {
-    const response = await api.post("/communities/join.php", {
-      group_id: groupId,
-    });
-
+    const response = await axios.post(
+      `${BASE_URL}/join.php`,
+      { group_id: groupId },
+      { headers: authHeaders(token), timeout: 10000 }
+    );
     return response.data;
-
   } catch (error) {
-    console.log("GROUP API ERROR (joinGroup):", error?.response?.data || error);
+    console.log("COMMUNITIES API (joinGroup):", error?.response?.data || error.message);
     throw error;
   }
 };
 
 /* =================================
    LEAVE GROUP
-   POST /groups/leave.php
+   POST /communities/leave.php
 ================================= */
-
-export const leaveGroup = async (groupId) => {
+export const leaveGroup = async (groupId, token = null) => {
   try {
-    const response = await api.post("/communities/leave.php", {
-      group_id: groupId,
-    });
-
+    const response = await axios.post(
+      `${BASE_URL}/leave.php`,
+      { group_id: groupId },
+      { headers: authHeaders(token), timeout: 10000 }
+    );
     return response.data;
-
   } catch (error) {
-    console.log("GROUP API ERROR (leaveGroup):", error?.response?.data || error);
+    console.log("COMMUNITIES API (leaveGroup):", error?.response?.data || error.message);
     throw error;
   }
 };
 
 /* =================================
    CREATE GROUP
-   POST /groups/create.php
+   POST /communities/create.php
 ================================= */
-
-export const createGroup = async (payload) => {
+export const createGroup = async (payload, token = null) => {
   try {
-    const response = await api.post("/communities/create.php", payload);
-
+    const response = await axios.post(
+      `${BASE_URL}/create.php`,
+      payload,
+      { headers: authHeaders(token), timeout: 12000 }
+    );
     return response.data;
-
   } catch (error) {
-    console.log("GROUP API ERROR (createGroup):", error?.response?.data || error);
+    console.log("COMMUNITIES API (createGroup):", error?.response?.data || error.message);
     throw error;
   }
 };

@@ -1,60 +1,70 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode, Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import { setAudioModeAsync } from 'expo-audio';
 
 const Preview = ({ videoUri, onBack, onNext, isFocused, appState, primaryColor }) => {
     const [videoMounted, setVideoMounted] = useState(false);
-    const videoRef = useRef(null);
 
+    const player = useVideoPlayer(videoUri ? { uri: videoUri } : null, p => {
+        if (p) { p.loop = true; }
+    });
+
+    // Delay mount so the player has time to initialise
     useEffect(() => {
         setVideoMounted(false);
-        const timer = setTimeout(() => {
-            setVideoMounted(true);
-        }, 300);
+        const timer = setTimeout(() => setVideoMounted(true), 300);
         return () => clearTimeout(timer);
     }, [videoUri]);
 
+    // Update source when videoUri prop changes
     useEffect(() => {
-        // Configure audio to pause background music (DoNotMix)
-        Audio.setAudioModeAsync({
-            allowsRecordingIOS: false,
-            interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-            playsInSilentModeIOS: true,
+        if (player && videoUri) {
+            player.replaceAsync({ uri: videoUri }).catch(() => {});
+        }
+    }, [videoUri]); // eslint-disable-line
+
+    // Play / pause based on focus + app state
+    useEffect(() => {
+        if (!player) return;
+        if (isFocused && appState === 'active') {
+            player.play();
+        } else {
+            player.pause();
+        }
+    }, [isFocused, appState]); // eslint-disable-line
+
+    useEffect(() => {
+        // Configure audio: DoNotMix so background music pauses
+        setAudioModeAsync({
+            playsInSilentMode: true,
+            interruptionMode: 'doNotMix',
             shouldDuckAndroid: false,
-            interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
             staysActiveInBackground: false,
-        }).catch(error => console.log("Audio mode setup error", error));
+        }).catch(e => console.log('Audio mode setup error', e));
 
         return () => {
-            if (videoRef.current) {
-                videoRef.current.unloadAsync();
-            }
-            // Reset audio mode to ensure background music returns to normal volume
-            Audio.setAudioModeAsync({
-                allowsRecordingIOS: false,
-                interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-                playsInSilentModeIOS: false,
+            if (player) player.pause();
+            // Reset audio mode so background music resumes
+            setAudioModeAsync({
+                playsInSilentMode: false,
+                interruptionMode: 'mixWithOthers',
                 shouldDuckAndroid: true,
-                interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
                 staysActiveInBackground: false,
-            }).catch(error => console.log("Audio mode reset error", error));
+            }).catch(e => console.log('Audio mode reset error', e));
         };
-    }, []);
+    }, []); // eslint-disable-line
 
     return (
         <View style={styles.fullScreenContainer}>
             <View style={[styles.fullScreenPreview, { marginTop: 0 }]}>
                 {videoMounted ? (
-                    <Video
-                        ref={videoRef}
-                        key={videoUri}
-                        source={{ uri: videoUri }}
+                    <VideoView
+                        player={player}
                         style={styles.fullScreenVideo}
-                        resizeMode={ResizeMode.COVER}
-                        shouldPlay={isFocused && appState === 'active'}
-                        isLooping
-                        useNativeControls={false}
+                        contentFit="cover"
+                        nativeControls={false}
                     />
                 ) : (
                     <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>

@@ -13,8 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { Image as ExpoImage } from "expo-image";
-import { getBusinessDetails, getBusinessFeed, followBusiness, unfollowBusiness } from "./Businessapi";
-//import FeedCard from "../home/feeds/feedcard.jsx";
+import { useAuth } from "../../AuthContext";
+import { getBusinessDetails, getBusinessFeed, toggleFollowBusiness } from "./Businessapi";
 import FeedCard from "../home/feeds/feedcard.jsx";
 
 
@@ -45,6 +45,7 @@ const StatPill = ({ value, label }) => (
 export default function BusinessDetails({ route }) {
   const { pageId } = route.params || {};
   const navigation  = useNavigation();
+  const { token }   = useAuth();
 
   const [page,         setPageData]    = useState(null);
   const [posts,        setPosts]       = useState([]);
@@ -56,6 +57,10 @@ export default function BusinessDetails({ route }) {
   const [following,    setFollowing]   = useState(false);
   const [followers,    setFollowers]   = useState(0);
   const [followLoading,setFollowLoading] = useState(false);
+
+  // Ref so handleFollow never has stale closure issues
+  const followRef = useRef({ following: false, followLoading: false });
+  followRef.current = { following, followLoading };
 
   const scrollY      = useRef(new Animated.Value(0)).current;
   const coverScale   = scrollY.interpolate({ inputRange: [-80, 0], outputRange: [1.25, 1], extrapolate: "clamp" });
@@ -70,10 +75,10 @@ export default function BusinessDetails({ route }) {
 
   const loadPage = async () => {
     try {
-      const payload = await getBusinessDetails(pageId);
+      const payload = await getBusinessDetails(pageId, token);
       if (payload?.status === "success") {
         setPageData(payload.data);
-        setFollowing(payload.data.is_following);
+        setFollowing(!!(payload.data.is_following));
         setFollowers(payload.data.followers_count ?? 0);
       }
     } catch (e) { console.log("loadPage error:", e); }
@@ -85,7 +90,7 @@ export default function BusinessDetails({ route }) {
     else setLoadingMore(true);
 
     try {
-      const payload = await getBusinessFeed(pageId, pNum, 10);
+      const payload = await getBusinessFeed(pageId, pNum, 10, token);
       if (payload?.status === "success") {
         const feedPosts = Array.isArray(payload.data?.data)
           ? payload.data.data
@@ -93,7 +98,18 @@ export default function BusinessDetails({ route }) {
           ? payload.data
           : [];
         setPosts(prev => pNum === 1 ? feedPosts : [...prev, ...feedPosts]);
-        if (feedPosts.length < 10) setHasMore(false);
+
+        // Sync follow state + followers_count from feed response (page 1 only)
+        if (pNum === 1) {
+          if (payload.data?.is_following != null)
+            setFollowing(!!(payload.data.is_following));
+          if (payload.data?.followers_count != null)
+            setFollowers(Number(payload.data.followers_count));
+        }
+
+        const total_pages = payload.data?.total_pages ?? null;
+        if (total_pages != null) setHasMore(pNum < total_pages);
+        else if (feedPosts.length < 10) setHasMore(false);
       }
     } catch (e) { console.log("loadFeed error:", e); }
 
@@ -109,19 +125,23 @@ export default function BusinessDetails({ route }) {
   }, [pageNum, loadingMore, hasMore]);
 
   const handleFollow = async () => {
-    if (followLoading) return;
+    const { followLoading: curLoad, following: curFollowing } = followRef.current;
+    if (curLoad) return;
     setFollowLoading(true);
+    // Optimistic update
+    setFollowing(!curFollowing);
+    setFollowers(f => curFollowing ? Math.max(0, f - 1) : f + 1);
     try {
-      if (following) {
-        await unfollowBusiness(pageId);
-        setFollowing(false);
-        setFollowers(f => Math.max(0, f - 1));
-      } else {
-        await followBusiness(pageId);
-        setFollowing(true);
-        setFollowers(f => f + 1);
-      }
-    } catch (e) { console.log("follow error:", e); }
+      const res = await toggleFollowBusiness(pageId, token);
+      // Server tells us the new real state
+      if (res?.data?.is_following != null) setFollowing(!!(res.data.is_following));
+      if (res?.data?.followers_count != null) setFollowers(Number(res.data.followers_count));
+    } catch (e) {
+      console.log("follow error:", e);
+      // Roll back optimistic update
+      setFollowing(curFollowing);
+      setFollowers(f => curFollowing ? f + 1 : Math.max(0, f - 1));
+    }
     setFollowLoading(false);
   };
 

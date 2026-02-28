@@ -6,7 +6,7 @@ import { useAuth } from "../../AuthContext";
 import useStore from "../../repository/store";
 import AppDetails from "../../helpers/appdetails";
 import { ProfileHeaderController } from '../../controllers/profilecontroller';
-import Header from '../header';
+import AppHeader from '../AppHeader';
 import Timeline from './timeline/timeline';
 import Followers from './followers';
 import ProfileHeader from './profileheader';
@@ -31,8 +31,7 @@ const ProfileScreen = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState({label: "Timeline", value: "timeline"});
     const [isTabLoading, setIsTabLoading] = useState(false);
-    const [drawerVisible,   setDrawerVisible]   = useState(false);
-    
+    const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
     const setSearchVisible = useStore((state) => state.setSearchVisible);
     const setProfileTabMode = useStore((state) => state.setProfileTabMode);
@@ -92,7 +91,7 @@ const ProfileScreen = () => {
     }, []);
 
     const closeDrawer = useCallback(() => {
-        setDrawerVisible(false);
+        setIsDrawerVisible(false);
     }, []);
 
 
@@ -139,9 +138,8 @@ const ProfileScreen = () => {
             <StatusBar barStyle="light-content" />
             <ProgressBarLoader visible={isTabLoading} />
             {/* Header already handles top safe-area via useSafeAreaInsets internally */}
-            <Header onOpenDrawer={() => setDrawerVisible(true)} />
-
-            <DrawerNavigation isVisible={drawerVisible} onClose={closeDrawer} />
+            <AppHeader onOpenDrawer={openDrawer} />
+            <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
             {loading ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="large" color={AppDetails.primaryColor} />

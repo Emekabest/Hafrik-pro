@@ -1,6 +1,6 @@
 // App.js
 // import { StatusBar } from 'expo-status-bar';
-import { AppState, StyleSheet, View,  Platform, Dimensions } from 'react-native';
+import { AppState, StyleSheet, View, Platform, Dimensions, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -48,8 +48,15 @@ import NotificationsScreen from './src/pages/notifications/NotificationsScreen';
 import InboxScreen from './src/pages/messages/InboxScreen';
 import ThreadScreen from './src/pages/messages/ThreadScreen';
 import InAppBrowser from './src/pages/common/InAppBrowser';
+import SplashScreen from './src/pages/common/SplashScreen';
+import PostDetailScreen from './src/pages/home/feeds/PostDetailScreen';
+import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen from './src/pages/settings/SettingsScreen';
 import SearchScreen from './src/pages/search/searchscreen';
+import ExchangeHomeScreen    from './src/pages/exchange/ExchangeHomeScreen';
+import ExchangeConfirmScreen from './src/pages/exchange/ExchangeConfirmScreen';
+import ExchangeHistoryScreen from './src/pages/exchange/ExchangeHistoryScreen';
+import ExchangeAdminScreen   from './src/pages/exchange/ExchangeAdminScreen';
 
 const Stack = createStackNavigator();
 
@@ -198,34 +205,30 @@ function AppNavigator() {
     return () => stopBadgePolling();
   }, [token]);
 
-
-
+  // ── Animated splash fade-out ───────────────────────────────────────────────
+  const splashOpacity = useRef(new Animated.Value(1)).current;
+  const [splashDone, setSplashDone] = useState(false);
+  const isAppReady = fontsLoaded && !loading;
+  useEffect(() => {
+    if (isAppReady && !splashDone) {
+      Animated.timing(splashOpacity, {
+        toValue: 0,
+        duration: 650,
+        delay: 350,
+        useNativeDriver: true,
+      }).start(() => setSplashDone(true));
+    }
+  }, [isAppReady]);
 
   if (!fontsLoaded) {
-    
-
-    return null;
-  }
- 
-
-
-
-
-  // Show a loading screen while checking authentication
-  if (loading) {
-    
-    return (
-      <View style={styles.loadingContainer}>
-        <StatusBar style="auto" />
-        {/* You can add a loading spinner here */}
-      </View>
-    );
+    return <SplashScreen fadeAnim={splashOpacity} />;
   }
 
   
 
   return (
-    <NavigationContainer>
+    <View style={styles.root}>
+      <NavigationContainer>
       
         <StatusBar style="light" translucent={Platform.OS === "android" ? false : true} />
 
@@ -281,11 +284,19 @@ function AppNavigator() {
               <Stack.Screen name="InAppBrowser" component={InAppBrowser} options={{ headerShown: false }} />
               <Stack.Screen name="Settings" component={SettingsScreen} />
               <Stack.Screen name="SearchScreen" component={SearchScreen} />
+              <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ cardStyle: { backgroundColor: '#fff' } }} />
+              <Stack.Screen name="TrendingOnHafrik" component={TrendingOnHafrikScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ExchangeHome"    component={ExchangeHomeScreen}    options={{ headerShown: false }} />
+              <Stack.Screen name="ExchangeConfirm" component={ExchangeConfirmScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ExchangeAdmin"   component={ExchangeAdminScreen}   options={{ headerShown: false }} />
             </Stack.Navigator>
         </SafeAreaView>
 
 
     </NavigationContainer>
+      {!splashDone && <SplashScreen fadeAnim={splashOpacity} />}
+    </View>
   );
 }
 
@@ -301,13 +312,6 @@ export default function App() {
 
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
+  root:      { flex: 1 },
+  container: { flex: 1 },
 });

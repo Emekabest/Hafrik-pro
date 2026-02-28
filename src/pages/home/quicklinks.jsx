@@ -38,9 +38,8 @@ const items = [
     label: "Events",
     icon: (active) => <MaterialCommunityIcons name="calendar-star" size={20} color={active ? "#fff" : BRAND} />,
     screen: "EventsScreen",
-    colors: ["#F59E0B", "#F97316"],
+    colors: ["#F97316", "#EA580C"],
   },
- 
   {
     label: "Jobs",
     icon: (active) => <MaterialCommunityIcons name="briefcase" size={20} color={active ? "#fff" : BRAND} />,
@@ -51,7 +50,7 @@ const items = [
     label: "Articles",
     icon: (active) => <Ionicons name="newspaper" size={20} color={active ? "#fff" : BRAND} />,
     screen: "ArticlesScreen",
-     colors: ["#8B5CF6", "#6D28D9"],
+    colors: ["#8B5CF6", "#6D28D9"],
   },
 ];
 

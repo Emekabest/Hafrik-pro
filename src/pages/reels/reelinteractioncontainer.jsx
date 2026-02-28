@@ -5,10 +5,12 @@ import React, {
   useImperativeHandle,
   useState,
 } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
+import AppDetails from '../../helpers/appdetails';
 import CalculateElapsedTime from '../../helpers/calculateelapsedtime';
 import { followUser, toggleLike } from './reelsApi';
 import ReelEngagementBar from './reelengagementbar';
@@ -17,6 +19,9 @@ const ACCENT = '#13C296';
 
 const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   const { token } = useAuth();
+  const { bottom: safeBottom } = useSafeAreaInsets();
+  // paddingBottom = tab bar height + device safe area + breathing room
+  const interactionBottom = AppDetails.mainTabNavigatorHeight + safeBottom + 10;
 
   const {
     id: postId,
@@ -72,7 +77,7 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.interactionContainer}>
+      <View style={[styles.interactionContainer, { paddingBottom: interactionBottom }]}>
 
         {/* ── Left: username + caption ── */}
         <View style={styles.leftSide}>
@@ -166,7 +171,6 @@ const styles = StyleSheet.create({
   interactionContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingBottom: Platform.OS === 'ios' ? 96 : 72,
     paddingHorizontal: 12,
   },
   leftSide: {

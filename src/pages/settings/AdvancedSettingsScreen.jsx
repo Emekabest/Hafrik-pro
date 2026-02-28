@@ -5,12 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, CommonActions } from '@react-navigation/native';
-import { useAuth } from '../../AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import AppDetails from '../../helpers/appdetails';
 
 const BRAND  = '#0C3F44';
@@ -26,52 +24,30 @@ const Section = ({ title, children }) => (
   </View>
 );
 
-const Row = ({ icon, iconColor = BRAND, label, value, onPress, destructive, last }) => (
+const Row = ({ icon, iconColor = BRAND, label, onPress, destructive, last }) => (
   <TouchableOpacity
     style={[styles.row, last && styles.rowLast]}
-    activeOpacity={onPress ? 0.82 : 1}
+    activeOpacity={0.82}
     onPress={onPress}
-    disabled={!onPress}
   >
     <View style={[styles.rowIcon, { backgroundColor: `${iconColor}18` }]}>
       <Ionicons name={icon} size={17} color={iconColor} />
     </View>
     <Text style={[styles.rowLabel, destructive && styles.rowLabelRed]}>{label}</Text>
-    {value ? (
-      <Text style={styles.rowValue}>{value}</Text>
-    ) : onPress ? (
-      <Ionicons name="chevron-forward" size={16} color="rgba(0,0,0,0.25)" />
-    ) : null}
+    <Ionicons
+      name="chevron-forward"
+      size={16}
+      color={destructive ? 'rgba(176,0,32,0.3)' : 'rgba(0,0,0,0.25)'}
+    />
   </TouchableOpacity>
 );
 
-export default function SettingsScreen() {
+export default function AdvancedSettingsScreen() {
   const navigation = useNavigation();
   const { top }    = useSafeAreaInsets();
-  const { logout } = useAuth();
 
   const openWeb = (title, url) =>
     navigation.navigate('InAppBrowser', { title, url });
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out of Hafrik?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            if (typeof logout === 'function') await logout();
-            navigation.dispatch(
-              CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] })
-            );
-          },
-        },
-      ]
-    );
-  };
 
   return (
     <View style={[styles.root, { paddingTop: top }]}>
@@ -80,7 +56,7 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={21} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>More Settings</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -88,80 +64,79 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 60 }}
       >
-        {/* Account */}
-        <Section title="Account">
+        {/* Membership & Verification */}
+        <Section title="Membership & Verification">
           <Row
-            icon="person-outline"
-            label="Edit Profile"
-            onPress={() => openWeb('Edit Profile', 'https://hafrik.com/settings/information')}
-          />
-          <Row
-            icon="lock-closed-outline"
-            label="Change Password"
-            onPress={() => openWeb('Change Password', 'https://hafrik.com/settings/security/password')}
-          />
-          <Row
-            icon="mail-outline"
-            label="Email & Phone"
-            onPress={() => openWeb('Email & Phone', 'https://hafrik.com/settings/security/password')}
-            last
-          />
-        </Section>
-
-        {/* Privacy */}
-        <Section title="Privacy">
-          <Row
-            icon="eye-outline"
-            label="Privacy Settings"
-            onPress={() => openWeb('Privacy Settings', 'https://hafrik.com/settings/privacy')}
-          />
-          <Row
-            icon="notifications-outline"
-            label="Notification Preferences"
-            onPress={() => openWeb('Notifications', 'https://hafrik.com/settings/privacy')}
-            last
-          />
-        </Section>
-
-        {/* About */}
-        <Section title="About">
-          <Row
-            icon="document-text-outline"
-            label="Terms of Service"
-            onPress={() => openWeb('Terms of Service', 'https://hafrik.com/terms')}
+            icon="ribbon-outline"
+            label="Membership"
+            onPress={() => openWeb('Membership', 'https://hafrik.com/settings/membership')}
           />
           <Row
             icon="shield-checkmark-outline"
-            label="Privacy Policy"
-            onPress={() => openWeb('Privacy Policy', 'https://hafrik.com/privacy')}
-          />
-          <Row
-            icon="information-circle-outline"
-            label="App Version"
-            value={`v${AppDetails?.version ?? '1.0.0'}`}
+            label="Verification"
+            onPress={() => openWeb('Verification', 'https://hafrik.com/settings/verification')}
             last
           />
         </Section>
 
-        {/* More Settings link */}
-        <Section title="Advanced">
+        {/* Affiliates */}
+        <Section title="Affiliates">
           <Row
-            icon="options-outline"
-            iconColor={ACCENT}
-            label="More Settings"
-            onPress={() => navigation.navigate('AdvancedSettings')}
+            icon="people-circle-outline"
+            label="Affiliates"
+            onPress={() => openWeb('Affiliates', 'https://hafrik.com/settings/affiliates')}
+          />
+          <Row
+            icon="cash-outline"
+            label="Affiliate Payments"
+            onPress={() => openWeb('Affiliate Payments', 'https://hafrik.com/settings/affiliates/payments')}
             last
           />
         </Section>
 
-        {/* Account Actions */}
-        <Section title="Account Actions">
+        {/* Points & Payments */}
+        <Section title="Points & Payments">
           <Row
-            icon="log-out-outline"
+            icon="star-outline"
+            label="Points"
+            onPress={() => openWeb('Points', 'https://hafrik.com/settings/points')}
+          />
+          <Row
+            icon="wallet-outline"
+            label="Points Payments"
+            onPress={() => openWeb('Points Payments', 'https://hafrik.com/settings/points/payments')}
+          />
+          <Row
+            icon="card-outline"
+            label="Bank Accounts"
+            onPress={() => openWeb('Bank Accounts', 'https://hafrik.com/settings/bank')}
+            last
+          />
+        </Section>
+
+        {/* Data & Addresses */}
+        <Section title="Data & Addresses">
+          <Row
+            icon="location-outline"
+            label="Saved Addresses"
+            onPress={() => openWeb('Saved Addresses', 'https://hafrik.com/settings/addresses')}
+          />
+          <Row
+            icon="download-outline"
+            label="Download My Information"
+            onPress={() => openWeb('Download Information', 'https://hafrik.com/settings/information')}
+            last
+          />
+        </Section>
+
+        {/* Danger Zone */}
+        <Section title="Danger Zone">
+          <Row
+            icon="trash-outline"
             iconColor="#b00020"
-            label="Log out"
+            label="Delete Account"
             destructive
-            onPress={handleLogout}
+            onPress={() => openWeb('Delete Account', 'https://hafrik.com/settings/delete')}
             last
           />
         </Section>
@@ -232,8 +207,4 @@ const styles = StyleSheet.create({
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
   rowLabelRed: { color: '#b00020' },
-  rowValue: {
-    fontSize: 13, color: MUTED,
-    fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
-  },
 });
