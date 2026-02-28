@@ -127,7 +127,12 @@ const TOPIC_POOL = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-const exploreApiFetch = async (path, token, extraParams = {}) => {
+
+// Attach a hard timeout to an AbortController; returns the timer id so callers
+// can clearTimeout it in their finally block.
+const addTimeout = (ctrl, ms = 8000) => setTimeout(() => ctrl.abort(), ms);
+
+const exploreApiFetch = async (path, token, extraParams = {}, signal) => {
   try {
     const url = new URL(`${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`);
     Object.entries(extraParams).forEach(([k, v]) => {
@@ -135,6 +140,7 @@ const exploreApiFetch = async (path, token, extraParams = {}) => {
     });
     const res = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      signal,
     });
     return await res.json();
   } catch { return null; }
@@ -991,6 +997,9 @@ export default function DiscoveryScreen() {
   const [reelsLoading, setReelsLoading] = useState(false);
   const reelsAbortRef = useRef(null);
 
+  // ── Explore abort ref (loadExplore needs its own controller) ──────────────
+  const exploreAbortRef = useRef(null);
+
   // ── Left-edge swipe → open drawer ─────────────────────────────────────────
   const panResponder = useRef(
     PanResponder.create({
@@ -1033,11 +1042,21 @@ export default function DiscoveryScreen() {
 
   // ── Load explore data (people, communities, businesses, events, ads) ────────
   const loadExplore = useCallback(async () => {
-    const countryParam = selectedCountry.country_id !== 'all'
-      ? { country_id: selectedCountry.country_id }
-      : {};
-    const res = await exploreApiFetch(EXPLORE_URL, token, countryParam);
-    setExplorePayload(res?.data ?? null);
+    if (exploreAbortRef.current) exploreAbortRef.current.abort();
+    const ctrl = new AbortController();
+    exploreAbortRef.current = ctrl;
+    const timer = addTimeout(ctrl, 8000);
+    try {
+      const countryParam = selectedCountry.country_id !== 'all'
+        ? { country_id: selectedCountry.country_id }
+        : {};
+      const res = await exploreApiFetch(EXPLORE_URL, token, countryParam, ctrl.signal);
+      setExplorePayload(res?.data ?? null);
+    } catch {
+      // timeout or network error — leave existing payload in place
+    } finally {
+      clearTimeout(timer);
+    }
   }, [token, selectedCountry.country_id]);
 
   useEffect(() => {
@@ -1050,6 +1069,7 @@ export default function DiscoveryScreen() {
     const ctrl = new AbortController();
     marketAbortRef.current = ctrl;
     setMarketLoading(true);
+    const timer = addTimeout(ctrl, 8000);
     try {
       // Fetch more than we need so the shuffle is meaningful
       const url = `${MARKETPLACE_URL}?page=1&limit=${MARKETPLACE_LIMIT * 2}`;
@@ -1067,6 +1087,7 @@ export default function DiscoveryScreen() {
     } catch (e) {
       if (e?.name !== 'AbortError') setMarketProducts([]);
     } finally {
+      clearTimeout(timer);
       setMarketLoading(false);
     }
   }, [token]);
@@ -1078,6 +1099,7 @@ export default function DiscoveryScreen() {
     const ctrl = new AbortController();
     articleAbortRef.current = ctrl;
     if (append) setArticleLoadingMore(true); else setArticleLoading(true);
+    const timer = addTimeout(ctrl, 8000);
     try {
       const items = await fetchArticles({ page: pageNum, limit: 10 }, ctrl.signal);
       const list = Array.isArray(items) ? items : [];
@@ -1087,6 +1109,7 @@ export default function DiscoveryScreen() {
     } catch (e) {
       if (e.name !== 'AbortError' && !append) setArticleItems([]);
     } finally {
+      clearTimeout(timer);
       if (append) setArticleLoadingMore(false); else setArticleLoading(false);
     }
   }, []);
@@ -1096,10 +1119,14 @@ export default function DiscoveryScreen() {
     if (trendingAbortRef.current) trendingAbortRef.current.abort();
     const ctrl = new AbortController();
     trendingAbortRef.current = ctrl;
+    const timer = addTimeout(ctrl, 8000);
     try {
-      const items = await fetchTrendingArticles(5);
+      const items = await fetchTrendingArticles(5, ctrl.signal);
       setTrendingArticles(Array.isArray(items) ? items : []);
-    } catch {}
+    } catch {
+    } finally {
+      clearTimeout(timer);
+    }
   }, []);
 
   // ── Load people from dedicated endpoint ────────────────────────────────────
@@ -1108,6 +1135,7 @@ export default function DiscoveryScreen() {
     const ctrl = new AbortController();
     peopleAbortRef.current = ctrl;
     setPeopleLoading(true);
+    const timer = addTimeout(ctrl, 8000);
     try {
       const res = await fetch(`${BASE_URL}/api/v1/people/list.php?page=1&limit=10`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
@@ -1125,6 +1153,7 @@ export default function DiscoveryScreen() {
         setPeople([]);
       }
     } finally {
+      clearTimeout(timer);
       setPeopleLoading(false);
     }
   }, [token]);
@@ -1134,6 +1163,7 @@ export default function DiscoveryScreen() {
     if (trendingPostsRef.current) trendingPostsRef.current.abort();
     const ctrl = new AbortController();
     trendingPostsRef.current = ctrl;
+    const timer = addTimeout(ctrl, 8000);
     try {
       const res  = await fetch(`${BASE_URL}/api/v1/feed/trending.php?limit=3`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
@@ -1144,6 +1174,8 @@ export default function DiscoveryScreen() {
       setTrendingPosts(Array.isArray(list) ? list.slice(0, 3) : []);
     } catch (e) {
       if (e?.name !== 'AbortError') setTrendingPosts([]);
+    } finally {
+      clearTimeout(timer);
     }
   }, [token]);
 
@@ -1152,6 +1184,7 @@ export default function DiscoveryScreen() {
     if (sponsoredBizRef.current) sponsoredBizRef.current.abort();
     const ctrl = new AbortController();
     sponsoredBizRef.current = ctrl;
+    const timer = addTimeout(ctrl, 8000);
     try {
       const res  = await fetch(`${BASE_URL}/api/v1/business/list.php?limit=5&sponsored=1`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
@@ -1162,6 +1195,8 @@ export default function DiscoveryScreen() {
       setSponsoredBiz(Array.isArray(list) ? list.slice(0, 3) : []);
     } catch (e) {
       if (e?.name !== 'AbortError') setSponsoredBiz([]);
+    } finally {
+      clearTimeout(timer);
     }
   }, [token]);
 
@@ -1171,6 +1206,7 @@ export default function DiscoveryScreen() {
     const ctrl = new AbortController();
     reelsAbortRef.current = ctrl;
     setReelsLoading(true);
+    const timer = addTimeout(ctrl, 8000);
     try {
       const seed = Math.floor(Math.random() * 2147483647);
       const res  = await fetch(
@@ -1183,6 +1219,7 @@ export default function DiscoveryScreen() {
     } catch (e) {
       if (e?.name !== 'AbortError') setReels([]);
     } finally {
+      clearTimeout(timer);
       setReelsLoading(false);
     }
   }, [token]);
@@ -1229,9 +1266,23 @@ export default function DiscoveryScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     reshuffleAll();
-    await Promise.all([loadExplore(), loadTrendingPosts(), loadSponsoredBiz(), loadArticles(), loadTrendingArticles(), loadPeople(), loadReels()]);
-    setRefreshing(false);
-  }, [loadExplore, loadTrendingPosts, loadSponsoredBiz, loadArticles, loadTrendingArticles, loadPeople, reshuffleAll]);
+    try {
+      await Promise.all([
+        loadExplore(),
+        loadTrendingPosts(),
+        loadSponsoredBiz(),
+        loadArticles(),
+        loadTrendingArticles(),
+        loadPeople(),
+        loadReels(),
+        loadMarketplace(),
+      ]);
+    } catch {
+      // individual loaders catch their own errors; this is a safety net
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadExplore, loadTrendingPosts, loadSponsoredBiz, loadArticles, loadTrendingArticles, loadPeople, loadReels, loadMarketplace, reshuffleAll]);
 
   // ── Raw explore data ───────────────────────────────────────────────────────
   const counts          = explorePayload?.counts          ?? {};
