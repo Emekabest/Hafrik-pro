@@ -2,6 +2,14 @@ import React, { useState, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, FlatList } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import AppDetails from "../../../../../helpers/appdetails";
+import { Colors } from '../../../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width } = Dimensions.get("window");
 
@@ -128,7 +136,7 @@ const CommentProductItem = ({ post }) => {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: "#fff",
+        backgroundColor: Colors.white,
         borderRadius: 10,
         marginVertical: 8,
         width: '100%',
@@ -143,7 +151,7 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: "#eee",
+        backgroundColor: Colors.neutral180,
     },
     headerText: {
         marginLeft: 10,
@@ -152,7 +160,7 @@ const styles = StyleSheet.create({
     username: {
         fontWeight: "600",
         fontSize: 14,
-        color: "#111",
+        color: Colors.neutral900,
     },
     usernameRow: {
         paddingHorizontal: 12,
@@ -161,7 +169,7 @@ const styles = StyleSheet.create({
     usernameFull: {
         fontWeight: "700",
         fontSize: 16,
-        color: "#111",
+        color: Colors.neutral900,
     },
     headerRow: {
         flexDirection: "row",
@@ -174,16 +182,16 @@ const styles = StyleSheet.create({
     },
     meta: {
         fontSize: 12,
-        color: "#666",
+        color: Colors.neutral500,
         marginTop: 2,
     },
     carousel: {
-        // backgroundColor: "#000",
+        // backgroundColor: Colors.black,
     },
     image: {
         width: ITEM_WIDTH, // Use the calculated item width
         height: IMAGE_HEIGHT,
-        backgroundColor: "#000",
+        backgroundColor: Colors.black,
         borderRadius: 8, // Add a slight border radius to the images
         marginHorizontal: ITEM_SPACING / 2, // Add half the spacing on each side
     },
@@ -198,11 +206,11 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: "rgba(255,255,255,0.4)",
+        backgroundColor: withOpacity(Colors.white, 0.4),
         marginRight: 6,
     },
     dotActive: {
-        backgroundColor: "#fff",
+        backgroundColor: Colors.white,
         width: 8,
         height: 8,
         borderRadius: 4,
@@ -229,19 +237,19 @@ const styles = StyleSheet.create({
     },
     qty: {
         fontSize: 12,
-        color: "#666",
+        color: Colors.neutral500,
     },
     location: {
         marginTop: 6,
         fontSize: 12,
-        color: "#777",
+        color: Colors.neutral450,
     },
     footer: {
         flexDirection: "row",
         alignItems: "center",
         padding: 12,
         borderTopWidth: 1,
-        borderTopColor: "#f2f2f2",
+        borderTopColor: Colors.neutral140,
     },
     buy: {
         backgroundColor: AppDetails.primaryColor,
@@ -250,7 +258,7 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     buyText: {
-        color: "#fff",
+        color: Colors.white,
         fontWeight: "700",
     },
     view: {
@@ -259,16 +267,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         borderRadius: 6,
         borderWidth: 1,
-        borderColor: "#ddd",
+        borderColor: Colors.neutral220,
     },
     viewText: {
-        color: "#333",
+        color: Colors.neutral700,
         fontWeight: "600",
     },
     flexSpacer: { flex: 1 },
     counts: {
         fontSize: 12,
-        color: "#666",
+        color: Colors.neutral500,
     },
 });
 

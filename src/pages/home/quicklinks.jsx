@@ -12,45 +12,53 @@ import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { Colors } from '../../theme/colors';
 
-const BRAND  = "#0C3F44";
-const ACCENT = "#13C296";
-const LIME   = "#A8E063";
-const MIST   = "#F0F5F5";
-const BORDER = "#E4EEEF";
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const LIME   = Colors.brandLime;
+const MIST   = Colors.surfaceTint;
+const BORDER = Colors.borderSoft;
 
 const items = [
   {
     label: "Community",
-    icon: (active) => <Ionicons name="people" size={20} color={active ? "#fff" : BRAND} />,
+    icon: (active) => <Ionicons name="people" size={20} color={active ? Colors.white : BRAND} />,
     screen: "GroupScreen",
     params: { initialTab: 0 },
-    colors: [BRAND, "#0a5a62"],
+    colors: [BRAND, Colors.tealDeep],
   },
   {
     label: "Business",
-    icon: (active) => <Ionicons name="business" size={20} color={active ? "#fff" : BRAND} />,
+    icon: (active) => <Ionicons name="business" size={20} color={active ? Colors.white : BRAND} />,
     screen: "GroupScreen",
     params: { initialTab: 1 },
-    colors: [ACCENT, "#0fa882"],
+    colors: [ACCENT, Colors.tealMint],
   },
   {
     label: "Events",
-    icon: (active) => <MaterialCommunityIcons name="calendar-star" size={20} color={active ? "#fff" : BRAND} />,
+    icon: (active) => <MaterialCommunityIcons name="calendar-star" size={20} color={active ? Colors.white : BRAND} />,
     screen: "EventsScreen",
-    colors: ["#F97316", "#EA580C"],
+    colors: [Colors.orangeStrong, Colors.orangeDeep],
   },
   {
     label: "Jobs",
-    icon: (active) => <MaterialCommunityIcons name="briefcase" size={20} color={active ? "#fff" : BRAND} />,
+    icon: (active) => <MaterialCommunityIcons name="briefcase" size={20} color={active ? Colors.white : BRAND} />,
     screen: "JobsScreen",
-    colors: ["#EC4899", "#BE185D"],
+    colors: [Colors.pinkBright, Colors.pinkDeep],
   },
   {
     label: "Articles",
-    icon: (active) => <Ionicons name="newspaper" size={20} color={active ? "#fff" : BRAND} />,
+    icon: (active) => <Ionicons name="newspaper" size={20} color={active ? Colors.white : BRAND} />,
     screen: "ArticlesScreen",
-    colors: ["#8B5CF6", "#6D28D9"],
+    colors: [Colors.violet, Colors.violetDeep],
   },
 ];
 
@@ -149,7 +157,7 @@ export default function StaticShortcutRow() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
     paddingTop: 12,
@@ -196,7 +204,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: "45%",
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: withOpacity(Colors.white, 0.12),
   },
 
   label: {

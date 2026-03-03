@@ -1,8 +1,12 @@
 const CalculateElapsedTime = (dateString) => {
     if (!dateString) return "";
 
-    // Replace space with T to ensure ISO format compatibility across devices (Android/iOS)
-    const date = new Date(dateString.replace(" ", "T"));
+    // Parse as UTC: replace space separator, then append Z if no timezone info present
+    const iso = dateString.replace(' ', 'T');
+    const utc = iso.endsWith('Z') || iso.includes('+') || /[+-]\d{2}:\d{2}$/.test(iso)
+      ? iso
+      : iso + 'Z';
+    const date = new Date(utc);
     const now = new Date();
     
     // Calculate difference in seconds

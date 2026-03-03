@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef, memo } from "react";
 import {
   View,
   Text,
@@ -8,49 +8,67 @@ import {
   TouchableOpacity,
   TextInput,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
-import { getBusinessList, followBusiness, unfollowBusiness } from "./Businessapi";
+import { useAuth } from "../../AuthContext";
+import {
+  getBusinessList,
+  getBusinessCategories,
+  followBusiness,
+  unfollowBusiness,
+} from "./Businessapi";
+import { Colors } from "../../theme/colors";
 
-const BRAND      = '#0C3F44';
-const ACCENT     = '#13C296';
-const LIME       = '#A8E063';
-const BG         = '#F0F5F5';
-const CARD       = '#FFFFFF';
-const BORDER     = '#EEF3F3';
-const TEXT_HEAD  = '#0A1F22';
-const TEXT_BODY  = '#1A1A2E';
-const TEXT_MUTED = '#8A9BA8';
+const BRAND      = Colors.primaryDark;
+const ACCENT     = Colors.primary;
+const BG         = Colors.surfaceTint;
+const CARD       = Colors.white;
+const BORDER     = Colors.borderLight;
+const TEXT_HEAD  = Colors.tealInk;
+const TEXT_BODY  = Colors.textBodyIndigo;
+const TEXT_MUTED = Colors.mutedBlueGrayAlt;
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = (SCREEN_W - 48) / 2;
 
 const defaultAvatar = "https://hafrik.com/default-avatar.png";
 
-// ─── Business Card ─────────────────────────────────────────────────────────────
-const BusinessCard = ({ item, onPress }) => {
-  const [following, setFollowing] = useState(item.is_following);
+// ─── Business Card ────────────────────────────────────────────────────────────
+// UI is unchanged. Only follow button state and follow/unfollow logic are wired.
+const BusinessCard = memo(({ item, onPress, token, isLoggedIn }) => {
+  // is_following is only reliable when the user is logged in.
+  const initFollowing = isLoggedIn ? !!item.is_following : false;
+  const [following, setFollowing] = useState(initFollowing);
   const [followers, setFollowers] = useState(item.followers_count ?? item.followers ?? 0);
-  const [loading,   setLoading]   = useState(false);
 
-  const handleFollow = async () => {
-    if (loading) return;
-    setLoading(true);
+  // Ref prevents stale closures in the async handler.
+  const followingRef = useRef(initFollowing);
+
+  const handleFollow = useCallback(async () => {
+    const wasFollowing = followingRef.current;
+
+    // Optimistic update — do not wait for the network.
+    followingRef.current = !wasFollowing;
+    setFollowing(!wasFollowing);
+    setFollowers(f => wasFollowing ? Math.max(0, f - 1) : f + 1);
+
     try {
-      if (following) {
-        await unfollowBusiness(item.id);
-        setFollowing(false);
-        setFollowers(f => Math.max(0, f - 1));
+      if (wasFollowing) {
+        await unfollowBusiness(item.id, token);
       } else {
-        await followBusiness(item.id);
-        setFollowing(true);
-        setFollowers(f => f + 1);
+        await followBusiness(item.id, token);
       }
-    } catch (e) { console.log("follow error:", e); }
-    setLoading(false);
-  };
+    } catch (e) {
+      console.log("follow error:", e);
+      // Revert on failure.
+      followingRef.current = wasFollowing;
+      setFollowing(wasFollowing);
+      setFollowers(f => wasFollowing ? f + 1 : Math.max(0, f - 1));
+    }
+  }, [item.id, token]);
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onPress(item)} activeOpacity={0.88}>
@@ -73,27 +91,25 @@ const BusinessCard = ({ item, onPress }) => {
       ) : null}
       <Text style={styles.cardFollowers}>{followers?.toLocaleString()} followers</Text>
 
+      {/* Follow button — only state & style change, layout stays identical */}
       <TouchableOpacity
         style={[styles.followBtn, following && styles.followingBtn]}
         onPress={handleFollow}
         activeOpacity={0.8}
-        disabled={loading}
       >
-        {loading ? (
-          <ActivityIndicator size="small" color={following ? TEXT_MUTED : BRAND} />
-        ) : (
-          <Text style={[styles.followBtnText, following && styles.followingBtnText]}>
-            {following ? "Following" : "Follow"}
-          </Text>
-        )}
+        <Text style={[styles.followBtnText, following && styles.followingBtnText]}>
+          {following ? "Following" : "Follow"}
+        </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
-};
+});
 
-// ─── BusinessList ──────────────────────────────────────────────────────────────
+// ─── BusinessList ─────────────────────────────────────────────────────────────
 export default function BusinessList() {
   const navigation = useNavigation();
+  const { token } = useAuth();
+  const isLoggedIn = !!token;
 
   const [pages,       setPages]       = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -102,22 +118,46 @@ export default function BusinessList() {
   const [hasMore,     setHasMore]     = useState(true);
   const [search,      setSearch]      = useState("");
 
-  useEffect(() => { loadPages(1); }, []);
+  const [categories, setCategories] = useState([]);
+  const [activeCat,  setActiveCat]  = useState(null); // null = All
 
-  const loadPages = async (pageNum, query = search) => {
+  useEffect(() => {
+    loadCategories();
+    loadPages(1, "", null);
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      const payload = await getBusinessCategories(token);
+      if (payload?.status === "success") {
+        const cats = Array.isArray(payload.data) ? payload.data : [];
+        setCategories(cats);
+      }
+    } catch (e) {
+      console.log("loadCategories error:", e);
+    }
+  };
+
+  // categoryId is passed explicitly so loadMore / search always use latest value
+  // without depending on potentially-stale closure state.
+  const loadPages = async (pageNum, query, categoryId) => {
     if (pageNum === 1) setLoading(true);
     else setLoadingMore(true);
 
     try {
-      const filters = query.trim() ? { search: query.trim() } : {};
-      const payload = await getBusinessList(pageNum, 20, filters);
+      const filters = {};
+      if (query?.trim()) filters.search = query.trim();
+      if (categoryId != null) filters.category_id = categoryId;
+
+      const payload = await getBusinessList(pageNum, 20, filters, token);
       if (payload?.status === "success") {
         const items = Array.isArray(payload.data?.data) ? payload.data.data : [];
         setPages(prev => pageNum === 1 ? items : [...prev, ...items]);
-        if (items.length < 20) setHasMore(false);
-        else setHasMore(true);
+        setHasMore(items.length >= 20);
       }
-    } catch (e) { console.log("loadPages error:", e); }
+    } catch (e) {
+      console.log("loadPages error:", e);
+    }
 
     setLoading(false);
     setLoadingMore(false);
@@ -127,15 +167,24 @@ export default function BusinessList() {
     setSearch(text);
     setPage(1);
     setHasMore(true);
-    loadPages(1, text);
-  }, []);
+    loadPages(1, text, activeCat);
+  }, [activeCat]);
+
+  const handleCategoryPress = useCallback((catId) => {
+    // Tap active category again → reset to All
+    const next = catId === activeCat ? null : catId;
+    setActiveCat(next);
+    setPage(1);
+    setHasMore(true);
+    loadPages(1, search, next);
+  }, [activeCat, search]);
 
   const handleLoadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
     const next = page + 1;
     setPage(next);
-    loadPages(next);
-  }, [page, loadingMore, hasMore]);
+    loadPages(next, search, activeCat);
+  }, [page, loadingMore, hasMore, search, activeCat]);
 
   const handlePress = useCallback((item) => {
     navigation.navigate("BusinessDetails", { pageId: item.id });
@@ -145,6 +194,8 @@ export default function BusinessList() {
     <View style={styles.listHeader}>
       <Text style={styles.screenTitle}>Business Pages</Text>
       <Text style={styles.screenSub}>Discover & follow businesses on Hafrik</Text>
+
+      {/* Search */}
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={16} color={TEXT_MUTED} />
         <TextInput
@@ -161,6 +212,41 @@ export default function BusinessList() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Category filter chips */}
+      {categories.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.catRow}
+          contentContainerStyle={styles.catRowContent}
+        >
+          <TouchableOpacity
+            style={[styles.catChip, activeCat === null && styles.catChipActive]}
+            onPress={() => handleCategoryPress(null)}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.catChipText, activeCat === null && styles.catChipTextActive]}>All</Text>
+          </TouchableOpacity>
+
+          {categories.map(cat => {
+            const catId = cat.id ?? cat.category_id;
+            const isActive = activeCat === catId;
+            return (
+              <TouchableOpacity
+                key={catId}
+                style={[styles.catChip, isActive && styles.catChipActive]}
+                onPress={() => handleCategoryPress(catId)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.catChipText, isActive && styles.catChipTextActive]}>
+                  {cat.name ?? cat.title}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -180,7 +266,14 @@ export default function BusinessList() {
         keyExtractor={(item) => item.id.toString()}
         numColumns={2}
         columnWrapperStyle={styles.row}
-        renderItem={({ item }) => <BusinessCard item={item} onPress={handlePress} />}
+        renderItem={({ item }) => (
+          <BusinessCard
+            item={item}
+            onPress={handlePress}
+            token={token}
+            isLoggedIn={isLoggedIn}
+          />
+        )}
         ListHeaderComponent={<ListHeader />}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -225,6 +318,22 @@ const styles = StyleSheet.create({
     columnGap: 8,
   },
   searchInput: { flex: 1, fontSize: 14, color: TEXT_BODY },
+
+  // Category chips
+  catRow:        { marginTop: 14 },
+  catRowContent: { paddingBottom: 4 },
+  catChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginRight: 8,
+  },
+  catChipActive:     { backgroundColor: ACCENT, borderColor: ACCENT },
+  catChipText:       { fontSize: 12, fontWeight: "600", color: TEXT_MUTED },
+  catChipTextActive: { color: CARD },
 
   row: { justifyContent: "space-between", marginBottom: 12 },
 
@@ -284,6 +393,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
+  // Follow = filled (primary). Following = outlined (secondary).
   followBtn: {
     width: "100%",
     paddingVertical: 8,
@@ -298,14 +408,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BORDER,
   },
-  followBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: BRAND,
-  },
-  followingBtnText: {
-    color: TEXT_MUTED,
-  },
+  followBtnText:     { fontSize: 12, fontWeight: "700", color: BRAND },
+  followingBtnText:  { color: TEXT_MUTED },
 
   emptyState: { alignItems: "center", paddingVertical: 60, rowGap: 10 },
   emptyText:  { fontSize: 14, color: TEXT_MUTED, fontWeight: "500" },

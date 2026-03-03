@@ -1,6 +1,14 @@
 import React from "react";
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
 import { Image as ExpoImage } from "expo-image";
+import { Colors } from '../../../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width } = Dimensions.get("window");
 const COVER_HEIGHT = Math.round(width * 0.52);
@@ -32,20 +40,20 @@ const CommentPageCoverItem = ({ post }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { width:"100%" , height: COVER_HEIGHT, backgroundColor: '#000', borderRadius:10, overflow:'hidden' },
-    cover: { width: "100%", height: COVER_HEIGHT, backgroundColor: '#000' },
+    container: { width:"100%" , height: COVER_HEIGHT, backgroundColor: Colors.black, borderRadius:10, overflow:'hidden' },
+    cover: { width: "100%", height: COVER_HEIGHT, backgroundColor: Colors.black },
     coverPlaceholder: { alignItems: 'center', justifyContent: 'center' },
     overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'space-between', padding: 12 },
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     userRow: { flexDirection: 'row', alignItems: 'center' },
-    avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.6)' },
+    avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: withOpacity(Colors.white, 0.6) },
     userText: { marginLeft: 10, maxWidth: width - 160 },
-    name: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    meta: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 },
-    actionButton: { backgroundColor: 'rgba(0,0,0,0.35)', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20 },
-    actionText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    name: { color: Colors.white, fontSize: 16, fontWeight: '700' },
+    meta: { color: withOpacity(Colors.white, 0.85), fontSize: 12, marginTop: 2 },
+    actionButton: { backgroundColor: withOpacity(Colors.black, 0.35), paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20 },
+    actionText: { color: Colors.white, fontWeight: '700', fontSize: 13 },
     bottomRow: { flexDirection: 'row', justifyContent: 'flex-start', gap: 14 },
-    counts: { color: 'rgba(255,255,255,0.9)', fontSize: 13, marginRight: 12 },
+    counts: { color: withOpacity(Colors.white, 0.9), fontSize: 13, marginRight: 12 },
 });
 
 export default CommentPageCoverItem;

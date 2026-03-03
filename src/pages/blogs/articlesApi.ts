@@ -13,7 +13,11 @@ export interface ArticleListItem {
   snippet?: string;
   image?: string | null;
   category_name?: string;
+  /** Returned as `category` by list.php (integer category_id) */
+  category?: number;
+  /** Legacy alias — some detail endpoints may use this field name */
   category_id?: number;
+  tags?: string;
   views?: number;
   date?: string;
   link?: string;
@@ -50,10 +54,14 @@ export interface CategoryItem {
 export interface ArticleDetail extends ArticleListItem {
   content_html?: string;
   content_plain?: string;
+  /** Detail endpoint may return tags as array; list endpoint returns comma-separated string */
   tags?: string | string[];
   reading_time_minutes?: number;
   claps?: number;
   claps_count?: number;
+  likes?: number;
+  likes_count?: number;
+  user_liked?: boolean | 0 | 1;
   word_count?: number;
   author?: {
     id?: number;

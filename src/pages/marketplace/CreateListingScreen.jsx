@@ -17,13 +17,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
+import { Colors } from '../../theme/colors';
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const CREAM  = '#F5F0E8';
-const BORDER = 'rgba(12,63,68,0.09)';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.deepSlate;
+const CREAM  = Colors.background;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const CATEGORIES = ['Electronics', 'Clothing', 'Food', 'Furniture', 'Services', 'Other'];
 const CONDITIONS = ['New', 'Like New', 'Used', 'For Parts'];
@@ -87,9 +95,9 @@ export default function CreateListingScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={BRAND} />
 
       {/* Header */}
-      <LinearGradient colors={[BRAND, '#1a5c63']} style={[styles.header, { paddingTop: top + 4 }]}>
+      <LinearGradient colors={[BRAND, Colors.tealHeader]} style={[styles.header, { paddingTop: top + 4 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#fff" />
+          <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>New Listing</Text>
@@ -210,14 +218,14 @@ export default function CreateListingScreen({ navigation }) {
             disabled={!isValid || submitting}
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={Colors.white} />
             ) : (
               <LinearGradient
-                colors={[BRAND, '#1a5c63']}
+                colors={[BRAND, Colors.tealHeader]}
                 style={styles.submitGradient}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               >
-                <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                <Ionicons name="checkmark-circle-outline" size={20} color={Colors.white} />
                 <Text style={styles.submitText}>Post Listing</Text>
               </LinearGradient>
             )}
@@ -239,19 +247,19 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center', alignItems: 'center',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.white },
+  headerSub: { fontSize: 11, color: withOpacity(Colors.white, 0.7), marginTop: 2 },
 
   body: { padding: 18 },
 
   field: { marginBottom: 20 },
   label: { fontSize: 13, fontWeight: '700', color: DARK, marginBottom: 8 },
   input: {
-    backgroundColor: '#fff', borderRadius: 14,
+    backgroundColor: Colors.white, borderRadius: 14,
     borderWidth: 1, borderColor: BORDER,
     paddingHorizontal: 14, paddingVertical: 13,
     fontSize: 14, color: DARK,
@@ -263,11 +271,11 @@ const styles = StyleSheet.create({
   pill: {
     paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 100, borderWidth: 1.5, borderColor: BORDER,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   pillActive: { backgroundColor: BRAND, borderColor: BRAND },
   pillText: { fontSize: 12, fontWeight: '600', color: MUTED },
-  pillTextActive: { color: '#fff' },
+  pillTextActive: { color: Colors.white },
 
   infoBanner: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
@@ -282,5 +290,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 15, gap: 8,
   },
-  submitText: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+  submitText: { fontSize: 15, fontWeight: '800', color: Colors.white, letterSpacing: 0.3 },
 });

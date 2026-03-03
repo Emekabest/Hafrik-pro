@@ -12,25 +12,28 @@ import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Colors } from '../../theme';
 
 const BASE_URL = 'https://hafrik.com';
-const BRAND    = '#0C3F44';
-const ACCENT   = '#13C296';
-const DARK     = '#0D1B1E';
-const MUTED    = '#9BA8AD';
-const BG       = '#F7F9F9';
-const CARD     = '#FFFFFF';
+const BRAND    = Colors.primaryDark;
+const ACCENT   = Colors.primary;
+const DARK     = Colors.black;
+const MUTED    = Colors.secondaryText;
+const BG       = Colors.background;
+const CARD     = Colors.white;
+const DANGER   = Colors.destructive;
+const WHITE    = Colors.white;
 
 const TYPE_META = {
-  follow:     { icon: 'person-add',       color: '#8B5CF6', bg: '#EDE9FE', label: 'followed you'            },
-  react_like: { icon: 'heart',            color: '#EF4444', bg: '#FEE2E2', label: 'liked your post'         },
-  like:       { icon: 'heart',            color: '#EF4444', bg: '#FEE2E2', label: 'liked your post'         },
-  comment:    { icon: 'chatbubble',       color: ACCENT,   bg: '#D1FAF0', label: 'commented on your post'   },
-  reply:      { icon: 'return-down-back', color: '#F59E0B', bg: '#FEF3C7', label: 'replied to your comment' },
-  mention:    { icon: 'at',              color: '#3B82F6', bg: '#DBEAFE', label: 'mentioned you'             },
-  message:    { icon: 'paper-plane',      color: '#0EA5E9', bg: '#E0F2FE', label: 'sent you a message'      },
-  share:      { icon: 'arrow-redo',       color: '#10B981', bg: '#D1FAE5', label: 'shared your post'        },
-  default:    { icon: 'notifications',    color: BRAND,    bg: '#D4E8EA', label: 'sent a notification'      },
+  follow:     { icon: 'person-add',       color: ACCENT,         bg: ACCENT + '1F',         label: 'followed you'            },
+  react_like: { icon: 'heart',            color: DANGER,         bg: DANGER + '1F',         label: 'liked your post'         },
+  like:       { icon: 'heart',            color: DANGER,         bg: DANGER + '1F',         label: 'liked your post'         },
+  comment:    { icon: 'chatbubble',       color: ACCENT,         bg: ACCENT + '1F',         label: 'commented on your post'   },
+  reply:      { icon: 'return-down-back', color: Colors.warning, bg: Colors.warning + '26', label: 'replied to your comment' },
+  mention:    { icon: 'at',               color: Colors.link,    bg: Colors.link + '1F',    label: 'mentioned you'             },
+  message:    { icon: 'paper-plane',      color: Colors.link,    bg: Colors.link + '1F',    label: 'sent you a message'      },
+  share:      { icon: 'arrow-redo',       color: ACCENT,         bg: ACCENT + '1F',         label: 'shared your post'        },
+  default:    { icon: 'notifications',    color: BRAND,          bg: BRAND + '1F',          label: 'sent a notification'      },
 };
 const getMeta = (action) =>
   TYPE_META[String(action ?? '').toLowerCase()] ?? TYPE_META.default;
@@ -85,8 +88,8 @@ const Avatar = ({ url, name, size = 47 }) => {
     return <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: r }} />;
   }
   return (
-    <LinearGradient colors={[BRAND, '#1a6b75']} style={{ width: size, height: size, borderRadius: r, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: '#fff', fontWeight: '900', fontSize: size * 0.38 }}>
+    <LinearGradient colors={Colors.gradientPrimary} style={{ width: size, height: size, borderRadius: r, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: Colors.white, fontWeight: '900', fontSize: size * 0.38 }}>
         {(name ?? 'U').slice(0, 1).toUpperCase()}
       </Text>
     </LinearGradient>
@@ -145,7 +148,7 @@ const NotifRow = React.memo(({ item, index, onDelete }) => {
               activeOpacity={0.9}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); onDelete(notifId); }}
             >
-              <Ionicons name="trash-outline" size={21} color="#fff" />
+              <Ionicons name="trash-outline" size={21} color={Colors.white} />
               <Text style={ns.swipeTxt}>Remove</Text>
             </TouchableOpacity>
           </View>
@@ -157,7 +160,7 @@ const NotifRow = React.memo(({ item, index, onDelete }) => {
           <View style={ns.avatarWrap}>
             <Avatar url={avatar} name={name} size={47} />
             <View style={[ns.actionBadge, { backgroundColor: meta.color }]}>
-              <Ionicons name={meta.icon} size={9} color="#fff" />
+              <Ionicons name={meta.icon} size={9} color={Colors.white} />
             </View>
           </View>
 
@@ -218,7 +221,7 @@ const FilterBar = ({ tabs, active, onChange, counts }) => (
       return (
         <TouchableOpacity key={t.id} onPress={() => onChange(t.id)} activeOpacity={0.8} style={ns.filterTab}>
           {on && <View style={ns.filterLine} />}
-          <Ionicons name={t.icon} size={14} color={on ? ACCENT : 'rgba(255,255,255,0.4)'} />
+          <Ionicons name={t.icon} size={14} color={on ? ACCENT : WHITE + '66'} />
           <Text style={[ns.filterTxt, on && ns.filterTxtOn]}>{t.label}</Text>
           {cnt > 0 && !on && (
             <View style={ns.filterBadge}><Text style={ns.filterBadgeTxt}>{cnt > 9 ? '9+' : cnt}</Text></View>
@@ -305,13 +308,13 @@ export default function NotificationsScreen() {
       <StatusBar barStyle="light-content" />
 
       {/* ── Header ── */}
-      <LinearGradient colors={[BRAND, '#0A5560']} style={[ns.header, { paddingTop: top + 8 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <LinearGradient colors={Colors.gradientPrimary} style={[ns.header, { paddingTop: top + 8 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <View style={ns.decorCircle} pointerEvents="none" />
 
         <Animated.View style={[ns.headerRow, { opacity: hdrAnim, transform: [{ translateY: hdrAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }] }]}>
           <TouchableOpacity style={ns.hBtn} activeOpacity={0.8}
             onPress={() => navigation.canGoBack() && navigation.goBack()}>
-            <Ionicons name="arrow-back" size={20} color="#fff" />
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
           </TouchableOpacity>
 
           <View style={ns.titleRow}>
@@ -323,10 +326,10 @@ export default function NotificationsScreen() {
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity style={ns.hBtn} activeOpacity={0.8} onPress={() => navigation.navigate('Inbox')}>
-              <Ionicons name="chatbubbles-outline" size={20} color="#fff" />
+              <Ionicons name="chatbubbles-outline" size={20} color={Colors.white} />
               {messages > 0 && <View style={ns.hBtnDot}><Text style={ns.hBtnDotTxt}>{messages > 9 ? '9+' : messages}</Text></View>}
             </TouchableOpacity>
-            <TouchableOpacity style={[ns.hBtn, { backgroundColor: 'rgba(19,194,150,0.18)' }]} activeOpacity={0.8} onPress={markAllRead}>
+            <TouchableOpacity style={[ns.hBtn, { backgroundColor: ACCENT + '2E' }]} activeOpacity={0.8} onPress={markAllRead}>
               <Ionicons name="checkmark-done" size={18} color={ACCENT} />
             </TouchableOpacity>
           </View>
@@ -380,32 +383,32 @@ const ns = StyleSheet.create({
   },
   decorCircle: {
     position: 'absolute', width: 220, height: 220, borderRadius: 110,
-    backgroundColor: 'rgba(255,255,255,0.04)', top: -90, right: -70,
+    backgroundColor: WHITE + '0A', top: -90, right: -70,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   hBtn: {
     width: 38, height: 38, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: WHITE + '1F', alignItems: 'center', justifyContent: 'center',
   },
   hBtnDot: {
     position: 'absolute', top: -4, right: -4,
-    backgroundColor: '#EF4444', borderRadius: 8, minWidth: 14, height: 14,
+    backgroundColor: DANGER, borderRadius: 8, minWidth: 14, height: 14,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
     borderWidth: 1.5, borderColor: BRAND,
   },
-  hBtnDotTxt: { color: '#fff', fontSize: 8, fontWeight: '900' },
+  hBtnDotTxt: { color: Colors.white, fontSize: 8, fontWeight: '900' },
   titleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  title: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
+  title: { fontSize: 18, fontWeight: '800', color: Colors.white, letterSpacing: 0.2 },
   titleBadge: {
     backgroundColor: ACCENT, borderRadius: 10, minWidth: 22, height: 20,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
   },
-  titleBadgeTxt: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  titleBadgeTxt: { color: Colors.white, fontSize: 10, fontWeight: '900' },
 
   // Filter
   filterBar: {
     flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: WHITE + '1A',
   },
   filterTab: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -415,13 +418,13 @@ const ns = StyleSheet.create({
     position: 'absolute', bottom: 0, left: '15%', right: '15%',
     height: 2.5, borderRadius: 99, backgroundColor: ACCENT,
   },
-  filterTxt:   { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.42)' },
-  filterTxtOn: { color: '#fff', fontWeight: '800' },
+  filterTxt:   { fontSize: 11, fontWeight: '600', color: WHITE + '6B' },
+  filterTxtOn: { color: Colors.white, fontWeight: '800' },
   filterBadge: {
-    backgroundColor: '#EF4444', borderRadius: 8, minWidth: 14, height: 14,
+    backgroundColor: DANGER, borderRadius: 8, minWidth: 14, height: 14,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
   },
-  filterBadgeTxt: { color: '#fff', fontSize: 8, fontWeight: '900' },
+  filterBadgeTxt: { color: Colors.white, fontSize: 8, fontWeight: '900' },
 
   // Section
   sectionRow:  { paddingHorizontal: 18, paddingTop: 22, paddingBottom: 8 },
@@ -432,9 +435,9 @@ const ns = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 13,
     backgroundColor: CARD,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(12,63,68,0.07)',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BRAND + '12',
   },
-  rowUnread: { backgroundColor: '#F0FBF8' },
+  rowUnread: { backgroundColor: ACCENT + '14' },
   bar: { position: 'absolute', left: 0, top: 14, bottom: 14, width: 3, borderRadius: 99 },
 
   // Avatar
@@ -451,8 +454,8 @@ const ns = StyleSheet.create({
   topRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
   nameText:   { fontSize: 14, fontWeight: '800', color: DARK, flex: 1, marginRight: 8 },
   timeText:   { fontSize: 11, color: MUTED, fontWeight: '500' },
-  bodyText:   { fontSize: 13, color: '#4A6063', lineHeight: 18 },
-  actionText: { fontWeight: '600', color: '#2A4A4F' },
+  bodyText:   { fontSize: 13, color: DARK + 'B3', lineHeight: 18 },
+  actionText: { fontWeight: '600', color: BRAND },
 
   // Right element
   postThumb: { width: 50, height: 50, borderRadius: 10, backgroundColor: BG },
@@ -460,8 +463,8 @@ const ns = StyleSheet.create({
 
   // Swipe
   swipeBox: { width: 80, justifyContent: 'center', alignItems: 'center' },
-  swipeBtn: { flex: 1, width: '100%', backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', gap: 4 },
-  swipeTxt: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  swipeBtn: { flex: 1, width: '100%', backgroundColor: DANGER, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  swipeTxt: { color: Colors.white, fontSize: 10, fontWeight: '800' },
 
   // Empty
   emptyWrap:  { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100, gap: 14 },

@@ -3,6 +3,14 @@ import { Text, View, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../../../../../helpers/appdetails';
+import { Colors } from '../../../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width } = Dimensions.get('window');
 const IMAGE_HEIGHT = Math.round(width * 0.55);
@@ -52,7 +60,7 @@ const CommentJobPostContent = ({post}) => {
                 </View>
 
                 <View style={styles.row}>
-                    <Ionicons name="location" size={16} color="#888" />
+                    <Ionicons name="location" size={16} color={Colors.neutral400} />
                     <Text style={styles.location}>{location}</Text>
                 </View>
 
@@ -67,10 +75,10 @@ const CommentJobPostContent = ({post}) => {
 const styles = StyleSheet.create({
     container: {
         borderRadius: 12,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: Colors.neutral180,
         marginTop: 10,
         marginBottom: 10,
     },
@@ -78,7 +86,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: IMAGE_HEIGHT,
         position: 'relative',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: Colors.neutral150,
     },
     coverImage: {
         width: '100%',
@@ -88,13 +96,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 12,
         left: 12,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: withOpacity(Colors.black, 0.7),
         paddingHorizontal: 10,
         paddingVertical: 5,
         borderRadius: 6,
     },
     overlayTypeText: {
-        color: '#fff',
+        color: Colors.white,
         fontSize: 12,
         fontWeight: '600',
     },
@@ -110,30 +118,30 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 20,
         fontFamily:AppDetails.fontFamily.heading,
-        color: '#111',
+        color: Colors.neutral900,
         flex: 1,
         marginRight: 10,
         lineHeight: 26,
     },
     statusBadge: {
-        backgroundColor: '#2e7d32',
+        backgroundColor: Colors.success,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 4,
         borderWidth: 1,
-        borderColor: '#4c8c4fff',
+        borderColor: Colors.successTint,
     },
     statusClosed: {
-        backgroundColor: '#fff1f0',
-        borderColor: '#ffa39e',
+        backgroundColor: Colors.warningSurface,
+        borderColor: Colors.warningBorder,
     },
     statusText: {
         fontSize: 12,
         fontFamily: AppDetails.fontFamily.body,
-        color: '#fff',
+        color: Colors.white,
     },
     statusTextClosed: {
-        color: '#cf1322',
+        color: Colors.warningText,
     },
     salaryRow: {
         flexDirection: 'row',
@@ -143,12 +151,12 @@ const styles = StyleSheet.create({
     salary: {
         fontSize: 17,
         fontFamily: AppDetails.fontFamily.body,
-        color: '#2e7d32',
+        color: Colors.success,
     },
     salaryPeriod: {
         fontSize: 14,
         fontFamily: AppDetails.fontFamily.body,
-        color: '#888',
+        color: Colors.neutral400,
         marginLeft: 4,
     },
     row: {
@@ -159,7 +167,7 @@ const styles = StyleSheet.create({
     location: {
         fontSize: 14,
         fontFamily: AppDetails.fontFamily.body,
-        color: '#555',
+        color: Colors.neutral600,
         marginLeft: 6,
     },
     applyButton: {
@@ -170,7 +178,7 @@ const styles = StyleSheet.create({
    
     },
     applyButtonText: {
-        color: '#fff',
+        color: Colors.white,
         fontSize: 15,
         fontFamily: AppDetails.fontFamily.redex.medium,
     },

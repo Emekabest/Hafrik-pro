@@ -5,6 +5,7 @@ import SvgIcon from '../../../../assl.js/svg/svg';
 import { useAuth } from '../../../../AuthContext';
 import ToggleFeedController from '../../../../controllers/tooglefeedcontroller';
 import useStore from '../../../../repository/store';
+import { Colors } from '../../../../theme/colors';
 
 
 const EngagementBar = ({ feedId, initialLiked, initialLikeCount, commentsCount, onOpenShare, onCommentPress }) => {
@@ -69,21 +70,21 @@ const EngagementBar = ({ feedId, initialLiked, initialLikeCount, commentsCount, 
     return (
     <View style={styles.container}>
         <TouchableOpacity style={styles.item} onPress={handleLike}>
-            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? '#dc1e1eff' : '#333'} />
+            <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? Colors.like : Colors.neutral700} />
             <Text style={styles.count}>{likeCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.item} onPress={onCommentPress}>
-            <SvgIcon name="comment" width={20} height={20} color="#333" />
+            <SvgIcon name="comment" width={20} height={20} color={Colors.neutral700} />
             <Text style={styles.count}>{commentsCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.item} onPress={onOpenShare}>
-            <SvgIcon name="share" width={20} height={20} color="#333" />
+            <SvgIcon name="share" width={20} height={20} color={Colors.neutral700} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.item}>
-            <SvgIcon name="favourite" width={20} height={20} color="#333" />
+            <SvgIcon name="favourite" width={20} height={20} color={Colors.neutral700} />
         </TouchableOpacity>
     </View>
     );
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
   },
   count: {
     fontSize: 13,
-    color: '#333',
+    color: Colors.neutral700,
     marginLeft: 6,
   },
 });

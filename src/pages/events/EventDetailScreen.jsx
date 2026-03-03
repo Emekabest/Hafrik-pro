@@ -17,17 +17,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
 import { fetchEventFeed } from './eventsApi';
+import { Colors } from '../../theme/colors';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const COVER_H = SCREEN_H * 0.38;
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const WARM   = '#F4A535';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const CREAM  = '#F5F0E8';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const WARM   = Colors.warm;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.black;
+const CREAM  = Colors.background;
+const BORDER = BRAND + '17';
+const WHITE  = Colors.white;
 
 const STATUS_CONFIG = {
   upcoming: { label: 'Upcoming', bg: BRAND,  icon: 'calendar-outline' },
@@ -97,7 +99,7 @@ const PostCard = ({ post }) => {
             <Text style={styles.postName} numberOfLines={1}>{displayName}</Text>
             {post.user?.verified && (
               <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark" size={8} color="#fff" />
+                <Ionicons name="checkmark" size={8} color={WHITE} />
               </View>
             )}
           </View>
@@ -138,9 +140,9 @@ const PostCard = ({ post }) => {
           <Ionicons
             name={liked ? 'heart' : 'heart-outline'}
             size={17}
-            color={liked ? '#e8614a' : MUTED}
+            color={liked ? Colors.warning : MUTED}
           />
-          <Text style={[styles.engBtnTxt, liked && { color: '#e8614a' }]}>
+          <Text style={[styles.engBtnTxt, liked && { color: Colors.warning }]}>
             {formatNum(likes)}
           </Text>
         </TouchableOpacity>
@@ -227,11 +229,11 @@ export default function EventDetailScreen({ navigation, route }) {
         {event.cover ? (
           <Image source={{ uri: event.cover }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : (
-          <LinearGradient colors={[BRAND, '#1a5c63']} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={Colors.gradientPrimary} style={StyleSheet.absoluteFill} />
         )}
 
         <LinearGradient
-          colors={['rgba(13,27,30,0.52)', 'transparent', 'rgba(13,27,30,0.72)']}
+          colors={[DARK + '85', 'transparent', DARK + 'B8']}
           style={StyleSheet.absoluteFill}
         />
 
@@ -248,18 +250,18 @@ export default function EventDetailScreen({ navigation, route }) {
         {/* Status badge on cover */}
         <View style={styles.coverBadgeWrap}>
           <View style={[styles.coverBadge, { backgroundColor: statusCfg.bg }]}>
-            <Ionicons name={statusCfg.icon} size={12} color="#fff" />
+            <Ionicons name={statusCfg.icon} size={12} color={WHITE} />
             <Text style={styles.coverBadgeTxt}>{statusCfg.label}</Text>
           </View>
           {event.is_online && (
-            <View style={[styles.coverBadge, { backgroundColor: 'rgba(245,240,232,0.95)' }]}>
+            <View style={[styles.coverBadge, { backgroundColor: WHITE + 'F2' }]}>
               <Ionicons name="globe-outline" size={12} color={ACCENT} />
               <Text style={[styles.coverBadgeTxt, { color: ACCENT }]}>Online</Text>
             </View>
           )}
           {event.is_sponsored && (
             <View style={[styles.coverBadge, { backgroundColor: WARM }]}>
-              <Ionicons name="star" size={12} color="#fff" />
+              <Ionicons name="star" size={12} color={WHITE} />
               <Text style={styles.coverBadgeTxt}>Sponsored</Text>
             </View>
           )}
@@ -329,7 +331,7 @@ export default function EventDetailScreen({ navigation, route }) {
         {/* Action buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionBtnPrimary} activeOpacity={0.85}>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+            <Ionicons name="checkmark-circle-outline" size={18} color={WHITE} />
             <Text style={styles.actionBtnPrimaryTxt}>Going</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtnSecondary} activeOpacity={0.85}>
@@ -417,7 +419,7 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND,
     paddingHorizontal: 20, paddingBottom: 12, alignItems: 'center',
   },
-  stickyTitle: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  stickyTitle: { fontSize: 15, fontWeight: '800', color: WHITE },
 
   // Cover
   coverWrap: { width: SCREEN_W, position: 'relative', overflow: 'hidden' },
@@ -428,9 +430,9 @@ const styles = StyleSheet.create({
   },
   circleBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: WHITE + 'F0',
     justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, elevation: 6,
+    shadowColor: Colors.black, shadowOpacity: 0.12, shadowRadius: 8, elevation: 6,
   },
   coverBadgeWrap: {
     position: 'absolute', bottom: 14, left: 14,
@@ -440,7 +442,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
   },
-  coverBadgeTxt: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  coverBadgeTxt: { fontSize: 11, fontWeight: '800', color: WHITE },
 
   // Content card
   contentCard: {
@@ -453,7 +455,7 @@ const styles = StyleSheet.create({
     backgroundColor: `${ACCENT}18`, borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 4, marginBottom: 10,
   },
-  catPillTxt: { fontSize: 11, fontWeight: '900', color: '#0a7a5a' },
+  catPillTxt: { fontSize: 11, fontWeight: '900', color: BRAND },
 
   eventTitle: {
     fontSize: 26, fontWeight: '900', color: DARK, lineHeight: 34, marginBottom: 16,
@@ -462,7 +464,7 @@ const styles = StyleSheet.create({
   // Engagement pills
   engPills: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 16,
+    backgroundColor: WHITE, borderRadius: 16,
     borderWidth: 1, borderColor: BORDER,
     paddingVertical: 14, paddingHorizontal: 10,
     marginBottom: 16, gap: 0,
@@ -474,7 +476,7 @@ const styles = StyleSheet.create({
 
   // Info card
   infoCard: {
-    backgroundColor: '#fff', borderRadius: 16,
+    backgroundColor: WHITE, borderRadius: 16,
     borderWidth: 1, borderColor: BORDER,
     paddingHorizontal: 14, paddingVertical: 6, marginBottom: 16, gap: 2,
   },
@@ -496,16 +498,16 @@ const styles = StyleSheet.create({
     shadowColor: BRAND, shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22, shadowRadius: 12, elevation: 8,
   },
-  actionBtnPrimaryTxt: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  actionBtnPrimaryTxt: { color: WHITE, fontWeight: '800', fontSize: 14 },
   actionBtnSecondary: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 13,
+    gap: 8, backgroundColor: WHITE, borderRadius: 14, paddingVertical: 13,
     borderWidth: 1.5, borderColor: BRAND,
   },
   actionBtnSecondaryTxt: { color: BRAND, fontWeight: '800', fontSize: 14 },
   actionBtnIcon: {
     width: 50, height: 50, borderRadius: 14,
-    backgroundColor: '#fff', borderWidth: 1.5, borderColor: BORDER,
+    backgroundColor: WHITE, borderWidth: 1.5, borderColor: BORDER,
     justifyContent: 'center', alignItems: 'center',
   },
 
@@ -527,10 +529,10 @@ const styles = StyleSheet.create({
 
   // Post card
   postCard: {
-    backgroundColor: '#fff', marginHorizontal: 14, marginBottom: 10,
+    backgroundColor: WHITE, marginHorizontal: 14, marginBottom: 10,
     borderRadius: 18, padding: 14,
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    shadowColor: Colors.black, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
   },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   postAvatar: { width: 40, height: 40, borderRadius: 20 },
@@ -545,7 +547,7 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center',
   },
   postTime: { fontSize: 11, color: MUTED, marginTop: 2 },
-  postText: { fontSize: 14, color: '#333', lineHeight: 21, marginBottom: 10 },
+  postText: { fontSize: 14, color: DARK, lineHeight: 21, marginBottom: 10 },
 
   // Post images
   postImagesWrap: { borderRadius: 12, overflow: 'hidden', marginBottom: 10 },
@@ -559,10 +561,10 @@ const styles = StyleSheet.create({
   },
   moreOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(13,27,30,0.6)',
+    backgroundColor: DARK + '99',
     justifyContent: 'center', alignItems: 'center',
   },
-  moreTxt: { fontSize: 22, fontWeight: '900', color: '#fff' },
+  moreTxt: { fontSize: 22, fontWeight: '900', color: WHITE },
 
   // Engagement bar
   engBar: {

@@ -1,6 +1,9 @@
 // src/hooks/useLiveCounts.js
-// Wraps the store's badge-polling system with focus-aware lifecycle.
-// Usage: call useLiveCounts() once inside any screen that needs live badges.
+// Ensures badge polling is running when a screen comes into focus.
+// Polling is started from App.js and kept alive permanently — this hook
+// just re-starts it if it was somehow stopped (e.g. after a token refresh).
+// IMPORTANT: we deliberately do NOT stop polling on blur so counts stay
+// live across all tabs.
 
 import { useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,15 +13,15 @@ import { useAuth } from '../AuthContext';
 export function useLiveCounts() {
   const { token } = useAuth();
   const startBadgePolling = useStore((s) => s.startBadgePolling);
-  const stopBadgePolling  = useStore((s) => s.stopBadgePolling);
 
   useFocusEffect(
     useCallback(() => {
       if (!token) return;
-      // Start polling (immediately fetches + re-fetches every 20 s)
-      startBadgePolling(token);
-      // Stop polling when screen loses focus to avoid leaks
-      return () => stopBadgePolling();
-    }, [token, startBadgePolling, stopBadgePolling]),
+      // Read imperatively (no store subscription) to avoid re-rendering screens on every poll tick
+      if (!useStore.getState()._badgeInterval) {
+        startBadgePolling(token);
+      }
+      // No cleanup — App.js owns the interval lifecycle
+    }, [token, startBadgePolling]),
   );
 }

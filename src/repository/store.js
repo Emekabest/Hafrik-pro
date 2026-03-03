@@ -20,8 +20,9 @@ const useStore = create((set, get) => ({
     }),
 
     isComposerOpen: false,
-    openComposer: () => set({ isComposerOpen: true }),
-    closeComposer: () => set({ isComposerOpen: false }),
+    composerConfig: null, // { _type, id, title, avatar, locked }
+    openComposer: (config = null) => set({ isComposerOpen: true, composerConfig: config }),
+    closeComposer: () => set({ isComposerOpen: false, composerConfig: null }),
 
 
     userAvatar: "",

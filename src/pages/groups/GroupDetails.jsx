@@ -10,23 +10,31 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
+import useStore from '../../repository/store';
 
 import FeedCard from '../home/feeds/feedcard';
 import GroupMedia from './GroupMedia';
+import { Colors } from '../../theme/colors';
 import {
   getGroupDetails, getGroupFeed, getGroupMembers,
   joinGroup, leaveGroup,
 } from './services/groupApi';
 
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || '').replace('#', '');
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0');
+  return `#${normalized}${alpha}`;
+};
+
 const { width: W } = Dimensions.get('window');
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F5F7F7';
-const DARK   = '#0D1B1E';
-const MUTED  = '#7A9198';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.background;
+const DARK   = Colors.deepSlate;
+const MUTED  = Colors.secondaryText;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const TAB_W = W / 4;
 
@@ -104,7 +112,7 @@ const ComposeModal = ({ visible, group, token, onClose, onPosted }) => {
               disabled={!text.trim() || posting}
             >
               {posting
-                ? <ActivityIndicator size="small" color="#fff" />
+                ? <ActivityIndicator size="small" color={Colors.white} />
                 : <Text style={cs.postBtnTxt}>Post</Text>
               }
             </TouchableOpacity>
@@ -165,8 +173,8 @@ const MemberRow = ({ item, index }) => {
       {isRealImg(avatar) ? (
         <Image source={{ uri: avatar }} style={ms.avatar} />
       ) : (
-        <LinearGradient colors={[BRAND, '#1a6b75']} style={[ms.avatar, ms.avatarFb]}>
-          <Ionicons name="person" size={18} color="#fff" />
+        <LinearGradient colors={[BRAND, Colors.tealWaveAlt]} style={[ms.avatar, ms.avatarFb]}>
+          <Ionicons name="person" size={18} color={Colors.white} />
         </LinearGradient>
       )}
       <View style={{ flex: 1 }}>
@@ -187,8 +195,8 @@ const MemberRow = ({ item, index }) => {
 // ── Compose prompt (top of posts tab) ────────────────────────────────────────
 const ComposePrompt = ({ group, onOpen }) => (
   <TouchableOpacity style={cpr.row} activeOpacity={0.85} onPress={onOpen}>
-    <LinearGradient colors={[BRAND, '#0a5560']} style={cpr.avatar}>
-      <Ionicons name="person" size={14} color="#fff" />
+    <LinearGradient colors={[BRAND, Colors.tealNavy]} style={cpr.avatar}>
+      <Ionicons name="person" size={14} color={Colors.white} />
     </LinearGradient>
     <View style={cpr.input}>
       <Text style={cpr.placeholder}>
@@ -239,9 +247,11 @@ const AboutSection = ({ group }) => {
 // ── GroupDetails main ─────────────────────────────────────────────────────────
 export default function GroupDetails({ route }) {
   const { groupId, openCompose: autoCompose } = route.params ?? {};
-  const navigation = useNavigation();
-  const { top }    = useSafeAreaInsets();
-  const { token }  = useAuth();
+  const navigation    = useNavigation();
+  const { top }       = useSafeAreaInsets();
+  const { token }     = useAuth();
+  const openComposer  = useStore((s) => s.openComposer);
+  const refreshSignal = useStore((s) => s.refreshSignal);
 
   const [group,           setGroup]           = useState(null);
   const [posts,           setPosts]           = useState([]);
@@ -251,7 +261,6 @@ export default function GroupDetails({ route }) {
   const [joining,         setJoining]         = useState(false);
   const [loading,         setLoading]         = useState(true);
   const [refreshing,      setRefreshing]      = useState(false);
-  const [compose,         setCompose]         = useState(false);
   const [feedPage,        setFeedPage]        = useState(1);
   const [feedHasMore,     setFeedHasMore]     = useState(true);
   const [feedLoadingMore, setFeedLoadingMore] = useState(false);
@@ -268,8 +277,19 @@ export default function GroupDetails({ route }) {
   }, []);
 
   useEffect(() => {
-    if (autoCompose && isMember) setCompose(true);
+    if (autoCompose && isMember) openComposer({
+      _type: 'group', id: groupId, title: group?.title, locked: true,
+    });
   }, [autoCompose, isMember]);
+
+  // Refresh feed whenever a post is published from the global composer
+  const prevRefreshSignal = useRef(0);
+  useEffect(() => {
+    if (refreshSignal > 0 && refreshSignal !== prevRefreshSignal.current) {
+      prevRefreshSignal.current = refreshSignal;
+      loadData();
+    }
+  }, [refreshSignal]);
 
   const loadData = async () => {
     const [gRes, fRes, mRes] = await Promise.all([
@@ -364,10 +384,9 @@ export default function GroupDetails({ route }) {
     }
   };
 
-  const handlePosted = (newPost) => {
-    if (newPost?.id) setPosts((prev) => [newPost, ...prev]);
-    else loadData();
-  };
+  const openGroupComposer = useCallback(() => {
+    openComposer({ _type: 'group', id: groupId, title: group?.title, locked: true });
+  }, [openComposer, groupId, group?.title]);
 
   const coverTranslate = scrollY.interpolate({
     inputRange: [0, 180], outputRange: [0, -60], extrapolate: 'clamp',
@@ -387,13 +406,13 @@ export default function GroupDetails({ route }) {
             <ExpoImage source={{ uri: group.cover }} style={ds.cover} contentFit="cover" />
           ) : (
             <LinearGradient
-              colors={[BRAND, '#0b5a65', '#117a84', ACCENT + '70']}
+              colors={[BRAND, Colors.tealNavyAlt, Colors.tealNavyStrong, ACCENT + '70']}
               style={ds.cover}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             />
           )}
           <LinearGradient
-            colors={['rgba(8,26,30,0.05)', 'rgba(8,26,30,0.55)', 'rgba(4,14,18,0.94)']}
+            colors={[withOpacity(Colors.deepSlateAlt, 0.05), withOpacity(Colors.deepSlateAlt, 0.55), withOpacity(Colors.deepSlateStrong, 0.94)]}
             style={ds.heroGrad}
           />
         </Animated.View>
@@ -403,7 +422,7 @@ export default function GroupDetails({ route }) {
           <View style={ds.heroTitleRow}>
             <Text style={ds.heroTitle} numberOfLines={2}>{title || 'Community'}</Text>
             {isPrivate && (
-              <Ionicons name="lock-closed" size={16} color="rgba(255,255,255,0.65)" style={{ marginLeft: 8, marginTop: 3 }} />
+              <Ionicons name="lock-closed" size={16} color={withOpacity(Colors.white, 0.65)} style={{ marginLeft: 8, marginTop: 3 }} />
             )}
           </View>
           <View style={ds.heroMeta}>
@@ -412,7 +431,7 @@ export default function GroupDetails({ route }) {
                 <Text style={ds.heroCatTxt}>{cleanText(group.category)}</Text>
               </View>
             )}
-            <Ionicons name="people" size={13} color="rgba(255,255,255,0.75)" />
+            <Ionicons name="people" size={13} color={withOpacity(Colors.white, 0.75)} />
             <Text style={ds.heroMetaTxt}>{fmtCount(group?.members ?? 0)} members</Text>
             <Text style={ds.heroDot}>·</Text>
             <Text style={ds.heroMetaTxt}>{fmtCount(group?.posts_count ?? posts.length)} posts</Text>
@@ -432,8 +451,8 @@ export default function GroupDetails({ route }) {
           {isRealImg(group?.avatar) ? (
             <Image source={{ uri: group.avatar }} style={ds.avatar} />
           ) : (
-            <LinearGradient colors={[BRAND, '#1a6b75']} style={[ds.avatar, ds.avatarFb]}>
-              <Ionicons name="people" size={28} color="#fff" />
+            <LinearGradient colors={[BRAND, Colors.tealWaveAlt]} style={[ds.avatar, ds.avatarFb]}>
+              <Ionicons name="people" size={28} color={Colors.white} />
             </LinearGradient>
           )}
         </View>
@@ -448,12 +467,12 @@ export default function GroupDetails({ route }) {
             activeOpacity={0.85}
           >
             {joining
-              ? <ActivityIndicator size="small" color={isMember ? BRAND : '#fff'} />
+              ? <ActivityIndicator size="small" color={isMember ? BRAND : Colors.white} />
               : (
                 <>
                   <Ionicons
                     name={isMember ? 'exit-outline' : 'people-outline'}
-                    size={15} color={isMember ? BRAND : '#fff'}
+                    size={15} color={isMember ? BRAND : Colors.white}
                     style={{ marginRight: 6 }}
                   />
                   <Text style={[ds.joinTxt, isMember && ds.leaveTxt]}>
@@ -478,7 +497,7 @@ export default function GroupDetails({ route }) {
 
       {/* Compose prompt — members only, feed tab */}
       {isMember && activeTab === 0 && (
-        <ComposePrompt group={group} onOpen={() => setCompose(true)} />
+        <ComposePrompt group={group} onOpen={openGroupComposer} />
       )}
     </>
   );
@@ -495,7 +514,7 @@ export default function GroupDetails({ route }) {
     return (
       <View style={ds.loaderWrap}>
         <StatusBar barStyle="light-content" />
-        <LinearGradient colors={[BRAND, '#0a5560']} style={ds.loaderGrad}>
+        <LinearGradient colors={[BRAND, Colors.tealNavy]} style={ds.loaderGrad}>
           <ActivityIndicator size="large" color={ACCENT} />
           <Text style={ds.loaderTxt}>Loading community…</Text>
         </LinearGradient>
@@ -513,11 +532,11 @@ export default function GroupDetails({ route }) {
         pointerEvents="box-none"
       >
         <TouchableOpacity style={ds.floatBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-          <Ionicons name="arrow-back" size={20} color="#fff" />
+          <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
         {isMember && (
-          <TouchableOpacity style={[ds.floatBtn, ds.floatBtnRight]} onPress={() => setCompose(true)} activeOpacity={0.85}>
-            <Ionicons name="create-outline" size={18} color="#fff" />
+          <TouchableOpacity style={[ds.floatBtn, ds.floatBtnRight]} onPress={openGroupComposer} activeOpacity={0.85}>
+            <Ionicons name="create-outline" size={18} color={Colors.white} />
           </TouchableOpacity>
         )}
       </Animated.View>
@@ -574,7 +593,7 @@ export default function GroupDetails({ route }) {
               </LinearGradient>
               <Text style={ds.emptyTxt}>{activeTab === 2 ? 'No members found' : 'No posts yet'}</Text>
               {isMember && activeTab === 0 && (
-                <TouchableOpacity style={ds.emptyPostBtn} onPress={() => setCompose(true)}>
+                <TouchableOpacity style={ds.emptyPostBtn} onPress={openGroupComposer}>
                   <Text style={ds.emptyPostBtnTxt}>Be the first to post</Text>
                 </TouchableOpacity>
               )}
@@ -583,14 +602,6 @@ export default function GroupDetails({ route }) {
         />
       )}
 
-      {/* Compose Modal */}
-      <ComposeModal
-        visible={compose}
-        group={group}
-        token={token}
-        onClose={() => setCompose(false)}
-        onPosted={handlePosted}
-      />
     </View>
   );
 }
@@ -600,7 +611,7 @@ const ds = StyleSheet.create({
   root:       { flex: 1, backgroundColor: CREAM },
   loaderWrap: { flex: 1 },
   loaderGrad: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
-  loaderTxt:  { color: '#fff', fontSize: 14, fontWeight: '600' },
+  loaderTxt:  { color: Colors.white, fontSize: 14, fontWeight: '600' },
 
   // ── Hero ──
   hero:         { height: 260, overflow: 'hidden', position: 'relative' },
@@ -613,42 +624,42 @@ const ds = StyleSheet.create({
     paddingHorizontal: 16, paddingBottom: 20,
   },
   heroTitleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 },
-  heroTitle:    { fontSize: 24, fontWeight: '900', color: '#fff', lineHeight: 30, flex: 1 },
+  heroTitle:    { fontSize: 24, fontWeight: '900', color: Colors.white, lineHeight: 30, flex: 1 },
   heroMeta:     { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   heroCatChip: {
-    backgroundColor: 'rgba(19,194,150,0.28)', borderRadius: 100,
+    backgroundColor: withOpacity(Colors.tealAccent, 0.28), borderRadius: 100,
     paddingHorizontal: 9, paddingVertical: 3,
-    borderWidth: 1, borderColor: 'rgba(19,194,150,0.5)',
+    borderWidth: 1, borderColor: withOpacity(Colors.tealAccent, 0.5),
   },
   heroCatTxt:  { fontSize: 10, fontWeight: '800', color: ACCENT },
-  heroMetaTxt: { fontSize: 12, color: 'rgba(255,255,255,0.82)', fontWeight: '600' },
-  heroDot:     { fontSize: 15, color: 'rgba(255,255,255,0.35)', lineHeight: 18 },
+  heroMetaTxt: { fontSize: 12, color: withOpacity(Colors.white, 0.82), fontWeight: '600' },
+  heroDot:     { fontSize: 15, color: withOpacity(Colors.white, 0.35), lineHeight: 18 },
   memberPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(19,194,150,0.22)', borderRadius: 100,
+    backgroundColor: withOpacity(Colors.tealAccent, 0.22), borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
-    borderWidth: 1, borderColor: 'rgba(19,194,150,0.5)',
+    borderWidth: 1, borderColor: withOpacity(Colors.tealAccent, 0.5),
   },
   memberPillTxt: { fontSize: 10, fontWeight: '800', color: ACCENT },
 
   // ── Info strip ──
   infoStrip: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     flexDirection: 'row', alignItems: 'flex-start', gap: 14,
     paddingTop: 6, paddingHorizontal: 14, paddingBottom: 16,
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
   avatarWrap: {
     width: 72, height: 72, borderRadius: 20,
-    overflow: 'hidden', borderWidth: 4, borderColor: '#fff',
+    overflow: 'hidden', borderWidth: 4, borderColor: Colors.white,
     marginTop: -36,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18, shadowRadius: 12, elevation: 8,
   },
   avatar:     { width: '100%', height: '100%' },
   avatarFb:   { alignItems: 'center', justifyContent: 'center' },
   stripRight: { flex: 1, paddingTop: 4, gap: 8 },
-  stripAbout: { fontSize: 13, color: '#4a6068', lineHeight: 19 },
+  stripAbout: { fontSize: 13, color: Colors.slateDeep, lineHeight: 19 },
 
   // ── Floating back/compose buttons ──
   floatRow: {
@@ -657,9 +668,9 @@ const ds = StyleSheet.create({
   },
   floatBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(12,63,68,0.65)',
+    backgroundColor: withOpacity(Colors.primaryDark, 0.65),
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1, borderColor: withOpacity(Colors.white, 0.18),
   },
   floatBtnRight: { marginLeft: 'auto' },
 
@@ -668,13 +679,13 @@ const ds = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: BRAND, borderRadius: 100, paddingVertical: 10,
   },
-  leaveBtn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: BRAND },
-  joinTxt:  { fontSize: 13, fontWeight: '800', color: '#fff' },
+  leaveBtn: { backgroundColor: Colors.white, borderWidth: 1.5, borderColor: BRAND },
+  joinTxt:  { fontSize: 13, fontWeight: '800', color: Colors.white },
   leaveTxt: { color: BRAND },
 
   // ── Tab bar ──
   tabBar: {
-    flexDirection: 'row', backgroundColor: '#fff',
+    flexDirection: 'row', backgroundColor: Colors.white,
     borderBottomWidth: 1, borderBottomColor: BORDER, position: 'relative',
   },
   tabBtn:  { width: TAB_W, alignItems: 'center', paddingVertical: 13 },
@@ -691,13 +702,13 @@ const ds = StyleSheet.create({
   emptyCircle:     { width: 86, height: 86, borderRadius: 43, alignItems: 'center', justifyContent: 'center' },
   emptyTxt:        { fontSize: 15, fontWeight: '700', color: DARK },
   emptyPostBtn:    { backgroundColor: BRAND, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 100 },
-  emptyPostBtnTxt: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  emptyPostBtnTxt: { fontSize: 13, fontWeight: '800', color: Colors.white },
 });
 
 const cpr = StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#fff', padding: 14,
+    backgroundColor: Colors.white, padding: 14,
     borderBottomWidth: 1, borderBottomColor: BORDER, marginBottom: 2,
   },
   avatar: {
@@ -714,16 +725,16 @@ const cpr = StyleSheet.create({
 
 const cs = StyleSheet.create({
   modalOverlay: {
-    flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)',
+    flex: 1, justifyContent: 'flex-end', backgroundColor: withOpacity(Colors.black, 0.45),
   },
   modalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    backgroundColor: Colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingBottom: 34, minHeight: 340,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -6 },
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.12, shadowRadius: 20, elevation: 20,
   },
   handle: {
-    width: 40, height: 5, backgroundColor: 'rgba(12,63,68,0.15)',
+    width: 40, height: 5, backgroundColor: withOpacity(Colors.primaryDark, 0.15),
     borderRadius: 3, alignSelf: 'center', marginTop: 10, marginBottom: 4,
   },
   modalHeader: {
@@ -739,7 +750,7 @@ const cs = StyleSheet.create({
   modalTitle:      { flex: 1, fontSize: 15, fontWeight: '800', color: DARK },
   postBtn:         { backgroundColor: BRAND, paddingHorizontal: 18, paddingVertical: 8, borderRadius: 100 },
   postBtnDisabled: { opacity: 0.4 },
-  postBtnTxt:      { color: '#fff', fontSize: 13, fontWeight: '800' },
+  postBtnTxt:      { color: Colors.white, fontSize: 13, fontWeight: '800' },
   textArea: {
     minHeight: 120, paddingHorizontal: 20, paddingTop: 14,
     fontSize: 15, color: DARK, lineHeight: 22,
@@ -759,7 +770,7 @@ const cs = StyleSheet.create({
 const ms = StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
   avatar:   { width: 46, height: 46, borderRadius: 14 },
@@ -770,12 +781,12 @@ const ms = StyleSheet.create({
     backgroundColor: ACCENT + '22', borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  roleTxt: { fontSize: 9, fontWeight: '900', color: '#0a7a5a', letterSpacing: 0.5 },
+  roleTxt: { fontSize: 9, fontWeight: '900', color: Colors.successStrong, letterSpacing: 0.5 },
 });
 
 const abt = StyleSheet.create({
   wrap: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     marginHorizontal: 0,
     paddingVertical: 8,
     paddingBottom: 100,

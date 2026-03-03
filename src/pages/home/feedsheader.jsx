@@ -17,13 +17,21 @@ import useStore from "../../repository/store.js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import GetFeedsController from "../../controllers/getfeedscontroller.js";
 import SvgIcon from "../../assl.js/svg/svg.jsx";
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 // ─── Design tokens ──────────────────────────────────────────────────────────────
-const BRAND      = "#0C3F44";
-const ACCENT     = "#13C296";
-const LIME       = "#A8E063";
-const BORDER     = "#E4EEEF";
-const TEXT_MUTED = "#6b7c7d";
+const BRAND      = Colors.primaryDark;
+const ACCENT     = Colors.primary;
+const LIME       = Colors.brandLime;
+const BORDER     = Colors.borderSoft;
+const TEXT_MUTED = Colors.mutedBlueGrayDeep;
 
 // ─── CTA data ───────────────────────────────────────────────────────────────────
 const CTAS = [
@@ -33,7 +41,7 @@ const CTAS = [
     sub: "Shop products & services from the community",
     btn: "Explore",
     link: "https://hafrik.com/market",
-    colors: [BRAND, "#0a5a62"],
+    colors: [BRAND, Colors.tealDeep],
   },
   {
     icon: "👥",
@@ -41,7 +49,7 @@ const CTAS = [
     sub: "Connect with Africans in your city",
     btn: "Find",
     link: "https://hafrik.com/groups",
-    colors: [ACCENT, "#0fa882"],
+    colors: [ACCENT, Colors.tealMint],
   },
   {
     icon: "🏪",
@@ -49,7 +57,7 @@ const CTAS = [
     sub: "Promote your brand to thousands",
     btn: "Create",
     link: "https://hafrik.com/pages/manage",
-    colors: ["#0B8557", "#13C296"],
+    colors: [Colors.greenDeep, Colors.tealAccent],
   },
   {
     icon: "✅",
@@ -57,7 +65,7 @@ const CTAS = [
     sub: "Build trust and unlock selling features",
     btn: "Verify",
     link: "https://hafrik.com/settings/verification",
-    colors: ["#F59E0B", "#F97316"],
+    colors: [Colors.amberStrong, Colors.orangeStrong],
   },
   {
     icon: "🛍️",
@@ -65,7 +73,7 @@ const CTAS = [
     sub: "List your products in the marketplace",
     btn: "Sell",
     link: "https://hafrik.com/market/sales",
-    colors: ["#8B5CF6", "#6D28D9"],
+    colors: [Colors.violet, Colors.violetDeep],
   },
   {
     icon: "📅",
@@ -73,7 +81,7 @@ const CTAS = [
     sub: "Find meetups, parties and community events",
     btn: "View",
     link: "https://hafrik.com/events",
-    colors: ["#EC4899", "#BE185D"],
+    colors: [Colors.pinkBright, Colors.pinkDeep],
   },
   {
     icon: "⭐",
@@ -81,7 +89,7 @@ const CTAS = [
     sub: "Unlock premium features and more visibility",
     btn: "Upgrade",
     link: "https://hafrik.com/pro",
-    colors: [BRAND, "#073b40"],
+    colors: [BRAND, Colors.tealShade],
   },
 ];
 
@@ -243,7 +251,7 @@ const FeedsHeader = ({ name, id }) => {
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => handleSelectCountry(item)}
-                  style={({ pressed }) => [styles.countryItem, pressed && { backgroundColor: "#f5fafa" }]}
+                  style={({ pressed }) => [styles.countryItem, pressed && { backgroundColor: Colors.surfaceCool }]}
                 >
                   <Text style={styles.countryText}>
                     {item.name || item.title || item.country || item.country_name || "Unknown"}
@@ -292,7 +300,7 @@ const styles = StyleSheet.create({
   countryPill: {
     height: 34,
     paddingHorizontal: 12,
-    backgroundColor: "#eef5f5",
+    backgroundColor: Colors.surfaceCoolAlt,
     flexDirection: "row",
     borderRadius: 20,
     alignItems: "center",
@@ -314,7 +322,7 @@ const styles = StyleSheet.create({
   ctaCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER,
@@ -355,18 +363,18 @@ const styles = StyleSheet.create({
   ctaBtnText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#fff",
+    color: Colors.white,
     letterSpacing: 0.2,
   },
 
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: withOpacity(Colors.black, 0.4),
     justifyContent: "flex-end",
   },
   modalContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 16,
@@ -398,7 +406,7 @@ const styles = StyleSheet.create({
     fontFamily: "ReadexPro_400Regular",
     color: BRAND,
   },
-  separator: { height: 1, backgroundColor: "#f0f5f5" },
+  separator: { height: 1, backgroundColor: Colors.surfaceTint },
   modalClose: {
     marginTop: 12,
     backgroundColor: BRAND,
@@ -407,7 +415,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   modalCloseText: {
-    color: "#fff",
+    color: Colors.white,
     fontFamily: "ReadexPro_600SemiBold",
     fontSize: 14,
   },

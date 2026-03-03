@@ -2,8 +2,6 @@ import axios from "axios";
 
 
 const UploadMediaController = async(media, token)=>{
-    console.log("Ommoooooooooooooooooo")
-
     const API_URL = `https://hafrik.com/api/v1/uploads/media.php`;
 
 

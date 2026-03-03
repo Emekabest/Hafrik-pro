@@ -17,14 +17,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width } = Dimensions.get('window');
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const CREAM  = '#F5F0E8';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.deepSlate;
+const CREAM  = Colors.background;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const API_BASE = 'https://hafrik.com';
 
@@ -153,8 +161,8 @@ export default function MyListingsScreen({ navigation }) {
           <View style={styles.actionDivider} />
 
           <TouchableOpacity style={[styles.actionBtn, { flex: 0.7 }]} onPress={() => handleDelete(item)}>
-            <Ionicons name="trash-outline" size={15} color="#E85D4A" />
-            <Text style={[styles.actionText, { color: '#E85D4A' }]}>Delete</Text>
+            <Ionicons name="trash-outline" size={15} color={Colors.coral} />
+            <Text style={[styles.actionText, { color: Colors.coral }]}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -166,9 +174,9 @@ export default function MyListingsScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={BRAND} />
 
       {/* Header */}
-      <LinearGradient colors={[BRAND, '#1a5c63']} style={[styles.header, { paddingTop: top + 4 }]}>
+      <LinearGradient colors={[BRAND, Colors.tealHeader]} style={[styles.header, { paddingTop: top + 4 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#fff" />
+          <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>My Listings</Text>
@@ -206,11 +214,11 @@ export default function MyListingsScreen({ navigation }) {
                 onPress={() => navigation.navigate('CreateListing')}
               >
                 <LinearGradient
-                  colors={[BRAND, '#1a5c63']}
+                  colors={[BRAND, Colors.tealHeader]}
                   style={styles.postGradient}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 >
-                  <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                  <Ionicons name="add-circle-outline" size={18} color={Colors.white} />
                   <Text style={styles.postBtnText}>Post a Listing</Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -231,19 +239,19 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center', alignItems: 'center',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.white },
+  headerSub: { fontSize: 11, color: withOpacity(Colors.white, 0.7), marginTop: 2 },
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   list: { padding: 14, gap: 12 },
 
   card: {
-    backgroundColor: '#fff', borderRadius: 16,
+    backgroundColor: Colors.white, borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1, borderColor: BORDER,
     shadowColor: BRAND, shadowOffset: { width: 0, height: 3 },
@@ -261,14 +269,14 @@ const styles = StyleSheet.create({
     backgroundColor: `${ACCENT}18`, borderRadius: 6,
     paddingHorizontal: 8, paddingVertical: 2, flexShrink: 0,
   },
-  statusBadgeInactive: { backgroundColor: 'rgba(232,93,74,0.12)' },
-  statusText: { fontSize: 10, fontWeight: '700', color: '#0a7a5a', textTransform: 'uppercase' },
-  statusTextInactive: { color: '#E85D4A' },
+  statusBadgeInactive: { backgroundColor: withOpacity(Colors.coral, 0.12) },
+  statusText: { fontSize: 10, fontWeight: '700', color: Colors.successStrong, textTransform: 'uppercase' },
+  statusTextInactive: { color: Colors.coral },
   cardPrice: { fontSize: 16, fontWeight: '900', color: ACCENT, marginBottom: 6 },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   metaChip: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#F5F7F8', borderRadius: 100,
+    backgroundColor: Colors.surfaceBase, borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
   metaText: { fontSize: 10, color: MUTED },
@@ -293,5 +301,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 20, paddingVertical: 13,
   },
-  postBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  postBtnText: { fontSize: 14, fontWeight: '800', color: Colors.white },
 });

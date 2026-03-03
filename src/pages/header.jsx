@@ -14,9 +14,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import AppDetails from '../helpers/appdetails';
 import useStore from '../repository/store';
+import { Colors } from '../theme/colors';
 
-const BRAND = '#0C3F44';
-const ACCENT = '#13C296';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND = Colors.primaryDark;
+const ACCENT = Colors.primary;
 
 const isRealImage = (url) =>
   !!url &&
@@ -69,7 +77,7 @@ const IconBtn = ({ name, count = 0, onPress, size = 22 }) => {
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={1} style={styles.iconBtnWrap}>
       <Animated.View style={[styles.iconBtn, { transform: [{ scale: scaleAnim }] }]}>
-        <Ionicons name={name} size={size} color="#fff" />
+        <Ionicons name={name} size={size} color={Colors.white} />
         {count > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{count > 99 ? '99+' : count > 9 ? '9+' : count}</Text>
@@ -127,7 +135,7 @@ const Header = ({
               />
             ) : (
               <View style={styles.avatarFallback}>
-                <Ionicons name="person" size={18} color="#fff" />
+                <Ionicons name="person" size={18} color={Colors.white} />
               </View>
             )}
           </Animated.View>
@@ -183,7 +191,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0,
     height: 1,
-    backgroundColor: 'rgba(19,194,150,0.35)',
+    backgroundColor: withOpacity(Colors.tealAccent, 0.35),
   },
   container: {
     height: 58,
@@ -197,7 +205,7 @@ const styles = StyleSheet.create({
   pulseRing: { position: 'absolute', width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: ACCENT },
   avatarRing: { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: ACCENT, overflow: 'hidden' },
   avatar: { width: '100%', height: '100%' },
-  avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' },
+  avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: withOpacity(Colors.white, 0.18) },
   onlineDot: { position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT, borderWidth: 2, borderColor: BRAND },
 
   logoWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
@@ -209,9 +217,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: withOpacity(Colors.white, 0.12),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: withOpacity(Colors.white, 0.16),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -231,13 +239,13 @@ const styles = StyleSheet.create({
     borderColor: BRAND,
   },
   badgeText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 9,
     fontWeight: '900',
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
 
-  borderBottom: { height: 1, backgroundColor: 'rgba(19,194,150,0.18)' },
+  borderBottom: { height: 1, backgroundColor: withOpacity(Colors.tealAccent, 0.18) },
 });
 
 export default Header;

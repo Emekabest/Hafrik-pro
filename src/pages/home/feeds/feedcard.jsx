@@ -9,24 +9,21 @@ import React, { memo, useMemo, useCallback, useState } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import EngagementBar from "./feedcardproperties/engagementbar.jsx";
 import { Image as ExpoImage } from "expo-image";
-import PostContent from "./feedcardproperties/postcontent.jsx";
+import FeedMediaRenderer from "./FeedMediaRenderer.jsx";
 import CleanText from "../../../helpers/cleantext.js";
 import UserDetails from "./feedcardproperties/userdetails.jsx";
 import { parseLinkFromText } from "../../../helpers/linkparser.js";
-import VideoManager from "../../../helpers/videomanager.js";
-import { useGlobalVideoPlayer } from "../../../helpers/GlobalVideoPlayerContext";
-import useStore from "../../../repository/store";
 import ShareModal from "./share.jsx";
-import ImageViewModal from "../../../pages/imageviewmodal.jsx";
 import { useNavigation } from "@react-navigation/native";
+import { Colors } from '../../../theme/colors';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const ACCENT      = '#13C296';
-const TEXT_BODY   = '#1A1A2E';
-const TEXT_MUTED  = '#8A9BA8';
-const BG_CARD     = '#FFFFFF';
-const BORDER      = '#EEF3F3';
-const AVATAR_RING = '#E0F2F0';
+const ACCENT      = Colors.primary;
+const TEXT_BODY   = Colors.textBodyIndigo;
+const TEXT_MUTED  = Colors.mutedBlueGrayAlt;
+const BG_CARD     = Colors.white;
+const BORDER      = Colors.borderLight;
+const AVATAR_RING = Colors.infoSurfaceSoft;
 
 const MAX_FEED_TEXT_LENGTH = 200;
 const DEFAULT_AVATAR = "https://img.freepik.com/free-vector/modern-question-mark-template-idea-message-vector_1017-47932.jpg";
@@ -57,12 +54,7 @@ const getOwnerRoute = (feedUser) => {
 // ─── FeedCard ─────────────────────────────────────────────────────────────────
 const FeedCard = ({ feed, isVisible, onPostPress }) => {
   const navigation       = useNavigation();
-  const globalPlayer     = useGlobalVideoPlayer();
-  const openCommentModal = useStore(state => state.openCommentModal);
-
   const [shareModalVisible, setShareModalVisible] = useState(false);
-  const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [selectedImage,     setSelectedImage]     = useState(null);
 
   // ── User ──────────────────────────────────────────────────────────────────
   const user = useMemo(() => {
@@ -89,9 +81,45 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     };
   }, [feed?.user]);
 
-  // ── Text ──────────────────────────────────────────────────────────────────
-  const { displayText, showSeeMore } = useMemo(() => {
-    if (!feed?.text) return { displayText: "", showSeeMore: false };
+  const postContext = useMemo(() => {
+    const page = feed?.page;
+    if (page) {
+      const pageId = Number(page?.id ?? page?.page_id ?? feed?.page_id ?? 0);
+      const pageTitle = page?.title || page?.name || page?.page_title || page?.page_name || null;
+      if (pageId > 0 && pageTitle) {
+        return {
+          type: 'page',
+          label: 'Posted via',
+          id: pageId,
+          title: pageTitle,
+          avatar: page?.avatar || page?.logo || page?.image || null,
+        };
+      }
+    }
+
+    const group = feed?.group;
+    if (group) {
+      const groupId = Number(group?.id ?? group?.group_id ?? feed?.group_id ?? 0);
+      const groupTitle = group?.title || group?.name || group?.group_title || group?.group_name || null;
+      if (groupId > 0 && groupTitle) {
+        return {
+          type: 'group',
+          label: 'Posted in',
+          id: groupId,
+          title: groupTitle,
+          avatar: group?.avatar || group?.image || group?.photo || null,
+        };
+      }
+    }
+
+    return null;
+  }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id]);
+
+  // ── Text + hashtag extraction ──────────────────────────────────────────────
+  const { displayText, showSeeMore, allTags } = useMemo(() => {
+    const apiTags = feed?.hashtags || [];
+
+    if (!feed?.text) return { displayText: "", showSeeMore: false, allTags: apiTags };
 
     let text = feed.text;
     if (feed.type === "media" || feed.type === "link") {
@@ -99,15 +127,31 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       text = parsed.text;
     }
 
-    const cleaned = CleanText(text);
+    // Pull out #hashtag tokens from the raw text
+    const extracted = (text.match(/#\w+/g) || []).map(t => t.slice(1));
+
+    // Strip hashtags from the caption
+    const stripped = text.replace(/#\w+/g, '').replace(/\s{2,}/g, ' ').trim();
+    const cleaned  = CleanText(stripped);
+
+    // Merge API hashtags + extracted (case-insensitive dedup)
+    const seen = new Set();
+    const allTags = [...apiTags, ...extracted].filter(tag => {
+      const t = (tag || '').toLowerCase();
+      if (seen.has(t)) return false;
+      seen.add(t);
+      return true;
+    });
+
     if (cleaned.length > MAX_FEED_TEXT_LENGTH) {
       return {
         displayText: `${cleaned.substring(0, MAX_FEED_TEXT_LENGTH)}...`,
         showSeeMore: true,
+        allTags,
       };
     }
-    return { displayText: cleaned, showSeeMore: false };
-  }, [feed?.text, feed?.type]);
+    return { displayText: cleaned, showSeeMore: false, allTags };
+  }, [feed?.text, feed?.type, feed?.hashtags]);
 
   // ── Has media? ────────────────────────────────────────────────────────────
   const hasMedia = useMemo(() => {
@@ -136,9 +180,12 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       onPostPress(feed?.id);
       return;
     }
-    // Always open the full Post Detail screen
+    if (feed?.type === 'article') {
+      navigation.navigate('ArticleDetails', { postId: feed?.id, title: feed?.payload?.title });
+      return;
+    }
     navigation.navigate('PostDetail', { postId: feed?.id });
-  }, [feed?.id, navigation, onPostPress]);
+  }, [feed?.id, feed?.type, feed?.payload?.title, navigation, onPostPress]);
 
   const handleOwnerPress = useCallback(() => {
     const route = getOwnerRoute(user);
@@ -146,24 +193,24 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     navigation.navigate(route.screen, route.params);
   }, [user, navigation]);
 
-  const handleImagePress = useCallback((url) => {
-    if (!url) return;
-    setSelectedImage(url);
-    setImageModalVisible(true);
-  }, []);
-
-  const handleReelPress = useCallback(() => {
-    navigation.navigate('Reels', { initialReelId: String(feed?.id) });
-  }, [feed?.id, navigation]);
+  const handlePostContextPress = useCallback(() => {
+    if (!postContext) return;
+    if (postContext.type === 'page') {
+      navigation.navigate('BusinessDetails', { pageId: postContext.id });
+      return;
+    }
+    if (postContext.type === 'group') {
+      navigation.navigate('GroupDetails', { groupId: postContext.id });
+    }
+  }, [navigation, postContext]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       {/* Left column: avatar + thread line */}
       <View style={styles.leftCol}>
-        {/* ✅ Tap avatar = view image */}
         <TouchableOpacity
-          onPress={() => handleImagePress(user?.avatar)}
+          onPress={handleOwnerPress}
           activeOpacity={0.75}
           style={styles.avatarWrapper}
         >
@@ -182,11 +229,15 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       {/* Right column */}
       <View style={styles.rightCol}>
         {/* ✅ Tap author area = open correct screen (user/page/group) */}
-        <TouchableOpacity onPress={handleOwnerPress} activeOpacity={0.75}>
-          <UserDetails feed={{ ...feed, user }} source="feedcard" />
-        </TouchableOpacity>
+        <UserDetails
+          feed={{ ...feed, user }}
+          source="feedcard"
+          onOwnerPress={handleOwnerPress}
+          postContext={postContext}
+          onPostContextPress={handlePostContextPress}
+        />
 
-        {/* Post text */}
+        {/* ── Caption ── */}
         {displayText ? (
           <TouchableOpacity
             onPress={handleMoveToCommentScreen}
@@ -200,40 +251,40 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           </TouchableOpacity>
         ) : null}
 
-        {/* Hashtags */}
-        {feed?.hashtags?.length > 0 ? (
+        {/* ── Media ── */}
+        {hasMedia ? (
+          feed?.type === 'reel' ? (
+            // Reel: plain View so tapping the video (play/pause/mute) never opens the post.
+            // User can still open the post by tapping the caption, username or engagement bar.
+            <View style={styles.reelMediaWrapper}>
+              <FeedMediaRenderer feed={feed} isVisible={isVisible} />
+            </View>
+          ) : (
+            // Other media: tap anywhere (outside the control buttons) opens the post.
+            // Inner control buttons intercept their own touches and don't bubble up.
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={handleMoveToCommentScreen}
+              style={styles.mediaWrapper}
+            >
+              <FeedMediaRenderer feed={feed} isVisible={isVisible} />
+            </TouchableOpacity>
+          )
+        ) : null}
+
+        {/* ── Hashtags ── */}
+        {allTags.length > 0 ? (
           <View style={styles.hashtagContainer}>
-            {feed.hashtags.map((tag, idx) => (
-              <TouchableOpacity key={`${tag}-${idx}`} activeOpacity={0.7}>
+            {allTags.map((tag, idx) => (
+              <TouchableOpacity
+                key={`${tag}-${idx}`}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('SearchScreen', { initialTab: 'posts', initialQuery: tag })}
+              >
                 <Text style={styles.hashtag}>#{tag}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        ) : null}
-
-        {/* Media */}
-        {hasMedia ? (
-          feed?.type === 'reel' ? (
-            <TouchableOpacity
-              activeOpacity={0.95}
-              onPress={handleReelPress}
-              style={styles.mediaWrapper}
-            >
-              <PostContent
-                feed={feed}
-                onImagePress={handleImagePress}
-                isVisible={isVisible}
-              />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.mediaWrapper}>
-              <PostContent
-                feed={feed}
-                onImagePress={handleImagePress}
-                isVisible={isVisible}
-              />
-            </View>
-          )
         ) : null}
 
         {/* Views */}
@@ -260,12 +311,6 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
         feed={feed}
       />
 
-      {/* Image viewer */}
-      <ImageViewModal
-        isVisible={imageModalVisible}
-        onClose={() => setImageModalVisible(false)}
-        imageUrl={selectedImage}
-      />
     </View>
   );
 };
@@ -342,6 +387,17 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginTop: 10,
   },
+
+  // Compact portrait reel card in feed (Threads-style)
+  reelMediaWrapper: {
+    width: '72%',
+    alignSelf: 'flex-start',
+    aspectRatio: 9 / 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 10,
+    backgroundColor: Colors.black,
+  },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -384,6 +440,14 @@ export default memo(FeedCard, (prev, next) => {
     prev.feed.is_liked           === next.feed.is_liked           &&
     prev.feed.user?.entity       === next.feed.user?.entity       &&
     prev.feed.user?.id           === next.feed.user?.id           &&
+    prev.feed.group_id           === next.feed.group_id           &&
+    prev.feed.page_id            === next.feed.page_id            &&
+    prev.feed.group?.id          === next.feed.group?.id          &&
+    prev.feed.group?.title       === next.feed.group?.title       &&
+    prev.feed.group?.avatar      === next.feed.group?.avatar      &&
+    prev.feed.page?.id           === next.feed.page?.id           &&
+    prev.feed.page?.title        === next.feed.page?.title        &&
+    prev.feed.page?.avatar       === next.feed.page?.avatar       &&
     prev.isVisible               === next.isVisible               &&
     prev.onPostPress             === next.onPostPress
   );

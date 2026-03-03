@@ -9,10 +9,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppDetails from '../../helpers/appdetails';
+import { Colors } from '../../theme';
 
-const PRIMARY = '#0C3F44';
-const ACCENT  = '#13C296';
-const DARK    = '#0D1B1E';
+const PRIMARY = Colors.primaryDark;
+const ACCENT  = Colors.primary;
+const DARK    = Colors.black;
+const WHITE   = Colors.white;
 
 export const TABS = [
   { label: 'All',      icon: 'flash',         type: null      },
@@ -87,12 +89,12 @@ const SearchHeader = ({
 
   const borderColor = focusAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['rgba(255,255,255,0.15)', ACCENT],
+    outputRange: [WHITE + '26', ACCENT],
   });
 
   return (
     <LinearGradient
-      colors={[PRIMARY, '#0a5a62']}
+      colors={[PRIMARY, ACCENT + 'CC']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.header, { paddingTop: top + 10 }]}
@@ -109,20 +111,20 @@ const SearchHeader = ({
           activeOpacity={0.8}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Ionicons name="arrow-back" size={20} color="#fff" />
+          <Ionicons name="arrow-back" size={20} color={WHITE} />
         </TouchableOpacity>
 
         <Animated.View style={[styles.searchBar, { borderColor }]}>
           <Ionicons
             name="search"
             size={17}
-            color={inputFocused ? ACCENT : 'rgba(255,255,255,0.5)'}
+            color={inputFocused ? ACCENT : WHITE + '80'}
           />
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
             placeholder="Search Hafrik…"
-            placeholderTextColor="rgba(255,255,255,0.4)"
+            placeholderTextColor={WHITE + '66'}
             value={searchQuery}
             onChangeText={onChangeText}
             autoCapitalize="none"
@@ -140,7 +142,7 @@ const SearchHeader = ({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.7}
             >
-              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.6)" />
+              <Ionicons name="close-circle" size={18} color={WHITE + '99'} />
             </TouchableOpacity>
           ) : null}
         </Animated.View>
@@ -165,7 +167,7 @@ const SearchHeader = ({
               <Ionicons
                 name={active ? tab.icon : `${tab.icon}-outline`}
                 size={13}
-                color={active ? DARK : 'rgba(255,255,255,0.65)'}
+                color={active ? DARK : WHITE + 'A6'}
                 style={{ marginRight: 5 }}
               />
               <Text style={[styles.tabText, active && styles.tabTextActive]}>
@@ -196,31 +198,31 @@ const styles = StyleSheet.create({
   },
   blob1: {
     position: 'absolute', width: 220, height: 220, borderRadius: 110,
-    backgroundColor: 'rgba(19,194,150,0.10)', top: -70, right: -60,
+    backgroundColor: ACCENT + '1A', top: -70, right: -60,
   },
   blob2: {
     position: 'absolute', width: 130, height: 130, borderRadius: 65,
-    backgroundColor: 'rgba(255,255,255,0.04)', bottom: -40, left: -20,
+    backgroundColor: WHITE + '0A', bottom: -40, left: -20,
   },
   row: {
     flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10,
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: WHITE + '1F',
+    borderWidth: 1, borderColor: WHITE + '29',
     alignItems: 'center', justifyContent: 'center',
   },
   searchBar: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: WHITE + '1F',
     borderRadius: 14, borderWidth: 1.5,
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === 'ios' ? 10 : 7,
     gap: 8,
   },
   searchInput: {
-    flex: 1, fontSize: 15, color: '#fff',
+    flex: 1, fontSize: 15, color: WHITE,
     fontFamily: AppDetails.fontFamily.inter.regular,
     paddingVertical: 0,
   },
@@ -228,12 +230,12 @@ const styles = StyleSheet.create({
   tabChip: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 13, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: WHITE + '1F',
+    borderWidth: 1, borderColor: WHITE + '1F',
   },
   tabChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
   tabText: {
-    fontSize: 13, color: 'rgba(255,255,255,0.7)',
+    fontSize: 13, color: WHITE + 'B3',
     fontFamily: AppDetails.fontFamily.redex.medium,
   },
   tabTextActive: {
@@ -241,7 +243,7 @@ const styles = StyleSheet.create({
     fontFamily: AppDetails.fontFamily.redex.bold,
   },
   borderBottom: {
-    height: 1, backgroundColor: 'rgba(19,194,150,0.20)', marginTop: 4,
+    height: 1, backgroundColor: ACCENT + '33', marginTop: 4,
   },
   dotsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 2 },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: ACCENT },

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, Dimensions } from "react-native";
+import { Colors } from '../../../theme/colors';
 
 const { width } = Dimensions.get('window');
 const COVER_HEIGHT = Math.round(width * 0.52);
@@ -26,9 +27,9 @@ const styles = StyleSheet.create({
         width: '100%',
         paddingHorizontal: 10,
         paddingTop: 10,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderTopWidth: 1,
-        borderTopColor: '#efefef',
+        borderTopColor: Colors.neutral175,
     },
     headerRow: {
         flexDirection: 'row',
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 25,
-        backgroundColor: '#e6e6e6',
+        backgroundColor: Colors.neutral170,
     },
     headerText: {
         marginLeft: 12,
@@ -48,19 +49,19 @@ const styles = StyleSheet.create({
         height: 14,
         width: '50%',
         borderRadius: 6,
-        backgroundColor: '#e6e6e6',
+        backgroundColor: Colors.neutral170,
         marginBottom: 8,
     },
     lineTiny: {
         height: 12,
         width: '30%',
         borderRadius: 6,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: Colors.neutral150,
     },
     coverPlaceholder: {
         width: '60%',
         height: 50,
-        backgroundColor: '#e9e9e9',
+        backgroundColor: Colors.neutral160,
         borderTopLeftRadius:10,
         borderTopRightRadius:10,
         marginTop: 12,

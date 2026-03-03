@@ -5,6 +5,7 @@ import AppDetails from "../../helpers/appdetails";
 import SvgIcon from "../../assl.js/svg/svg.jsx";
 import useStore from '../../repository/store.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Colors } from '../../theme/colors';
 
 const FilterHeader = ({ name, options = [] }) => {
     const [menuVisible, setMenuVisible] = useState(false);
@@ -116,7 +117,7 @@ const FilterHeader = ({ name, options = [] }) => {
                 <View style={styles.containerHeaderRight}>
                     <TouchableOpacity ref={filterButtonRef} onPress={openOptionsModal} style={styles.containerHeaderRightAll}>
                         <Text style={[styles.filterText, {marginRight:5}]}>{initialFilter}</Text>
-                        <SvgIcon name="arrowDown" width={12} height={12} color="#000" />
+                        <SvgIcon name="arrowDown" width={12} height={12} color={Colors.black} />
                     </TouchableOpacity>
                 </View>
             }
@@ -136,7 +137,7 @@ const FilterHeader = ({ name, options = [] }) => {
                                 <TouchableOpacity key={opt.value || idx}
                                  style={[styles.menuItem, {backgroundColor: initialFilter === opt.label ? AppDetails.primaryColor : 'transparent'}]}
                                  onPress={()=> handleFilter(opt)}>
-                                    <Text style={[styles.filterText, {color: initialFilter === opt.label ? '#fff' : '#000'}]}>{opt.label}</Text>
+                                    <Text style={[styles.filterText, {color: initialFilter === opt.label ? Colors.white : Colors.black}]}>{opt.label}</Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
@@ -150,7 +151,7 @@ const FilterHeader = ({ name, options = [] }) => {
 const styles = StyleSheet.create({
     container: {
         width: '100%',
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
     },
     containerHeader: {
         height: 52,
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#000',
+        color: Colors.black,
         fontFamily: AppDetails.fontFamily.redex.bold,
     },
     containerHeaderRight: {
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
     containerHeaderRightExplore: {
         height: 34,
         paddingHorizontal: 12,
-        backgroundColor: "#e9e9e9ff",
+        backgroundColor: Colors.neutral160,
         flexDirection: "row",
         borderRadius: 20,
         alignItems: "center",
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
     },
     exploreText: {
         fontSize: 12,
-        color: "#8e8e8eff",
+        color: Colors.neutral390,
         marginLeft: 5,
         fontFamily: AppDetails.fontFamily.redex.regular,
     },
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
         paddingHorizontal:12,
         paddingVertical: 4,
         flexDirection: "row",
-        backgroundColor: "#e9e9e9ff",
+        backgroundColor: Colors.neutral160,
         borderRadius: 20,
         alignItems: "center",
         justifyContent: "center",
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
         paddingVertical:10,
         elevation: 5,
         maxHeight: 300,
-        shadowColor: '#000',
+        shadowColor: Colors.black,
         shadowOffset: { width: 2, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
 
     filterText: {
         fontSize: 14,
-        color: '#000',
+        color: Colors.black,
         fontFamily: AppDetails.fontFamily.body
     }
 });

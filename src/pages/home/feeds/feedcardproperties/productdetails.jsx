@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../../../../helpers/appdetails';
 import CleanText from '../../../../helpers/cleantext';
+import { Colors } from '../../../../theme/colors';
 
 const ProductDetails = ({ feed }) => {
 
@@ -12,7 +13,7 @@ const ProductDetails = ({ feed }) => {
     const buyButtonStyle = [
         styles.button,
         styles.buyButton,
-        { backgroundColor: inStock ? (AppDetails.primaryColor || '#000') : '#ccc' }
+        { backgroundColor: inStock ? (AppDetails.primaryColor || Colors.black) : Colors.neutral250 }
     ];
 
     return (
@@ -23,7 +24,7 @@ const ProductDetails = ({ feed }) => {
             </Text>
             <View style={styles.ratingContainer}>
                 {[1, 2, 3, 4, 5].map((i) => (
-                    <Ionicons key={i} name="star" size={12} color="#FFD700" />
+                    <Ionicons key={i} name="star" size={12} color={Colors.star} />
                 ))}
                 <Text style={styles.ratingText}>0.0 (0 Reviews)</Text>
             </View>
@@ -38,7 +39,7 @@ const ProductDetails = ({ feed }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity style={[styles.button, styles.chatButton]}>
-                    <Ionicons name="chatbubble-outline" size={20} color="#333" />
+                    <Ionicons name="chatbubble-outline" size={20} color={Colors.neutral700} />
                 </TouchableOpacity>
             </View>
             <View style={styles.infoSection}>
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
     productName: {
         fontFamily: AppDetails.fontFamily.heading,
         fontSize: 16,
-        color: '#000',
+        color: Colors.black,
     },
     price: {
         fontWeight: 'bold',
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
     },
     ratingText: {
         fontSize: 12,
-        color: '#787878ff',
+        color: Colors.neutral430,
         marginLeft: 5,
     },
     actionsContainer: {
@@ -105,11 +106,11 @@ const styles = StyleSheet.create({
     buyButtonText: {
         fontWeight: '600',
         fontSize: 13,
-        color: '#ffffffff',
+        color: Colors.white,
     },
     chatButton: {
         width: 50,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: Colors.neutral150,
     },
     infoSection: {
         marginTop: 15,
@@ -120,12 +121,12 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     infoIcon: {
-        color: '#666',
+        color: Colors.neutral500,
         marginRight: 6,
     },
     infoText: {
         fontSize: 13,
-        color: '#555',
+        color: Colors.neutral600,
     },
 });
 

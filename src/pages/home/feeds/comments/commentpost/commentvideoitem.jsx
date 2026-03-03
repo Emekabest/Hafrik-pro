@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useImperativeHandle, forwardRef, useRef, memo, useCallback, useMemo } from 'react';
-import { View, Image, TouchableOpacity, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { View, Image, TouchableOpacity, ActivityIndicator, StyleSheet, Text, Dimensions } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { useIsFocused } from '@react-navigation/native';
@@ -8,16 +8,34 @@ import VideoManager from '../../../../../helpers/videomanager';
 import { useGlobalVideoPlayer } from '../../../../../helpers/GlobalVideoPlayerContext';
 import VideoPlaceholder from '../../../../../helpers/VideoPlaceholder';
 import useStore from '../../../../../repository/store';
+import { Colors } from '../../../../../theme/colors';
 
-const MEDIA_HEIGHT = 520;
-const MEDIA_WIDTH = 270;
+const { width: SCREEN_W } = Dimensions.get('window');
+// Comment screen: full width minus the 15px horizontal margin on each side
+const MEDIA_WIDTH  = SCREEN_W - 30;
+const MEDIA_HEIGHT = Math.round(MEDIA_WIDTH * 1.25); // compact portrait (4:5)
+
+// Reel detail view: contained portrait player (Threads-style, centered)
+const REEL_W = Math.round(SCREEN_W * 0.60);   // 60 % of screen width
+const REEL_H = Math.round(REEL_W * 16 / 9);   // true 9:16 portrait
 
 // Memoized container style
 const containerStyle = { marginTop: 10 };
 
 
-const CommentVideoItem = memo(forwardRef(({ videoUrl, thumbnail, isLeaving = false, feedId }, ref) => {
+const CommentVideoItem = memo(forwardRef(({ videoUrl, thumbnail, isLeaving = false, feedId, isReel = false }, ref) => {
     const isFocused = useIsFocused();
+
+    // Guard: never pass ph:// or other local URIs to any video player
+    const safeVideoUrl = videoUrl && typeof videoUrl === 'string' && videoUrl.startsWith('http')
+        ? videoUrl
+        : null;
+
+    // Dimensions: reels get a narrower centered portrait player
+    const playerW = isReel ? REEL_W : MEDIA_WIDTH;
+    const playerH = isReel ? REEL_H : MEDIA_HEIGHT;
+
+    if (!safeVideoUrl) return null;
     
     // Try to use global video player
     const globalPlayer = useGlobalVideoPlayer();
@@ -68,13 +86,13 @@ const CommentVideoItem = memo(forwardRef(({ videoUrl, thumbnail, isLeaving = fal
     // If global player is for this video, use VideoPlaceholder
     if (isGlobalPlayerAvailable && !isLeaving) {
         return (
-            <View style={containerStyle}>
+            <View style={[containerStyle, isReel && styles.reelWrapper]}>
                 <VideoPlaceholder
                     feedId={feedId}
-                    videoUrl={videoUrl}
+                    videoUrl={safeVideoUrl}
                     thumbnail={thumbnail}
-                    width={MEDIA_WIDTH}
-                    height={MEDIA_HEIGHT}
+                    width={playerW}
+                    height={playerH}
                     screen="comments"
                     showControls={true}
                 />
@@ -86,26 +104,29 @@ const CommentVideoItem = memo(forwardRef(({ videoUrl, thumbnail, isLeaving = fal
     return (
         <FallbackVideoPlayer 
             ref={ref}
-            videoUrl={videoUrl}
+            videoUrl={safeVideoUrl}
             thumbnail={thumbnail}
             isLeaving={isLeaving}
             feedId={feedId}
+            isReel={isReel}
+            playerW={playerW}
+            playerH={playerH}
         />
     );
 }), (prevProps, nextProps) => {
-    // Custom comparison - only re-render if essential props change
     return (
-        prevProps.videoUrl === nextProps.videoUrl &&
-        prevProps.thumbnail === nextProps.thumbnail &&
-        prevProps.isLeaving === nextProps.isLeaving &&
-        prevProps.feedId === nextProps.feedId
+        prevProps.videoUrl   === nextProps.videoUrl   &&
+        prevProps.thumbnail  === nextProps.thumbnail  &&
+        prevProps.isLeaving  === nextProps.isLeaving  &&
+        prevProps.feedId     === nextProps.feedId     &&
+        prevProps.isReel     === nextProps.isReel
     );
 });
 
 
 // Fallback local player component (used when navigating to comment screen without a video playing in feeds)
 // Memoized for performance
-const FallbackVideoPlayer = memo(forwardRef(({ videoUrl, thumbnail, isLeaving, feedId }, ref) => {
+const FallbackVideoPlayer = memo(forwardRef(({ videoUrl, thumbnail, isLeaving, feedId, isReel = false, playerW = MEDIA_WIDTH, playerH = MEDIA_HEIGHT }, ref) => {
     const isFocused = useIsFocused();
     const isAppActive = useStore(state => state.isAppActive);
     const [hasError, setHasError] = useState(false);
@@ -113,9 +134,10 @@ const FallbackVideoPlayer = memo(forwardRef(({ videoUrl, thumbnail, isLeaving, f
 
     // Check if we have stored playback info from feeds (old VideoManager approach)
     const sharedPlayerInfo = useMemo(() => VideoManager.getSharedPlayer(), []);
-    // Always start from beginning in comments - ignore stored position
-    const hasStoredPosition = false;
-    const storedTime = 0;
+    // Resume from position tracked by FeedReelPlayer in the feed (ms → seconds for expo-video)
+    const storedMs = useMemo(() => VideoManager.getPosition(feedId), [feedId]);
+    const hasStoredPosition = storedMs > 1000; // only seek if >1 s in (avoid false seeks)
+    const storedTime = storedMs / 1000;
     
     const source = videoUrl || null;
 
@@ -186,11 +208,11 @@ const FallbackVideoPlayer = memo(forwardRef(({ videoUrl, thumbnail, isLeaving, f
     const posterSource = useMemo(() => ({ uri: thumbnail }), [thumbnail]);
 
     if (hasError) {
-        return <ErrorView onRetry={handleRetry} />;
+        return <ErrorView onRetry={handleRetry} playerW={playerW} playerH={playerH} isReel={isReel} />;
     }
 
     return (
-        <View style={fallbackStyles.container}>
+        <View style={[fallbackStyles.container, { height: playerH, width: playerW }, isReel && fallbackStyles.reelContainer]}>
             <VideoView
                 style={fallbackStyles.video}
                 player={player}
@@ -203,24 +225,27 @@ const FallbackVideoPlayer = memo(forwardRef(({ videoUrl, thumbnail, isLeaving, f
 
             {(!isPlaying && status !== "readyToPlay") && (
                 <View style={fallbackStyles.loadingOverlay} pointerEvents="none">
-                    <ActivityIndicator size="large" color="#fff" />
+                    <ActivityIndicator size="large" color={Colors.white} />
                 </View>
             )}
         </View>
     );
 }), (prevProps, nextProps) => {
     return (
-        prevProps.videoUrl === nextProps.videoUrl &&
+        prevProps.videoUrl  === nextProps.videoUrl  &&
         prevProps.thumbnail === nextProps.thumbnail &&
         prevProps.isLeaving === nextProps.isLeaving &&
-        prevProps.feedId === nextProps.feedId
+        prevProps.feedId    === nextProps.feedId    &&
+        prevProps.isReel    === nextProps.isReel    &&
+        prevProps.playerW   === nextProps.playerW   &&
+        prevProps.playerH   === nextProps.playerH
     );
 });
 
 // Memoized error view component
-const ErrorView = memo(({ onRetry }) => (
-    <View style={fallbackStyles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={30} color="#fff" />
+const ErrorView = memo(({ onRetry, playerW = MEDIA_WIDTH, playerH = MEDIA_HEIGHT, isReel = false }) => (
+    <View style={[fallbackStyles.errorContainer, { height: playerH, width: playerW }, isReel && fallbackStyles.reelContainer]}>
+        <Ionicons name="alert-circle-outline" size={30} color={Colors.white} />
         <Text style={fallbackStyles.errorText}>Something went wrong</Text>
         <TouchableOpacity onPress={onRetry} style={fallbackStyles.retryButton}>
             <Text style={fallbackStyles.retryText}>Try Again</Text>
@@ -229,14 +254,25 @@ const ErrorView = memo(({ onRetry }) => (
 ));
 
 // Pre-defined styles (created once, not on every render)
+const styles = StyleSheet.create({
+    reelWrapper: {
+        alignSelf: 'flex-start',
+    },
+});
+
 const fallbackStyles = StyleSheet.create({
     container: {
         height: MEDIA_HEIGHT,
         width: MEDIA_WIDTH,
-        borderRadius: 10,
+        borderRadius: 14,
         overflow: 'hidden',
         marginTop: 10,
-        backgroundColor: '#000',
+        backgroundColor: Colors.black,
+    },
+    // Reel: left-aligned + more pronounced rounding
+    reelContainer: {
+        alignSelf: 'flex-start',
+        borderRadius: 18,
     },
     video: {
         width: '100%',
@@ -251,15 +287,15 @@ const fallbackStyles = StyleSheet.create({
     errorContainer: {
         height: MEDIA_HEIGHT,
         width: MEDIA_WIDTH,
-        borderRadius: 10,
+        borderRadius: 14,
         overflow: 'hidden',
         marginTop: 10,
-        backgroundColor: '#202020',
+        backgroundColor: Colors.neutral800,
         justifyContent: 'center',
         alignItems: 'center',
     },
     errorText: {
-        color: '#fff',
+        color: Colors.white,
         fontSize: 14,
         marginTop: 10,
     },
@@ -267,11 +303,11 @@ const fallbackStyles = StyleSheet.create({
         marginTop: 15,
         paddingVertical: 8,
         paddingHorizontal: 15,
-        backgroundColor: '#333',
+        backgroundColor: Colors.neutral700,
         borderRadius: 20,
     },
     retryText: {
-        color: '#fff',
+        color: Colors.white,
         fontSize: 12,
     },
 });

@@ -20,9 +20,10 @@ import Events from './Events';
 import ProgressBarLoader from '../progressbarloader';
 import PostComposerModal from '../home/PostComposerModal';
 import { useLiveCounts } from '../../hooks/useLiveCounts';
+import { Colors } from '../../theme/colors';
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
 
 const ProfileScreen = () => {
     const navigation = useNavigation();
@@ -348,7 +349,7 @@ const ProfileScreen = () => {
                 activeOpacity={0.88}
                 onPress={() => openComposer()}
             >
-                <Ionicons name="add" size={28} color="#fff" />
+                <Ionicons name="add" size={28} color={Colors.white} />
             </TouchableOpacity>
 
             <PostComposerModal />
@@ -362,7 +363,7 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
     },
     fab: {
         position: 'absolute',
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
         width: 38,
         borderRadius: 19, // 50% radius for a perfect circle
         overflow: 'hidden',
-        backgroundColor: '#eee',
+        backgroundColor: Colors.neutral180,
     },
     avatar: {
         height: '100%',
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
     tabsContainer: {
         paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: Colors.neutral150,
         paddingBottom: 10,
     },
     tabItem: {
@@ -431,18 +432,18 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         marginRight: 10,
         borderRadius: 20,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: Colors.neutral120,
     },
     activeTabItem: {
         backgroundColor: AppDetails.primaryColor,
     },
     tabText: {
         fontSize: 14,
-        color: '#666',
+        color: Colors.neutral500,
         fontWeight: '500',
     },
     activeTabText: {
-        color: '#fff',
+        color: Colors.white,
     },
     tabContent: {
         paddingHorizontal: 15,

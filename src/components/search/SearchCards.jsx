@@ -8,11 +8,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import AppDetails from '../../helpers/appdetails';
+import { Colors } from '../../theme';
 
-const PRIMARY = '#0C3F44';
-const ACCENT  = '#13C296';
-const GREEN   = '#0b8557';
-const DARK    = '#0D1B1E';
+const PRIMARY = Colors.primaryDark;
+const ACCENT  = Colors.primary;
+const GREEN   = Colors.primary;
+const DARK    = Colors.black;
+const WHITE   = Colors.white;
+const BORDER  = Colors.border;
+const MUTED   = Colors.secondaryText;
+const SURFACE = Colors.surfaceTint;
 
 // ── ResultsLabel ─────────────────────────────────────────────────────────────
 export const ResultsLabel = React.memo(({ count, query }) => (
@@ -95,13 +100,13 @@ export const PostCard = React.memo(({ item, onPress }) => {
           cachePolicy="memory-disk"
         />
       ) : (
-        <LinearGradient colors={[PRIMARY, '#0a5a62']} style={styles.postThumb}>
-          <Ionicons name="document-text" size={22} color="#fff" />
+        <LinearGradient colors={[PRIMARY, Colors.primary]} style={styles.postThumb}>
+          <Ionicons name="document-text" size={22} color={WHITE} />
         </LinearGradient>
       )}
       {isReel && (
         <View style={styles.reelBadge}>
-          <Ionicons name="play" size={9} color="#fff" />
+          <Ionicons name="play" size={9} color={WHITE} />
           <Text style={styles.reelBadgeText}>Reel</Text>
         </View>
       )}
@@ -191,8 +196,8 @@ export const EventCard = React.memo(({ item, onPress }) => (
         cachePolicy="memory-disk"
       />
     ) : (
-      <LinearGradient colors={['#ff9a4d', '#f05e23']} style={styles.eventThumb}>
-        <Ionicons name="calendar" size={28} color="#fff" />
+      <LinearGradient colors={[Colors.warning + 'CC', Colors.warning]} style={styles.eventThumb}>
+        <Ionicons name="calendar" size={28} color={WHITE} />
       </LinearGradient>
     )}
     <View style={styles.eventBody}>
@@ -202,7 +207,7 @@ export const EventCard = React.memo(({ item, onPress }) => (
       <Text style={styles.eventName} numberOfLines={2}>{item.title}</Text>
       {item.subtitle ? (
         <View style={styles.eventMeta}>
-          <Ionicons name="location-outline" size={11} color="#999" />
+          <Ionicons name="location-outline" size={11} color={MUTED} />
           <Text style={styles.eventSub} numberOfLines={1}>{item.subtitle}</Text>
         </View>
       ) : null}
@@ -221,8 +226,8 @@ export const ArticleCard = React.memo(({ item, onPress }) => (
         cachePolicy="memory-disk"
       />
     ) : (
-      <LinearGradient colors={['#1a7a54', '#0b8557']} style={styles.articleThumb}>
-        <Ionicons name="newspaper" size={26} color="#fff" />
+      <LinearGradient colors={[ACCENT + 'CC', GREEN]} style={styles.articleThumb}>
+        <Ionicons name="newspaper" size={26} color={WHITE} />
       </LinearGradient>
     )}
     <View style={styles.articleBody}>
@@ -236,7 +241,7 @@ export const ArticleCard = React.memo(({ item, onPress }) => (
       ) : null}
     </View>
     <View style={styles.articleChevron}>
-      <Ionicons name="chevron-forward" size={15} color="#ccc" />
+      <Ionicons name="chevron-forward" size={15} color={BORDER} />
     </View>
   </TouchableOpacity>
 ));
@@ -282,9 +287,9 @@ const styles = StyleSheet.create({
   // Results label
   resultsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
   resultsDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT },
-  resultsText: { fontSize: 13, color: '#888', fontFamily: AppDetails.fontFamily.inter.regular },
+  resultsText: { fontSize: 13, color: MUTED, fontFamily: AppDetails.fontFamily.inter.regular },
   resultsCount: { color: PRIMARY, fontFamily: AppDetails.fontFamily.inter.semiBold },
-  resultsQuery: { color: '#333', fontFamily: AppDetails.fontFamily.inter.semiBold },
+  resultsQuery: { color: DARK, fontFamily: AppDetails.fontFamily.inter.semiBold },
 
   // Section header
   sectionHeader: {
@@ -298,10 +303,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     flex: 1, fontSize: 12,
     fontFamily: AppDetails.fontFamily.redex.bold,
-    color: '#666', letterSpacing: 0.8, textTransform: 'uppercase',
+    color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase',
   },
   sectionBadge: {
-    backgroundColor: 'rgba(12,63,68,0.08)',
+    backgroundColor: PRIMARY + '14',
     paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10,
   },
   sectionBadgeText: {
@@ -312,34 +317,34 @@ const styles = StyleSheet.create({
   // Person card
   personCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 18,
+    backgroundColor: WHITE, borderRadius: 18,
     padding: 12, marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-    borderWidth: 1, borderColor: 'rgba(12,63,68,0.05)',
+    borderWidth: 1, borderColor: PRIMARY + '0D',
   },
   avatarWrap: { position: 'relative' },
   personAvatar: {
-    width: 52, height: 52, borderRadius: 26, backgroundColor: '#e8e8e8',
+    width: 52, height: 52, borderRadius: 26, backgroundColor: BORDER,
   },
   avatarFallback: {
-    backgroundColor: 'rgba(12,63,68,0.08)',
+    backgroundColor: PRIMARY + '14',
     alignItems: 'center', justifyContent: 'center',
   },
   onlineDot: {
     position: 'absolute', bottom: 1, right: 1,
     width: 12, height: 12, borderRadius: 6,
     backgroundColor: ACCENT,
-    borderWidth: 2, borderColor: '#fff',
+    borderWidth: 2, borderColor: WHITE,
   },
   personBody: { flex: 1, marginLeft: 12, marginRight: 10 },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   personName: {
     fontSize: 15, fontFamily: AppDetails.fontFamily.inter.semiBold,
-    color: '#111', flexShrink: 1,
+    color: DARK, flexShrink: 1,
   },
   personSub: {
-    fontSize: 12, color: '#999',
+    fontSize: 12, color: MUTED,
     fontFamily: AppDetails.fontFamily.inter.regular, marginTop: 2,
   },
   followPill: {
@@ -351,68 +356,68 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: PRIMARY,
   },
   followPillText: {
-    color: '#fff', fontSize: 12,
+    color: WHITE, fontSize: 12,
     fontFamily: AppDetails.fontFamily.inter.semiBold,
   },
   followPillTextFollowing: { color: PRIMARY },
 
   // Post card
   postCard: {
-    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 18,
+    flexDirection: 'row', backgroundColor: WHITE, borderRadius: 18,
     overflow: 'hidden', marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-    borderWidth: 1, borderColor: 'rgba(12,63,68,0.05)',
+    borderWidth: 1, borderColor: PRIMARY + '0D',
   },
   postThumb: {
     width: 76, height: 88, alignItems: 'center',
-    justifyContent: 'center', backgroundColor: '#e8e8e8',
+    justifyContent: 'center', backgroundColor: BORDER,
   },
   reelBadge: {
     position: 'absolute', top: 6, left: 6,
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8,
+    backgroundColor: DARK + '8C', borderRadius: 8,
     paddingHorizontal: 5, paddingVertical: 2, gap: 3,
   },
   reelBadgeText: {
-    color: '#fff', fontSize: 9,
+    color: WHITE, fontSize: 9,
     fontFamily: AppDetails.fontFamily.inter.semiBold,
   },
   postBody: { flex: 1, padding: 12, justifyContent: 'center' },
   postTitle: {
     fontSize: 14, fontFamily: AppDetails.fontFamily.inter.semiBold,
-    color: '#111', lineHeight: 20,
+    color: DARK, lineHeight: 20,
   },
   postSub: {
-    fontSize: 12, color: '#aaa',
+    fontSize: 12, color: MUTED,
     fontFamily: AppDetails.fontFamily.inter.regular, marginTop: 4,
   },
 
   // Entity card (Page + Group share this base)
   entityCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 18, padding: 12, marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    backgroundColor: WHITE, borderRadius: 18, padding: 12, marginBottom: 8,
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-    borderWidth: 1, borderColor: 'rgba(12,63,68,0.05)',
+    borderWidth: 1, borderColor: PRIMARY + '0D',
   },
-  entityAvatar: { width: 52, height: 52, borderRadius: 14, backgroundColor: '#e8e8e8' },
+  entityAvatar: { width: 52, height: 52, borderRadius: 14, backgroundColor: BORDER },
   entityAvatarPage: {
-    backgroundColor: 'rgba(12,63,68,0.08)',
+    backgroundColor: PRIMARY + '14',
     alignItems: 'center', justifyContent: 'center',
   },
   entityAvatarGroup: { borderRadius: 26 },
   entityAvatarGroupFallback: {
-    backgroundColor: 'rgba(11,133,87,0.08)',
+    backgroundColor: GREEN + '14',
     alignItems: 'center', justifyContent: 'center',
   },
   entityBody: { flex: 1, marginLeft: 12, marginRight: 8 },
   entityName: {
     fontSize: 15, fontFamily: AppDetails.fontFamily.inter.semiBold,
-    color: '#111', marginBottom: 3,
+    color: DARK, marginBottom: 3,
   },
   entitySub: {
-    fontSize: 12, color: '#aaa',
+    fontSize: 12, color: MUTED,
     fontFamily: AppDetails.fontFamily.inter.regular, flexShrink: 1,
   },
   entityChevron: {
@@ -428,58 +433,58 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: GREEN,
   },
   joinPillText: {
-    color: '#fff', fontSize: 12,
+    color: WHITE, fontSize: 12,
     fontFamily: AppDetails.fontFamily.inter.semiBold,
   },
   joinPillTextJoined: { color: GREEN },
 
   // Event card
   eventCard: {
-    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 18,
+    flexDirection: 'row', backgroundColor: WHITE, borderRadius: 18,
     overflow: 'hidden', marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-    borderWidth: 1, borderColor: 'rgba(12,63,68,0.05)',
+    borderWidth: 1, borderColor: PRIMARY + '0D',
   },
   eventThumb: {
     width: 80, height: 90, alignItems: 'center',
-    justifyContent: 'center', backgroundColor: '#e8e8e8',
+    justifyContent: 'center', backgroundColor: BORDER,
   },
   eventBody: { flex: 1, padding: 12 },
   eventTypePill: {
-    alignSelf: 'flex-start', backgroundColor: '#FEF3EC',
+    alignSelf: 'flex-start', backgroundColor: Colors.warning + '14',
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginBottom: 6,
   },
   eventTypeText: {
-    fontSize: 11, fontFamily: AppDetails.fontFamily.inter.semiBold, color: '#E07B39',
+    fontSize: 11, fontFamily: AppDetails.fontFamily.inter.semiBold, color: Colors.warning,
   },
   eventName: {
     fontSize: 14, fontFamily: AppDetails.fontFamily.inter.semiBold,
-    color: '#111', lineHeight: 20,
+    color: DARK, lineHeight: 20,
   },
   eventMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
   eventSub: {
-    fontSize: 12, color: '#aaa',
+    fontSize: 12, color: MUTED,
     fontFamily: AppDetails.fontFamily.inter.regular, marginLeft: 3, flexShrink: 1,
   },
 
   // Article card
   articleCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 18,
+    backgroundColor: WHITE, borderRadius: 18,
     overflow: 'hidden', marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-    borderWidth: 1, borderColor: 'rgba(12,63,68,0.05)',
+    borderWidth: 1, borderColor: PRIMARY + '0D',
   },
   articleThumb: {
     width: 80, height: 90, alignItems: 'center',
-    justifyContent: 'center', backgroundColor: '#e8e8e8',
+    justifyContent: 'center', backgroundColor: BORDER,
   },
   articleBody: { flex: 1, padding: 12, justifyContent: 'center' },
   articleTypePill: {
     flexDirection: 'row', alignItems: 'center',
-    alignSelf: 'flex-start', backgroundColor: '#EDF7F4',
+    alignSelf: 'flex-start', backgroundColor: ACCENT + '14',
     paddingHorizontal: 7, paddingVertical: 3,
     borderRadius: 6, marginBottom: 6,
   },
@@ -488,10 +493,10 @@ const styles = StyleSheet.create({
   },
   articleTitle: {
     fontSize: 14, fontFamily: AppDetails.fontFamily.inter.semiBold,
-    color: '#111', lineHeight: 20,
+    color: DARK, lineHeight: 20,
   },
   articleSub: {
-    fontSize: 12, color: '#aaa',
+    fontSize: 12, color: MUTED,
     fontFamily: AppDetails.fontFamily.inter.regular, marginTop: 4,
   },
   articleChevron: {
@@ -501,12 +506,12 @@ const styles = StyleSheet.create({
   // Show More button
   showMoreBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', borderRadius: 16,
+    backgroundColor: WHITE, borderRadius: 16,
     paddingVertical: 12, paddingHorizontal: 18,
     marginTop: 4, marginBottom: 6,
-    borderWidth: 1.5, borderColor: 'rgba(19,194,150,0.35)',
+    borderWidth: 1.5, borderColor: ACCENT + '59',
     gap: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
   showMoreText: {
@@ -517,15 +522,15 @@ const styles = StyleSheet.create({
   // Skeleton
   skeletonCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    backgroundColor: WHITE, borderRadius: 18, padding: 14, marginBottom: 8,
+    shadowColor: DARK, shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
-  skeletonAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#EAEAEA' },
+  skeletonAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: SURFACE },
   skeletonBody: { flex: 1, marginLeft: 12 },
-  skeletonLine: { height: 13, borderRadius: 7, backgroundColor: '#EAEAEA' },
+  skeletonLine: { height: 13, borderRadius: 7, backgroundColor: SURFACE },
   skeletonPill: {
     width: 60, height: 30, borderRadius: 15,
-    backgroundColor: '#EAEAEA', marginLeft: 8,
+    backgroundColor: SURFACE, marginLeft: 8,
   },
 });

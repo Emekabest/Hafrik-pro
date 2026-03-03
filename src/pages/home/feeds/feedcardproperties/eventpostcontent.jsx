@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
 import {Image as ExpoImage} from 'expo-image';
 import AppDetails from "../../../../helpers/appdetails";
 import CleanText from "../../../../helpers/cleantext";
+import { Colors } from '../../../../theme/colors';
 
 
 const EventPostContent = ({ context }) => {
@@ -41,14 +42,14 @@ const styles = StyleSheet.create({
         height:200,
         width:"100%",
         // borderWidth:0.5,
-        borderColor:"#d7d7d7ff",
+        borderColor:Colors.neutral205,
         borderRadius:10,
     },
 
     eventCoverContainer:{
         height:"50%",
         width:"100%",
-        backgroundColor:"#000",
+        backgroundColor:Colors.black,
         borderRadius:10,
         overflow:"hidden",
     },
@@ -61,11 +62,11 @@ const styles = StyleSheet.create({
     eventTitle: {
         fontSize: 15,
         fontFamily: AppDetails.fontFamily.heading,
-        color: '#111',
+        color: Colors.neutral900,
         marginBottom: 6,
     },
     eventSubtitle: {
-        color: '#666',
+        color: Colors.neutral500,
         fontSize: 13,
         marginBottom: 10,
     },
@@ -76,25 +77,25 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     primaryButton: {
-        backgroundColor: AppDetails.primaryColor || '#0a84ff',
+        backgroundColor: AppDetails.primaryColor || Colors.linkBlueAlt,
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 22,
     },
     primaryButtonText: {
-        color: '#fff',
+        color: Colors.white,
         fontFamily: AppDetails.fontFamily.body,
     },
     ghostButton: {
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: Colors.neutral220,
         paddingVertical: 8,
         paddingHorizontal: 14,
         borderRadius: 22,
         marginLeft: 8,
     },
     ghostButtonText: {
-        color: '#333',
+        color: Colors.neutral700,
         fontFamily: AppDetails.fontFamily.body,
     },
 

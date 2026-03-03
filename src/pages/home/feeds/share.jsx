@@ -4,6 +4,14 @@ import { Ionicons } from "@expo/vector-icons";
 import AppDetails from "../../../helpers/appdetails";
 import RepostController from '../../../controllers/repostcontroller';
 import { useAuth } from '../../../AuthContext';
+import { Colors } from '../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 
 const ShareModal = ({ visible, onClose, feed }) => {
@@ -66,7 +74,7 @@ const ShareModal = ({ visible, onClose, feed }) => {
                             <View style={styles.copyLinkContainer}>
                                 <Text style={styles.linkText} numberOfLines={1}>https://hafrik.com/post/{feed.id}</Text>
                                 <TouchableOpacity>
-                                    <Ionicons name="clipboard-outline" size={20} color="#666" />
+                                    <Ionicons name="clipboard-outline" size={20} color={Colors.neutral500} />
                                 </TouchableOpacity>
                             </View>
 
@@ -85,21 +93,21 @@ const ShareModal = ({ visible, onClose, feed }) => {
                                         style={[
                                             styles.shareTargetButton, 
                                             { width: '48%' },
-                                            selectedShareTarget === 'timeline' && { borderColor: AppDetails.primaryColor || '#000' }
+                                            selectedShareTarget === 'timeline' && { borderColor: AppDetails.primaryColor || Colors.black }
                                         ]}
                                         onPress={() => setSelectedShareTarget('timeline')}
                                     >
-                                        <Text style={[styles.shareTargetText, selectedShareTarget === 'timeline' && { color: AppDetails.primaryColor || '#000' }]}>Timeline</Text>
+                                        <Text style={[styles.shareTargetText, selectedShareTarget === 'timeline' && { color: AppDetails.primaryColor || Colors.black }]}>Timeline</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity 
                                         style={[
                                             styles.shareTargetButton, 
                                             { width: '48%' },
-                                            selectedShareTarget === 'group' && { borderColor: AppDetails.primaryColor || '#000' }
+                                            selectedShareTarget === 'group' && { borderColor: AppDetails.primaryColor || Colors.black }
                                         ]}
                                         onPress={() => setSelectedShareTarget('group')}
                                     >
-                                        <Text style={[styles.shareTargetText, selectedShareTarget === 'group' && { color: AppDetails.primaryColor || '#000' }]}>Group</Text>
+                                        <Text style={[styles.shareTargetText, selectedShareTarget === 'group' && { color: AppDetails.primaryColor || Colors.black }]}>Group</Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View style={styles.shareTargetsCenter}>
@@ -107,11 +115,11 @@ const ShareModal = ({ visible, onClose, feed }) => {
                                         style={[
                                             styles.shareTargetButton, 
                                             { width: '100%' },
-                                            selectedShareTarget === 'event' && { borderColor: AppDetails.primaryColor || '#000' }
+                                            selectedShareTarget === 'event' && { borderColor: AppDetails.primaryColor || Colors.black }
                                         ]}
                                         onPress={() => setSelectedShareTarget('event')}
                                     >
-                                        <Text style={[styles.shareTargetText, selectedShareTarget === 'event' && { color: AppDetails.primaryColor || '#000' }]}>Event</Text>
+                                        <Text style={[styles.shareTargetText, selectedShareTarget === 'event' && { color: AppDetails.primaryColor || Colors.black }]}>Event</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -119,7 +127,7 @@ const ShareModal = ({ visible, onClose, feed }) => {
                             <TextInput 
                                 style={styles.shareInput}
                                 placeholder="Say something about this..."
-                                placeholderTextColor="#999"
+                                placeholderTextColor={Colors.neutral350}
                                 multiline
                             />
 
@@ -129,7 +137,7 @@ const ShareModal = ({ visible, onClose, feed }) => {
                                 onPress={handleShare}
                             >
                                 {loading ? (
-                                    <ActivityIndicator color="#fff" />
+                                    <ActivityIndicator color={Colors.white} />
                                 ) : (
                                     <Text style={styles.mainShareButtonText}>Share</Text>
                                 )}
@@ -146,10 +154,10 @@ const styles = StyleSheet.create({
     bottomSheetContainer: {
         flex: 1,
         justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: withOpacity(Colors.black, 0.5),
     },
     bottomSheetContent: {
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         width: '100%',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
@@ -158,7 +166,7 @@ const styles = StyleSheet.create({
     bottomSheetHandle: {
         width: 40,
         height: 5,
-        backgroundColor: '#e0e0e0',
+        backgroundColor: Colors.neutral200,
         borderRadius: 2.5,
         alignSelf: 'center',
         marginBottom: 15,
@@ -168,11 +176,11 @@ const styles = StyleSheet.create({
         fontFamily:"WorkSans_600SemiBold",
         marginBottom: 20,
         textAlign: 'center',
-        color: '#333',
+        color: Colors.neutral700,
     },
     copyLinkContainer: {
         flexDirection: 'row',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: Colors.neutral130,
         padding: 12,
         borderRadius: 8,
         alignItems: 'center',
@@ -180,7 +188,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     linkText: {
-        color: '#666',
+        color: Colors.neutral500,
         fontSize: 13,
         flex: 1,
         fontFamily:"WorkSans_400Regular",
@@ -204,9 +212,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     shareTargetButton: {
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: Colors.neutral200,
         paddingVertical: 10,
         paddingHorizontal: 25,
         borderRadius: 20,
@@ -214,27 +222,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     shareTargetText: {
-        color: '#333',
+        color: Colors.neutral700,
         fontSize: 14,
         fontFamily:"WorkSans_500Medium",
     },
     shareInput: {
-        backgroundColor: '#f9f9f9',
+        backgroundColor: Colors.neutral110,
         borderRadius: 10,
         padding: 12,
         height: 80,
         textAlignVertical: 'top',
         marginBottom: 20,
-        color: '#333',
+        color: Colors.neutral700,
     },
     mainShareButton: {
-        backgroundColor: AppDetails.primaryColor || '#000',
+        backgroundColor: AppDetails.primaryColor || Colors.black,
         paddingVertical: 15,
         borderRadius: 10,
         alignItems: 'center',
     },
     mainShareButtonText: {
-        color: '#fff',
+        color: Colors.white,
         fontFamily:"WorkSans_600SemiBold",
         fontSize: 16,
     },

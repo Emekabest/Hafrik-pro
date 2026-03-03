@@ -9,11 +9,19 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MarketplaceProduct } from "./marketplaceApi";
+import { Colors } from '../../theme/colors';
 
-const BRAND  = "#0C3F44";
-const ACCENT = "#13C296";
-const MUTED  = "#7A9198";
-const DARK   = "#0D1B1E";
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.deepSlate;
 
 const FALLBACK_AVATAR =
   "https://hafrik.com/content/themes/default/images/blank_profile_male.jpg";
@@ -60,7 +68,7 @@ export const ProductCard = memo(function ProductCard({
         {/* Photos count */}
         {(item.photos_count ?? 0) > 1 && (
           <View style={styles.photoBadge}>
-            <Ionicons name="images-outline" size={9} color="#fff" />
+            <Ionicons name="images-outline" size={9} color={Colors.white} />
             <Text style={styles.photoTxt}>{item.photos_count}</Text>
           </View>
         )}
@@ -94,7 +102,7 @@ export const ProductCard = memo(function ProductCard({
           </Text>
           {item.seller.verified && (
             <View style={styles.verifiedDot}>
-              <Ionicons name="checkmark" size={8} color="#fff" />
+              <Ionicons name="checkmark" size={8} color={Colors.white} />
             </View>
           )}
           <View style={{ flex: 1 }} />
@@ -110,12 +118,12 @@ export const ProductCard = memo(function ProductCard({
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 16,
     overflow: "hidden",
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(12,63,68,0.08)",
+    borderColor: withOpacity(Colors.primaryDark, 0.08),
     shadowColor: BRAND,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.07,
@@ -126,7 +134,7 @@ const styles = StyleSheet.create({
   imgWrap: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: "#F0F4F5",
+    backgroundColor: Colors.surfaceSteel,
   },
   img: {
     width: "100%",
@@ -144,19 +152,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(19,194,150,0.92)",
+    backgroundColor: withOpacity(Colors.tealAccent, 0.92),
     borderRadius: 100,
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
-  stockOut: { backgroundColor: "rgba(232,93,74,0.92)" },
+  stockOut: { backgroundColor: withOpacity(Colors.coral, 0.92) },
   stockDot: {
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
   },
-  stockTxt: { color: "#fff", fontSize: 9, fontWeight: "800" },
+  stockTxt: { color: Colors.white, fontSize: 9, fontWeight: "800" },
 
   photoBadge: {
     position: "absolute",
@@ -165,12 +173,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "rgba(0,0,0,0.52)",
+    backgroundColor: withOpacity(Colors.black, 0.52),
     borderRadius: 100,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  photoTxt: { color: "#fff", fontSize: 9, fontWeight: "800" },
+  photoTxt: { color: Colors.white, fontSize: 9, fontWeight: "800" },
 
   digitalBadge: {
     position: "absolute",
@@ -181,7 +189,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  digitalTxt: { color: "#fff", fontSize: 9, fontWeight: "800" },
+  digitalTxt: { color: Colors.white, fontSize: 9, fontWeight: "800" },
 
   body: { padding: 10, gap: 3 },
 
@@ -207,11 +215,11 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: Colors.neutral190,
   },
   sellerName: {
     fontSize: 11,
-    color: "#555",
+    color: Colors.neutral600,
     fontWeight: "600",
     flexShrink: 1,
   },
@@ -224,11 +232,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   typeBadge: {
-    backgroundColor: "#374151",
+    backgroundColor: Colors.slate,
     borderRadius: 100,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   typeBadgePage: { backgroundColor: BRAND },
-  typeTxt: { color: "#fff", fontSize: 8, fontWeight: "800" },
+  typeTxt: { color: Colors.white, fontSize: 8, fontWeight: "800" },
 });

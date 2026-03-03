@@ -2,6 +2,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import AppDetails from "../../../../helpers/appdetails";
 import {Image as ExpoImage} from 'expo-image';
 import { parse } from "superagent";
+import { Colors } from '../../../../theme/colors';
 
 
 const JobPostContent = ({ feed }) => {
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
 
     imageContainer:{
         height:200,
-        backgroundColor:"#e6e6e6ff",
+        backgroundColor:Colors.neutral170,
         borderRadius:15,
         overflow:"hidden",
     },
@@ -87,14 +88,14 @@ const styles = StyleSheet.create({
 
     salaryMonth:{
         fontSize:13,
-        color:"#333",
+        color:Colors.neutral700,
         fontFamily:AppDetails.fontFamily.title,
     },
 
     locationTypeStatusContainer:{
         height:80,
         borderWidth:1,
-        borderColor:"#d9d9d9ff",
+        borderColor:Colors.neutral206,
         borderRadius:10,
         display:"flex",
         flexDirection:"row",
@@ -108,12 +109,12 @@ const styles = StyleSheet.create({
         justifyContent:"center",
     },
     type:{
-        backgroundColor:"#e6e6e6ff",
+        backgroundColor:Colors.neutral170,
         height:"100%",
         width:"33.33%",
     },
     status:{
-        backgroundColor:"#d9d9d9ff",
+        backgroundColor:Colors.neutral206,
         height:"100%",
         width:"33.33%",
     },
@@ -130,15 +131,15 @@ const styles = StyleSheet.create({
         marginTop:5,
     },
     Open:{
-        backgroundColor:"#198754",
-        color:"#fff",
+        backgroundColor:Colors.successAlt,
+        color:Colors.white,
         paddingHorizontal:10,
         paddingVertical:1,
         borderRadius:5,
     },
     Close:{
-        backgroundColor:"#cd0000ff",
-        color:"#fff",
+        backgroundColor:Colors.dangerDeep,
+        color:Colors.white,
         paddingHorizontal:10,
         paddingVertical:2,
         borderRadius:5,
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
         // marginBottom:10,
     },
     viewCandidatesText:{
-        color:"#fff",
+        color:Colors.white,
         fontFamily:AppDetails.fontFamily.redex.medium,
         fontSize:15,
     }

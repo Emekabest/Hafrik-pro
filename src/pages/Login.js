@@ -23,16 +23,18 @@ import * as Haptics from 'expo-haptics';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import AppDetails from '../helpers/appdetails';
+import { Colors } from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
 
 // ─── Brand tokens ──────────────────────────────────────────────────────────────
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F5F0E8';
-const DARK   = '#0D1B1E';
-const MUTED  = '#7A9198';
-const ERROR  = '#E55353';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.background;
+const DARK   = Colors.black;
+const MUTED  = Colors.secondaryText;
+const ERROR  = Colors.destructive;
+const WHITE  = Colors.white;
 
 const API_BASE = 'https://hafrik.com/api/v1/auth';
 
@@ -79,8 +81,8 @@ const SLIDES = [
     title: 'Groups built\naround you.',
     body: 'Join city groups, student communities, business networks and more — all in one place.',
     emoji: '👥',
-    bg: '#0a5a62',
-    accent: '#1ED6A8',
+    bg: Colors.primary,
+    accent: Colors.primary,
   },
   {
     id: 3,
@@ -88,7 +90,7 @@ const SLIDES = [
     title: 'Grow where\nyou are.',
     body: 'Discover jobs, marketplace listings, shipping agents, events and local guides.',
     emoji: '🚀',
-    bg: '#073038',
+    bg: Colors.primaryDark,
     accent: ACCENT,
   },
 ];
@@ -212,7 +214,7 @@ const getStrength = (pwd) => {
   return s;
 };
 const STRENGTH_LABELS = ['', 'Weak', 'Fair', 'Good', 'Strong'];
-const STRENGTH_COLORS = ['', '#E55353', '#F5A623', '#13C296', '#0C3F44'];
+const STRENGTH_COLORS = ['', Colors.destructive, Colors.warning, Colors.primary, Colors.primaryDark];
 
 const PasswordStrength = ({ password }) => {
   const s = getStrength(password);
@@ -225,7 +227,7 @@ const PasswordStrength = ({ password }) => {
             key={i}
             style={{
               flex: 1, height: 3, borderRadius: 2,
-              backgroundColor: i <= s ? STRENGTH_COLORS[s] : 'rgba(12,63,68,0.12)',
+              backgroundColor: i <= s ? STRENGTH_COLORS[s] : BRAND + '1F',
             }}
           />
         ))}
@@ -351,7 +353,7 @@ const Onboarding = ({ onDone }) => {
           activeOpacity={0.7}
         >
           <Text style={styles.skipText}>Skip</Text>
-          <Ionicons name="chevron-forward" size={13} color="rgba(255,255,255,0.75)" />
+          <Ionicons name="chevron-forward" size={13} color={WHITE + 'BF'} />
         </TouchableOpacity>
       )}
 
@@ -414,7 +416,7 @@ const Onboarding = ({ onDone }) => {
             return (
               <Animated.View
                 key={i}
-                style={[styles.dot, { width: w, backgroundColor: i === idx ? ACCENT : 'rgba(255,255,255,0.3)' }]}
+                style={[styles.dot, { width: w, backgroundColor: i === idx ? ACCENT : WHITE + '4D' }]}
               />
             );
           })}
@@ -552,7 +554,7 @@ const AuthScreen = () => {
     >
       {/* ── Gradient brand header ── */}
       <LinearGradient
-        colors={[BRAND, '#0a5a62', '#073038']}
+        colors={[BRAND, Colors.primary, Colors.primaryDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: top + 8 }]}
@@ -600,7 +602,7 @@ const AuthScreen = () => {
               <Ionicons
                 name={m === 'login' ? 'log-in-outline' : 'person-add-outline'}
                 size={14}
-                color={mode === m ? '#fff' : MUTED}
+                color={mode === m ? WHITE : MUTED}
                 style={{ marginRight: 6 }}
               />
               <Text style={[styles.tabText, mode === m && styles.tabTextActive]}>
@@ -740,7 +742,7 @@ const AuthScreen = () => {
                 activeOpacity={0.8}
               >
                 <View style={[styles.checkbox, agreed && styles.checkboxOn]}>
-                  {agreed && <Ionicons name="checkmark" size={13} color="#fff" />}
+                  {agreed && <Ionicons name="checkmark" size={13} color={WHITE} />}
                 </View>
                 <Text style={styles.termsText}>
                   I agree to Hafrik's{' '}
@@ -768,19 +770,19 @@ const AuthScreen = () => {
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={[BRAND, '#0a5a62']}
+              colors={[BRAND, Colors.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.submitGradient}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={WHITE} size="small" />
               ) : (
                 <>
                   <Text style={styles.submitText}>
                     {mode === 'login' ? 'Sign In' : 'Create Account'}
                   </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
+                  <Ionicons name="arrow-forward" size={18} color={WHITE} style={{ marginLeft: 8 }} />
                 </>
               )}
             </LinearGradient>
@@ -796,12 +798,12 @@ const AuthScreen = () => {
           {/* Social buttons */}
           <View style={styles.socialRow}>
             <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8}>
-              <Ionicons name="logo-google" size={18} color="#EA4335" />
+              <Ionicons name="logo-google" size={18} color={Colors.google} />
               <Text style={styles.socialBtnText}>Google</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialBtn, { backgroundColor: '#000', borderColor: '#000' }]} activeOpacity={0.8}>
-              <Ionicons name="logo-apple" size={18} color="#fff" />
-              <Text style={[styles.socialBtnText, { color: '#fff' }]}>Apple</Text>
+            <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8}>
+              <Ionicons name="logo-apple" size={18} color={WHITE} />
+              <Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text>
             </TouchableOpacity>
           </View>
 
@@ -856,7 +858,7 @@ const styles = StyleSheet.create({
   blob: {
     position: 'absolute',
     borderRadius: 999,
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
   },
   skipBtn: {
     position: 'absolute',
@@ -868,12 +870,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: WHITE + '1F',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: WHITE + '29',
   },
   skipText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: WHITE + 'CC',
     fontSize: 14,
     fontWeight: '600',
     fontFamily: AppDetails?.fontFamily?.inter?.medium ?? 'System',
@@ -882,9 +884,9 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: WHITE + '1F',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: WHITE + '2E',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -899,14 +901,14 @@ const styles = StyleSheet.create({
   slideTitle: {
     fontSize: 38,
     fontWeight: '900',
-    color: '#fff',
+    color: WHITE,
     lineHeight: 46,
     marginBottom: 18,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
   slideBody: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.72)',
+    color: WHITE + 'B8',
     lineHeight: 24,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
   },
@@ -914,16 +916,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingBottom: Platform.OS === 'ios' ? 48 : 32,
     paddingTop: 16,
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: DARK + '2E',
   },
   statStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: WHITE + '14',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: WHITE + '1F',
     paddingVertical: 12,
     marginBottom: 20,
   },
@@ -935,12 +937,12 @@ const styles = StyleSheet.create({
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
   statLabel: {
-    color: 'rgba(255,255,255,0.58)',
+    color: WHITE + '94',
     fontSize: 11,
     marginTop: 2,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
   },
-  statDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.15)' },
+  statDivider: { width: 1, height: 30, backgroundColor: WHITE + '26' },
   dots: {
     flexDirection: 'row',
     gap: 6,
@@ -976,7 +978,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(19,194,150,0.10)',
+    backgroundColor: ACCENT + '1A',
     top: -60,
     right: -40,
   },
@@ -985,9 +987,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
-    backgroundColor: 'rgba(19,194,150,0.16)',
+    backgroundColor: ACCENT + '29',
     borderWidth: 1,
-    borderColor: 'rgba(19,194,150,0.28)',
+    borderColor: ACCENT + '47',
     borderRadius: 100,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1014,20 +1016,20 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#fff',
+    color: WHITE,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
   headerSub: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
+    color: WHITE + '99',
     marginTop: 4,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
   },
   headerLogo: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: WHITE + '1A',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: WHITE + '26',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1042,7 +1044,7 @@ const styles = StyleSheet.create({
   // Tab row
   tabRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(12,63,68,0.08)',
+    backgroundColor: BRAND + '14',
     borderRadius: 100,
     padding: 4,
     marginBottom: 20,
@@ -1062,16 +1064,16 @@ const styles = StyleSheet.create({
     color: MUTED,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
-  tabTextActive: { color: '#fff' },
+  tabTextActive: { color: WHITE },
 
   // Card
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderRadius: 24,
     padding: 22,
     borderWidth: 1,
-    borderColor: 'rgba(12,63,68,0.07)',
-    shadowColor: '#000',
+    borderColor: BRAND + '12',
+    shadowColor: DARK,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 16,
@@ -1098,16 +1100,16 @@ const styles = StyleSheet.create({
   input: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7F9FA',
+    backgroundColor: Colors.surfaceTint,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: 'rgba(12,63,68,0.10)',
+    borderColor: BRAND + '1A',
     paddingHorizontal: 14,
     height: 50,
   },
   inputRow:    { flexDirection: 'row', alignItems: 'center' },
-  inputFocused: { borderColor: ACCENT, backgroundColor: '#fff' },
-  inputError:  { borderColor: ERROR,   backgroundColor: '#FFF5F5' },
+  inputFocused: { borderColor: ACCENT, backgroundColor: WHITE },
+  inputError:  { borderColor: ERROR,   backgroundColor: ERROR + '14' },
   inputIcon:   { marginRight: 10 },
   inputText: {
     fontSize: 15,
@@ -1131,7 +1133,7 @@ const styles = StyleSheet.create({
   },
   phoneDivider: {
     width: 1, height: 24,
-    backgroundColor: 'rgba(12,63,68,0.15)',
+    backgroundColor: BRAND + '26',
     marginRight: 12,
   },
 
@@ -1149,7 +1151,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22, height: 22, borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: 'rgba(12,63,68,0.25)',
+    borderColor: BRAND + '40',
     alignItems: 'center', justifyContent: 'center',
     marginTop: 1,
   },
@@ -1175,7 +1177,7 @@ const styles = StyleSheet.create({
   submitText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#fff',
+    color: WHITE,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
 
@@ -1186,7 +1188,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 14,
   },
-  orLine: { flex: 1, height: 1, backgroundColor: 'rgba(12,63,68,0.1)' },
+  orLine: { flex: 1, height: 1, backgroundColor: BRAND + '1A' },
   orText: {
     fontSize: 12,
     color: MUTED,
@@ -1207,9 +1209,9 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 46,
     borderRadius: 12,
-    backgroundColor: '#F7F9FA',
+    backgroundColor: Colors.surfaceTint,
     borderWidth: 1.5,
-    borderColor: 'rgba(12,63,68,0.10)',
+    borderColor: BRAND + '1A',
   },
   socialBtnText: {
     fontSize: 14,
@@ -1245,11 +1247,11 @@ const styles = StyleSheet.create({
   // ── Country Modal ──
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: DARK + '73',
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: height * 0.82,
@@ -1257,7 +1259,7 @@ const styles = StyleSheet.create({
   },
   modalHandle: {
     width: 40, height: 4, borderRadius: 2,
-    backgroundColor: 'rgba(12,63,68,0.15)',
+    backgroundColor: BRAND + '26',
     alignSelf: 'center',
     marginTop: 12, marginBottom: 4,
   },
@@ -1268,7 +1270,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(12,63,68,0.07)',
+    borderBottomColor: BRAND + '12',
   },
   modalTitle: {
     fontSize: 17, fontWeight: '800', color: DARK,
@@ -1278,10 +1280,10 @@ const styles = StyleSheet.create({
   modalSearch: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7F9FA',
+    backgroundColor: Colors.surfaceTint,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(12,63,68,0.10)',
+    borderColor: BRAND + '1A',
     paddingHorizontal: 14,
     height: 44,
     margin: 16,
@@ -1306,5 +1308,5 @@ const styles = StyleSheet.create({
     fontSize: 13, color: MUTED,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
   },
-  separator: { height: 1, backgroundColor: 'rgba(12,63,68,0.05)', marginLeft: 58 },
+  separator: { height: 1, backgroundColor: BRAND + '0D', marginLeft: 58 },
 });

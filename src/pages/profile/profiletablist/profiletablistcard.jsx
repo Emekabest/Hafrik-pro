@@ -4,6 +4,14 @@ import { Image as ExpoImage } from 'expo-image';
 import useStore from "../../../repository/store";
 import AppDetails from "../../../helpers/appdetails";
 import SkeletonBusinessPageCard from "../../profile/businesspages/skeletonbusinesspagecard";
+import { Colors } from '../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const ProfileTabListCard = ({ item }) => {
 
@@ -30,7 +38,7 @@ const ProfileTabListCard = ({ item }) => {
                         <ExpoImage source={{ uri: avatar }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" />
                     ) : (
                         <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                            <Ionicons name="person" size={28} color="#fff" />
+                            <Ionicons name="person" size={28} color={Colors.white} />
                         </View>
                     )}
                 </View>
@@ -39,7 +47,7 @@ const ProfileTabListCard = ({ item }) => {
                     <Text style={styles.likesText}>{likes} likes</Text>
                     <TouchableOpacity style={styles.unlikeButton}>
                         <View style={styles.unlikeContent}>
-                            <Ionicons name="heart" size={16} color="#fff" />
+                            <Ionicons name="heart" size={16} color={Colors.white} />
                             <Text style={styles.unlikeText}>Unlike</Text>
                         </View>
                     </TouchableOpacity>
@@ -76,7 +84,7 @@ const ProfileTabListCard = ({ item }) => {
                     />
                 ) : (
                     <View style={styles.placeholder}>
-                         <Ionicons name="image" size={32} color="#888" />
+                         <Ionicons name="image" size={32} color={Colors.neutral400} />
                     </View>
                 )}
 
@@ -116,7 +124,7 @@ const styles = StyleSheet.create({
         flex: 1,
         // Using aspect ratio 1 ensures square grid items
         aspectRatio: 1, 
-        backgroundColor: '#f8f8f8',
+        backgroundColor: Colors.neutral120,
         borderRadius: 20,
         margin:2,
         overflow: 'hidden',
@@ -125,7 +133,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#e6e6e6',
+        backgroundColor: Colors.neutral170,
         width: '100%',
         height: '100%',
         position: 'relative'
@@ -138,7 +146,7 @@ const styles = StyleSheet.create({
         height: '100%'
     },
     centerIconContainer: {
-        backgroundColor: 'rgba(0,0,0,0.4)',
+        backgroundColor: withOpacity(Colors.black, 0.4),
         borderRadius: 50,
         height: 40,
         width: 40,
@@ -155,7 +163,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 10,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderRadius: 12,
         margin: 4,
         overflow: 'hidden'
@@ -171,12 +179,12 @@ const styles = StyleSheet.create({
         width: "100%",
         height: "100%",
         borderRadius: 50,
-        backgroundColor: '#ccc'
+        backgroundColor: Colors.neutral250
     },
     avatarPlaceholder: {
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#888'
+        backgroundColor: Colors.neutral400
     },
     businessRight: {
         flex: 1,
@@ -186,7 +194,7 @@ const styles = StyleSheet.create({
     businessName: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#111'
+        color: Colors.neutral900
     },
     likesRow: {
         flexDirection: 'column',
@@ -199,7 +207,7 @@ const styles = StyleSheet.create({
     },
     likesText: {
 
-        color: '#666',
+        color: Colors.neutral500,
         marginRight: 12,
         marginVertical:10,
     },
@@ -213,7 +221,7 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start'
     },
     unlikeText: {
-        color: '#fff',
+        color: Colors.white,
         fontWeight: '500',
         marginLeft:5,
     }

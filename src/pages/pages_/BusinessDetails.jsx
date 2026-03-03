@@ -14,20 +14,24 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import { Image as ExpoImage } from "expo-image";
 import { useAuth } from "../../AuthContext";
+import useStore from "../../repository/store";
 import { getBusinessDetails, getBusinessFeed, toggleFollowBusiness } from "./Businessapi";
 import FeedCard from "../home/feeds/feedcard.jsx";
+import { Colors } from "../../theme";
 
 
 
-const BRAND      = '#0C3F44';
-const ACCENT     = '#13C296';
-const LIME       = '#A8E063';
-const BG         = '#F0F5F5';
-const CARD       = '#FFFFFF';
-const BORDER     = '#EEF3F3';
-const TEXT_HEAD  = '#0A1F22';
-const TEXT_BODY  = '#1A1A2E';
-const TEXT_MUTED = '#8A9BA8';
+const BRAND      = Colors.primaryDark;
+const ACCENT     = Colors.primary;
+const LIME       = Colors.warning;
+const BG         = Colors.surfaceTint;
+const CARD       = Colors.white;
+const BORDER     = Colors.border;
+const TEXT_HEAD  = Colors.black;
+const TEXT_BODY  = Colors.black;
+const TEXT_MUTED = Colors.secondaryText;
+const WHITE      = Colors.white;
+const BLACK      = Colors.black;
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const COVER_HEIGHT = 220;
@@ -44,8 +48,10 @@ const StatPill = ({ value, label }) => (
 
 export default function BusinessDetails({ route }) {
   const { pageId } = route.params || {};
-  const navigation  = useNavigation();
-  const { token }   = useAuth();
+  const navigation    = useNavigation();
+  const { token, user } = useAuth();
+  const openComposer  = useStore((s) => s.openComposer);
+  const refreshSignal = useStore((s) => s.refreshSignal);
 
   const [page,         setPageData]    = useState(null);
   const [posts,        setPosts]       = useState([]);
@@ -65,6 +71,25 @@ export default function BusinessDetails({ route }) {
   const scrollY      = useRef(new Animated.Value(0)).current;
   const coverScale   = scrollY.interpolate({ inputRange: [-80, 0], outputRange: [1.25, 1], extrapolate: "clamp" });
   const coverOpacity = scrollY.interpolate({ inputRange: [0, COVER_HEIGHT * 0.6], outputRange: [1, 0.3], extrapolate: "clamp" });
+
+  // true when the logged-in user owns this page
+  const isOwner = !!page && (
+    page.is_owner === true || page.is_owner === 1 ||
+    (user?.id && String(page.user_id) === String(user.id))
+  );
+
+  const openPageComposer = useCallback(() => {
+    openComposer({ _type: 'page', id: pageId, title: page?.title, avatar: page?.avatar, locked: true });
+  }, [openComposer, pageId, page?.title, page?.avatar]);
+
+  // Refresh feed whenever a post is published from the global composer
+  const prevRefreshSignal = useRef(0);
+  useEffect(() => {
+    if (refreshSignal > 0 && refreshSignal !== prevRefreshSignal.current) {
+      prevRefreshSignal.current = refreshSignal;
+      loadFeed(1);
+    }
+  }, [refreshSignal]);
 
   useEffect(() => {
     if (pageId) {
@@ -164,10 +189,10 @@ export default function BusinessDetails({ route }) {
           {page.cover ? (
             <ExpoImage source={{ uri: page.cover }} style={styles.cover} contentFit="cover" />
           ) : (
-            <LinearGradient colors={[BRAND, '#073b40', '#0B8557']} style={styles.cover} />
+            <LinearGradient colors={[BRAND, BRAND + 'EE', ACCENT + 'CC']} style={styles.cover} />
           )}
           <LinearGradient
-            colors={['transparent', 'rgba(10,31,34,0.75)']}
+            colors={['transparent', BRAND + 'BF']}
             style={StyleSheet.absoluteFillObject}
           />
         </Animated.View>
@@ -251,6 +276,19 @@ export default function BusinessDetails({ route }) {
           {loadingFeed && <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 8 }} />}
         </View>
 
+        {/* Compose bar — visible only to page owner */}
+        {isOwner && (
+          <TouchableOpacity style={styles.composeBar} onPress={openPageComposer} activeOpacity={0.85}>
+            <View style={styles.composeAvatar}>
+              <Ionicons name="storefront-outline" size={16} color={BRAND} />
+            </View>
+            <View style={styles.composeInput}>
+              <Text style={styles.composePlaceholder}>Write something for your page…</Text>
+            </View>
+            <Ionicons name="send" size={16} color={ACCENT} />
+          </TouchableOpacity>
+        )}
+
       </View>
     );
   };
@@ -308,9 +346,9 @@ const styles = StyleSheet.create({
     zIndex: 99,
     width: 38, height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: WHITE + "EB",
     justifyContent: "center", alignItems: "center",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1, shadowRadius: 6, elevation: 4,
   },
 
@@ -391,4 +429,21 @@ const styles = StyleSheet.create({
 
   emptyFeed: { alignItems: "center", paddingVertical: 60, rowGap: 10 },
   emptyText: { fontSize: 14, color: TEXT_MUTED, fontWeight: "500" },
+
+  composeBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: CARD, paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  composeAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: BG, borderWidth: 1, borderColor: BORDER,
+    alignItems: "center", justifyContent: "center",
+  },
+  composeInput: {
+    flex: 1, height: 38, backgroundColor: BG, borderRadius: 19,
+    paddingHorizontal: 14, justifyContent: "center",
+    borderWidth: 1, borderColor: BORDER,
+  },
+  composePlaceholder: { fontSize: 13, color: TEXT_MUTED },
 });

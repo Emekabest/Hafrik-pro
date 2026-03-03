@@ -6,10 +6,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { PersonCard } from './SearchCards';
 import AppDetails from '../../helpers/appdetails';
+import { Colors } from '../../theme';
 
-const PRIMARY = '#0C3F44';
-const ACCENT  = '#13C296';
-const DARK    = '#0D1B1E';
+const PRIMARY = Colors.primaryDark;
+const ACCENT  = Colors.primary;
+const DARK    = Colors.black;
+const WHITE   = Colors.white;
+const MUTED   = Colors.secondaryText;
+const BG      = Colors.surfaceTint;
 
 const TRENDING = [
   { label: 'Africans in China',  icon: 'trending-up'  },
@@ -78,7 +82,7 @@ const SearchEmptyState = ({
       {recentSearches?.length > 0 && (
         <>
           <View style={styles.sectionRow}>
-            <Ionicons name="time-outline" size={15} color="#aaa" style={{ marginRight: 6 }} />
+            <Ionicons name="time-outline" size={15} color={MUTED + 'B3'} style={{ marginRight: 6 }} />
             <Text style={styles.sectionLabel}>Recent</Text>
           </View>
           {recentSearches.map((q, i) => (
@@ -89,7 +93,7 @@ const SearchEmptyState = ({
               onPress={() => onRecentPress(q)}
             >
               <View style={styles.recentIcon}>
-                <Ionicons name="time-outline" size={15} color="#bbb" />
+                <Ionicons name="time-outline" size={15} color={MUTED + 'BF'} />
               </View>
               <Text style={styles.recentText} numberOfLines={1}>{q}</Text>
               <TouchableOpacity
@@ -97,7 +101,7 @@ const SearchEmptyState = ({
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="close" size={14} color="#ccc" />
+                <Ionicons name="close" size={14} color={MUTED + 'CC'} />
               </TouchableOpacity>
             </TouchableOpacity>
           ))}
@@ -138,7 +142,7 @@ const SearchEmptyState = ({
 
       {/* Footer hint */}
       <View style={styles.hintRow}>
-        <Ionicons name="globe-outline" size={14} color="#ccc" />
+        <Ionicons name="globe-outline" size={14} color={MUTED + 'CC'} />
         <Text style={styles.hintText}>Explore the Hafrik community worldwide</Text>
       </View>
     </View>
@@ -151,18 +155,18 @@ const styles = StyleSheet.create({
   // No-results empty
   iconBg: {
     width: 90, height: 90, borderRadius: 45,
-    backgroundColor: 'rgba(12,63,68,0.07)',
+    backgroundColor: PRIMARY + '12',
     alignItems: 'center', justifyContent: 'center',
     alignSelf: 'center',
     marginTop: 30, marginBottom: 16,
-    borderWidth: 1.5, borderColor: 'rgba(19,194,150,0.2)',
+    borderWidth: 1.5, borderColor: ACCENT + '33',
   },
   emptyTitle: {
     fontSize: 19, fontFamily: AppDetails.fontFamily.inter.semiBold,
-    color: '#1a1a1a', textAlign: 'center', marginBottom: 8,
+    color: DARK, textAlign: 'center', marginBottom: 8,
   },
   emptySub: {
-    fontSize: 14, color: '#aaa',
+    fontSize: 14, color: MUTED + 'B3',
     fontFamily: AppDetails.fontFamily.inter.regular,
     textAlign: 'center', lineHeight: 21, marginBottom: 28,
   },
@@ -174,7 +178,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 12, fontFamily: AppDetails.fontFamily.redex.bold,
-    color: '#666', letterSpacing: 0.7, textTransform: 'uppercase',
+    color: MUTED, letterSpacing: 0.7, textTransform: 'uppercase',
   },
 
   // Trending chips
@@ -183,10 +187,10 @@ const styles = StyleSheet.create({
   },
   chip: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 20,
+    backgroundColor: WHITE, borderRadius: 20,
     paddingHorizontal: 13, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'rgba(19,194,150,0.25)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    borderWidth: 1, borderColor: ACCENT + '40',
+    shadowColor: DARK, shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
   chipText: {
@@ -197,19 +201,19 @@ const styles = StyleSheet.create({
   // Recent row
   recentRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 14,
+    backgroundColor: WHITE, borderRadius: 14,
     paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
+    borderWidth: 1, borderColor: DARK + '0A',
   },
   recentIcon: {
     width: 32, height: 32, borderRadius: 10,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: BG,
     alignItems: 'center', justifyContent: 'center', marginRight: 10,
   },
   recentText: {
-    flex: 1, fontSize: 14, color: '#333',
+    flex: 1, fontSize: 14, color: DARK,
     fontFamily: AppDetails.fontFamily.inter.regular,
   },
 
@@ -219,7 +223,7 @@ const styles = StyleSheet.create({
     gap: 6, marginTop: 12, marginBottom: 30, opacity: 0.6,
   },
   hintText: {
-    fontSize: 12, color: '#aaa',
+    fontSize: 12, color: MUTED + 'B3',
     fontFamily: AppDetails.fontFamily.inter.regular,
   },
 });

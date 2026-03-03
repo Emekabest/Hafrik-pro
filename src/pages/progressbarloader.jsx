@@ -2,6 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View, Modal, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppDetails from '../helpers/appdetails';
+import { Colors } from '../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const ProgressBarLoader = ({ visible = false }) => {
   const insets = useSafeAreaInsets();
@@ -80,7 +88,7 @@ const ProgressBarLoader = ({ visible = false }) => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: withOpacity(Colors.black, 0.4),
   },
   progressTrack: {
     position: 'absolute',
@@ -88,11 +96,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: withOpacity(Colors.white, 0.3),
   },
   progressBar: {
     height: 4,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
   },
 });
 

@@ -5,6 +5,7 @@ import SvgIcon from '../../../../assl.js/svg/svg';
 import { useAuth } from '../../../../AuthContext';
 import ToggleFeedController from '../../../../controllers/tooglefeedcontroller';
 import useStore from '../../../../repository/store';
+import { Colors } from '../../../../theme/colors';
 
 const CommentEngagementBar = ({ feedId, initialLiked, initialLikeCount, commentsCount, 
     onCommentPress = () => {},
@@ -73,22 +74,22 @@ const CommentEngagementBar = ({ feedId, initialLiked, initialLikeCount, comments
         <Ionicons 
           name={liked ? 'heart' : 'heart-outline'} 
           size={23} 
-          color={liked ? '#dc1e1eff' : '#333'} 
+          color={liked ? Colors.like : Colors.neutral700} 
         />
         <Text style={styles.count}>{likeCount}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.item} onPress={onCommentPress}>
-        <SvgIcon name="comment" width={20} height={20} color="#333" />
+        <SvgIcon name="comment" width={20} height={20} color={Colors.neutral700} />
         <Text style={styles.count}>{commentsCount}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.item} onPress={onSharePress}>
-        <SvgIcon name="share" width={20} height={20} color="#333" />
+        <SvgIcon name="share" width={20} height={20} color={Colors.neutral700} />
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.item} onPress={onFavoritePress}>
-        <SvgIcon name="favourite" width={20} height={20} color="#333" />
+        <SvgIcon name="favourite" width={20} height={20} color={Colors.neutral700} />
       </TouchableOpacity>
     </View>
   );
@@ -98,17 +99,21 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',
-    marginTop: 15,
-    width: '90%',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    marginTop: 8,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 5,
   },
   count: {
-    marginLeft: 5,
     fontSize: 13,
-    color: '#333',
+    color: Colors.neutral700,
   },
 });
 

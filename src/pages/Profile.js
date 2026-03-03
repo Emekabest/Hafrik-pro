@@ -21,8 +21,16 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../AuthContext';
 import * as ImagePicker from 'expo-image-picker';
+import { Colors } from '../theme';
 
 const { width } = Dimensions.get('window');
+const BRAND = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const WHITE = Colors.white;
+const DARK = Colors.black;
+const MUTED = Colors.secondaryText;
+const BORDER = Colors.border;
+const SURFACE = Colors.surfaceTint;
 
 const Profile = () => {
   const { user, token, updateUser, logout } = useAuth();
@@ -135,7 +143,7 @@ const Profile = () => {
 
       // Pick image from gallery
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.images,
         allowsEditing: true,
         aspect: imageType === 'avatar' ? [1, 1] : [3, 1],
         quality: 0.8,
@@ -525,14 +533,14 @@ const Profile = () => {
         {/* Video indicator */}
         {item.type === 'video' && hasMedia && (
           <View style={styles.videoIndicator}>
-            <Ionicons name="play" size={16} color="#fff" />
+            <Ionicons name="play" size={16} color={WHITE} />
           </View>
         )}
         
         {/* Multiple media indicator */}
         {hasMedia && item.media.length > 1 && (
           <View style={styles.multipleMediaIndicator}>
-            <Ionicons name="layers" size={16} color="#fff" />
+            <Ionicons name="layers" size={16} color={WHITE} />
             <Text style={styles.multipleMediaText}>{item.media.length}</Text>
           </View>
         )}
@@ -546,7 +554,7 @@ const Profile = () => {
       <Ionicons
         name={type === 'posts' ? 'images-outline' : type === 'followers' ? 'people-outline' : 'person-add-outline'}
         size={64}
-        color="#ccc"
+        color={BORDER}
       />
       <Text style={styles.emptyStateTitle}>
         {type === 'posts' ? 'No Posts Yet' :
@@ -596,7 +604,7 @@ const Profile = () => {
         <StatusBar barStyle="dark-content"  />
         
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0C3F44" />
+          <ActivityIndicator size="large" color={BRAND} />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -621,7 +629,7 @@ const Profile = () => {
           style={styles.headerButton}
           onPress={() => setEditProfileModalVisible(true)}
         >
-          <Ionicons name="settings-outline" size={24} color="#333" />
+          <Ionicons name="settings-outline" size={24} color={DARK} />
         </TouchableOpacity>
 
         <View style={styles.headerUserInfo}>
@@ -630,7 +638,7 @@ const Profile = () => {
         </View>
 
         <TouchableOpacity style={styles.headerButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#333" />
+          <Ionicons name="log-out-outline" size={24} color={DARK} />
         </TouchableOpacity>
       </View>
 
@@ -644,7 +652,7 @@ const Profile = () => {
             >
               <View style={styles.coverOverlay}>
                 <View style={styles.coverEditButton}>
-                  <Ionicons name="camera-outline" size={20} color="#fff" />
+                  <Ionicons name="camera-outline" size={20} color={WHITE} />
                   <Text style={styles.coverEditText}>{uploading ? 'Uploading...' : 'Edit Cover'}</Text>
                 </View>
               </View>
@@ -663,7 +671,7 @@ const Profile = () => {
                     }}
                   />
                   <View style={styles.avatarEditButton}>
-                    <Ionicons name="camera" size={16} color="#fff" />
+                    <Ionicons name="camera" size={16} color={WHITE} />
                   </View>
                 </View>
               </TouchableOpacity>
@@ -696,7 +704,7 @@ const Profile = () => {
               <View style={styles.nameContainer}>
                 <Text style={styles.userName}>{getUserDisplayName()}</Text>
                 {userData.verified && (
-                  <Ionicons name="checkmark-circle" size={20} color="#4a80f0" style={styles.verifiedBadge} />
+                  <Ionicons name="checkmark-circle" size={20} color={ACCENT} style={styles.verifiedBadge} />
                 )}
               </View>
               <Text style={styles.userUsername}>@{userData.username || 'username'}</Text>
@@ -706,7 +714,7 @@ const Profile = () => {
               <View style={styles.additionalInfo}>
                 {userData.gender !== undefined && (
                   <View style={styles.infoRow}>
-                    <Ionicons name="person-outline" size={16} color="#666" />
+                    <Ionicons name="person-outline" size={16} color={MUTED} />
                     <Text style={styles.infoText}>
                       {userData.gender === 1 ? 'Male' : userData.gender === 2 ? 'Female' : 'Other'}
                     </Text>
@@ -714,12 +722,12 @@ const Profile = () => {
                 )}
                 {userData.current_city && (
                   <View style={styles.infoRow}>
-                    <Ionicons name="location-outline" size={16} color="#666" />
+                    <Ionicons name="location-outline" size={16} color={MUTED} />
                     <Text style={styles.infoText}>{userData.current_city}</Text>
                   </View>
                 )}
                 <View style={styles.infoRow}>
-                  <Ionicons name="calendar-outline" size={16} color="#666" />
+                  <Ionicons name="calendar-outline" size={16} color={MUTED} />
                   <Text style={styles.infoText}>Joined {formatDate(userData.joined)}</Text>
                 </View>
               </View>
@@ -745,7 +753,7 @@ const Profile = () => {
             <Ionicons
               name="grid"
               size={24}
-              color={activeTab === 'posts' ? '#0C3F44' : '#666'}
+              color={activeTab === 'posts' ? BRAND : MUTED}
             />
             <Text style={[
               styles.tabText,
@@ -759,7 +767,7 @@ const Profile = () => {
             <Ionicons
               name="people"
               size={24}
-              color={activeTab === 'followers' ? '#0C3F44' : '#666'}
+              color={activeTab === 'followers' ? BRAND : MUTED}
             />
             <Text style={[
               styles.tabText,
@@ -773,7 +781,7 @@ const Profile = () => {
             <Ionicons
               name="person-add"
               size={24}
-              color={activeTab === 'following' ? '#0C3F44' : '#666'}
+              color={activeTab === 'following' ? BRAND : MUTED}
             />
             <Text style={[
               styles.tabText,
@@ -811,7 +819,7 @@ const Profile = () => {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Profile</Text>
               <TouchableOpacity onPress={() => setEditProfileModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+                <Ionicons name="close" size={24} color={DARK} />
               </TouchableOpacity>
             </View>
 
@@ -992,7 +1000,7 @@ const Profile = () => {
                   onPress={() => handleImageUpload('avatar')}
                   disabled={uploading}
                 >
-                  <Ionicons name="person-circle-outline" size={20} color="#0C3F44" />
+                  <Ionicons name="person-circle-outline" size={20} color={BRAND} />
                   <Text style={styles.uploadButtonText}>
                     {uploading ? 'Uploading...' : 'Change Profile Picture'}
                   </Text>
@@ -1002,7 +1010,7 @@ const Profile = () => {
                   onPress={() => handleImageUpload('cover')}
                   disabled={uploading}
                 >
-                  <Ionicons name="image-outline" size={20} color="#0C3F44" />
+                  <Ionicons name="image-outline" size={20} color={BRAND} />
                   <Text style={styles.uploadButtonText}>
                     {uploading ? 'Uploading...' : 'Change Cover Photo'}
                   </Text>
@@ -1016,7 +1024,7 @@ const Profile = () => {
                 disabled={uploading || loading}
               >
                 {uploading || loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={WHITE} />
                 ) : (
                   <Text style={styles.saveButtonText}>Save All Changes</Text>
                 )}
@@ -1032,7 +1040,7 @@ const Profile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
   },
   loadingContainer: {
     flex: 1,
@@ -1041,7 +1049,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    color: '#666',
+    color: MUTED,
     fontSize: 16,
   },
   header: {
@@ -1051,7 +1059,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: BORDER,
   },
   headerButton: {
     padding: 5,
@@ -1062,10 +1070,10 @@ const styles = StyleSheet.create({
   headerUsername: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: DARK,
   },
   headerPosts: {
-    color: '#666',
+    color: MUTED,
     fontSize: 12,
   },
   content: {
@@ -1080,7 +1088,7 @@ const styles = StyleSheet.create({
   },
   coverOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: DARK + '4D',
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
     padding: 10,
@@ -1088,13 +1096,13 @@ const styles = StyleSheet.create({
   coverEditButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: DARK + '80',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   coverEditText: {
-    color: '#fff',
+    color: WHITE,
     fontSize: 12,
     marginLeft: 4,
   },
@@ -1117,20 +1125,20 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: WHITE,
   },
   avatarEditButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#0C3F44',
+    backgroundColor: BRAND,
     width: 28,
     height: 28,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: WHITE,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -1144,11 +1152,11 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: DARK,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: MUTED,
     marginTop: 4,
   },
   userInfo: {
@@ -1162,17 +1170,17 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: DARK,
     marginRight: 5,
   },
   userUsername: {
     fontSize: 14,
-    color: '#666',
+    color: MUTED,
     marginBottom: 8,
   },
   userBio: {
     fontSize: 14,
-    color: '#333',
+    color: DARK,
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -1186,7 +1194,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 13,
-    color: '#666',
+    color: MUTED,
     marginLeft: 8,
   },
   verifiedBadge: {
@@ -1200,19 +1208,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#0C3F44',
+    backgroundColor: BRAND,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: WHITE,
   },
   tabContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: BORDER,
   },
   tab: {
     flex: 1,
@@ -1224,15 +1232,15 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#0C3F44',
+    borderBottomColor: BRAND,
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: MUTED,
   },
   activeTabText: {
-    color: '#0C3F44',
+    color: BRAND,
     fontWeight: '600',
   },
   postsGrid: {
@@ -1242,26 +1250,26 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
     margin: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: Colors.background,
     position: 'relative',
     overflow: 'hidden',
   },
   postThumbnail: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: BORDER,
   },
   textThumbnail: {
     width: '100%',
     height: '100%',
     padding: 8,
-    backgroundColor: '#0C3F44',
+    backgroundColor: BRAND,
     justifyContent: 'center',
     alignItems: 'center',
   },
   textThumbnailText: {
     fontSize: 11,
-    color: '#fff',
+    color: WHITE,
     textAlign: 'center',
     lineHeight: 14,
     fontWeight: '500',
@@ -1270,7 +1278,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: DARK + '99',
     borderRadius: 12,
     padding: 4,
   },
@@ -1280,14 +1288,14 @@ const styles = StyleSheet.create({
     left: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: DARK + '99',
     borderRadius: 12,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   multipleMediaText: {
     fontSize: 12,
-    color: '#fff',
+    color: WHITE,
     marginLeft: 2,
     fontWeight: 'bold',
   },
@@ -1300,23 +1308,23 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: DARK,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: '#666',
+    color: MUTED,
     textAlign: 'center',
     lineHeight: 20,
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: DARK + '80',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '90%',
@@ -1327,12 +1335,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: BORDER,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: DARK,
   },
   editForm: {
     padding: 20,
@@ -1340,13 +1348,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: DARK,
     marginBottom: 10,
     marginTop: 15,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: BORDER,
     borderRadius: 8,
     padding: 12,
     marginBottom: 15,
@@ -1365,21 +1373,21 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: BORDER,
     borderRadius: 8,
     alignItems: 'center',
     marginHorizontal: 4,
   },
   genderOptionSelected: {
-    backgroundColor: '#0C3F44',
-    borderColor: '#0C3F44',
+    backgroundColor: BRAND,
+    borderColor: BRAND,
   },
   genderOptionText: {
     fontSize: 14,
-    color: '#666',
+    color: MUTED,
   },
   genderOptionTextSelected: {
-    color: '#fff',
+    color: WHITE,
     fontWeight: '600',
   },
   uploadButtons: {
@@ -1390,18 +1398,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 15,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: BORDER,
     borderRadius: 8,
     marginBottom: 10,
   },
   uploadButtonText: {
     marginLeft: 10,
     fontSize: 14,
-    color: '#333',
+    color: DARK,
     fontWeight: '500',
   },
   saveButton: {
-    backgroundColor: '#0C3F44',
+    backgroundColor: BRAND,
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -1412,7 +1420,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
-    color: '#fff',
+    color: WHITE,
     fontSize: 16,
     fontWeight: '600',
   },

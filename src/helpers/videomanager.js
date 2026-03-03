@@ -343,6 +343,22 @@ class VideoManager {
         return this.playersRef.size;
     }
 
+    // ── Playback position tracking (feed → post detail continuity) ─────────────
+    // positionMs: milliseconds (expo-av); consumers convert to seconds for expo-video
+    setPosition(feedId, positionMs) {
+        if (!feedId || positionMs == null) return;
+        if (!this._positions) this._positions = new Map();
+        this._positions.set(feedId, positionMs);
+    }
+
+    getPosition(feedId) {
+        return this._positions?.get(feedId) ?? 0;
+    }
+
+    clearPosition(feedId) {
+        this._positions?.delete(feedId);
+    }
+
 }
 
 

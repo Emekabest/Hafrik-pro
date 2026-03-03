@@ -4,6 +4,14 @@ import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../../../../helpers/appdetails';
 import useStore from '../../../../repository/store';
+import { Colors } from '../../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width: defaultWidth } = Dimensions.get('window');
 // Approximate width based on parent containers
@@ -70,7 +78,7 @@ const SharedProductItem = ({ post, parentFeedId }) => {
                 </Text>
                 <View style={styles.ratingContainer}>
                     {[1, 2, 3, 4, 5].map((i) => (
-                        <Ionicons key={i} name="star" size={12} color="#FFD700" />
+                        <Ionicons key={i} name="star" size={12} color={Colors.star} />
                     ))}
                     <Text style={styles.reviewText}>0.0 (0 Reviews)</Text>
                 </View>
@@ -85,7 +93,7 @@ const SharedProductItem = ({ post, parentFeedId }) => {
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.button, styles.chatButton]}>
-                        <Ionicons name="chatbubble-outline" size={20} color="#333" />
+                        <Ionicons name="chatbubble-outline" size={20} color={Colors.neutral700} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -101,7 +109,7 @@ const styles = StyleSheet.create({
         width: '100%',
         aspectRatio: 1, // Square images
         borderRadius: 10,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: Colors.neutral150,
         overflow: 'hidden',
     },
     image: {
@@ -112,13 +120,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 10,
         right: 10,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: withOpacity(Colors.black, 0.6),
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
     },
     imageCounterText: {
-        color: '#fff',
+        color: Colors.white,
         fontSize: 10,
         fontWeight: 'bold',
     },
@@ -128,7 +136,7 @@ const styles = StyleSheet.create({
     name: {
         fontWeight: 'bold',
         fontSize: 16,
-        color: '#333',
+        color: Colors.neutral700,
     },
     price: {
         fontWeight: 'bold',
@@ -143,7 +151,7 @@ const styles = StyleSheet.create({
     },
     reviewText: {
         fontSize: 12,
-        color: '#787878',
+        color: Colors.neutral430,
         marginLeft: 5,
     },
     actionsContainer: {
@@ -163,16 +171,16 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     disabledButton: {
-        backgroundColor: '#ccc',
+        backgroundColor: Colors.neutral250,
     },
     buttonText: {
         fontWeight: '600',
         fontSize: 13,
-        color: '#fff',
+        color: Colors.white,
     },
     chatButton: {
         width: 50,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: Colors.neutral150,
     },
 });
 

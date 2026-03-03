@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { MarketplaceProduct } from '../pages/marketplace/MarketplaceScreen'; // Adjust path if needed
+import { Colors } from '../theme/colors';
 
 interface ProductCardProps {
   item: MarketplaceProduct; // Use the full type for consistency
@@ -34,11 +35,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ item, onPress }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 8,
     padding: 10,
     marginVertical: 5,
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 2,
@@ -57,6 +58,6 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 14,
-    color: '#888',
+    color: Colors.neutral400,
   },
 });

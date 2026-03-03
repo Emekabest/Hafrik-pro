@@ -8,6 +8,7 @@ import { FollowersController } from '../../controllers/profilecontroller';
 import { useAuth } from '../../AuthContext';
 import Svg from '../../assl.js/svg/svg';
 import FilterHeader from './filterheader';
+import { Colors } from '../../theme/colors';
 
 
 
@@ -111,13 +112,13 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: Colors.neutral150,
     },
     followerAvatar: {
         width: 50,
         height: 50,
         borderRadius: 25,
-        backgroundColor: '#eee',
+        backgroundColor: Colors.neutral180,
         marginRight: 12,
     },
     followerInfo: {
@@ -126,12 +127,12 @@ const styles = StyleSheet.create({
     followerName: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#000',
+        color: Colors.black,
         marginBottom: 2,
     },
     followerUsername: {
         fontSize: 13,
-        color: '#666',
+        color: Colors.neutral500,
     },
     followButton: {
         backgroundColor: AppDetails.primaryColor,
@@ -140,23 +141,23 @@ const styles = StyleSheet.create({
         borderRadius: 50,
     },
     followButtonText: {
-        color: '#fff',
+        color: Colors.white,
         fontSize: 13,
         fontWeight: '600',
     },
     skeletonAvatar: {
-        backgroundColor: '#e9e9e9',
+        backgroundColor: Colors.neutral160,
     },
     skeletonLine: {
         height: 12,
-        backgroundColor: '#e9e9e9',
+        backgroundColor: Colors.neutral160,
         borderRadius: 6,
     },
     skeletonButton: {
         width: 70,
         height: 30,
         borderRadius: 30,
-        backgroundColor: '#e9e9e9',
+        backgroundColor: Colors.neutral160,
     }
 });
 

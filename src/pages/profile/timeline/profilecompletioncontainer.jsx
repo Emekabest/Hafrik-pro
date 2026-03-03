@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import AppDetails from "../../../helpers/appdetails";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from '../../../theme/colors';
 
 
 const ProfileCompletionContainer = () => {
@@ -61,7 +62,7 @@ const ProfileCompletionContainer = () => {
                         <Ionicons 
                             name={item.completed ? "checkmark" : "add"} 
                             size={18} 
-                            color="#333" 
+                            color={Colors.neutral700} 
                             style={styles.taskIcon} 
                         />
                         <Text style={[styles.taskText, item.completed && styles.taskTextCompleted]}>
@@ -77,13 +78,13 @@ const ProfileCompletionContainer = () => {
 
 const styles = StyleSheet.create({
     profileCompletionContainer: {
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderRadius: 15,
         marginHorizontal: 15,
         padding: 15,
         marginTop: 15,
         borderWidth: 1,
-        borderColor: '#f0f0f0',
+        borderColor: Colors.neutral150,
     },
     profileCompletionTextAndProgressBarContainer: {
         marginBottom: 20,
@@ -97,7 +98,7 @@ const styles = StyleSheet.create({
     completionLabel: {
         fontSize: 14,
         fontFamily: AppDetails.fontFamily.redex.medium,
-        color: '#333',
+        color: Colors.neutral700,
     },
     percentageText: {
         fontSize: 14,
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
     },
     profileCompletionProgressBarContainer: {
         height: 7,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: Colors.neutral150,
         borderRadius: 4,
         overflow: 'hidden',
     },
@@ -127,10 +128,10 @@ const styles = StyleSheet.create({
     taskText: {
         fontSize: 13,
         fontFamily: AppDetails.fontFamily.redex.regular,
-        color: '#666',
+        color: Colors.neutral500,
     },
     taskTextCompleted: {
-        color: '#aaa',
+        color: Colors.neutral300,
         textDecorationLine: 'line-through',
     },
 });

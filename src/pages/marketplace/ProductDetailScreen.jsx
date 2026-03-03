@@ -16,16 +16,24 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width, height } = Dimensions.get('window');
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const WARM   = '#F4A535';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const CREAM  = '#F5F0E8';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const WARM   = Colors.warm;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.deepSlate;
+const CREAM  = Colors.background;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const API_BASE = 'https://hafrik.com';
 const FALLBACK_AVATAR =
@@ -164,12 +172,12 @@ export default function ProductDetailScreen({ navigation, route }) {
           <View style={styles.badgeRow}>
             {!!product.condition && (
               <View style={[styles.badge, { backgroundColor: `${ACCENT}18` }]}>
-                <Text style={[styles.badgeTxt, { color: '#0a7a5a' }]}>{product.condition}</Text>
+                <Text style={[styles.badgeTxt, { color: Colors.successStrong }]}>{product.condition}</Text>
               </View>
             )}
             <View style={[styles.badge, inStock ? styles.badgeInStock : styles.badgeOutStock]}>
-              <View style={[styles.badgeDot, !inStock && { backgroundColor: '#E85D4A' }]} />
-              <Text style={[styles.badgeTxt, !inStock && { color: '#E85D4A' }]}>
+              <View style={[styles.badgeDot, !inStock && { backgroundColor: Colors.coral }]} />
+              <Text style={[styles.badgeTxt, !inStock && { color: Colors.coral }]}>
                 {product.stock_status}
               </Text>
             </View>
@@ -233,7 +241,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                     <Text style={styles.sellerName}>{sellerName}</Text>
                     {product.seller.verified && (
                       <View style={styles.verifiedBadge}>
-                        <Ionicons name="checkmark" size={10} color="#fff" />
+                        <Ionicons name="checkmark" size={10} color={Colors.white} />
                       </View>
                     )}
                     <View style={[styles.sellerTypeBadge, isPage && styles.sellerTypePage]}>
@@ -280,13 +288,13 @@ export default function ProductDetailScreen({ navigation, route }) {
           }
         >
           <LinearGradient
-            colors={[BRAND, '#1a5c63']}
+            colors={[BRAND, Colors.tealHeader]}
             style={styles.buyGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.buyBtnTxt}>View Listing</Text>
-            <Ionicons name="arrow-forward" size={16} color="#fff" />
+            <Ionicons name="arrow-forward" size={16} color={Colors.white} />
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -305,27 +313,27 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND, borderRadius: 12,
     paddingHorizontal: 24, paddingVertical: 12,
   },
-  goBackTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  goBackTxt: { color: Colors.white, fontWeight: '700', fontSize: 14 },
 
   // Sticky header
   stickyHeader: {
     position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20,
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', paddingHorizontal: 14, paddingBottom: 12,
+    backgroundColor: Colors.white, paddingHorizontal: 14, paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 4,
   },
   stickyBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#F5F7F8', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: Colors.surfaceBase, justifyContent: 'center', alignItems: 'center',
   },
   stickyTitle: {
     flex: 1, fontSize: 15, fontWeight: '700', color: DARK, marginHorizontal: 10,
   },
 
   // Hero
-  heroWrap: { position: 'relative', backgroundColor: '#000' },
+  heroWrap: { position: 'relative', backgroundColor: Colors.black },
   heroImg:  { width, height: height * 0.42 },
   imgTopRow: {
     position: 'absolute', top: 0, left: 0, right: 0,
@@ -333,19 +341,19 @@ const styles = StyleSheet.create({
   },
   circleBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: withOpacity(Colors.white, 0.92),
     justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
   dotRow: {
     position: 'absolute', bottom: 68, left: 0, right: 0,
     flexDirection: 'row', justifyContent: 'center', gap: 6,
   },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.45)' },
-  dotActive: { backgroundColor: '#fff', width: 20 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: withOpacity(Colors.white, 0.45) },
+  dotActive: { backgroundColor: Colors.white, width: 20 },
   thumbStrip:   { position: 'absolute', bottom: 10, left: 0, right: 0 },
-  thumb:        { width: 52, height: 52, borderRadius: 10, borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)' },
+  thumb:        { width: 52, height: 52, borderRadius: 10, borderWidth: 2, borderColor: withOpacity(Colors.white, 0.4) },
   thumbActive:  { borderColor: ACCENT, borderWidth: 2.5 },
 
   // Content card
@@ -363,7 +371,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4,
   },
   badgeInStock:  { backgroundColor: `${ACCENT}18` },
-  badgeOutStock: { backgroundColor: 'rgba(232,93,74,0.1)' },
+  badgeOutStock: { backgroundColor: withOpacity(Colors.coral, 0.1) },
   badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
   badgeTxt: { fontSize: 11, fontWeight: '700', color: BRAND },
 
@@ -375,7 +383,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   metaChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#fff', borderRadius: 100,
+    backgroundColor: Colors.white, borderRadius: 100,
     paddingHorizontal: 10, paddingVertical: 5,
     borderWidth: 1, borderColor: BORDER,
   },
@@ -391,7 +399,7 @@ const styles = StyleSheet.create({
   sellerAvatar: {
     width: 52, height: 52, borderRadius: 16,
     borderWidth: 2, borderColor: `${ACCENT}40`,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: Colors.neutral190,
   },
   sellerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   sellerName:    { fontSize: 15, fontWeight: '800', color: DARK },
@@ -401,11 +409,11 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center',
   },
   sellerTypeBadge: {
-    backgroundColor: '#374151', borderRadius: 100,
+    backgroundColor: Colors.slate, borderRadius: 100,
     paddingHorizontal: 7, paddingVertical: 2,
   },
   sellerTypePage: { backgroundColor: BRAND },
-  sellerTypeTxt:  { color: '#fff', fontSize: 9, fontWeight: '800' },
+  sellerTypeTxt:  { color: Colors.white, fontSize: 9, fontWeight: '800' },
   viewProfileBtn: {
     paddingHorizontal: 14, paddingVertical: 7,
     borderRadius: 100, borderWidth: 1.5, borderColor: BRAND,
@@ -416,9 +424,9 @@ const styles = StyleSheet.create({
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     flexDirection: 'row', gap: 10,
-    backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 12,
     borderTopWidth: 1, borderTopColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -2 },
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 10,
   },
   chatBtn: {
@@ -431,5 +439,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 13, gap: 6,
   },
-  buyBtnTxt: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  buyBtnTxt: { fontSize: 14, fontWeight: '800', color: Colors.white },
 });

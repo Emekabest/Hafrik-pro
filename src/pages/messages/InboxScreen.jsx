@@ -20,13 +20,17 @@ import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Colors } from '../../theme';
 
 const BASE_URL = 'https://hafrik.com';
-const BRAND    = '#0C3F44';
-const ACCENT   = '#13C296';
-const DARK     = '#0D1B1E';
-const MUTED    = '#7A9198';
-const BG       = '#F0F4F4';
+const BRAND    = Colors.primaryDark;
+const ACCENT   = Colors.primary;
+const DARK     = Colors.black;
+const MUTED    = Colors.secondaryText;
+const BG       = Colors.surfaceTint;
+const WHITE    = Colors.white;
+const BLACK    = Colors.black;
+const DANGER   = Colors.destructive;
 
 const apiFetch = async (path, token, opts = {}) => {
   try {
@@ -111,17 +115,17 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin }) => {
           onPin(item.conversation_id);
         }}
       >
-        <Ionicons name={pinned ? 'pin' : 'pin-outline'} size={18} color="#fff" />
+        <Ionicons name={pinned ? 'pin' : 'pin-outline'} size={18} color={WHITE} />
         <Text style={styles.swipeBtnText}>{pinned ? 'Unpin' : 'Pin'}</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.swipeBtn, { backgroundColor: '#EF4444' }]}
+        style={[styles.swipeBtn, { backgroundColor: DANGER }]}
         onPress={() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           onDelete(item.conversation_id);
         }}
       >
-        <Ionicons name="trash-outline" size={18} color="#fff" />
+        <Ionicons name="trash-outline" size={18} color={WHITE} />
         <Text style={styles.swipeBtnText}>Delete</Text>
       </TouchableOpacity>
     </View>
@@ -149,7 +153,7 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin }) => {
             {isOnline && <OnlineDot />}
             {pinned && (
               <View style={styles.pinnedBadge}>
-                <Ionicons name="pin" size={9} color="#fff" />
+                <Ionicons name="pin" size={9} color={WHITE} />
               </View>
             )}
           </View>
@@ -173,7 +177,7 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin }) => {
 
               {unreadCount > 0 && (
                 <LinearGradient
-                  colors={[ACCENT, '#0A8F6E']}
+                  colors={[ACCENT, BRAND]}
                   style={styles.badge}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -216,7 +220,7 @@ const StoryBubble = ({ item }) => {
     <View style={styles.storyWrap}>
       <View style={styles.storyRing}>
         <Image
-          source={{ uri: other.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0C3F44&color=fff` }}
+          source={{ uri: other.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${BRAND.replace('#', '')}&color=${WHITE.replace('#', '')}` }}
           style={styles.storyAvatar}
         />
         <View style={styles.storyDot} />
@@ -363,7 +367,7 @@ export default function InboxScreen() {
 
       {/* ── Header ── */}
       <LinearGradient
-        colors={[BRAND, '#0A5560']}
+        colors={[BRAND, ACCENT + 'CC']}
         style={[styles.header, { paddingTop: top + 6 }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -387,7 +391,7 @@ export default function InboxScreen() {
           <TouchableOpacity style={styles.composeBtn} activeOpacity={0.8}
             onPress={() => Alert.alert('New message', 'New conversation feature coming soon!')}
           >
-            <Ionicons name="create-outline" size={20} color="#fff" />
+            <Ionicons name="create-outline" size={20} color={WHITE} />
           </TouchableOpacity>
         </Animated.View>
 
@@ -474,32 +478,32 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: WHITE + '24',
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: {
-    flex: 1, fontSize: 18, fontWeight: '800', color: '#fff',
+    flex: 1, fontSize: 18, fontWeight: '800', color: WHITE,
     letterSpacing: 0.3,
   },
   composeBtn: {
     width: 38, height: 38, borderRadius: 12,
-    backgroundColor: 'rgba(19,194,150,0.2)',
+    backgroundColor: ACCENT + '33',
     alignItems: 'center', justifyContent: 'center',
   },
 
   /* Search */
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: WHITE + '1F',
     borderRadius: 14, paddingHorizontal: 14, height: 44,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: WHITE + '14',
   },
   searchBarFocused: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: WHITE + '2E',
     borderColor: ACCENT + '55',
   },
   searchInput: {
-    flex: 1, fontSize: 14, color: '#fff',
+    flex: 1, fontSize: 14, color: WHITE,
   },
 
   /* Section label */
@@ -516,12 +520,12 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 18,
     padding: 14,
-    shadowColor: '#000',
+    shadowColor: BLACK,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -529,7 +533,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardUnread: {
-    backgroundColor: '#EBF9F5',
+    backgroundColor: ACCENT + '1F',
     shadowColor: ACCENT,
     shadowOpacity: 0.1,
   },
@@ -548,7 +552,7 @@ const styles = StyleSheet.create({
   onlineDot: {
     width: 12, height: 12, borderRadius: 6,
     backgroundColor: ACCENT,
-    borderWidth: 2, borderColor: '#fff',
+    borderWidth: 2, borderColor: WHITE,
   },
 
   pinnedBadge: {
@@ -556,7 +560,7 @@ const styles = StyleSheet.create({
     width: 16, height: 16, borderRadius: 8,
     backgroundColor: ACCENT,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: '#fff',
+    borderWidth: 1.5, borderColor: WHITE,
   },
 
   /* Card content */
@@ -574,7 +578,7 @@ const styles = StyleSheet.create({
     minWidth: 22, height: 22, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
   },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+  badgeText: { color: WHITE, fontSize: 11, fontWeight: '900' },
 
   unreadStrip: {
     position: 'absolute', left: 0, top: 0, bottom: 0,
@@ -587,7 +591,7 @@ const styles = StyleSheet.create({
     width: 64, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8,
   },
-  swipeBtnText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  swipeBtnText: { color: WHITE, fontSize: 10, fontWeight: '800' },
 
   /* Empty */
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 16 },
@@ -607,11 +611,11 @@ const styles = StyleSheet.create({
   },
   filterTab: {
     paddingHorizontal: 16, paddingVertical: 7, borderRadius: 100,
-    backgroundColor: 'rgba(12,63,68,0.06)', borderWidth: 1, borderColor: 'rgba(12,63,68,0.08)',
+    backgroundColor: BRAND + '0F', borderWidth: 1, borderColor: BRAND + '14',
   },
   filterTabOn:    { backgroundColor: BRAND, borderColor: BRAND },
   filterTabTxt:   { fontSize: 12, fontWeight: '700', color: DARK },
-  filterTabTxtOn: { color: '#fff' },
+  filterTabTxtOn: { color: WHITE },
 
   /* Active now stories */
   activeLabelRow: {
@@ -635,7 +639,7 @@ const styles = StyleSheet.create({
   storyDot: {
     position: 'absolute', bottom: 0, right: 0,
     width: 14, height: 14, borderRadius: 7,
-    backgroundColor: ACCENT, borderWidth: 2.5, borderColor: '#fff',
+    backgroundColor: ACCENT, borderWidth: 2.5, borderColor: WHITE,
   },
   storyName: { fontSize: 10, fontWeight: '600', color: DARK, textAlign: 'center' },
 });

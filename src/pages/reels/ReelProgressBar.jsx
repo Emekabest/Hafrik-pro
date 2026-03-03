@@ -1,5 +1,13 @@
 import React, { useMemo } from "react";
 import { View, StyleSheet, Animated } from "react-native";
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 export default function ReelProgressBar({ progress }) {
   // progress: Animated.Value between 0..1
@@ -23,13 +31,13 @@ const styles = StyleSheet.create({
   wrap: {
     height: 3,
     width: "100%",
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: withOpacity(Colors.white, 0.25),
     borderRadius: 999,
     overflow: "hidden",
   },
   bar: {
     height: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 999,
   },
 });

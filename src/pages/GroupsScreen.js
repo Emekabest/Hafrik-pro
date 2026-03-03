@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, StatusBar, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../theme/colors';
 
 const GroupsScreen = ({ navigation }) => {
   const groups = [
@@ -38,14 +39,14 @@ const GroupsScreen = ({ navigation }) => {
         <View style={styles.groupHeader}>
           <Text style={styles.groupName}>{item.name}</Text>
           <View style={styles.publicBadge}>
-            <Ionicons name={item.isPublic ? "earth" : "lock-closed"} size={12} color="#666" />
+            <Ionicons name={item.isPublic ? "earth" : "lock-closed"} size={12} color={Colors.neutral500} />
             <Text style={styles.publicText}>{item.isPublic ? "Public" : "Private"}</Text>
           </View>
         </View>
         <Text style={styles.groupDescription}>{item.description}</Text>
         <View style={styles.groupStats}>
           <View style={styles.groupStat}>
-            <Ionicons name="people-outline" size={16} color="#666" />
+            <Ionicons name="people-outline" size={16} color={Colors.neutral500} />
             <Text style={styles.groupStatText}>{item.members.toLocaleString()} members</Text>
           </View>
         </View>
@@ -61,11 +62,11 @@ const GroupsScreen = ({ navigation }) => {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={Colors.neutral700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Groups</Text>
         <TouchableOpacity style={styles.createButton}>
-          <Ionicons name="add" size={24} color="#0C3F44" />
+          <Ionicons name="add" size={24} color={Colors.primaryDark} />
         </TouchableOpacity>
       </View>
       <FlatList
@@ -82,7 +83,7 @@ const GroupsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.neutral150,
   },
   backButton: {
     padding: 4,
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.neutral700,
   },
   createButton: {
     padding: 4,
@@ -108,10 +109,10 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   groupCard: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 12,
     marginBottom: 15,
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -134,27 +135,27 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.neutral700,
     flex: 1,
     marginRight: 10,
   },
   publicBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: Colors.neutral150,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   publicText: {
     fontSize: 10,
-    color: '#666',
+    color: Colors.neutral500,
     marginLeft: 4,
     fontWeight: '500',
   },
   groupDescription: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.neutral500,
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -167,17 +168,17 @@ const styles = StyleSheet.create({
   },
   groupStatText: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.neutral500,
     marginLeft: 6,
   },
   joinButton: {
-    backgroundColor: '#0C3F44',
+    backgroundColor: Colors.primaryDark,
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   joinButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 14,
     fontWeight: '600',
   },

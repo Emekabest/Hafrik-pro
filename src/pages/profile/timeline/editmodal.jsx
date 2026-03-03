@@ -5,6 +5,7 @@ import AppDetails from "../../../helpers/appdetails";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../../AuthContext";
 import { updateProfileController as UpdateProfileController } from "../../../controllers/profilecontroller";
+import { Colors } from '../../../theme/colors';
 
 const EditModal = ({ visible, onClose, userDetails }) => {
     const {token} = useAuth();
@@ -121,7 +122,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onClose} style={styles.backButton} activeOpacity={1}>
-                        <Ionicons name="arrow-back" size={24} color="#000" />
+                        <Ionicons name="arrow-back" size={24} color={Colors.black} />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
@@ -131,7 +132,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                     >
                         
                         {!isSaving && <Text style={styles.saveButtonText}>Save Changes</Text>}
-                        {isSaving && <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 8 }} />}
+                        {isSaving && <ActivityIndicator size="small" color={Colors.white} style={{ marginLeft: 8 }} />}
                     </TouchableOpacity>
                 </View>
 
@@ -142,7 +143,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                     {/**Info Section */}
                     <View >
                         <TouchableOpacity style={styles.moreSettingsButton} activeOpacity={1}>
-                            <Ionicons name="arrow-back" size={20} color="#000" />
+                            <Ionicons name="arrow-back" size={20} color={Colors.black} />
                             <Text style={styles.moreSettingTitle}>More Settings</Text>
                         </TouchableOpacity>
 
@@ -167,7 +168,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                             value={firstName}
                             onChangeText={setFirstName}
                             placeholder="Enter first name"
-                            placeholderTextColor={"#999"}
+                            placeholderTextColor={Colors.neutral350}
                         />
                     </View>
 
@@ -178,7 +179,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                             value={lastName}
                             onChangeText={setLastName}
                             placeholder="Enter last name"
-                            placeholderTextColor={"#999"}
+                            placeholderTextColor={Colors.neutral350}
                         />
                     </View>
 
@@ -189,7 +190,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                             value={username}
                             onChangeText={setUsername}
                             placeholder="Enter username"
-                            placeholderTextColor={"#999"}
+                            placeholderTextColor={Colors.neutral350}
                         />
                     </View>
 
@@ -200,7 +201,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                             value={phone}
                             onChangeText={setPhone}
                             placeholder="Enter phone number"
-                            placeholderTextColor={"#999"}
+                            placeholderTextColor={Colors.neutral350}
                             keyboardType="phone-pad"
                         />
                     </View>
@@ -212,7 +213,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                             value={country}
                             onChangeText={setCountry}
                             placeholder="Country"
-                            placeholderTextColor={"#999"}
+                            placeholderTextColor={Colors.neutral350}
                         />
                     </View>
 
@@ -223,7 +224,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                             value={currentCity}
                             onChangeText={setCurrentCity}
                             placeholder="Current city"
-                            placeholderTextColor={"#999"}
+                            placeholderTextColor={Colors.neutral350}
                         />
                     </View>
 
@@ -234,7 +235,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                             value={hometown}
                             onChangeText={setHometown}
                             placeholder="Hometown"
-                            placeholderTextColor={"#999"}
+                            placeholderTextColor={Colors.neutral350}
                         />
                     </View>
 
@@ -247,21 +248,21 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                                 style={[styles.genderOption, gender === 1 && styles.genderOptionSelected]}
                                 onPress={() => setGender(1)}
                             >
-                                <Ionicons name="male" size={18} color={gender === 1 ? "#fff" : "#666"} />
+                                <Ionicons name="male" size={18} color={gender === 1 ? Colors.white : Colors.neutral500} />
                                 <Text style={[styles.genderText, gender === 1 && styles.genderTextSelected]}>Male</Text>
                             </TouchableOpacity>
                             <TouchableOpacity 
                                 style={[styles.genderOption, gender === 2 && styles.genderOptionSelected]}
                                 onPress={() => setGender(2)}
                             >
-                                <Ionicons name="female" size={18} color={gender === 2 ? "#fff" : "#666"} />
+                                <Ionicons name="female" size={18} color={gender === 2 ? Colors.white : Colors.neutral500} />
                                 <Text style={[styles.genderText, gender === 2 && styles.genderTextSelected]}>Female</Text>
                             </TouchableOpacity>
                             <TouchableOpacity 
                                 style={[styles.genderOption, gender === 3 && styles.genderOptionSelected]}
                                 onPress={() => setGender(3)}
                             >
-                                <Ionicons name="transgender" size={18} color={gender === 3 ? "#fff" : "#666"} />
+                                <Ionicons name="transgender" size={18} color={gender === 3 ? Colors.white : Colors.neutral500} />
                                 <Text style={[styles.genderText, gender === 3 && styles.genderTextSelected]}>Other</Text>
                             </TouchableOpacity>
                         </View>
@@ -280,7 +281,7 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                             value={aboutMe}
                             onChangeText={setAboutMe}
                             placeholder="Write something about yourself..."
-                            placeholderTextColor={"#999"}
+                            placeholderTextColor={Colors.neutral350}
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
@@ -309,7 +310,7 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: Colors.white,
     },
     header: {
         flexDirection: "row",
@@ -318,7 +319,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderBottomColor: "#eee",
+        borderBottomColor: Colors.neutral180,
     },
     backButton: {
         flexDirection: "row",
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
     },
     saveButtonText: {
         fontSize: 16,
-        color: "#fff",
+        color: Colors.white,
        fontFamily:AppDetails.fontFamily.outfit.semiBold,
     },
     scrollContent: {
@@ -340,13 +341,13 @@ const styles = StyleSheet.create({
     },
     
     moreSettingsButton: {
-        backgroundColor:"#eee", padding:10, borderRadius:50, flexDirection:"row", alignItems:"center", gap:5, justifyContent:"center",
+        backgroundColor:Colors.neutral180, padding:10, borderRadius:50, flexDirection:"row", alignItems:"center", gap:5, justifyContent:"center",
     },
  
  
     moreSettingTitle: {
         fontSize: 15,
-        color: "#000",
+        color: Colors.black,
         fontFamily: AppDetails.fontFamily.outfit.medium,
     },
 
@@ -360,14 +361,14 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontFamily: AppDetails.fontFamily.outfit.semiBold,
         marginBottom: 5,
-        color: "#000",
+        color: Colors.black,
     },
 
     warningContainer: { minHeight:100, width:"100%", backgroundColor:AppDetails.warningColor, borderRadius:15, marginBottom:15, paddingVertical:10, paddingHorizontal:20 },
 
-    warningHeader:{ fontSize:15, color:"#fff", fontFamily:AppDetails.fontFamily.inter.bold},
+    warningHeader:{ fontSize:15, color:Colors.white, fontFamily:AppDetails.fontFamily.inter.bold},
 
-    warningText:{ fontSize:13, color:"#fff", fontFamily:AppDetails.fontFamily.body, marginTop:5, letterSpacing:0.5, lineHeight:23},
+    warningText:{ fontSize:13, color:Colors.white, fontFamily:AppDetails.fontFamily.body, marginTop:5, letterSpacing:0.5, lineHeight:23},
 
     formContainer: {
         paddingVertical: 10,
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 14,
         fontFamily: AppDetails.fontFamily.inter.bold,
-        color: "#333",
+        color: Colors.neutral700,
         marginBottom: 8,
     },
     input: {
@@ -387,8 +388,8 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
-        color: "#000",
-        backgroundColor: "#fafafa",
+        color: Colors.black,
+        backgroundColor: Colors.neutral100,
     },
     textArea: {
         minHeight: 100,
@@ -401,21 +402,21 @@ const styles = StyleSheet.create({
         borderColor: AppDetails.borderLineColor,
         borderRadius: 8,
         padding: 12,
-        backgroundColor: "#fafafa",
+        backgroundColor: Colors.neutral100,
     },
     locationText: {
         fontSize: 16,
-        color: "#000",
+        color: Colors.black,
     },
     placeholderText: {
         fontSize: 16,
-        color: "#999",
+        color: Colors.neutral350,
     },
     locationPickerContainer: {
         marginTop: 10,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: Colors.neutral180,
         borderRadius: 8,
         padding: 5,
     },
@@ -423,14 +424,14 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBottomColor: "#f5f5f5",
+        borderBottomColor: Colors.neutral130,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
     locationOptionText: {
         fontSize: 15,
-        color: "#333",
+        color: Colors.neutral700,
     },
     activeLocationOptionText: {
         color: AppDetails.primaryColor,
@@ -447,8 +448,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         borderRadius: 25,
         borderWidth: 1,
-        borderColor: "#ddd",
-        backgroundColor: "#f9f9f9",
+        borderColor: Colors.neutral220,
+        backgroundColor: Colors.neutral110,
     },
     genderOptionSelected: {
         backgroundColor: AppDetails.primaryColor,
@@ -457,10 +458,10 @@ const styles = StyleSheet.create({
     genderText: {
         marginLeft: 8,
         fontSize: 15,
-        color: "#666",
+        color: Colors.neutral500,
     },
     genderTextSelected: {
-        color: "#fff",
+        color: Colors.white,
         fontWeight: "600",
     },
     dateContainer: {
@@ -472,22 +473,22 @@ const styles = StyleSheet.create({
     },
     dateLabel: {
         fontSize: 12,
-        color: "#666",
+        color: Colors.neutral500,
         marginBottom: 4,
     },
     dateInput: {
         borderWidth: 1,
-        borderColor: "#ccc",
+        borderColor: Colors.neutral250,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
         textAlign: "center",
-        color: "#000",
-        backgroundColor: "#fafafa",
+        color: Colors.black,
+        backgroundColor: Colors.neutral100,
     },
     helperText: {
         fontSize: 12,
-        color: "#999",
+        color: Colors.neutral350,
         marginTop: 5,
         fontStyle: "italic",
     }

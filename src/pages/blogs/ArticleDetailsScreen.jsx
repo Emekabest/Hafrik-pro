@@ -13,6 +13,9 @@ import {
   Share,
   Animated,
   Pressable,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,15 +24,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 
 import { fetchArticleDetail, normalizeTags } from './articlesApi';
+import { useAuth } from '../../AuthContext';
+import { Colors } from '../../theme';
 
 const { width, height } = Dimensions.get('window');
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const CREAM  = '#F5F0E8';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.black;
+const CREAM  = Colors.background;
+const BORDER = BRAND + '17';
+const WHITE  = Colors.white;
 
 const BOOKMARKS_KEY = 'hafrik_article_bookmarks_v1';
 
@@ -45,29 +51,29 @@ const buildHtml = (body) => `<!DOCTYPE html>
 html,body{background:transparent;margin:0;padding:0}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  font-size:15px; line-height:1.8; color:#1f2937;
+  font-size:15px; line-height:1.8; color:${DARK};
   padding:0 6px;
 }
 img{max-width:100%!important;height:auto;border-radius:12px;margin:14px 0;display:block}
 p{margin:0 0 14px}
-h1,h2,h3,h4{color:#0D1B1E;font-weight:900;margin:18px 0 10px;line-height:1.25}
+h1,h2,h3,h4{color:${DARK};font-weight:900;margin:18px 0 10px;line-height:1.25}
 h2{font-size:18px} h3{font-size:16px}
-a{color:#13C296;text-decoration:none}
+a{color:${ACCENT};text-decoration:none}
 blockquote{
-  border-left:3px solid #0C3F44;
+  border-left:3px solid ${BRAND};
   padding:10px 12px;
-  color:#4b5563;
+  color:${MUTED};
   margin:14px 0;
-  background:#f8fafa;
+  background:${Colors.surfaceTint};
   border-radius:0 12px 12px 0;
 }
-pre,code{background:#f4f5f6;padding:3px 7px;border-radius:8px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+pre,code{background:${Colors.surfaceTint};padding:3px 7px;border-radius:8px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 ul,ol{margin:0 0 14px 22px}
 li{margin-bottom:6px}
-hr{border:none;border-top:1px solid #e5e7eb;margin:16px 0}
+hr{border:none;border-top:1px solid ${Colors.border};margin:16px 0}
 table{width:100%;border-collapse:collapse;margin:12px 0 14px}
-th,td{padding:8px;border:1px solid #e5e7eb;font-size:13px}
-th{background:#f0f5f5;font-weight:800}
+th,td{padding:8px;border:1px solid ${Colors.border};font-size:13px}
+th{background:${Colors.surfaceTint};font-weight:800}
 </style>
 </head><body>
 ${body}
@@ -107,17 +113,47 @@ async function saveBookmarksSet(set) {
   } catch {}
 }
 
-// Optional: hook to your backend later
-async function sendClapToApi({ postId, clapsToAdd }) {
-  // TODO: wire to your API
-  // Example:
-  // await api.post('/articles/clap.php', { post_id: postId, claps: clapsToAdd });
-  return true;
+async function sendClapToApi({ postId, clapsToAdd, token }) {
+  try {
+    const form = new FormData();
+    form.append('post_id', String(postId));
+    form.append('claps', String(clapsToAdd));
+    const res = await fetch('https://hafrik.com/api/v1/article/clap.php', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function CommentRow({ item }) {
+  const name = item.user?.name || item.user?.username || item.username || 'User';
+  const avatar = item.user?.avatar || item.avatar || null;
+  const text = item.comment || item.body || item.text || '';
+  return (
+    <View style={styles.commentItem}>
+      {avatar ? (
+        <Image source={{ uri: avatar }} style={styles.commentAvatar} />
+      ) : (
+        <View style={[styles.commentAvatar, styles.avatarFallback]}>
+          <Text style={{ fontSize: 11 }}>👤</Text>
+        </View>
+      )}
+      <View style={styles.commentBody}>
+        <Text style={styles.commentAuthorName}>{name}</Text>
+        <Text style={styles.commentText}>{text}</Text>
+      </View>
+    </View>
+  );
 }
 
 export default function ArticleDetailsScreen({ navigation, route }) {
   const { postId, title: navTitle } = route.params || {};
   const { top, bottom } = useSafeAreaInsets();
+  const { token, user } = useAuth();
 
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -131,6 +167,16 @@ export default function ArticleDetailsScreen({ navigation, route }) {
   // Claps (optimistic UI)
   const [claps, setClaps] = useState(0);
   const clapBurst = useRef(new Animated.Value(0)).current;
+
+  // Likes
+  const [likesCount, setLikesCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+
+  // Comments
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   // Sticky author bar visibility
   const stickyAnim = useRef(new Animated.Value(0)).current;
@@ -171,6 +217,10 @@ export default function ArticleDetailsScreen({ navigation, route }) {
 
         // If API later returns claps_count, use it. For now default to 0.
         setClaps(Number(data?.claps || data?.claps_count || 0));
+
+        // Likes
+        setLikesCount(Number(data?.likes_count || data?.likes || 0));
+        setIsLiked(!!data?.user_liked);
       } catch {
         if (!mounted) return;
         setArticle(null);
@@ -191,6 +241,77 @@ export default function ArticleDetailsScreen({ navigation, route }) {
       setBookmarked(set.has(String(postId)));
     })();
   }, [postId]);
+
+  const loadComments = useCallback(async () => {
+    if (!postId || !token) return;
+    setCommentsLoading(true);
+    try {
+      const res = await fetch(
+        `https://hafrik.com/api/v1/article/get_comment.php?post_id=${postId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) return;
+      const json = await res.json();
+      const list = Array.isArray(json?.data ?? json) ? (json?.data ?? json) : [];
+      setComments(list);
+    } catch {}
+    finally { setCommentsLoading(false); }
+  }, [postId, token]);
+
+  useEffect(() => { loadComments(); }, [loadComments]);
+
+  const submitComment = useCallback(async () => {
+    const text = newComment.trim();
+    if (!text || !postId || !token || submittingComment) return;
+    setSubmittingComment(true);
+    const optimistic = {
+      id: `opt_${Date.now()}`,
+      comment: text,
+      user: { name: user?.username || user?.name || 'You', avatar: user?.avatar },
+    };
+    setComments((c) => [optimistic, ...c]);
+    setNewComment('');
+    try {
+      const form = new FormData();
+      form.append('post_id', String(postId));
+      form.append('comment', text);
+      const res = await fetch('https://hafrik.com/api/v1/article/add_comment.php', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok) throw new Error('failed');
+      // Reload to get server-assigned IDs
+      loadComments();
+    } catch {
+      setComments((c) => c.filter((x) => x.id !== optimistic.id));
+      setNewComment(text);
+    } finally {
+      setSubmittingComment(false);
+    }
+  }, [newComment, postId, token, submittingComment, user, loadComments]);
+
+  const handleLike = useCallback(async () => {
+    if (!postId || !token) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const prevLiked = isLiked;
+    const prevCount = likesCount;
+    setIsLiked(!prevLiked);
+    setLikesCount((c) => prevLiked ? Math.max(0, c - 1) : c + 1);
+    try {
+      const form = new FormData();
+      form.append('post_id', String(postId));
+      const res = await fetch('https://hafrik.com/api/v1/article/like.php', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok) throw new Error('failed');
+    } catch {
+      setIsLiked(prevLiked);
+      setLikesCount(prevCount);
+    }
+  }, [postId, token, isLiked, likesCount]);
 
   const toggleBookmark = useCallback(async () => {
     if (!postId) return;
@@ -237,13 +358,13 @@ export default function ArticleDetailsScreen({ navigation, route }) {
 
     // Fire and forget API call (batching can come later)
     try {
-      await sendClapToApi({ postId, clapsToAdd: 1 });
+      await sendClapToApi({ postId, clapsToAdd: 1, token });
     } catch {}
   }, [postId, clapBurst]);
 
   const openRelated = useCallback((rel) => {
     if (!rel?.post_id) return;
-    navigation.push('ArticleDetailsScreen', { postId: rel.post_id, title: rel.title });
+    navigation.push('ArticleDetails', { postId: rel.post_id, title: rel.title });
   }, [navigation]);
 
   const displayTitle = safeText(article?.title) || safeText(navTitle) || 'Article';
@@ -327,7 +448,11 @@ export default function ArticleDetailsScreen({ navigation, route }) {
   });
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       <StatusBar barStyle="light-content" />
 
       {/* Reading progress bar */}
@@ -421,7 +546,7 @@ export default function ArticleDetailsScreen({ navigation, route }) {
             {/* Trending badge */}
             {isTrending && (
               <View style={styles.trendingBadge}>
-                <Ionicons name="flame" size={14} color="#fff" />
+                <Ionicons name="flame" size={14} color={WHITE} />
                 <Text style={styles.trendingTxt}>Trending</Text>
               </View>
             )}
@@ -493,10 +618,17 @@ export default function ArticleDetailsScreen({ navigation, route }) {
               <Ionicons
                 name={bookmarked ? 'bookmark' : 'bookmark-outline'}
                 size={18}
-                color={bookmarked ? '#fff' : BRAND}
+                color={bookmarked ? WHITE : BRAND}
               />
               <Text style={[styles.actionTxt, bookmarked && styles.actionTxtActive]}>
                 {bookmarked ? 'Saved' : 'Save'}
+              </Text>
+            </Pressable>
+
+            <Pressable style={[styles.actionBtn, isLiked && styles.actionBtnActive]} onPress={handleLike}>
+              <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={18} color={isLiked ? WHITE : BRAND} />
+              <Text style={[styles.actionTxt, isLiked && styles.actionTxtActive]}>
+                {likesCount > 0 ? formatNumber(likesCount) : 'Like'}
               </Text>
             </Pressable>
 
@@ -602,6 +734,61 @@ export default function ArticleDetailsScreen({ navigation, route }) {
             </View>
           )}
 
+          {/* Comments Section */}
+          <View style={styles.commentsWrap}>
+            <View style={styles.commentsHeader}>
+              <Text style={styles.commentsSectionTitle}>Comments</Text>
+              {comments.length > 0 && (
+                <View style={styles.commentsBadge}>
+                  <Text style={styles.commentsBadgeTxt}>{comments.length}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Input */}
+            <View style={styles.commentInputRow}>
+              {user?.avatar ? (
+                <Image source={{ uri: user.avatar }} style={styles.commentInputAvatar} />
+              ) : (
+                <View style={[styles.commentInputAvatar, styles.avatarFallback]}>
+                  <Text style={{ fontSize: 13 }}>👤</Text>
+                </View>
+              )}
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Write a comment…"
+                placeholderTextColor={MUTED}
+                value={newComment}
+                onChangeText={setNewComment}
+                multiline
+                returnKeyType="send"
+                blurOnSubmit
+                onSubmitEditing={submitComment}
+              />
+              <TouchableOpacity
+                style={[styles.commentSendBtn, (!newComment.trim() || submittingComment) && { opacity: 0.4 }]}
+                onPress={submitComment}
+                disabled={!newComment.trim() || submittingComment}
+              >
+                {submittingComment ? (
+                  <ActivityIndicator size="small" color={WHITE} />
+                ) : (
+                  <Ionicons name="send" size={16} color={WHITE} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {commentsLoading ? (
+              <ActivityIndicator size="small" color={BRAND} style={{ marginVertical: 16 }} />
+            ) : comments.length === 0 ? (
+              <Text style={styles.noCommentsTxt}>No comments yet. Be the first!</Text>
+            ) : (
+              comments.map((item) => (
+                <CommentRow key={String(item.id || item.comment_id || item.created_at)} item={item} />
+              ))
+            )}
+          </View>
+
           <View style={{ height: 110 }} />
         </View>
       </Animated.ScrollView>
@@ -609,7 +796,7 @@ export default function ArticleDetailsScreen({ navigation, route }) {
       {/* Floating “Clap” + “Bookmark” */}
       <View style={[styles.fabRow, { paddingBottom: Math.max(18, bottom + 10) }]}>
         <TouchableOpacity style={styles.fab} onPress={handleClap} activeOpacity={0.9}>
-          <Ionicons name="hand-left-outline" size={20} color="#fff" />
+          <Ionicons name="hand-left-outline" size={20} color={WHITE} />
           <Text style={styles.fabTxt}>Clap</Text>
         </TouchableOpacity>
 
@@ -618,15 +805,15 @@ export default function ArticleDetailsScreen({ navigation, route }) {
           onPress={toggleBookmark}
           activeOpacity={0.9}
         >
-          <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={20} color="#fff" />
+          <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={20} color={WHITE} />
           <Text style={styles.fabTxt}>{bookmarked ? 'Saved' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const WARM = '#F4A535';
+const WARM = Colors.warning;
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: CREAM },
@@ -641,7 +828,7 @@ const styles = StyleSheet.create({
   },
   errorTxt: { fontSize: 14, color: MUTED, textAlign: 'center' },
   primaryBtn: { backgroundColor: BRAND, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  primaryBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  primaryBtnTxt: { color: WHITE, fontWeight: '700', fontSize: 14 },
 
   // Progress
   progressWrap: {
@@ -650,11 +837,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 50,
-    backgroundColor: 'rgba(245,240,232,0.92)',
+    backgroundColor: CREAM + 'EB',
   },
   progressTrack: {
     height: 3,
-    backgroundColor: 'rgba(12,63,68,0.12)',
+    backgroundColor: BRAND + '1F',
   },
   progressFill: {
     height: 3,
@@ -674,10 +861,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
-    shadowColor: '#000',
+    shadowColor: DARK,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -687,7 +874,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F5F7F8',
+    backgroundColor: Colors.surfaceTint,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -709,16 +896,16 @@ const styles = StyleSheet.create({
   circleBtn: {
     width: 40, height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: WHITE + 'F0',
     justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12, shadowRadius: 8, elevation: 6,
   },
   trendingBadge: {
     position: 'absolute',
     bottom: 14,
     left: 14,
-    backgroundColor: 'rgba(232,93,74,0.95)',
+    backgroundColor: Colors.destructive + 'F2',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
@@ -726,7 +913,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  trendingTxt: { color: '#fff', fontWeight: '900', fontSize: 11, letterSpacing: 0.3 },
+  trendingTxt: { color: WHITE, fontWeight: '900', fontSize: 11, letterSpacing: 0.3 },
 
   plainTop: {
     flexDirection: 'row',
@@ -746,9 +933,9 @@ const styles = StyleSheet.create({
   },
 
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  catPill: { backgroundColor: 'rgba(12,63,68,0.10)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  catPill: { backgroundColor: BRAND + '1A', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   catPillTxt: { fontSize: 10.5, fontWeight: '900', color: BRAND },
-  tagPill: { backgroundColor: 'rgba(19,194,150,0.14)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  tagPill: { backgroundColor: ACCENT + '24', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   tagPillTxt: { fontSize: 10.5, fontWeight: '800', color: ACCENT },
 
   title: {
@@ -760,15 +947,15 @@ const styles = StyleSheet.create({
   },
 
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  authorAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff' },
-  avatarFallback: { justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER },
+  authorAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: WHITE },
+  avatarFallback: { justifyContent: 'center', alignItems: 'center', backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER },
   authorName: { fontSize: 13.5, fontWeight: '900', color: DARK },
   authorMeta: { fontSize: 11.5, color: MUTED, marginTop: 2 },
 
   // Social row
   socialRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   actionBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderWidth: 1,
     borderColor: BORDER,
     paddingHorizontal: 12,
@@ -784,11 +971,11 @@ const styles = StyleSheet.create({
     borderColor: BRAND,
   },
   actionTxt: { fontSize: 12.5, fontWeight: '900', color: BRAND },
-  actionTxtActive: { color: '#fff' },
+  actionTxtActive: { color: WHITE },
 
   clapCountPill: {
     marginLeft: 'auto',
-    backgroundColor: 'rgba(19,194,150,0.12)',
+    backgroundColor: ACCENT + '1F',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -802,22 +989,22 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 8,
     top: -6,
-    backgroundColor: 'rgba(244,165,53,0.95)',
+    backgroundColor: WARM + 'F2',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
   },
-  clapBurstTxt: { color: '#fff', fontWeight: '900', fontSize: 11 },
+  clapBurstTxt: { color: WHITE, fontWeight: '900', fontSize: 11 },
 
   snippetBox: {
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderWidth: 1,
     borderColor: BORDER,
     borderRadius: 14,
     padding: 14,
     marginTop: 6,
   },
-  snippetTxt: { fontSize: 13.5, color: '#2f3e43', lineHeight: 21 },
+  snippetTxt: { fontSize: 13.5, color: DARK, lineHeight: 21 },
 
   divider: { height: 1, backgroundColor: BORDER, marginVertical: 16 },
 
@@ -832,7 +1019,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
 
-  plainContent: { fontSize: 15, color: '#333', lineHeight: 26 },
+  plainContent: { fontSize: 15, color: DARK, lineHeight: 26 },
 
   // Related
   relatedWrap: { marginTop: 10 },
@@ -841,7 +1028,7 @@ const styles = StyleSheet.create({
   relatedSub: { fontSize: 12, color: MUTED },
 
   relatedCard: {
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderWidth: 1,
     borderColor: BORDER,
     borderRadius: 16,
@@ -851,8 +1038,8 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
-  relatedImage: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#f2f2f2' },
-  relatedFallback: { justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: BORDER, backgroundColor: '#fff' },
+  relatedImage: { width: 64, height: 64, borderRadius: 12, backgroundColor: Colors.surfaceTint },
+  relatedFallback: { justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: BORDER, backgroundColor: WHITE },
   relatedCardTitle: { fontSize: 13.5, fontWeight: '900', color: DARK, lineHeight: 18, marginBottom: 4 },
   relatedSnippet: { fontSize: 11.5, color: MUTED, lineHeight: 16 },
 
@@ -880,6 +1067,88 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 10,
   },
-  fabSaved: { backgroundColor: '#0a5a62' },
-  fabTxt: { color: '#fff', fontWeight: '900', fontSize: 13 },
+  fabSaved: { backgroundColor: Colors.primary },
+  fabTxt: { color: WHITE, fontWeight: '900', fontSize: 13 },
+
+  // Comments
+  commentsWrap: {
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+    paddingTop: 16,
+  },
+  commentsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  commentsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: DARK,
+  },
+  commentsBadge: {
+    backgroundColor: ACCENT,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 22,
+    alignItems: 'center',
+  },
+  commentsBadgeTxt: { color: WHITE, fontWeight: '900', fontSize: 11 },
+
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+    marginBottom: 16,
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 16,
+    padding: 10,
+  },
+  commentInputAvatar: { width: 32, height: 32, borderRadius: 16 },
+  commentInput: {
+    flex: 1,
+    fontSize: 13.5,
+    color: DARK,
+    maxHeight: 90,
+    paddingTop: 0,
+    paddingBottom: 0,
+  },
+  commentSendBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: BRAND,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  noCommentsTxt: {
+    fontSize: 13,
+    color: MUTED,
+    textAlign: 'center',
+    paddingVertical: 18,
+  },
+
+  commentItem: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+    alignItems: 'flex-start',
+  },
+  commentAvatar: { width: 34, height: 34, borderRadius: 17 },
+  commentBody: {
+    flex: 1,
+    backgroundColor: WHITE,
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  commentAuthorName: { fontSize: 12, fontWeight: '900', color: DARK, marginBottom: 3 },
+  commentText: { fontSize: 13, color: DARK, lineHeight: 19 },
 });

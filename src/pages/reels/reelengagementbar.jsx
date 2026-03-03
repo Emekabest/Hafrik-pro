@@ -16,9 +16,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { addComment, fetchComments, shareReel, toggleSave } from './reelsApi';
+import { Colors } from '../../theme/colors';
 
-const ACCENT = '#13C296';
-const SHEET_BG = '#0D1B1E';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const ACCENT = Colors.primary;
+const SHEET_BG = Colors.deepSlate;
 
 const CommentItem = ({ item }) => (
   <View style={styles.commentRow}>
@@ -111,7 +119,7 @@ const ReelEngagementBar = ({
           <Ionicons
             name={liked ? 'heart' : 'heart-outline'}
             size={30}
-            color={liked ? '#FF4D6D' : '#fff'}
+            color={liked ? Colors.warningPink : Colors.white}
             style={liked ? styles.likedGlow : undefined}
           />
           <Text style={styles.count}>{likesCount ?? 0}</Text>
@@ -119,7 +127,7 @@ const ReelEngagementBar = ({
 
         {/* Comment */}
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={openComments}>
-          <Ionicons name="chatbubble-ellipses" size={28} color="#fff" />
+          <Ionicons name="chatbubble-ellipses" size={28} color={Colors.white} />
           <Text style={styles.count}>{commentCount}</Text>
         </TouchableOpacity>
 
@@ -128,13 +136,13 @@ const ReelEngagementBar = ({
           <Ionicons
             name={saved ? 'bookmark' : 'bookmark-outline'}
             size={28}
-            color={saved ? ACCENT : '#fff'}
+            color={saved ? ACCENT : Colors.white}
           />
         </TouchableOpacity>
 
         {/* Share */}
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={handleShare}>
-          <Ionicons name="paper-plane-outline" size={28} color="#fff" />
+          <Ionicons name="paper-plane-outline" size={28} color={Colors.white} />
         </TouchableOpacity>
       </View>
 
@@ -176,7 +184,7 @@ const ReelEngagementBar = ({
             <TextInput
               style={styles.input}
               placeholder="Add a comment…"
-              placeholderTextColor="#7A9198"
+              placeholderTextColor={Colors.mutedBlueGray}
               value={commentText}
               onChangeText={setCommentText}
               returnKeyType="send"
@@ -190,9 +198,9 @@ const ReelEngagementBar = ({
               disabled={submitting}
             >
               {submitting ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={Colors.white} />
               ) : (
-                <Ionicons name="send" size={16} color="#fff" />
+                <Ionicons name="send" size={16} color={Colors.white} />
               )}
             </TouchableOpacity>
           </View>
@@ -214,16 +222,16 @@ const styles = StyleSheet.create({
     marginVertical: 13,
   },
   count: {
-    color: '#fff',
+    color: Colors.white,
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 12,
     marginTop: 4,
-    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowColor: withOpacity(Colors.black, 0.75),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   likedGlow: {
-    shadowColor: '#FF4D6D',
+    shadowColor: Colors.warningPink,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 8,
@@ -231,7 +239,7 @@ const styles = StyleSheet.create({
   // Modal
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: withOpacity(Colors.black, 0.5),
   },
   sheet: {
     backgroundColor: SHEET_BG,
@@ -245,13 +253,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#2A4A50',
+    backgroundColor: Colors.blueGreenMuted,
     alignSelf: 'center',
     marginTop: 10,
     marginBottom: 14,
   },
   sheetTitle: {
-    color: '#fff',
+    color: Colors.white,
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 16,
     marginBottom: 12,
@@ -260,38 +268,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#1A3540',
+    borderBottomColor: Colors.blueGreenDark,
   },
   commentAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1E3A40',
+    backgroundColor: Colors.blueGreenDeep,
     marginRight: 10,
   },
   commentBody: {
     flex: 1,
   },
   commentUsername: {
-    color: '#fff',
+    color: Colors.white,
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 13,
     marginBottom: 2,
   },
   commentText: {
-    color: '#C0D4D8',
+    color: Colors.mist,
     fontFamily: 'WorkSans_400Regular',
     fontSize: 13,
     lineHeight: 18,
   },
   commentTime: {
-    color: '#7A9198',
+    color: Colors.mutedBlueGray,
     fontFamily: 'WorkSans_400Regular',
     fontSize: 11,
     marginTop: 3,
   },
   emptyText: {
-    color: '#7A9198',
+    color: Colors.mutedBlueGray,
     fontFamily: 'WorkSans_400Regular',
     fontSize: 14,
     textAlign: 'center',
@@ -305,11 +313,11 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: '#1A3540',
+    backgroundColor: Colors.blueGreenDark,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    color: '#fff',
+    color: Colors.white,
     fontFamily: 'WorkSans_400Regular',
     fontSize: 14,
     maxHeight: 80,

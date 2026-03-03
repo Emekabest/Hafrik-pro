@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
 import ReelMedia from './reelmedia';
@@ -21,51 +22,55 @@ import { useDoubleTap } from './useDoubleTap';
 import { useWatchTime } from './useWatchTime';
 import { useViewCounter } from './useViewCounter';
 import { recordWatch } from './reelsApi';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
 const ReelCard = ({ reel, height = SCREEN_H }) => {
   const { token } = useAuth();
+  const { top: safeTop } = useSafeAreaInsets();
 
   const currentReelId = useStore((s) => s.currentReel?.reelId);
   const isActive = currentReelId === reel.id;
 
-  const interactionRef = useRef(null);
-  const progress      = useRef(new Animated.Value(0)).current;
+  const interactionRef    = useRef(null);
+  const progress          = useRef(new Animated.Value(0)).current;
   const [heartKey,  setHeartKey]  = useState('');
   const [isPaused,  setIsPaused]  = useState(false);
   const [pauseIcon, setPauseIcon] = useState('pause-circle');
   const [isMuted,   setIsMuted]   = useState(false);
 
-  // Mute animation
+  // Mute icon scale bounce
   const muteScale = useRef(new Animated.Value(1)).current;
-
-  // Pause indicator animation
+  // Centre pause/play indicator
   const indicatorOpacity = useRef(new Animated.Value(0)).current;
   const indicatorScale   = useRef(new Animated.Value(0.6)).current;
 
-  // ── Auto-reset pause when a new reel becomes active ─────────────────────
+  // ── Reset pause state when this reel becomes active ─────────────────────
   const prevIsActiveRef = useRef(false);
   useEffect(() => {
-    if (isActive && !prevIsActiveRef.current) {
-      setIsPaused(false);
-    }
+    if (isActive && !prevIsActiveRef.current) setIsPaused(false);
     prevIsActiveRef.current = isActive;
   }, [isActive]);
 
-  // ── Watch time tracking ──────────────────────────────────────────────────
+  // ── Watch-time & view tracking ───────────────────────────────────────────
   const { start, pause, flush } = useWatchTime({
     onFlush: (reelId, totalMs) => {
       if (!token || totalMs < 2000) return;
       recordWatch(reelId, totalMs, undefined, token).catch(() => {});
     },
   });
-
   const { start: viewStart, stop: viewStop } = useViewCounter({
     minWatchMs: 1200,
     onView: () => {},
   });
-
   useEffect(() => {
     if (isActive && !isPaused) {
       start(reel.id);
@@ -74,13 +79,10 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
       pause();
       viewStop();
     }
-    return () => {
-      flush();
-      viewStop();
-    };
+    return () => { flush(); viewStop(); };
   }, [isActive, reel.id, isPaused]);
 
-  // ── Pause/play indicator ─────────────────────────────────────────────────
+  // ── Centre pause/play flash indicator ────────────────────────────────────
   const showIndicator = useCallback((icon) => {
     setPauseIcon(icon);
     indicatorOpacity.stopAnimation();
@@ -89,30 +91,23 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
     indicatorScale.setValue(0.65);
     Animated.parallel([
       Animated.spring(indicatorScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 140,
-        friction: 7,
+        toValue: 1, useNativeDriver: true, tension: 140, friction: 7,
       }),
       Animated.sequence([
-        Animated.delay(500),
-        Animated.timing(indicatorOpacity, {
-          toValue: 0,
-          duration: 260,
-          useNativeDriver: true,
-        }),
+        Animated.delay(520),
+        Animated.timing(indicatorOpacity, { toValue: 0, duration: 280, useNativeDriver: true }),
       ]),
     ]).start();
   }, [indicatorOpacity, indicatorScale]);
 
-  // ── Double tap → like ────────────────────────────────────────────────────
+  // ── Double-tap → like ────────────────────────────────────────────────────
   const handleDoubleTap = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setHeartKey(String(Date.now()));
     interactionRef.current?.triggerLike();
   }, []);
 
-  // ── Single tap → toggle pause/play ──────────────────────────────────────
+  // ── Single-tap → toggle pause / play ─────────────────────────────────────
   const handleSingleTap = useCallback(() => {
     setIsPaused(prev => {
       const next = !prev;
@@ -121,32 +116,35 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
     });
   }, [showIndicator]);
 
-  // ── Mute toggle ──────────────────────────────────────────────────────────
+  // ── Mute toggle ───────────────────────────────────────────────────────────
   const handleMuteToggle = useCallback(() => {
     Animated.sequence([
-      Animated.timing(muteScale, { toValue: 0.75, duration: 80, useNativeDriver: true }),
-      Animated.spring(muteScale, { toValue: 1, tension: 200, friction: 6, useNativeDriver: true }),
+      Animated.timing(muteScale, { toValue: 0.72, duration: 75, useNativeDriver: true }),
+      Animated.spring(muteScale,  { toValue: 1,    tension: 200, friction: 6, useNativeDriver: true }),
     ]).start();
     setIsMuted(prev => !prev);
   }, [muteScale]);
 
-  // ── Progress callback ────────────────────────────────────────────────────
+  // ── Progress bar callback ─────────────────────────────────────────────────
   const handleTimeUpdate = useCallback((ratio) => {
     progress.setValue(Math.min(1, Math.max(0, ratio)));
   }, [progress]);
 
-  const handlePress   = useDoubleTap(handleDoubleTap, handleSingleTap);
+  const handlePress      = useDoubleTap(handleDoubleTap, handleSingleTap);
   const handleSwipeRight = useCallback(() => {
     setHeartKey(String(Date.now()));
     interactionRef.current?.triggerLike();
   }, []);
+
+  // Position mute button just below the overlay header (header ends ~safeTop + 55px)
+  const muteBtnTop = safeTop + 58;
 
   return (
     <ReelGestures onSwipeRight={handleSwipeRight}>
       <TouchableWithoutFeedback onPress={handlePress}>
         <View style={[styles.container, { height }]}>
 
-          {/* Video */}
+          {/* ── Video ─────────────────────────────────────────────────────── */}
           <ReelMedia
             reelId={reel.id}
             media={reel.media}
@@ -156,58 +154,48 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
             onTimeUpdate={handleTimeUpdate}
           />
 
-          {/* Bottom gradient — improves text readability */}
+          {/* ── Bottom gradient (text legibility) ────────────────────────── */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0.72)']}
+            colors={['transparent', withOpacity(Colors.black, 0.22), withOpacity(Colors.black, 0.8)]}
             style={styles.gradient}
             pointerEvents="none"
           />
 
-          {/* Progress bar */}
+          {/* ── Thin progress bar at the very top ────────────────────────── */}
           <View style={styles.progressWrap}>
             <ReelProgressBar progress={progress} />
           </View>
 
-          {/* Tap-feedback pause/play indicator (centre, fades out) */}
+          {/* ── Centre pause / play flash (auto-hides) ───────────────────── */}
           <Animated.View
             style={[
               styles.indicator,
-              {
-                opacity: indicatorOpacity,
-                transform: [{ scale: indicatorScale }],
-              },
+              { opacity: indicatorOpacity, transform: [{ scale: indicatorScale }] },
             ]}
             pointerEvents="none"
           >
-            <Ionicons name={pauseIcon} size={52} color="#fff" />
+            <Ionicons name={pauseIcon} size={58} color={withOpacity(Colors.white, 0.92)} />
           </Animated.View>
 
-          {/* Persistent pause/play button — bottom-left corner */}
-          <TouchableOpacity
-            style={[styles.pauseBtn, isPaused && styles.pauseBtnActive]}
-            onPress={handleSingleTap}
-            activeOpacity={0.75}
-          >
-            <Ionicons
-              name={isPaused ? 'play' : 'pause'}
-              size={13}
-              color="#fff"
-            />
-          </TouchableOpacity>
-
-          {/* Mute / unmute button */}
-          <Animated.View style={[styles.muteBtn, { transform: [{ scale: muteScale }] }]}>
-            <TouchableOpacity onPress={handleMuteToggle} activeOpacity={0.8} style={styles.muteBtnInner}>
+          {/* ── Mute button — top-right, below header ────────────────────── */}
+          <Animated.View style={[styles.muteWrap, { top: muteBtnTop, transform: [{ scale: muteScale }] }]}>
+            <TouchableOpacity
+              onPress={handleMuteToggle}
+              activeOpacity={0.8}
+              style={styles.muteBtn}
+            >
               <Ionicons
                 name={isMuted ? 'volume-mute' : 'volume-high'}
-                size={15}
-                color="#fff"
+                size={16}
+                color={Colors.white}
               />
             </TouchableOpacity>
           </Animated.View>
 
+          {/* ── Heart burst on double-tap / swipe-right ──────────────────── */}
           <HeartBurst visibleKey={heartKey} />
 
+          {/* ── Right-side engagement + left-side caption ────────────────── */}
           <ReelInteractionContainer
             ref={interactionRef}
             reel={reel}
@@ -222,7 +210,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: '#000',
+    backgroundColor: Colors.black,
     overflow: 'hidden',
   },
   gradient: {
@@ -230,7 +218,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '58%',
+    height: '62%',
     zIndex: 2,
   },
   progressWrap: {
@@ -240,55 +228,37 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 5,
   },
+  // Centre play/pause flash
   indicator: {
     position: 'absolute',
     alignSelf: 'center',
-    top: '42%',
-    width: 80,
-    height: 80,
-    marginLeft: -40,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    top: '40%',
+    width: 84,
+    height: 84,
+    marginLeft: -42,
+    borderRadius: 42,
+    backgroundColor: withOpacity(Colors.black, 0.38),
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 20,
   },
-  // Persistent pause/play button — bottom-left corner, above interaction panel
-  pauseBtn: {
+  // Mute button — top-right, Instagram-style
+  muteWrap: {
     position: 'absolute',
-    left: 14,
-    bottom: 200,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.32)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    right: 14,
     zIndex: 25,
-  },
-  pauseBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderColor: 'rgba(255,255,255,0.5)',
   },
   muteBtn: {
-    position: 'absolute',
-    left: 56,
-    bottom: 200,
-    zIndex: 25,
-  },
-  muteBtnInner: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.32)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: withOpacity(Colors.black, 0.48),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: withOpacity(Colors.white, 0.18),
     alignItems: 'center',
     justifyContent: 'center',
   },
 });
 
-// Only re-render when the reel id changes (store subscription handles isActive internally)
+// Only re-render when the reel id changes; store subscription handles isActive internally
 export default memo(ReelCard, (prev, next) => prev.reel.id === next.reel.id);

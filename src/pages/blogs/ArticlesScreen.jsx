@@ -22,14 +22,22 @@ import {
   fetchMostReadWeekArticles,
 } from './articlesApi';
 import { ArticleCard } from './ArticleCard';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const LIMIT  = 20;
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const WARM   = '#F4A535';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const WARM   = Colors.warm;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.deepSlate;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const FALLBACK_IMAGE = 'https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/photos/2026/01/hafrik_2b884253077d991796e12f7d1d13d243.png';
 
@@ -49,12 +57,12 @@ const TrendingCard = ({ item, onPress }) => (
       resizeMode="cover"
     />
     <LinearGradient
-      colors={['transparent', 'rgba(13,27,30,0.88)']}
+      colors={['transparent', withOpacity(Colors.deepSlate, 0.88)]}
       style={styles.trendGradient}
     />
     {/* flame badge */}
     <View style={styles.flameBadge}>
-      <Ionicons name="flame" size={11} color="#fff" />
+      <Ionicons name="flame" size={11} color={Colors.white} />
       <Text style={styles.flameTxt}>Trending</Text>
     </View>
     <View style={styles.trendBottom}>
@@ -294,12 +302,12 @@ export default function ArticlesScreen({ navigation }) {
 
       {/* Header */}
       <LinearGradient
-        colors={[BRAND, '#1a5c63']}
+        colors={[BRAND, Colors.tealHeader]}
         style={[styles.header, { paddingTop: top + 4 }]}
       >
         <View style={styles.headerTop}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={20} color="#fff" />
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Articles</Text>
@@ -310,18 +318,18 @@ export default function ArticlesScreen({ navigation }) {
 
         {/* Search */}
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color="rgba(255,255,255,0.7)" />
+          <Ionicons name="search" size={16} color={withOpacity(Colors.white, 0.7)} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search articles..."
-            placeholderTextColor="rgba(255,255,255,0.45)"
+            placeholderTextColor={withOpacity(Colors.white, 0.45)}
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={17} color="rgba(255,255,255,0.55)" />
+              <Ionicons name="close-circle" size={17} color={withOpacity(Colors.white, 0.55)} />
             </TouchableOpacity>
           )}
         </View>
@@ -357,7 +365,7 @@ export default function ArticlesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F3F6F8' },
+  root: { flex: 1, backgroundColor: Colors.surfaceSky },
 
   // Header
   header: { paddingHorizontal: 16, paddingBottom: 14 },
@@ -367,18 +375,18 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center', alignItems: 'center',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  headerSub:   { color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 1 },
+  headerTitle: { color: Colors.white, fontSize: 20, fontWeight: '800' },
+  headerSub:   { color: withOpacity(Colors.white, 0.65), fontSize: 11, marginTop: 1 },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
   },
-  searchInput: { flex: 1, color: '#fff', fontSize: 14 },
+  searchInput: { flex: 1, color: Colors.white, fontSize: 14 },
 
   // Section headers
   sectionRow: {
@@ -402,7 +410,7 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#ddd',
+    backgroundColor: Colors.neutral220,
   },
   trendImage: { ...StyleSheet.absoluteFillObject },
   trendGradient: {
@@ -411,39 +419,39 @@ const styles = StyleSheet.create({
   flameBadge: {
     position: 'absolute', top: 10, left: 10,
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(232,93,74,0.92)',
+    backgroundColor: withOpacity(Colors.coral, 0.92),
     paddingHorizontal: 8, paddingVertical: 4,
     borderRadius: 999,
   },
-  flameTxt: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  flameTxt: { color: Colors.white, fontSize: 10, fontWeight: '800' },
   trendBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 10 },
   trendCat: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(19,194,150,0.22)',
+    backgroundColor: withOpacity(Colors.tealAccent, 0.22),
     borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
     marginBottom: 4,
   },
   trendCatTxt: { fontSize: 9, fontWeight: '800', color: ACCENT },
-  trendTitle:  { fontSize: 13, fontWeight: '800', color: '#fff', lineHeight: 17, marginBottom: 4 },
-  trendMeta:   { fontSize: 10, color: 'rgba(255,255,255,0.65)' },
+  trendTitle:  { fontSize: 13, fontWeight: '800', color: Colors.white, lineHeight: 17, marginBottom: 4 },
+  trendMeta:   { fontSize: 10, color: withOpacity(Colors.white, 0.65) },
 
   // Week card
   weekCard: {
     width: 150,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
     borderColor: BORDER,
     justifyContent: 'space-between',
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
   weekRankBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(12,63,68,0.10)',
+    backgroundColor: withOpacity(Colors.primaryDark, 0.10),
     borderRadius: 8,
     paddingHorizontal: 8, paddingVertical: 3,
     marginBottom: 8,

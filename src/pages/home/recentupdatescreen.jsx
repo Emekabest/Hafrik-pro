@@ -1,174 +1,201 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Animated, Alert,
+  View, StyleSheet, Animated, InteractionManager, AppState,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext.js';
 import Feeds from "./feeds/feeds.jsx";
 import GetFeedsController from '../../controllers/getfeedscontroller.js';
 import useStore from "../../repository/store.js";
 import AppDetails from '../../helpers/appdetails.js';
+import { Colors } from '../../theme';
 
-const FILTERS = [
-  { label: 'All',      value: '',        icon: 'grid-outline'      },
-  { label: 'Pictures', value: 'photos',  icon: 'image-outline'     },
-  { label: 'Videos',   value: 'video',   icon: 'videocam-outline'  },
-  { label: 'Reels',    value: 'reel',    icon: 'flame-outline'     },
-  { label: 'Articles', value: 'article', icon: 'newspaper-outline' },
-];
+const BG = Colors.white;
 
-const FiltersBar = memo(({ contentFilter, onFilterPress, onLayout, indicatorX, indicatorWidth }) => (
-  <View style={styles.filterWrapper}>
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.indicator, {
-        transform: [{ translateX: indicatorX }],
-        width: indicatorWidth,
-      }]}
-    />
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.filterContainer}
-      keyboardShouldPersistTaps="handled"
-      nestedScrollEnabled
-    >
-      {FILTERS.map((item, index) => {
-        const active = contentFilter === item.value;
-        return (
-          <TouchableOpacity
-            key={item.value || 'all'}
-            style={[styles.filterButton, active && styles.filterButtonActive]}
-            activeOpacity={0.85}
-            onPress={() => onFilterPress(item.value, index)}
-            onLayout={(e) => onLayout(e, index, contentFilter, item.value)}
-          >
-            <Ionicons
-              name={item.icon}
-              size={16}
-              color={active ? '#fff' : '#2b2b2b'}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={[styles.filterText, active && styles.filterTextActive]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
-  </View>
-));
+// Poll every 30 s while the screen is focused (was 60 s — halved so feed feels live)
+const AUTO_REFRESH_MS = 30_000;
 
 const RecentUpdatesScreen = ({ feedWidth }) => {
-  const { token } = useAuth();
-  const navigation = useNavigation();
-  const feedsName = 'recentUpdateFeeds';
+  const { token }      = useAuth();
+  const navigation     = useNavigation();
+  const feedsName      = 'recentUpdateFeeds';
 
-  const clearFeedsList_store     = useStore(state => state.clearFeedsList);
-  const addFeedsToList_store     = useStore(state => state.addFeedsToList);
-  const prependFeedsToList_store = useStore(state => state.prependFeedsToList);
-  const ids        = useStore(state => state.feeds.lists.recentUpdateFeeds);
-  const feedsById  = useStore(state => state.feeds.feedsById);
+  // ── Store selectors ─────────────────────────────────────────────────────────
+  const clearFeedsList_store     = useStore(s => s.clearFeedsList);
+  const addFeedsToList_store     = useStore(s => s.addFeedsToList);
+  const prependFeedsToList_store = useStore(s => s.prependFeedsToList);
+  // refreshSignal is incremented every time a post is created successfully
+  const refreshSignal            = useStore(s => s.refreshSignal);
+  const ids                      = useStore(s => s.feeds.lists.recentUpdateFeeds);
+  const feedsById                = useStore(s => s.feeds.feedsById);
 
   const recentFeedsFromStore = useMemo(
     () => ids.map(id => feedsById[id]).filter(Boolean),
-    [ids, feedsById]
+    [ids, feedsById],
   );
 
-  const [feeds, setFeeds]                 = useState([]);
+  // ── Local state ─────────────────────────────────────────────────────────────
+  const [feeds,         setFeeds]         = useState([]);
   const [contentFilter, setContentFilter] = useState('');
-  const [version, setVersion]             = useState(0);
-  const [layoutData, setLayoutData]       = useState([]);
-  const [refreshing, setRefreshing]       = useState(false);
+  const [filterParams,  setFilterParams]  = useState({});
+  const [version,       setVersion]       = useState(0);
+  const [layoutData,    setLayoutData]    = useState([]);
+  const [refreshing,    setRefreshing]    = useState(false);
+  const [peopleList,    setPeopleList]    = useState([]);
+  const [adsList,       setAdsList]       = useState([]);
 
-  const API_URL        = AppDetails.apis.recentUpdateApi;
+  const BASE_API_URL = AppDetails.apis.recentUpdateApi;
+
+  // ── Fetch people + ads on mount ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+
+    fetch('https://hafrik.com/api/v1/people/list.php', { headers })
+      .then(r => r.json())
+      .then(d => setPeopleList(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []))
+      .catch(() => {});
+
+    fetch('https://hafrik.com/api/v1/ads/list.php', { headers })
+      .then(r => r.json())
+      .then(d => setAdsList(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, [token]);
+
   const indicatorX     = useRef(new Animated.Value(0)).current;
   const indicatorWidth = useRef(new Animated.Value(0)).current;
 
-  /* ── Fetch ── */
-  const getFeeds = useCallback(async (filter = '') => {
+  // ── Filtered URL ──────────────────────────────────────────────────────────────
+  const filteredUrl = useMemo(() => {
+    const entries = Object.entries(filterParams);
+    if (entries.length === 0) return BASE_API_URL;
+    const qs = entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+    return `${BASE_API_URL}?${qs}`;
+  }, [BASE_API_URL, filterParams]);
+
+  // ── Hard load (clears list and reloads page 1) ─────────────────────────────
+  const getFeeds = useCallback(async (url) => {
     clearFeedsList_store(feedsName);
-
-    const url = filter ? `${API_URL}?content=${filter}` : API_URL;
-    const response = await GetFeedsController(url, token, 1);
-
-    const feedsArray = Array.isArray(response?.data) ? response.data : [];
-
+    const response    = await GetFeedsController(url, token, 1);
+    const feedsArray  = Array.isArray(response?.data) ? response.data : [];
     if (response?.status === 200) {
       addFeedsToList_store(feedsName, feedsArray);
     }
+  }, [token]);
 
-  }, [API_URL, token]);
-
-  /* ── Pull-to-refresh ── */
+  // ── Pull-to-refresh ───────────────────────────────────────────────────────
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-
     try {
       clearFeedsList_store(feedsName);
-
-      const url = contentFilter ? `${API_URL}?content=${contentFilter}` : API_URL;
-      const response = await GetFeedsController(url, token, 1);
-
+      const response   = await GetFeedsController(filteredUrl, token, 1);
       const feedsArray = Array.isArray(response?.data) ? response.data : [];
-
       if (response?.status === 200) {
         addFeedsToList_store(feedsName, feedsArray);
       }
-
     } finally {
       setRefreshing(false);
     }
-  }, [API_URL, token, contentFilter]);
+  }, [filteredUrl, token]);
 
+  // Keep a stable ref to the latest onRefresh so the refreshSignal effect
+  // never holds a stale closure even if filteredUrl / token change.
+  const onRefreshRef = useRef(onRefresh);
+  useEffect(() => { onRefreshRef.current = onRefresh; }, [onRefresh]);
+
+  // ── Auto-refresh immediately when a new post is created ───────────────────
+  // PostComposerModal calls store.triggerRefresh() on success, which bumps
+  // refreshSignal. We watch it here and reload so the new post appears instantly.
+  const prevRefreshSignal = useRef(refreshSignal);
+  useEffect(() => {
+    if (refreshSignal === prevRefreshSignal.current) return;
+    prevRefreshSignal.current = refreshSignal;
+    if (refreshSignal === 0) return; // skip initial value
+    onRefreshRef.current?.();
+  }, [refreshSignal]);
+
+  // ── Re-fetch when filter changes ──────────────────────────────────────────
   useEffect(() => {
     setVersion(v => v + 1);
-    getFeeds(contentFilter);
-  }, [contentFilter]);
+    getFeeds(filteredUrl);
+  }, [filteredUrl]);
 
+  // ── Sync store → local feeds state ────────────────────────────────────────
   useEffect(() => {
     setFeeds(recentFeedsFromStore);
   }, [recentFeedsFromStore]);
 
-  /* ── Background refresh ── */
+  // ── Silent background refresh ──────────────────────────────────────────────
+  // Prepends only genuinely new items so the user's scroll position is preserved.
+  // The store update is deferred via InteractionManager so it never collides with
+  // a navigation animation and freezes the UI.
+  const silentRefresh = useCallback(async () => {
+    try {
+      const response = await GetFeedsController(filteredUrl, token, 1);
+      if (response?.status === 200 && Array.isArray(response?.data)) {
+        InteractionManager.runAfterInteractions(() => {
+          prependFeedsToList_store(feedsName, response.data);
+        });
+      }
+    } catch {}
+  }, [filteredUrl, token]);
+
+  // ── Auto-poll while screen is focused ─────────────────────────────────────
+  // FIX: was causing a hang because silentRefresh fired immediately on every
+  // focus return while the navigation animation was still running.  We now wait
+  // 400 ms before the first refresh so the transition settles first.
+  // FIX: was 60 s — reduced to 30 s so the feed stays noticeably live.
+  // FIX: interval was not started on first focus, so users who never left the
+  // home screen never got auto-updates. Now always started (with the 400 ms delay).
   const isFirstFocus = useRef(true);
 
   useFocusEffect(
     useCallback(() => {
-      if (isFirstFocus.current) {
-        isFirstFocus.current = false;
-        return;
-      }
+      let interval = null;
 
-      const silentRefresh = async () => {
-        try {
-          const url = contentFilter ? `${API_URL}?content=${contentFilter}` : API_URL;
-          const response = await GetFeedsController(url, token, 1);
-
-          if (
-            response?.status === 200 &&
-            Array.isArray(response?.data)
-          ) {
-            prependFeedsToList_store(feedsName, response.data);
-          }
-
-        } catch {}
+      const startInterval = () => {
+        if (interval) clearInterval(interval);
+        interval = setInterval(silentRefresh, AUTO_REFRESH_MS);
       };
 
-      silentRefresh();
-      const interval = setInterval(silentRefresh, 60000);
-      return () => clearInterval(interval);
+      const delayTimer = setTimeout(() => {
+        // On first focus, initial data is already loading via getFeeds(filteredUrl).
+        // Subsequent focuses get an immediate silent refresh to catch up.
+        if (!isFirstFocus.current) {
+          silentRefresh();
+        }
+        isFirstFocus.current = false;
+        startInterval();
+      }, 200); // shorter delay so the feed feels more responsive
 
-    }, [API_URL, token, contentFilter]),
+      // Pause polling when the app goes to background; resume + refresh immediately
+      // when it comes back to the foreground — this prevents the UI from hanging
+      // after the device was idle or the app was backgrounded for a while.
+      const handleAppState = (nextState) => {
+        if (nextState === 'active') {
+          silentRefresh();
+          startInterval();
+        } else {
+          if (interval) { clearInterval(interval); interval = null; }
+        }
+      };
+      const appStateSub = AppState.addEventListener('change', handleAppState);
+
+      return () => {
+        clearTimeout(delayTimer);
+        if (interval) clearInterval(interval);
+        appStateSub.remove();
+      };
+    }, [silentRefresh]),
   );
 
-  const handleFilterPress = useCallback((value, index) => {
-    setContentFilter(value);
+  // ── Filter bar ────────────────────────────────────────────────────────────
+  const handleFilterPress = useCallback((item, index) => {
+    setContentFilter(item.value);
+    setFilterParams(item.params || {});
     if (layoutData[index]) {
       Animated.parallel([
-        Animated.spring(indicatorX, { toValue: layoutData[index].x, useNativeDriver: false }),
+        Animated.spring(indicatorX,     { toValue: layoutData[index].x,     useNativeDriver: false }),
         Animated.spring(indicatorWidth, { toValue: layoutData[index].width, useNativeDriver: false }),
       ]).start();
     }
@@ -181,26 +208,44 @@ const RecentUpdatesScreen = ({ feedWidth }) => {
       copy[index] = { x, width };
       return copy;
     });
-
     if (index === 0 && currentFilter === '' && itemValue === '') {
       indicatorX.setValue(x);
       indicatorWidth.setValue(width);
     }
   }, []);
 
-  const combinedData = useMemo(() => [
-    { type: 'banner', feedWidth: feedWidth || 0 },
-    {
-      type: 'filtersbar',
-      contentFilter,
-      onFilterPress: handleFilterPress,
-      onLayout: handleLayout,
-      indicatorX,
-      indicatorWidth,
-    },
-    { type: 'feedsheader', name: 'Recent Updates', id: feedsName },
-    ...feeds.map(feed => ({ type: 'feed', data: feed })),
-  ], [feeds, feedWidth, contentFilter]);
+  // ── Combined list data for FlashList ──────────────────────────────────────
+  const combinedData = useMemo(() => {
+    const items = [
+      { type: 'banner', feedWidth: feedWidth || 0 },
+      {
+        type: 'filtersbar',
+        contentFilter,
+        onFilterPress: handleFilterPress,
+        onLayout:      handleLayout,
+        indicatorX,
+        indicatorWidth,
+      },
+      { type: 'feedsheader', name: 'Recent Updates', id: feedsName },
+    ];
+
+    let adIdx = 0;
+    feeds.forEach((feed, i) => {
+      items.push({ type: 'feed', data: feed });
+
+      // Every 5 feeds inject an ad
+      if ((i + 1) % 5 === 0 && adsList.length > 0) {
+        items.push({ type: 'ad', data: adsList[adIdx % adsList.length] });
+        adIdx++;
+      }
+      // Every 10 feeds inject a People You May Know card
+      if ((i + 1) % 10 === 0 && peopleList.length > 0) {
+        items.push({ type: 'peoplecard', data: peopleList });
+      }
+    });
+
+    return items;
+  }, [feeds, feedWidth, contentFilter, adsList, peopleList]);
 
   const stickyHeaderIndices = [1];
 
@@ -215,7 +260,7 @@ const RecentUpdatesScreen = ({ feedWidth }) => {
         feedsName={feedsName}
         combinedData={combinedData}
         feeds={feeds}
-        API_URL={API_URL}
+        API_URL={filteredUrl}
         feedsController={GetFeedsController}
         stickyHeaderIndices={stickyHeaderIndices}
         refreshing={refreshing}
@@ -229,25 +274,5 @@ const RecentUpdatesScreen = ({ feedWidth }) => {
 export default RecentUpdatesScreen;
 
 const styles = StyleSheet.create({
-  container:       { flex: 1, backgroundColor: '#fff' },
-  filterWrapper:   { backgroundColor: '#fff', paddingVertical: 4 },
-  filterContainer: { paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center' },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 10,
-    borderRadius: 22,
-  },
-  filterText:       { fontSize: 13, fontWeight: '600', color: '#2b2b2b' },
-  filterTextActive: { color: '#fff' },
-  indicator: {
-    position: 'absolute',
-    top: 12,
-    bottom: 12,
-    backgroundColor: AppDetails.primaryColor,
-    borderRadius: 22,
-    zIndex: -1,
-  },
+  container: { flex: 1, backgroundColor: BG },
 });

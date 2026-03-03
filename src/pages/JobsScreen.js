@@ -10,13 +10,21 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Colors } from '../theme/colors';
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const PINK   = '#EC4899';
-const MUTED  = '#7A9198';
-const BORDER = 'rgba(12,63,68,0.09)';
-const CREAM  = '#F5F0E8';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const PINK   = Colors.pinkBright;
+const MUTED  = Colors.secondaryText;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
+const CREAM  = Colors.background;
 
 const filters = ['All', 'Full-time', 'Part-time', 'Remote', 'Internship'];
 
@@ -31,7 +39,7 @@ const jobs = [
     tags: ['Bilingual', 'Sourcing', 'On-site'],
     posted: '2h ago',
     urgent: true,
-    color: ['#EC4899', '#BE185D'],
+    color: [Colors.pinkBright, Colors.pinkDeep],
     icon: 'briefcase-outline',
   },
   {
@@ -44,7 +52,7 @@ const jobs = [
     tags: ['Sales', 'French', 'On-site'],
     posted: '5h ago',
     urgent: false,
-    color: ['#F59E0B', '#F97316'],
+    color: [Colors.amberStrong, Colors.orangeStrong],
     icon: 'trending-up-outline',
   },
   {
@@ -57,7 +65,7 @@ const jobs = [
     tags: ['Language', 'Freelance', 'Flexible'],
     posted: '1d ago',
     urgent: false,
-    color: ['#13C296', '#0a8a68'],
+    color: [Colors.tealAccent, Colors.tealDarkAlt],
     icon: 'language-outline',
   },
   {
@@ -70,7 +78,7 @@ const jobs = [
     tags: ['Logistics', 'English', 'On-site'],
     posted: '2d ago',
     urgent: false,
-    color: ['#3B82F6', '#1D4ED8'],
+    color: [Colors.blueAccent, Colors.blueDeep],
     icon: 'cube-outline',
   },
   {
@@ -83,7 +91,7 @@ const jobs = [
     tags: ['Content', 'Design', 'Remote'],
     posted: '3d ago',
     urgent: false,
-    color: ['#8B5CF6', '#6D28D9'],
+    color: [Colors.violet, Colors.violetDeep],
     icon: 'megaphone-outline',
   },
   {
@@ -96,7 +104,7 @@ const jobs = [
     tags: ['QC', 'Fashion', 'On-site'],
     posted: '4d ago',
     urgent: true,
-    color: ['#EC4899', '#BE185D'],
+    color: [Colors.pinkBright, Colors.pinkDeep],
     icon: 'checkmark-circle-outline',
   },
   {
@@ -109,7 +117,7 @@ const jobs = [
     tags: ['Internship', 'BD', 'Mandarin+'],
     posted: '5d ago',
     urgent: false,
-    color: ['#F59E0B', '#F97316'],
+    color: [Colors.amberStrong, Colors.orangeStrong],
     icon: 'school-outline',
   },
 ];
@@ -126,7 +134,7 @@ const JobsScreen = ({ navigation }) => {
       {/* Top row */}
       <View style={styles.cardHeader}>
         <LinearGradient colors={item.color} style={styles.companyIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <Ionicons name={item.icon} size={22} color="#fff" />
+          <Ionicons name={item.icon} size={22} color={Colors.white} />
         </LinearGradient>
 
         <View style={styles.jobMeta}>
@@ -171,7 +179,7 @@ const JobsScreen = ({ navigation }) => {
       <TouchableOpacity style={styles.applyBtn} activeOpacity={0.82}>
         <LinearGradient colors={item.color} style={styles.applyGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
           <Text style={styles.applyText}>Apply Now</Text>
-          <Ionicons name="arrow-forward" size={15} color="#fff" />
+          <Ionicons name="arrow-forward" size={15} color={Colors.white} />
         </LinearGradient>
       </TouchableOpacity>
     </View>
@@ -182,16 +190,16 @@ const JobsScreen = ({ navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor={PINK} />
 
       {/* Header */}
-      <LinearGradient colors={['#EC4899', '#BE185D']} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <LinearGradient colors={[Colors.pinkBright, Colors.pinkDeep]} style={styles.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+          <Ionicons name="arrow-back" size={22} color={Colors.white} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Jobs</Text>
           <Text style={styles.headerSub}>{jobs.length} openings near you</Text>
         </View>
         <TouchableOpacity style={styles.filterIconBtn}>
-          <Ionicons name="options-outline" size={22} color="#fff" />
+          <Ionicons name="options-outline" size={22} color={Colors.white} />
         </TouchableOpacity>
       </LinearGradient>
 
@@ -237,7 +245,7 @@ const JobsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7F8',
+    backgroundColor: Colors.surfaceBase,
   },
 
   // Header
@@ -251,7 +259,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -262,26 +270,26 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#fff',
+    color: Colors.white,
     letterSpacing: 0.3,
   },
   headerSub: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
+    color: withOpacity(Colors.white, 0.7),
     marginTop: 2,
   },
   filterIconBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   // Filter
   filterWrap: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
@@ -296,7 +304,7 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     borderWidth: 1.5,
     borderColor: BORDER,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   filterPillActive: {
     backgroundColor: BRAND,
@@ -308,7 +316,7 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
   filterPillTextActive: {
-    color: '#fff',
+    color: Colors.white,
   },
 
   // List
@@ -319,7 +327,7 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 14,
     shadowColor: BRAND,
@@ -356,7 +364,7 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
   urgentBadge: {
-    backgroundColor: 'rgba(232,93,74,0.12)',
+    backgroundColor: withOpacity(Colors.coral, 0.12),
     borderRadius: 100,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -364,7 +372,7 @@ const styles = StyleSheet.create({
   urgentText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#E85D4A',
+    color: Colors.coral,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
@@ -380,7 +388,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F5F7F8',
+    backgroundColor: Colors.surfaceBase,
     borderRadius: 100,
     paddingHorizontal: 9,
     paddingVertical: 4,
@@ -400,7 +408,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   tag: {
-    backgroundColor: 'rgba(19,194,150,0.1)',
+    backgroundColor: withOpacity(Colors.tealAccent, 0.1),
     borderRadius: 100,
     paddingHorizontal: 9,
     paddingVertical: 3,
@@ -431,7 +439,7 @@ const styles = StyleSheet.create({
   applyText: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#fff',
+    color: Colors.white,
     letterSpacing: 0.3,
   },
 

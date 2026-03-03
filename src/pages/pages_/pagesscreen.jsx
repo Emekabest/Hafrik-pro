@@ -21,6 +21,7 @@ import DrawerNavigation from '../home/drawernavigation';
 import PostComposerModal from '../home/PostComposerModal';
 import { fetchArticles, fetchTrendingArticles } from '../blogs/articlesApi';
 import { useLiveCounts } from '../../hooks/useLiveCounts';
+import { Colors } from '../../theme';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -39,12 +40,14 @@ const MARKETPLACE_URL    = 'https://hafrik.com/api/v1/marketplace/get_marketplac
 const EXPLORE_URL        = '/api/v1/explore/home.php?ads_placement=explore';
 const MARKETPLACE_LIMIT  = 6;
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F5F7F7';
-const DARK   = '#0D1B1E';
-const MUTED  = '#7A9198';
-const BORDER = 'rgba(12,63,68,0.08)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.background;
+const DARK   = Colors.black;
+const MUTED  = Colors.secondaryText;
+const BORDER = BRAND + '14';
+const WHITE  = Colors.white;
+const WARM   = Colors.warning;
 
 const COUNTRY_KEY     = 'selected_country';
 const DEFAULT_COUNTRY = { country_id: 'all', name: 'All' };
@@ -199,7 +202,7 @@ const SectionHeader = memo(({ title, onSeeAll }) => (
 const UpgradeToProCard = memo(({ onPress }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={ss.proWrap}>
     <LinearGradient
-      colors={['#0C3F44', '#1A7A50', '#13C296']}
+      colors={[Colors.primaryDark, BRAND, ACCENT]}
       style={ss.proCard}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -208,7 +211,7 @@ const UpgradeToProCard = memo(({ onPress }) => (
       <View style={ss.proCircle2} />
       <View style={ss.proLeft}>
         <View style={ss.proCrown}>
-          <Ionicons name="flash" size={18} color="#F4A535" />
+          <Ionicons name="flash" size={18} color={WARM} />
         </View>
         <View>
           <Text style={ss.proTitle}>Grow faster on Hafrik</Text>
@@ -229,7 +232,7 @@ const UpgradeToProCard = memo(({ onPress }) => (
 const HafrikExchangeCTA = memo(({ onPress }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={ss.exWrap}>
     <LinearGradient
-      colors={['#062A2E', '#0C3F44', '#0a6b4f']}
+      colors={[Colors.primaryDark, BRAND, ACCENT + 'CC']}
       style={ss.exCard}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -261,6 +264,54 @@ const HafrikExchangeCTA = memo(({ onPress }) => (
     </LinearGradient>
   </TouchableOpacity>
 ));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline Ad Card — replaces promo CTAs with live ads from /api/v1/ads/list.php
+// ─────────────────────────────────────────────────────────────────────────────
+const InlineAdCard = memo(({ ad, onPress }) => {
+  if (!ad) return null;
+  const img    = ad?.image ?? ad?.banner_image ?? ad?.thumbnail ?? null;
+  const title  = decodeHtml(ad?.title ?? '');
+  const sub    = decodeHtml(ad?.description ?? ad?.subtitle ?? '');
+  const btnTxt = ad?.button_text ?? 'Learn More';
+  const hasLink = !!(ad?.link ?? ad?.url ?? ad?.external_url);
+
+  return (
+    <TouchableOpacity
+      onPress={() => onPress?.(ad)}
+      activeOpacity={0.88}
+      style={ss.inlineAdWrap}
+    >
+      {isRealImage(img) ? (
+        <Image source={{ uri: img }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+      ) : (
+        <LinearGradient
+          colors={[Colors.primaryDark, BRAND, ACCENT]}
+          style={StyleSheet.absoluteFillObject}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      )}
+      <LinearGradient
+        colors={[DARK + '14', DARK + 'BD']}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={ss.inlineAdBadge}>
+        <Text style={ss.inlineAdBadgeTxt}>SPONSORED</Text>
+      </View>
+      <View style={ss.inlineAdContent}>
+        {!!title && <Text style={ss.inlineAdTitle} numberOfLines={2}>{title}</Text>}
+        {!!sub   && <Text style={ss.inlineAdSub}   numberOfLines={2}>{sub}</Text>}
+        {hasLink && (
+          <View style={ss.inlineAdBtn}>
+            <Text style={ss.inlineAdBtnTxt}>{btnTxt}</Text>
+            <Ionicons name="arrow-forward" size={12} color={BRAND} />
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ad banner (auto-rotating)
@@ -361,7 +412,7 @@ const MiniCard = memo(({ title, subtitle, image, iconName, onPress, badge }) => 
     {badge ? (
       <View style={ss.badgeChip}><Text style={ss.badgeChipText}>{badge}</Text></View>
     ) : (
-      <Ionicons name="chevron-forward" size={18} color="#c9d2d4" />
+      <Ionicons name="chevron-forward" size={18} color={Colors.border} />
     )}
   </TouchableOpacity>
 ));
@@ -401,7 +452,7 @@ const MarketplaceCard = memo(({ item, onPress }) => {
         {/* Photo count — top-right */}
         {photoCnt > 1 && (
           <View style={ss.gridPhotoBadge}>
-            <Ionicons name="images-outline" size={9} color="#fff" />
+            <Ionicons name="images-outline" size={9} color={WHITE} />
             <Text style={ss.gridPhotoTxt}>{photoCnt}</Text>
           </View>
         )}
@@ -478,26 +529,26 @@ const ReelGridCard = memo(({ item, onPress }) => {
       {isRealImage(thumb) ? (
         <Image source={{ uri: thumb }} style={rg.img} resizeMode="cover" />
       ) : (
-        <LinearGradient colors={[BRAND, '#1a5c63']} style={[rg.img, rg.imgFallback]}>
-          <Ionicons name="play-circle-outline" size={28} color="rgba(255,255,255,0.45)" />
+        <LinearGradient colors={[BRAND, Colors.primaryDark]} style={[rg.img, rg.imgFallback]}>
+          <Ionicons name="play-circle-outline" size={28} color={WHITE + '73'} />
         </LinearGradient>
       )}
 
       {/* Gradient overlay */}
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.72)']}
+        colors={['transparent', DARK + 'B8']}
         style={rg.overlay}
       >
         {/* Play badge top-left */}
         <View style={rg.playBadge}>
-          <Ionicons name="play" size={9} color="#fff" />
+          <Ionicons name="play" size={9} color={WHITE} />
         </View>
 
         {/* Bottom info */}
         <View style={rg.bottomRow}>
           {!!views && (
             <View style={rg.viewChip}>
-              <Ionicons name="eye-outline" size={9} color="rgba(255,255,255,0.8)" />
+              <Ionicons name="eye-outline" size={9} color={WHITE + 'CC'} />
               <Text style={rg.viewTxt}>{views}</Text>
             </View>
           )}
@@ -511,7 +562,7 @@ const rg = StyleSheet.create({
   card: {
     borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#D6E4E6',
+    backgroundColor: Colors.surfaceTint,
   },
   img: {
     width: '100%',
@@ -534,7 +585,7 @@ const rg = StyleSheet.create({
     position: 'absolute',
     top: -REEL_SIZE * 0.6,
     left: 6,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: DARK + '59',
     borderRadius: 99,
     padding: 3,
   },
@@ -550,7 +601,7 @@ const rg = StyleSheet.create({
   },
   viewTxt: {
     fontSize: 9,
-    color: 'rgba(255,255,255,0.9)',
+    color: WHITE + 'E6',
     fontWeight: '700',
   },
 });
@@ -632,21 +683,26 @@ const FeaturedBizCard = memo(({ item, onPress }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Featured Business Section — horizontal scroll, featured=1
 // ─────────────────────────────────────────────────────────────────────────────
-const FeaturedBusinessSection = ({ navigation, token }) => {
-  const [items,   setItems]   = useState([]);
-  const [loading, setLoading] = useState(true);
+const FeaturedBusinessSection = ({ navigation, token, shuffleKey }) => {
+  const [rawItems, setRawItems] = useState([]);
+  const [loading,  setLoading]  = useState(true);
   useEffect(() => {
-    fetch('https://hafrik.com/api/v1/business/list.php?limit=8&featured=1', {
+    fetch('https://hafrik.com/api/v1/business/list.php?limit=12&featured=1&verified=1', {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then(r => r.json())
       .then(j => {
         const raw = j?.data?.businesses || j?.data?.pages || j?.data?.data || j?.data || [];
-        setItems(Array.isArray(raw) ? raw.slice(0, 8) : []);
+        setRawItems(Array.isArray(raw) ? raw : []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Re-shuffle whenever parent shuffleKey changes (refresh / auto-rotate)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const items = useMemo(() => shuffle(rawItems).slice(0, 8), [rawItems, shuffleKey]);
+
   if (!loading && items.length === 0) return null;
   return (
     <View style={[ss.section, { paddingHorizontal: 0, overflow: 'hidden' }]}>
@@ -655,9 +711,9 @@ const FeaturedBusinessSection = ({ navigation, token }) => {
           <View style={ss.sectionAccent} />
           <Text style={ss.sectionTitle}>Featured Business</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(19,194,150,0.1)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: ACCENT + '1A', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
           <Ionicons name="shield-checkmark" size={10} color={ACCENT} />
-          <Text style={{ fontSize: 9, fontWeight: '800', color: ACCENT, letterSpacing: 0.8 }}>FEATURED</Text>
+          <Text style={{ fontSize: 9, fontWeight: '800', color: ACCENT, letterSpacing: 0.8 }}>VERIFIED</Text>
         </View>
       </View>
       {loading ? (
@@ -763,50 +819,98 @@ const ExploreArticleCard = memo(({ item, onPress }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Country selector modal
 // ─────────────────────────────────────────────────────────────────────────────
-const CountryModal = memo(({ visible, countries, selected, onSelect, onClose }) => (
-  <Modal
-    visible={visible}
-    animationType="slide"
-    transparent
-    onRequestClose={onClose}
-  >
-    <View style={ss.modalOverlay}>
-      <View style={ss.modalSheet}>
-        <View style={ss.modalHandle} />
-        <View style={ss.modalHeader}>
-          <Text style={ss.modalTitle}>Select Country</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="close" size={22} color={DARK} />
-          </TouchableOpacity>
-        </View>
+const COUNTRY_ROW_HEIGHT = 52;
 
-        <FlatList
-          data={[DEFAULT_COUNTRY, ...(countries || [])]}
-          keyExtractor={(c) => String(c.country_id ?? c.id ?? c.name)}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 32 }}
-          renderItem={({ item: c }) => {
-            const id     = c.country_id ?? c.id;
-            const name   = c.name ?? c.country ?? c.country_name ?? c.title ?? '';
-            const isActive = String(id) === String(selected.country_id);
-            return (
-              <TouchableOpacity
-                style={[ss.countryRow, isActive && ss.countryRowActive]}
-                activeOpacity={0.8}
-                onPress={() => onSelect({ country_id: id, name })}
-              >
-                <Text style={[ss.countryName, isActive && { color: BRAND, fontWeight: '800' }]}>
-                  {name}
-                </Text>
-                {isActive && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
-              </TouchableOpacity>
-            );
-          }}
-        />
+const CountryModalRow = memo(({ item, selectedId, onSelect }) => {
+  const id = item?.country_id ?? item?.id;
+  const name = item?.name ?? item?.country ?? item?.country_name ?? item?.title ?? '';
+  const isActive = String(id) === String(selectedId);
+
+  const handlePress = useCallback(() => {
+    onSelect({ country_id: id, name });
+  }, [id, name, onSelect]);
+
+  return (
+    <TouchableOpacity
+      style={[ss.countryRow, isActive && ss.countryRowActive]}
+      activeOpacity={0.8}
+      onPress={handlePress}
+    >
+      <Text style={[ss.countryName, isActive && ss.countryNameActive]}>
+        {name}
+      </Text>
+      {isActive && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
+    </TouchableOpacity>
+  );
+}, (prev, next) => {
+  const prevId = prev.item?.country_id ?? prev.item?.id;
+  const nextId = next.item?.country_id ?? next.item?.id;
+  const prevSelected = String(prevId) === String(prev.selectedId);
+  const nextSelected = String(nextId) === String(next.selectedId);
+  return prevId === nextId && prevSelected === nextSelected && prev.onSelect === next.onSelect;
+});
+
+const CountryModal = memo(({ visible, countries, selected, onSelect, onClose }) => {
+  if (!visible) return null;
+
+  const countryData = useMemo(() => [DEFAULT_COUNTRY, ...(countries || [])], [countries]);
+  const selectedId = selected?.country_id;
+
+  const keyExtractor = useCallback((item) => String(item?.country_id ?? item?.id ?? item?.name ?? ''), []);
+
+  const renderCountryItem = useCallback(
+    ({ item }) => <CountryModalRow item={item} selectedId={selectedId} onSelect={onSelect} />,
+    [selectedId, onSelect],
+  );
+
+  const getItemLayout = useCallback((_, index) => ({
+    length: COUNTRY_ROW_HEIGHT,
+    offset: COUNTRY_ROW_HEIGHT * index,
+    index,
+  }), []);
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <View style={ss.modalOverlay}>
+        <View style={ss.modalSheet}>
+          <View style={ss.modalHandle} />
+          <View style={ss.modalHeader}>
+            <Text style={ss.modalTitle}>Select Country</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+              <Ionicons name="close" size={22} color={DARK} />
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={countryData}
+            keyExtractor={keyExtractor}
+            renderItem={renderCountryItem}
+            getItemLayout={getItemLayout}
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            windowSize={7}
+            removeClippedSubviews
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 32 }}
+          />
+        </View>
       </View>
-    </View>
-  </Modal>
-));
+    </Modal>
+  );
+}, (prev, next) => {
+  return (
+    prev.visible === next.visible &&
+    prev.countries === next.countries &&
+    prev.selected?.country_id === next.selected?.country_id &&
+    prev.onSelect === next.onSelect &&
+    prev.onClose === next.onClose
+  );
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Visa & Admission CTA card
@@ -814,7 +918,7 @@ const CountryModal = memo(({ visible, countries, selected, onSelect, onClose }) 
 const VisaCTA = memo(({ onPress }) => (
   <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={ss.visaWrap}>
     <LinearGradient
-      colors={['#1a0533', '#2D1B69', '#0C3F44']}
+      colors={[Colors.primaryDark, BRAND, Colors.primaryDark]}
       style={ss.visaCard}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -824,7 +928,7 @@ const VisaCTA = memo(({ onPress }) => (
 
       <View style={ss.visaLeft}>
         <View style={ss.visaIconWrap}>
-          <Ionicons name="airplane-outline" size={22} color="#fff" />
+          <Ionicons name="airplane-outline" size={22} color={WHITE} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={ss.visaTitle}>Planning to Come to China?</Text>
@@ -834,7 +938,7 @@ const VisaCTA = memo(({ onPress }) => (
 
       <TouchableOpacity style={ss.visaBtn} onPress={onPress} activeOpacity={0.85}>
         <Text style={ss.visaBtnText}>Get Assistance</Text>
-        <Ionicons name="arrow-forward" size={12} color="#2D1B69" />
+        <Ionicons name="arrow-forward" size={12} color={BRAND} />
       </TouchableOpacity>
     </LinearGradient>
   </TouchableOpacity>
@@ -882,7 +986,7 @@ const VisaModal = memo(({ visible, onClose }) => {
           <View style={ss.visaContactCard}>
             <View style={ss.visaContactRow}>
               <View style={ss.visaContactIcon}>
-                <Ionicons name="logo-wechat" size={18} color="#07C160" />
+                <Ionicons name="logo-wechat" size={18} color={ACCENT} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={ss.visaContactLabel}>WeChat</Text>
@@ -921,7 +1025,7 @@ const VisaModal = memo(({ visible, onClose }) => {
 
           {/* CTA buttons */}
           <TouchableOpacity style={ss.visaCallBtn} activeOpacity={0.88} onPress={handleCall}>
-            <Ionicons name="call-outline" size={16} color="#fff" />
+            <Ionicons name="call-outline" size={16} color={WHITE} />
             <Text style={ss.visaCallBtnText}>Call Now</Text>
           </TouchableOpacity>
 
@@ -944,6 +1048,7 @@ export default function DiscoveryScreen() {
   const notificationCount = useStore((s) => s.notificationCount ?? 0);
   const setSearchQuery    = useStore((s) => s.setSearchQuery);
   const openComposer      = useStore((s) => s.openComposer);
+  const scrollRef         = useRef(null);
 
   // Live notification + message counts
   useLiveCounts();
@@ -992,6 +1097,10 @@ export default function DiscoveryScreen() {
   const [sponsoredBiz, setSponsoredBiz] = useState([]);
   const sponsoredBizRef = useRef(null);
 
+  // ── CTA ads state (loaded from /api/v1/ads/list.php) ─────────────────────
+  const [ctaAds, setCtaAds] = useState([]);
+  const ctaAdsAbortRef = useRef(null);
+
   // -- Reels preview state
   const [reels,        setReels]        = useState([]);
   const [reelsLoading, setReelsLoading] = useState(false);
@@ -1020,13 +1129,6 @@ export default function DiscoveryScreen() {
       }
     });
     fetchCountries();
-    loadMarketplace();
-    loadTrendingPosts();
-    loadSponsoredBiz();
-    loadArticles();
-    loadTrendingArticles();
-    loadPeople();
-    loadReels();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchCountries = useCallback(async () => {
@@ -1059,11 +1161,6 @@ export default function DiscoveryScreen() {
     }
   }, [token, selectedCountry.country_id]);
 
-  useEffect(() => {
-    loadExplore();
-  }, [loadExplore]);
-
-
   const loadMarketplace = useCallback(async () => {
     if (marketAbortRef.current) marketAbortRef.current.abort();
     const ctrl = new AbortController();
@@ -1071,7 +1168,7 @@ export default function DiscoveryScreen() {
     setMarketLoading(true);
     const timer = addTimeout(ctrl, 8000);
     try {
-      // Fetch more than we need so the shuffle is meaningful
+      // Fetch more than we need so manual local shuffle has enough variance
       const url = `${MARKETPLACE_URL}?page=1&limit=${MARKETPLACE_LIMIT * 2}`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
@@ -1081,9 +1178,8 @@ export default function DiscoveryScreen() {
       // Handle every possible response shape the API might return
       const raw = json?.data?.products ?? json?.products ?? json?.data ?? [];
       const products = Array.isArray(raw) ? raw : [];
-      // Shuffle client-side, cap at MARKETPLACE_LIMIT
-      const shuffled = [...products].sort(() => 0.5 - Math.random());
-      setMarketProducts(shuffled.slice(0, MARKETPLACE_LIMIT));
+      // Keep API order here; local shuffle button handles reordering
+      setMarketProducts(products.slice(0, MARKETPLACE_LIMIT));
     } catch (e) {
       if (e?.name !== 'AbortError') setMarketProducts([]);
     } finally {
@@ -1158,20 +1254,20 @@ export default function DiscoveryScreen() {
     }
   }, [token]);
 
-  // -- Load trending posts (3 only) ──────────────────────────────────────────
+  // -- Load trending posts (up to 5) ─────────────────────────────────────────
   const loadTrendingPosts = useCallback(async () => {
     if (trendingPostsRef.current) trendingPostsRef.current.abort();
     const ctrl = new AbortController();
     trendingPostsRef.current = ctrl;
     const timer = addTimeout(ctrl, 8000);
     try {
-      const res  = await fetch(`${BASE_URL}/api/v1/feed/trending.php?limit=3`, {
+      const res  = await fetch(`${BASE_URL}/api/v1/feed/trending.php?limit=5`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
         signal: ctrl.signal,
       });
       const json = await res.json();
       const list = json?.data?.data ?? json?.data ?? [];
-      setTrendingPosts(Array.isArray(list) ? list.slice(0, 3) : []);
+      setTrendingPosts(Array.isArray(list) ? list.slice(0, 5) : []);
     } catch (e) {
       if (e?.name !== 'AbortError') setTrendingPosts([]);
     } finally {
@@ -1195,6 +1291,29 @@ export default function DiscoveryScreen() {
       setSponsoredBiz(Array.isArray(list) ? list.slice(0, 3) : []);
     } catch (e) {
       if (e?.name !== 'AbortError') setSponsoredBiz([]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }, [token]);
+
+  // ── Load CTA ads ────────────────────────────────────────────────────────────
+  const loadCtaAds = useCallback(async () => {
+    if (ctaAdsAbortRef.current) ctaAdsAbortRef.current.abort();
+    const ctrl = new AbortController();
+    ctaAdsAbortRef.current = ctrl;
+    const timer = addTimeout(ctrl, 8000);
+    try {
+      const res  = await fetch(`${BASE_URL}/api/v1/ads/list.php`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: ctrl.signal,
+      });
+      const json = await res.json();
+      const raw  = json?.data?.data ?? json?.data ?? json?.ads ?? [];
+      // API may return a single-object or an array — normalise to array
+      const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+      setCtaAds(list);
+    } catch (e) {
+      if (e?.name !== 'AbortError') setCtaAds([]);
     } finally {
       clearTimeout(timer);
     }
@@ -1246,43 +1365,77 @@ export default function DiscoveryScreen() {
     } catch {}
   }, [token]);
 
-  // ── Reshuffle all ──────────────────────────────────────────────────────────
-  const reshuffleAll = useCallback(() => {
+  // ── Manual local shuffle only (no API call) ───────────────────────────────
+  const shuffleExplore = useCallback(() => {
     setHotTopics(pickRandom(TOPIC_POOL, 5));
     setShuffleKey((k) => k + 1);
+    setTrendingDisplayKey((k) => k + 1);
   }, []);
 
-  // ── Country select ─────────────────────────────────────────────────────────
-  const handleSelectCountry = useCallback(async (country) => {
-    setSelectedCountry(country);
-    await AsyncStorage.setItem(COUNTRY_KEY, JSON.stringify(country));
-    setShuffleKey((k) => k + 1);
-    setHotTopics(pickRandom(TOPIC_POOL, 5));
-    // loadMarketplace re-runs via useEffect dep on selectedCountry
-    // loadExplore re-runs via useEffect dep on selectedCountry.country_id
-  }, []);
+  // ── Full API refresh only (no shuffle) ────────────────────────────────────
+  const refreshExplore = useCallback(async ({ scrollToTop = false, showSpinner = true } = {}) => {
+    if (showSpinner) setRefreshing(true);
 
-  // ── Pull-to-refresh ────────────────────────────────────────────────────────
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    reshuffleAll();
+    if (scrollToTop) {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo?.({ y: 0, animated: true });
+      });
+    }
+
     try {
       await Promise.all([
         loadExplore(),
         loadTrendingPosts(),
         loadSponsoredBiz(),
-        loadArticles(),
+        loadArticles(1, false),
         loadTrendingArticles(),
         loadPeople(),
         loadReels(),
         loadMarketplace(),
+        loadCtaAds(),
       ]);
     } catch {
-      // individual loaders catch their own errors; this is a safety net
     } finally {
-      setRefreshing(false);
+      if (showSpinner) setRefreshing(false);
     }
-  }, [loadExplore, loadTrendingPosts, loadSponsoredBiz, loadArticles, loadTrendingArticles, loadPeople, loadReels, loadMarketplace, reshuffleAll]);
+  }, [
+    loadExplore,
+    loadTrendingPosts,
+    loadSponsoredBiz,
+    loadArticles,
+    loadTrendingArticles,
+    loadPeople,
+    loadReels,
+    loadMarketplace,
+    loadCtaAds,
+  ]);
+
+  // First mount load only
+  useEffect(() => {
+    refreshExplore({ scrollToTop: false, showSpinner: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Manual refresh whenever Explore tab is tapped
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', () => {
+      refreshExplore({ scrollToTop: true, showSpinner: false });
+    });
+    return unsubscribe;
+  }, [navigation, refreshExplore]);
+
+  // ── Country select ─────────────────────────────────────────────────────────
+  const handleSelectCountry = useCallback(async (country) => {
+    setSelectedCountry(country);
+    await AsyncStorage.setItem(COUNTRY_KEY, JSON.stringify(country));
+    await refreshExplore({ scrollToTop: true, showSpinner: true });
+  }, [refreshExplore]);
+
+  // ── Pull-to-refresh ────────────────────────────────────────────────────────
+  const onRefresh = useCallback(async () => {
+    await refreshExplore({ scrollToTop: false, showSpinner: true });
+  }, [refreshExplore]);
+
 
   // ── Raw explore data ───────────────────────────────────────────────────────
   const counts          = explorePayload?.counts          ?? {};
@@ -1296,7 +1449,7 @@ export default function DiscoveryScreen() {
   const hotCommunities  = useMemo(() => shuffle(suggestedGroups).slice(0, 3), [suggestedGroups, shuffleKey]);
   const hotEvents       = useMemo(() => shuffle(events).slice(0, 8),           [events,          shuffleKey]);
   const ads             = useMemo(() => shuffle(rawAds),                        [rawAds,          shuffleKey]);
-  const displayTrending = useMemo(() => shuffle(trendingPosts).slice(0, 3),    [trendingPosts,   trendingDisplayKey]); // eslint-disable-line
+  const displayTrending = useMemo(() => shuffle(trendingPosts).slice(0, 5),    [trendingPosts,   trendingDisplayKey]); // eslint-disable-line
 
   const businessesInChina = useMemo(() => {
     const arr   = shuffle(suggestedPages);
@@ -1360,7 +1513,7 @@ export default function DiscoveryScreen() {
           FIXED HEADER — always visible, outside scroll
           ════════════════════════════════════════════════════════════════════ */}
       <LinearGradient
-        colors={[BRAND, '#0A5A62']}
+        colors={[BRAND, Colors.primaryDark]}
         style={[ss.header, { paddingTop: top + 6 }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -1372,7 +1525,7 @@ export default function DiscoveryScreen() {
             activeOpacity={0.85}
             onPress={() => setDrawerVisible(true)}
           >
-            <Ionicons name="menu-outline" size={22} color="#fff" />
+            <Ionicons name="menu-outline" size={22} color={WHITE} />
           </TouchableOpacity>
 
           <View style={ss.headerRight}>
@@ -1382,12 +1535,21 @@ export default function DiscoveryScreen() {
               activeOpacity={0.85}
               onPress={() => navigation.navigate('Notifications')}
             >
-              <Ionicons name={notificationCount > 0 ? 'notifications' : 'notifications-outline'} size={20} color="#fff" />
+              <Ionicons name={notificationCount > 0 ? 'notifications' : 'notifications-outline'} size={20} color={WHITE} />
               {notificationCount > 0 && (
                 <View style={ss.badge}>
                   <Text style={ss.badgeText}>{notificationCount > 99 ? '99+' : notificationCount}</Text>
                 </View>
               )}
+            </TouchableOpacity>
+
+            {/* Refresh */}
+            <TouchableOpacity
+              style={ss.iconBtn}
+              activeOpacity={0.85}
+              onPress={() => refreshExplore({ scrollToTop: true, showSpinner: true })}
+            >
+              <Ionicons name="refresh-outline" size={20} color={WHITE} />
             </TouchableOpacity>
 
             {/* Search */}
@@ -1396,7 +1558,7 @@ export default function DiscoveryScreen() {
               activeOpacity={0.85}
               onPress={() => goSearchScreen('')}
             >
-              <Ionicons name="search-outline" size={20} color="#fff" />
+              <Ionicons name="search-outline" size={20} color={WHITE} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1406,6 +1568,7 @@ export default function DiscoveryScreen() {
           SCROLLABLE CONTENT
           ════════════════════════════════════════════════════════════════════ */}
       <ScrollView
+        ref={scrollRef}
         style={ss.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -1441,12 +1604,12 @@ export default function DiscoveryScreen() {
           </Text>
 
           <View style={ss.heroSearch}>
-            <Ionicons name="search" size={18} color="rgba(255,255,255,0.75)" />
+            <Ionicons name="search" size={18} color={WHITE + 'BF'} />
             <TextInput
               value={heroQuery}
               onChangeText={setHeroQuery}
               placeholder="Search anything on Hafrik…"
-              placeholderTextColor="rgba(255,255,255,0.55)"
+              placeholderTextColor={WHITE + '8C'}
               style={ss.heroInput}
               returnKeyType="search"
               onSubmitEditing={handleHeroSubmit}
@@ -1505,7 +1668,7 @@ export default function DiscoveryScreen() {
           )}
 
           {/* ─── 2. FEATURED BUSINESS ─── */}
-          <FeaturedBusinessSection navigation={navigation} token={token} />
+          <FeaturedBusinessSection navigation={navigation} token={token} shuffleKey={shuffleKey} />
 
           {/* ─── 3. HOT TOPICS ─── */}
           <View style={ss.section}>
@@ -1514,7 +1677,7 @@ export default function DiscoveryScreen() {
                 <Text style={ss.hotTitle}>🔥 Hot Topics</Text>
                 <View style={ss.hotBadge}><Text style={ss.hotBadgeTxt}>{hotTopics.length}</Text></View>
               </View>
-              <TouchableOpacity activeOpacity={0.8} onPress={reshuffleAll} style={ss.shuffleBtn}>
+              <TouchableOpacity activeOpacity={0.8} onPress={shuffleExplore} style={ss.shuffleBtn}>
                 <Ionicons name="shuffle" size={18} color={BRAND} />
               </TouchableOpacity>
             </View>
@@ -1522,12 +1685,12 @@ export default function DiscoveryScreen() {
             <View style={ss.hotTopicsWrap}>
               {hotTopics.map((t, i) => {
                 const palettes = [
-                  { bg: BRAND,                   text: '#fff',    border: BRAND },
+                  { bg: BRAND,                   text: WHITE,    border: BRAND },
                   { bg: ACCENT,                  text: DARK,      border: ACCENT },
-                  { bg: 'rgba(232,93,4,0.10)',   text: '#C04A00', border: '#E85D04' },
-                  { bg: 'rgba(114,9,183,0.10)',  text: '#6200AA', border: '#7209B7' },
-                  { bg: 'rgba(0,119,182,0.10)',  text: '#005A8F', border: '#0077B6' },
-                  { bg: 'rgba(19,194,150,0.12)', text: '#0A7C60', border: ACCENT },
+                  { bg: Colors.warning + '1A',   text: Colors.warning, border: Colors.warning },
+                  { bg: BRAND + '12',            text: BRAND,          border: BRAND + '66' },
+                  { bg: ACCENT + '1A',           text: ACCENT,         border: ACCENT },
+                  { bg: ACCENT + '1F',           text: BRAND,          border: ACCENT },
                 ];
                 const pal = palettes[i % palettes.length];
                 return (
@@ -1592,8 +1755,8 @@ export default function DiscoveryScreen() {
                       {/* Avatar */}
                       {isRealImage(avatar)
                         ? <Image source={{ uri: avatar }} style={ss.communityRowAvatar} resizeMode="cover" />
-                        : <LinearGradient colors={[BRAND, '#1a5c63']} style={[ss.communityRowAvatar, { alignItems: 'center', justifyContent: 'center' }]}>
-                            <Ionicons name="people" size={20} color="#fff" />
+                        : <LinearGradient colors={[BRAND, Colors.primaryDark]} style={[ss.communityRowAvatar, { alignItems: 'center', justifyContent: 'center' }]}>
+                          <Ionicons name="people" size={20} color={WHITE} />
                           </LinearGradient>
                       }
                       {/* Info */}
@@ -1675,8 +1838,10 @@ export default function DiscoveryScreen() {
           {/* ─── 6. QUICK ACCESS — Hashtag categories ─── */}
           <QuickAccessSection navigation={navigation} shuffleKey={shuffleKey} />
 
-          {/* ─── 7. VISA CTA ─── */}
-          <VisaCTA onPress={() => navigation.navigate('SearchScreen', { initialQuery: 'visa help support', initialTab: 'pages' })} />
+          {/* ─── 7. AD CTA slot 1 ─── */}
+          {ctaAds.length > 0 && (
+            <InlineAdCard ad={ctaAds[0]} onPress={handleAdPress} />
+          )}
 
           {/* ─── 8. (removed – Trending Businesses) ─── */}
 
@@ -1696,8 +1861,10 @@ export default function DiscoveryScreen() {
             </View>
           )}
 
-          {/* ─── 10. HAFRIK EXCHANGE CTA ─── */}
-          <HafrikExchangeCTA onPress={() => navigation.navigate('SearchScreen', { initialQuery: 'HafrikExchange', initialTab: 'pages' })} />
+          {/* ─── 10. AD CTA slot 2 ─── */}
+          {ctaAds.length > 0 && (
+            <InlineAdCard ad={ctaAds[1] ?? ctaAds[0]} onPress={handleAdPress} />
+          )}
 
           {/* ─── 11. GUIDES & TIPS — FINAL SECTION, paginated + ads ─── */}
           {(articleItems.length > 0 || articleLoading) && (
@@ -1761,7 +1928,7 @@ export default function DiscoveryScreen() {
         activeOpacity={0.88}
         onPress={() => openComposer()}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={28} color={WHITE} />
       </TouchableOpacity>
 
       <PostComposerModal />
@@ -1782,17 +1949,17 @@ const ss = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,50,50,0.1)',
+    backgroundColor: Colors.warning + '1A',
     borderRadius: 99,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: 'rgba(255,50,50,0.2)',
+    borderColor: Colors.warning + '33',
   },
   trendingBadgeTxt: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#E53935',
+    color: Colors.warning,
     letterSpacing: 1,
   },
 
@@ -1858,7 +2025,7 @@ const ss = StyleSheet.create({
   headerRight:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: {
     width: 36, height: 36, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.13)',
+    backgroundColor: WHITE + '21',
     alignItems: 'center', justifyContent: 'center',
   },
   badge: {
@@ -1868,7 +2035,7 @@ const ss = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
     borderWidth: 1.5, borderColor: BRAND,
   },
-  badgeText:  { color: '#fff', fontSize: 9, fontWeight: '900' },
+  badgeText:  { color: WHITE, fontSize: 9, fontWeight: '900' },
   countryDot: {
     position: 'absolute', top: 5, right: 5,
     width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT,
@@ -1882,37 +2049,37 @@ const ss = StyleSheet.create({
   heroPills:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   livePill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: WHITE + '1F',
+    borderWidth: 1, borderColor: WHITE + '29',
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
-  liveText: { fontSize: 9, fontWeight: '900', letterSpacing: 1.6, color: 'rgba(255,255,255,0.85)' },
+  liveText: { fontSize: 9, fontWeight: '900', letterSpacing: 1.6, color: WHITE + 'D9' },
   countPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: WHITE + '14',
+    borderWidth: 1, borderColor: WHITE + '1F',
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
   },
-  countText: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.75)' },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: '#fff', lineHeight: 34 },
-  heroSub:   { marginTop: 8, fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.65)' },
+  countText: { fontSize: 11, fontWeight: '700', color: WHITE + 'BF' },
+  heroTitle: { fontSize: 28, fontWeight: '900', color: WHITE, lineHeight: 34 },
+  heroSub:   { marginTop: 8, fontSize: 13, lineHeight: 19, color: WHITE + 'A6' },
   heroSearch: {
     marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: WHITE + '1F',
+    borderRadius: 16, borderWidth: 1, borderColor: WHITE + '2E',
     paddingHorizontal: 14, height: 52,
   },
-  heroInput: { flex: 1, color: '#fff', fontSize: 14, paddingVertical: 0 },
+  heroInput: { flex: 1, color: WHITE, fontSize: 14, paddingVertical: 0 },
 
   // ── Body ─────────────────────────────────────────────────────────────────
   body: { paddingTop: 14, paddingHorizontal: 14 },
 
   // ── Generic section ────────────────────────────────────────────────────────
   section: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 14, marginTop: 12,
+    backgroundColor: WHITE, borderRadius: 18, padding: 14, marginTop: 12,
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04, shadowRadius: 10, elevation: 2,
   },
   sectionHeader: {
@@ -1929,8 +2096,8 @@ const ss = StyleSheet.create({
   hotHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hotTitle:      { fontSize: 16, fontWeight: '900', color: DARK },
   hotBadge:      { backgroundColor: ACCENT, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
-  hotBadgeTxt:   { fontSize: 10, fontWeight: '900', color: '#fff' },
-  shuffleBtn:    { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(12,63,68,0.06)', alignItems: 'center', justifyContent: 'center' },
+  hotBadgeTxt:   { fontSize: 10, fontWeight: '900', color: WHITE },
+  shuffleBtn:    { width: 36, height: 36, borderRadius: 12, backgroundColor: BRAND + '0F', alignItems: 'center', justifyContent: 'center' },
   hotSub:        { marginTop: 5, color: MUTED, fontSize: 12 },
   hotTopicsWrap: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
   topicPill:     { flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, borderWidth: 1.5, gap: 2 },
@@ -1944,39 +2111,39 @@ const ss = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  proCircle1: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.04)', top: -40, right: -20 },
-  proCircle2: { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.06)', bottom: -20, right: 60 },
+  proCircle1: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: WHITE + '0A', top: -40, right: -20 },
+  proCircle2: { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: WHITE + '0F', bottom: -20, right: 60 },
   proLeft:    { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  proCrown:   { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(244,165,53,0.18)', alignItems: 'center', justifyContent: 'center' },
-  proTitle:   { fontSize: 14, fontWeight: '900', color: '#fff' },
-  proSub:     { fontSize: 11, color: 'rgba(255,255,255,0.70)', marginTop: 2 },
-  proBtn:     { backgroundColor: '#F4A535', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  proCrown:   { width: 38, height: 38, borderRadius: 12, backgroundColor: WARM + '2E', alignItems: 'center', justifyContent: 'center' },
+  proTitle:   { fontSize: 14, fontWeight: '900', color: WHITE },
+  proSub:     { fontSize: 11, color: WHITE + 'B3', marginTop: 2 },
+  proBtn:     { backgroundColor: WARM, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 4 },
   proBtnText: { fontSize: 12, fontWeight: '900', color: BRAND },
 
   // ── Hafrik Exchange CTA ───────────────────────────────────────────────────
   exWrap: { marginTop: 12 },
   exCard: {
     borderRadius: 20, padding: 20, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18, shadowRadius: 12, elevation: 6,
   },
-  exCircle1: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(19,194,150,0.07)', top: -60, right: -40 },
-  exCircle2: { position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.04)', bottom: -30, left: 60 },
+  exCircle1: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: ACCENT + '12', top: -60, right: -40 },
+  exCircle2: { position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: WHITE + '0A', bottom: -30, left: 60 },
   exIconWrap: {
     width: 52, height: 52, borderRadius: 16,
-    backgroundColor: 'rgba(19,194,150,0.18)',
+    backgroundColor: ACCENT + '2E',
     alignItems: 'center', justifyContent: 'center', marginBottom: 14,
   },
   exContent:  { marginBottom: 18 },
   exTopRow:   { marginBottom: 8 },
   exPill: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(19,194,150,0.18)',
+    backgroundColor: ACCENT + '2E',
     borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
   },
   exPillText: { fontSize: 9, fontWeight: '900', color: ACCENT, letterSpacing: 1.2 },
-  exTitle:    { fontSize: 20, fontWeight: '900', color: '#fff', lineHeight: 26 },
-  exSub:      { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 6, lineHeight: 19 },
+  exTitle:    { fontSize: 20, fontWeight: '900', color: WHITE, lineHeight: 26 },
+  exSub:      { fontSize: 13, color: WHITE + 'A6', marginTop: 6, lineHeight: 19 },
   exBtnWrap:  {},
   exBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -1985,44 +2152,82 @@ const ss = StyleSheet.create({
   },
   exBtnText: { fontSize: 14, fontWeight: '900', color: BRAND },
 
+  // ── Inline Ad Card ───────────────────────────────────────────────────────
+  inlineAdWrap: {
+    marginHorizontal: H_PAD,
+    marginTop: 12,
+    height: 150,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  inlineAdBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: DARK + '73',
+    borderRadius: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  inlineAdBadgeTxt: { fontSize: 8, fontWeight: '800', color: WHITE, letterSpacing: 0.9 },
+  inlineAdContent: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  inlineAdTitle: { fontSize: 17, fontWeight: '800', color: WHITE, marginBottom: 4, lineHeight: 22 },
+  inlineAdSub:   { fontSize: 11, color: WHITE + 'B8', marginBottom: 10, lineHeight: 16 },
+  inlineAdBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: ACCENT,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  inlineAdBtnTxt: { fontSize: 11, fontWeight: '700', color: BRAND },
+
   // ── Ads ───────────────────────────────────────────────────────────────────
   adWrap: { marginTop: 12 },
   adCard: { borderRadius: 18, overflow: 'hidden', position: 'relative' },
   adImg:  { width: '100%', height: 130, alignItems: 'center', justifyContent: 'center' },
-  adFallbackText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  adFallbackText: { color: WHITE, fontSize: 18, fontWeight: '800' },
   adLabel: {
     position: 'absolute', top: 10, right: 10,
-    backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: DARK + '73', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
   },
-  adLabelText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  adLabelText: { color: WHITE, fontSize: 10, fontWeight: '700' },
   adDots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 8 },
-  adDot:       { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(12,63,68,0.2)' },
+  adDot:       { width: 6, height: 6, borderRadius: 3, backgroundColor: BRAND + '33' },
   adDotActive: { backgroundColor: ACCENT, width: 18 },
 
   // ── People ────────────────────────────────────────────────────────────────
   personCard: {
-    width: 120, alignItems: 'center', backgroundColor: 'rgba(240,244,244,0.9)',
+    width: 120, alignItems: 'center', backgroundColor: Colors.surfaceTint + 'E6',
     borderRadius: 18, padding: 14, borderWidth: 1, borderColor: BORDER,
   },
-  personAvatar: { width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(12,63,68,0.08)', marginBottom: 8 },
+  personAvatar: { width: 58, height: 58, borderRadius: 29, backgroundColor: BRAND + '14', marginBottom: 8 },
   personName:   { fontSize: 12, fontWeight: '800', color: DARK, textAlign: 'center' },
   personSub:    { fontSize: 10, color: MUTED, textAlign: 'center', marginTop: 2 },
   followBtn:        { marginTop: 10, backgroundColor: BRAND, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
-  followBtnText:    { color: '#fff', fontSize: 11, fontWeight: '800' },
-  followingBtn:     { backgroundColor: 'rgba(19,194,150,0.12)', borderWidth: 1, borderColor: ACCENT },
+  followBtnText:    { color: WHITE, fontSize: 11, fontWeight: '800' },
+  followingBtn:     { backgroundColor: ACCENT + '1F', borderWidth: 1, borderColor: ACCENT },
   followingBtnText: { color: ACCENT },
 
   // ── Mini cards ────────────────────────────────────────────────────────────
   miniCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12,
-    borderRadius: 16, backgroundColor: 'rgba(245,247,247,0.8)', borderWidth: 1, borderColor: BORDER,
+    borderRadius: 16, backgroundColor: Colors.surfaceTint + 'CC', borderWidth: 1, borderColor: BORDER,
   },
-  miniAvatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(12,63,68,0.08)' },
+  miniAvatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: BRAND + '14' },
   imgFallback:{ alignItems: 'center', justifyContent: 'center' },
   miniTitle:  { fontSize: 14, fontWeight: '900', color: DARK },
   miniSub:    { marginTop: 2, fontSize: 12, color: MUTED },
-  badgeChip:  { backgroundColor: 'rgba(19,194,150,0.14)', borderWidth: 1, borderColor: 'rgba(19,194,150,0.25)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  badgeChipText: { color: '#0a7a5a', fontSize: 12, fontWeight: '900' },
+  badgeChip:  { backgroundColor: ACCENT + '24', borderWidth: 1, borderColor: ACCENT + '40', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  badgeChipText: { color: BRAND, fontSize: 12, fontWeight: '900' },
 
   
 
@@ -2035,13 +2240,13 @@ const ss = StyleSheet.create({
 
   gridCard: {
     width: CARD_W,
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderRadius: 18,
     overflow: 'hidden',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#EEF2F4',
-    shadowColor: '#000',
+    borderColor: Colors.border,
+    shadowColor: DARK,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -2051,7 +2256,7 @@ const ss = StyleSheet.create({
   gridImgWrap: {
     width: '100%',
     aspectRatio: 1,
-    backgroundColor: '#F3F6F7',
+    backgroundColor: Colors.surfaceTint,
   },
 
   gridImg: {
@@ -2066,25 +2271,25 @@ const ss = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(19,194,150,0.92)',
+    backgroundColor: ACCENT + 'EB',
     borderRadius: 100,
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
 
   gridStockOut: {
-    backgroundColor: 'rgba(232,93,74,0.92)',
+    backgroundColor: Colors.destructive + 'EB',
   },
 
   gridStockDot: {
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
   },
 
   gridStockTxt: {
-    color: '#fff',
+    color: WHITE,
     fontSize: 9,
     fontWeight: '800',
   },
@@ -2096,14 +2301,14 @@ const ss = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(0,0,0,0.52)',
+    backgroundColor: DARK + '85',
     borderRadius: 100,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
 
   gridPhotoTxt: {
-    color: '#fff',
+    color: WHITE,
     fontSize: 9,
     fontWeight: '800',
   },
@@ -2119,7 +2324,7 @@ const ss = StyleSheet.create({
   },
 
   gridDigitalTxt: {
-    color: '#fff',
+    color: WHITE,
     fontSize: 9,
     fontWeight: '800',
   },
@@ -2154,18 +2359,18 @@ const ss = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: Colors.border,
   },
 
   gridSellerName: {
     fontSize: 10,
-    color: '#555',
+    color: MUTED,
     fontWeight: '600',
     flexShrink: 1,
   },
 
   gridTypeBadge: {
-    backgroundColor: '#374151',
+    backgroundColor: DARK,
     borderRadius: 100,
     paddingHorizontal: 5,
     paddingVertical: 2,
@@ -2176,7 +2381,7 @@ const ss = StyleSheet.create({
   },
 
   gridTypeTxt: {
-    color: '#fff',
+    color: WHITE,
     fontSize: 8,
     fontWeight: '800',
   },
@@ -2184,16 +2389,16 @@ const ss = StyleSheet.create({
   
   // ── Article cards (vertical list) ─────────────────────────────────────────
   articleCard: {
-    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 14,
+    flexDirection: 'row', backgroundColor: WHITE, borderRadius: 14,
     overflow: 'hidden', borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
-  articleImg: { width: 90, height: 90, backgroundColor: 'rgba(12,63,68,0.06)' },
+  articleImg: { width: 90, height: 90, backgroundColor: BRAND + '0F' },
   articleBody: { flex: 1, padding: 10, justifyContent: 'center', gap: 4 },
   articleCatBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(19,194,150,0.12)',
+    backgroundColor: ACCENT + '1F',
     paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6,
   },
   articleCatText:  { fontSize: 9, fontWeight: '700', color: ACCENT },
@@ -2205,10 +2410,10 @@ const ss = StyleSheet.create({
 
   // ── Events ────────────────────────────────────────────────────────────────
   eventCard: {
-    width: 230, backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden',
+    width: 230, backgroundColor: WHITE, borderRadius: 18, overflow: 'hidden',
     borderWidth: 1, borderColor: BORDER,
   },
-  eventImg:   { width: '100%', height: 120, backgroundColor: 'rgba(12,63,68,0.06)' },
+  eventImg:   { width: '100%', height: 120, backgroundColor: BRAND + '0F' },
   eventTitle: { fontSize: 13.5, fontWeight: '900', color: DARK },
   eventMeta:  { marginTop: 4, fontSize: 11.5, color: MUTED },
 
@@ -2217,39 +2422,40 @@ const ss = StyleSheet.create({
   sponsoredTitle:   { fontSize: 10, color: MUTED, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
   sponsoredCard:    { borderRadius: 14, overflow: 'hidden' },
   sponsoredInner:   { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  sponsoredIconWrap:{ width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(19,194,150,0.12)', alignItems: 'center', justifyContent: 'center' },
+  sponsoredIconWrap:{ width: 44, height: 44, borderRadius: 14, backgroundColor: ACCENT + '1F', alignItems: 'center', justifyContent: 'center' },
   sponsoredCTA:     { fontSize: 13, fontWeight: '800', color: DARK },
   sponsoredSub:     { fontSize: 11, color: MUTED, marginTop: 2 },
   sponsoredBtn:     { backgroundColor: BRAND, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7 },
-  sponsoredBtnText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  sponsoredBtnText: { color: WHITE, fontSize: 11, fontWeight: '800' },
 
   // ── Country modal ─────────────────────────────────────────────────────────
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: DARK + '73', justifyContent: 'flex-end' },
   modalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: WHITE, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingHorizontal: 16, paddingTop: 10, maxHeight: '70%',
   },
-  modalHandle:   { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 12 },
+  modalHandle:   { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: 12 },
   modalHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
   modalTitle:    { fontSize: 17, fontWeight: '900', color: DARK },
   countryRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
-  countryRowActive: { backgroundColor: 'rgba(19,194,150,0.05)' },
+  countryRowActive: { backgroundColor: ACCENT + '0D' },
   countryName:   { fontSize: 15, color: DARK },
+  countryNameActive: { color: BRAND, fontWeight: '800' },
 
   emptyText: { marginTop: 6, color: MUTED, fontSize: 12 },
 
   // ── Trending article card (horizontal) ────────────────────────────────────
   trendCard: {
-    width: 200, backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden',
+    width: 200, backgroundColor: WHITE, borderRadius: 18, overflow: 'hidden',
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
-  trendImg:   { width: '100%', height: 110, backgroundColor: 'rgba(12,63,68,0.06)' },
+  trendImg:   { width: '100%', height: 110, backgroundColor: BRAND + '0F' },
   trendBadge: {
     position: 'absolute', top: 8, left: 8,
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: WHITE + 'EB',
     paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999,
   },
   trendBadgeText: { fontSize: 9, fontWeight: '800', color: ACCENT },
@@ -2260,9 +2466,9 @@ const ss = StyleSheet.create({
   // ── Community list row ─────────────────────────────────────────────────────
   communityRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 16, padding: 12,
+    backgroundColor: WHITE, borderRadius: 16, padding: 12,
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowColor: DARK, shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
   communityRowAvatar: { width: 52, height: 52, borderRadius: 14 },
@@ -2275,7 +2481,7 @@ const ss = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 8,
     backgroundColor: BRAND, borderRadius: 999,
   },
-  communityRowJoinTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  communityRowJoinTxt: { color: WHITE, fontSize: 12, fontWeight: '800' },
 
   // ── Left-edge swipe zone ──────────────────────────────────────────────────
   swipeZone: {
@@ -2289,25 +2495,25 @@ const ss = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     overflow: 'hidden',
   },
-  visaCircle1: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.05)', top: -50, right: -30 },
-  visaCircle2: { position: 'absolute', width: 90,  height: 90,  borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.04)', bottom: -30, left: 50 },
+  visaCircle1: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: WHITE + '0D', top: -50, right: -30 },
+  visaCircle2: { position: 'absolute', width: 90,  height: 90,  borderRadius: 45, backgroundColor: WHITE + '0A', bottom: -30, left: 50 },
   visaLeft:    { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  visaIconWrap:{ width: 42, height: 42, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
-  visaTitle:   { fontSize: 14, fontWeight: '900', color: '#fff' },
-  visaSub:     { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
-  visaBtn:     { backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  visaBtnText: { fontSize: 11, fontWeight: '900', color: '#2D1B69' },
+  visaIconWrap:{ width: 42, height: 42, borderRadius: 14, backgroundColor: WHITE + '24', alignItems: 'center', justifyContent: 'center' },
+  visaTitle:   { fontSize: 14, fontWeight: '900', color: WHITE },
+  visaSub:     { fontSize: 11, color: WHITE + 'A6', marginTop: 2 },
+  visaBtn:     { backgroundColor: WHITE, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  visaBtnText: { fontSize: 11, fontWeight: '900', color: BRAND },
 
   // ── Visa modal ────────────────────────────────────────────────────────────
-  visaModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  visaModalOverlay: { flex: 1, backgroundColor: DARK + '8C', justifyContent: 'flex-end' },
   visaModalSheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 20, paddingTop: 12, paddingBottom: 36,
   },
-  visaModalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#e0e0e0', alignSelf: 'center', marginBottom: 20 },
+  visaModalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border, alignSelf: 'center', marginBottom: 20 },
   visaModalIconWrap: {
     width: 60, height: 60, borderRadius: 20,
-    backgroundColor: 'rgba(12,63,68,0.08)',
+    backgroundColor: BRAND + '14',
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 14,
   },
   visaModalTitle: { fontSize: 20, fontWeight: '900', color: DARK, textAlign: 'center' },
@@ -2315,7 +2521,7 @@ const ss = StyleSheet.create({
 
   visaContactCard: {
     marginTop: 18, borderRadius: 16, borderWidth: 1, borderColor: BORDER,
-    overflow: 'hidden', backgroundColor: '#FAFCFC',
+    overflow: 'hidden', backgroundColor: Colors.surfaceTint,
   },
   visaContactRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -2323,14 +2529,14 @@ const ss = StyleSheet.create({
   },
   visaContactIcon: {
     width: 36, height: 36, borderRadius: 12,
-    backgroundColor: 'rgba(12,63,68,0.06)',
+    backgroundColor: BRAND + '0F',
     alignItems: 'center', justifyContent: 'center',
   },
   visaContactLabel: { fontSize: 10, color: MUTED, fontWeight: '600' },
   visaContactValue: { fontSize: 14, fontWeight: '800', color: DARK, marginTop: 1 },
   visaCopyBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(12,63,68,0.08)',
+    backgroundColor: BRAND + '14',
     paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10,
   },
   visaCopyText: { fontSize: 12, fontWeight: '800', color: BRAND },
@@ -2344,20 +2550,20 @@ const ss = StyleSheet.create({
     paddingVertical: 15, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 8,
   },
-  visaCallBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+  visaCallBtnText: { color: WHITE, fontSize: 15, fontWeight: '900' },
 
   visaCloseBtn: {
     marginTop: 10, paddingVertical: 13, alignItems: 'center',
   },
   visaCloseBtnText: { color: MUTED, fontSize: 14, fontWeight: '700' },
   // ── Trending post card ────────────────────────────────────────────────────
-  tpCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
-  tpThumb: { width: 80, height: 80, backgroundColor: 'rgba(12,63,68,0.06)' },
-  tpBadge: { position: 'absolute', top: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(255,255,255,0.92)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 },
+  tpCard: { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: BORDER, shadowColor: DARK, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  tpThumb: { width: 80, height: 80, backgroundColor: BRAND + '0F' },
+  tpBadge: { position: 'absolute', top: 6, left: 6, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: WHITE + 'EB', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 },
   tpBadgeText: { fontSize: 8, fontWeight: '800', color: ACCENT },
   tpBody:     { flex: 1, padding: 10, justifyContent: 'center', gap: 4 },
   tpUserRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  tpAvatar:   { width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(12,63,68,0.08)' },
+  tpAvatar:   { width: 18, height: 18, borderRadius: 9, backgroundColor: BRAND + '14' },
   tpUsername: { fontSize: 11, fontWeight: '700', color: MUTED },
   tpTitle:    { fontSize: 13, fontWeight: '800', color: DARK, lineHeight: 18 },
   tpStats:    { flexDirection: 'row', gap: 12 },
@@ -2365,8 +2571,8 @@ const ss = StyleSheet.create({
   tpStatText: { fontSize: 11, color: MUTED },
 
   // ── Featured business horizontal card ────────────────────────────────────
-  fbCard:     { width: 240, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
-  fbAvatar:   { width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(12,63,68,0.08)', alignItems: 'center', justifyContent: 'center' },
+  fbCard:     { width: 240, backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
+  fbAvatar:   { width: 52, height: 52, borderRadius: 14, backgroundColor: BRAND + '14', alignItems: 'center', justifyContent: 'center' },
   fbBody:     { flex: 1, gap: 2 },
   fbNameRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
   fbName:     { fontSize: 13, fontWeight: '900', color: DARK, flex: 1 },
@@ -2375,33 +2581,33 @@ const ss = StyleSheet.create({
   fbFollowers:{ fontSize: 10, color: MUTED, marginTop: 2 },
 
   // ── Quick Access chips ────────────────────────────────────────────────────
-  qaChip:      { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(12,63,68,0.06)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(12,63,68,0.08)' },
+  qaChip:      { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: BRAND + '0F', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: BRAND + '14' },
   qaChipLabel: { fontSize: 12, fontWeight: '700', color: DARK },
   // Enhanced Quick Access
-  qaSection:       { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginTop: 12, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
-  qaGroupCard:     { backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: 'rgba(12,63,68,0.07)', shadowColor: '#0C3F44', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  qaSection:       { backgroundColor: WHITE, borderRadius: 18, padding: 14, marginTop: 12, borderWidth: 1, borderColor: BORDER, shadowColor: DARK, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
+  qaGroupCard:     { backgroundColor: WHITE, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: BRAND + '12', shadowColor: BRAND, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   qaGroupHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  qaGroupIconWrap: { width: 26, height: 26, borderRadius: 8, backgroundColor: 'rgba(12,63,68,0.08)', alignItems: 'center', justifyContent: 'center' },
+  qaGroupIconWrap: { width: 26, height: 26, borderRadius: 8, backgroundColor: BRAND + '14', alignItems: 'center', justifyContent: 'center' },
   qaGroupTitle:    { fontSize: 13, fontWeight: '800', color: BRAND, flex: 1 },
   qaGroupSub:      { fontSize: 10, fontWeight: '600', color: MUTED, letterSpacing: 0.3 },
   // Place chips (horizontal scroll)
-  qaPlaceChip:     { alignItems: 'center', gap: 5, backgroundColor: 'rgba(12,63,68,0.05)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(12,63,68,0.09)', minWidth: 72 },
-  qaPlaceIcon:     { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(12,63,68,0.07)', alignItems: 'center', justifyContent: 'center' },
+  qaPlaceChip:     { alignItems: 'center', gap: 5, backgroundColor: BRAND + '0D', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: BRAND + '17', minWidth: 72 },
+  qaPlaceIcon:     { width: 36, height: 36, borderRadius: 10, backgroundColor: BRAND + '12', alignItems: 'center', justifyContent: 'center' },
   qaPlaceLabel:    { fontSize: 10, fontWeight: '700', color: BRAND, textAlign: 'center', maxWidth: 72 },
   // Topic chips (wrap)
-  qaTopicChip:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(19,194,150,0.08)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: 'rgba(19,194,150,0.18)' },
+  qaTopicChip:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: ACCENT + '14', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: ACCENT + '2E' },
   qaTopicLabel:    { fontSize: 12, fontWeight: '700', color: BRAND },
 
   // ── Sponsored biz (horizontal scroll cards) ───────────────────────────────
-  sponsoredChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(122,145,152,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  sponsoredChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: MUTED + '1A', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   sponsoredChipText: { fontSize: 9, fontWeight: '700', color: MUTED, letterSpacing: 0.5 },
-  sponsBizCard: { width: 200, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: BORDER, overflow: 'hidden' },
-  sponsBizImg:  { width: '100%', height: 100, backgroundColor: 'rgba(12,63,68,0.06)' },
+  sponsBizCard: { width: 200, backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER, overflow: 'hidden' },
+  sponsBizImg:  { width: '100%', height: 100, backgroundColor: BRAND + '0F' },
   sponsBizBody: { padding: 10 },
   sponsBizName: { fontSize: 13, fontWeight: '900', color: DARK },
   sponsBizSub:  { fontSize: 11, color: MUTED, marginTop: 2 },
   sponsBizBtn:  { marginHorizontal: 10, marginBottom: 10, backgroundColor: BRAND, borderRadius: 10, paddingVertical: 7, alignItems: 'center' },
-  sponsBizBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  sponsBizBtnText: { color: WHITE, fontSize: 12, fontWeight: '800' },
 
 
 });

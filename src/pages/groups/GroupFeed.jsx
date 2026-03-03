@@ -12,13 +12,14 @@ import { useNavigation } from "@react-navigation/native";
 import { getGroupFeed } from "./services/groupApi";
 import { useAuth } from '../../AuthContext';
 import FeedCard from "../home/feeds/feedcard";
+import { Colors } from '../../theme';
 
-const ACCENT     = '#13C296';
-const BG         = '#F0F5F5';
-const CARD       = '#FFFFFF';
-const BORDER     = '#EEF3F3';
-const BRAND      = '#0C3F44';
-const TEXT_MUTED = '#8A9BA8';
+const ACCENT     = Colors.primary;
+const BG         = Colors.surfaceTint;
+const CARD       = Colors.white;
+const BORDER     = Colors.border;
+const BRAND      = Colors.primaryDark;
+const TEXT_MUTED = Colors.secondaryText;
 
 export default function GroupFeed({ route }) {
   const { groupId } = route.params || {};

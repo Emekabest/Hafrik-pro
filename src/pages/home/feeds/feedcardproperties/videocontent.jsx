@@ -12,10 +12,20 @@ import { Image as ExpoImage } from "expo-image";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEvent } from "expo";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from '../../../../theme/colors';
 
-const MEDIA_HEIGHT = 470;
-const MEDIA_WIDTH  = 240;
-const HIT_SLOP     = { top: 10, bottom: 10, left: 10, right: 10 };
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const { width: SCREEN_W } = Dimensions.get("window");
+// Feed card layout: container pad 16×2 + leftCol 44 + col gap 12 = 88
+const FEED_VIDEO_W = SCREEN_W - 88;
+
+const HIT_SLOP = { top: 10, bottom: 10, left: 10, right: 10 };
 
 const isValidUrl = (v) => typeof v === "string" && v.trim().length > 0;
 
@@ -34,35 +44,37 @@ const VideoPostContent = ({ media, leftOffset = 0, containerWidth = 0, isVisible
   const rawUrl  = mediaItem?.video_url;
   const safeUrl = isValidUrl(rawUrl) ? rawUrl.trim() : null;
 
-  const effectiveWidth = containerWidth > 0
-    ? containerWidth
-    : Dimensions.get("window").width;
+  // Fill the right-column width; when containerWidth is provided (tablet) subtract leftOffset
+  const videoW = containerWidth > 0
+    ? Math.max(containerWidth - leftOffset, 100)
+    : FEED_VIDEO_W;
+  const videoH = Math.round(videoW * 16 / 9); // 9:16 portrait ratio
 
   return (
-    <View style={[styles.mediaSection, { width: effectiveWidth, marginLeft: -leftOffset }]}>
-      <View style={[styles.videoContainer, { marginLeft: leftOffset }]}>
-        {safeUrl ? (
-          <VideoPlayerLayer
-            videoUrl={safeUrl}
-            thumbnail={mediaItem?.thumbnail}
-            isVisible={isVisible} // ✅ passed down
+    <View style={{ borderRadius: 12, overflow: "hidden", backgroundColor: Colors.black }}>
+      {safeUrl ? (
+        <VideoPlayerLayer
+          videoUrl={safeUrl}
+          thumbnail={mediaItem?.thumbnail}
+          isVisible={isVisible}
+          videoWidth={videoW}
+          videoHeight={videoH}
+        />
+      ) : (
+        mediaItem?.thumbnail ? (
+          <ExpoImage
+            source={{ uri: mediaItem.thumbnail }}
+            style={{ width: videoW, height: videoH }}
+            contentFit="contain"
           />
-        ) : (
-          mediaItem?.thumbnail && (
-            <ExpoImage
-              source={{ uri: mediaItem.thumbnail }}
-              style={styles.thumbnail}
-              contentFit="contain"
-            />
-          )
-        )}
-      </View>
+        ) : null
+      )}
     </View>
   );
 };
 
 // ─── VideoPlayerLayer ─────────────────────────────────────────────────────────
-const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible }) => {
+const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible, videoWidth, videoHeight }) => {
   const [paused,      setPaused]      = useState(false);
   const [muted,       setMuted]       = useState(false);
   const [controlsVis, setControlsVis] = useState(true);
@@ -84,7 +96,7 @@ const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible }) => {
 
   useEvent(player, "timeUpdate", { currentTime: 0 });
 
-  // ✅ Auto pause/play based on visibility
+  // Auto-pause/play based on scroll visibility
   useEffect(() => {
     if (!player) return;
     try {
@@ -111,11 +123,7 @@ const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible }) => {
 
   const handlePlayPause = useCallback(() => {
     if (!player) return;
-    if (paused) {
-      player.play();
-    } else {
-      player.pause();
-    }
+    if (paused) { player.play(); } else { player.pause(); }
     setPaused(prev => !prev);
   }, [player, paused]);
 
@@ -134,59 +142,55 @@ const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible }) => {
 
   const handleSeek = useCallback((e) => {
     if (!player || totalTime === 0) return;
-    const BAR_WIDTH = MEDIA_WIDTH - 32;
-    const ratio = Math.min(Math.max(e.nativeEvent.locationX / BAR_WIDTH, 0), 1);
+    const barW  = videoWidth - 32;
+    const ratio = Math.min(Math.max(e.nativeEvent.locationX / barW, 0), 1);
     player.seekBy(ratio * totalTime - player.currentTime);
-  }, [player, totalTime]);
+  }, [player, totalTime, videoWidth]);
 
   return (
     <TouchableWithoutFeedback onPress={handleTap}>
-      <View style={styles.playerContainer}>
+      <View style={{ width: videoWidth, height: videoHeight, backgroundColor: Colors.black }}>
 
-        {/* Thumbnail while not ready */}
+        {/* Thumbnail while buffering / not ready */}
         {!isReady && thumbnail && (
           <ExpoImage
             source={{ uri: thumbnail }}
-            style={styles.thumbnail}
-            contentFit="contain"
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
           />
         )}
 
         {/* Video */}
         {isReady && (
           <VideoView
-            style={styles.videoPlayer}
+            style={StyleSheet.absoluteFillObject}
             player={player}
             nativeControls={false}
             contentFit="contain"
           />
         )}
 
-        {/* Buffering */}
+        {/* Buffering spinner */}
         {isBuffering && (
           <View style={styles.bufferOverlay}>
-            <ActivityIndicator size="large" color="#fff" />
+            <ActivityIndicator size="large" color={Colors.white} />
           </View>
         )}
 
-        {/* VIDEO badge — always visible */}
+        {/* VIDEO badge */}
         <View style={styles.videoBadge}>
-          <Ionicons name="videocam" size={12} color="#fff" />
+          <Ionicons name="videocam" size={12} color={Colors.white} />
           <Text style={styles.videoBadgeText}>VIDEO</Text>
         </View>
 
-        {/* Controls — visible on tap */}
+        {/* Controls overlay */}
         {controlsVis && isReady && (
           <View style={styles.controlsOverlay}>
 
             {/* Top: mute + time */}
             <View style={styles.topRow}>
               <TouchableOpacity onPress={handleMute} style={styles.iconBtn} hitSlop={HIT_SLOP}>
-                <Ionicons
-                  name={muted ? "volume-mute" : "volume-high"}
-                  size={20}
-                  color="#fff"
-                />
+                <Ionicons name={muted ? "volume-mute" : "volume-high"} size={20} color={Colors.white} />
               </TouchableOpacity>
               <Text style={styles.durationText}>
                 {formatTime(currentTime)} / {formatTime(totalTime)}
@@ -196,26 +200,16 @@ const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible }) => {
             {/* Center: replay + play/pause */}
             <View style={styles.centerRow}>
               <TouchableOpacity onPress={handleReplay} style={styles.iconBtn} hitSlop={HIT_SLOP}>
-                <Ionicons name="refresh" size={22} color="#fff" />
+                <Ionicons name="refresh" size={22} color={Colors.white} />
               </TouchableOpacity>
-
               <TouchableOpacity onPress={handlePlayPause} style={styles.playBtn} hitSlop={HIT_SLOP}>
-                <Ionicons
-                  name={paused ? "play" : "pause"}
-                  size={28}
-                  color="#fff"
-                />
+                <Ionicons name={paused ? "play" : "pause"} size={28} color={Colors.white} />
               </TouchableOpacity>
-
               <View style={{ width: 38 }} />
             </View>
 
             {/* Bottom: progress bar */}
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={handleSeek}
-              style={styles.progressBarHitArea}
-            >
+            <TouchableOpacity activeOpacity={1} onPress={handleSeek} style={styles.progressBarHitArea}>
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
                 <View style={[styles.scrubber, { left: `${progress * 100}%` }]} />
@@ -225,10 +219,10 @@ const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible }) => {
           </View>
         )}
 
-        {/* Paused hint when controls hidden */}
+        {/* Paused hint when controls are hidden */}
         {paused && !controlsVis && (
           <View style={styles.pausedHint} pointerEvents="none">
-            <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.7)" />
+            <Ionicons name="play-circle" size={56} color={withOpacity(Colors.white, 0.75)} />
           </View>
         )}
 
@@ -239,20 +233,6 @@ const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible }) => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  mediaSection: { overflow: "hidden" },
-
-  videoContainer: {
-    width: MEDIA_WIDTH,
-    height: MEDIA_HEIGHT,
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: "#000",
-  },
-
-  thumbnail:       { ...StyleSheet.absoluteFillObject },
-  playerContainer: { ...StyleSheet.absoluteFillObject },
-  videoPlayer:     { width: "100%", height: "100%" },
-
   bufferOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
@@ -265,14 +245,14 @@ const styles = StyleSheet.create({
     left: 10,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: withOpacity(Colors.black, 0.55),
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
     gap: 4,
   },
   videoBadgeText: {
-    color: "#fff",
+    color: Colors.white,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -280,7 +260,7 @@ const styles = StyleSheet.create({
 
   controlsOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: withOpacity(Colors.black, 0.35),
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -294,7 +274,7 @@ const styles = StyleSheet.create({
   },
 
   durationText: {
-    color: "#fff",
+    color: Colors.white,
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: 0.3,
@@ -318,25 +298,25 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: withOpacity(Colors.white, 0.2),
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.6)",
+    borderColor: withOpacity(Colors.white, 0.6),
   },
 
-  progressBarHitArea: { paddingVertical: 6 },
+  progressBarHitArea: { paddingVertical: 8 },
 
   progressTrack: {
     height: 3,
-    backgroundColor: "rgba(255,255,255,0.35)",
+    backgroundColor: withOpacity(Colors.white, 0.35),
     borderRadius: 2,
     position: "relative",
   },
 
   progressFill: {
     height: "100%",
-    backgroundColor: "#13C296",
+    backgroundColor: Colors.tealAccent,
     borderRadius: 2,
   },
 
@@ -346,7 +326,7 @@ const styles = StyleSheet.create({
     width: 11,
     height: 11,
     borderRadius: 6,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     marginLeft: -5.5,
   },
 

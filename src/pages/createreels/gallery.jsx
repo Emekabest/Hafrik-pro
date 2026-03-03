@@ -1,29 +1,63 @@
 import React, { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView, Dimensions, FlatList, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, SafeAreaView, Dimensions, FlatList, Alert } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
 import { useIsFocused } from '@react-navigation/native';
 import SvgIcon from '../../assl.js/svg/svg';
 import AppDetails from '../../helpers/appdetails';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width } = Dimensions.get('window');
 const ITEM_SIZE = width / 3;
 
 // Memoized gallery item component
 const GalleryItem = memo(({ item, onSelect }) => {
-    const handlePress = useCallback(() => {
-        onSelect(item);
-    }, [item, onSelect]);
+    const [resolving, setResolving] = useState(false);
+
+    // ph:// URIs from MediaLibrary are not supported by VideoThumbnails or expo-video.
+    // getAssetInfoAsync resolves them to a file:// localUri that everything supports.
+    const handlePress = useCallback(async () => {
+        if (resolving) return;
+        try {
+            setResolving(true);
+            const info = await MediaLibrary.getAssetInfoAsync(item);
+            const srcUri = info.localUri || item.uri;
+            // Copy to app cache so iOS sandbox allows read access
+            const ext = (srcUri.split('.').pop()?.split('?')[0] || 'mp4').toLowerCase();
+            const dest = `${FileSystem.cacheDirectory}reel_${item.id}.${ext}`;
+            await FileSystem.copyAsync({ from: srcUri, to: dest });
+            onSelect({ ...item, uri: dest });
+        } catch {
+            onSelect(item); // fallback — let downstream handle it
+        } finally {
+            setResolving(false);
+        }
+    }, [item, onSelect, resolving]);
 
     return (
-        <TouchableOpacity style={styles.galleryItem} onPress={handlePress}>
-            <Image 
-                source={{ uri: item.uri }} 
-                style={styles.galleryImage} 
-                resizeMode="cover"
+        <TouchableOpacity style={styles.galleryItem} onPress={handlePress} activeOpacity={0.75}>
+            <ExpoImage
+                source={{ uri: item.uri }}
+                style={styles.galleryImage}
+                contentFit="cover"
+                cachePolicy="memory"
             />
             <Text style={styles.durationText}>{Math.round(item.duration)}s</Text>
+            {resolving && (
+                <View style={styles.resolvingOverlay}>
+                    <ActivityIndicator size="small" color={Colors.white} />
+                </View>
+            )}
         </TouchableOpacity>
     );
 });
@@ -31,7 +65,7 @@ const GalleryItem = memo(({ item, onSelect }) => {
 // Memoized loading component
 const LoadingComponent = memo(() => (
     <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#000" />
+        <ActivityIndicator size="large" color={Colors.black} />
         <Text style={styles.loadingText}>Loading videos...</Text>
     </View>
 ));
@@ -45,7 +79,7 @@ const EmptyComponent = memo(() => (
 
 // Memoized footer component
 const FooterComponent = memo(() => (
-    <ActivityIndicator size="small" color="#000" style={styles.footerLoader} />
+    <ActivityIndicator size="small" color={Colors.black} style={styles.footerLoader} />
 ));
 
 const Gallery = ({ onSelect }) => {
@@ -117,7 +151,7 @@ const Gallery = ({ onSelect }) => {
     const pickVideo = useCallback(async () => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                mediaTypes: ImagePicker.MediaType.videos,
                 allowsEditing: true,
                 quality: 1,
             });
@@ -139,7 +173,7 @@ const Gallery = ({ onSelect }) => {
             }
 
             const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+                mediaTypes: ImagePicker.MediaType.videos,
                 allowsEditing: true,
                 quality: 1,
             });
@@ -184,7 +218,7 @@ const Gallery = ({ onSelect }) => {
             <View style={styles.cameraButtonContainer}>
                 <TouchableOpacity style={styles.cameraButton} onPress={recordVideo} activeOpacity={0.7}>
                     <View style={styles.cameraIconContainer}>
-                        <Ionicons name="camera" size={24} color="#fff" />
+                        <Ionicons name="camera" size={24} color={Colors.white} />
                     </View>                  
                     <Text style={styles.cameraButtonText}>Record a Video</Text>
                 </TouchableOpacity>
@@ -216,7 +250,7 @@ const Gallery = ({ onSelect }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
     },
     header: {
         flexDirection: 'row',
@@ -225,7 +259,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         height: 50,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: Colors.neutral180,
     },
     headerTitle: {
         fontSize: 18,
@@ -235,6 +269,12 @@ const styles = StyleSheet.create({
         width: ITEM_SIZE,
         height: ITEM_SIZE,
         padding: 1,
+    },
+    resolvingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: withOpacity(Colors.black, 0.45),
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     galleryImage: {
         width: '100%',
@@ -247,7 +287,7 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 12,
         fontWeight: 'bold',
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: withOpacity(Colors.black, 0.5),
         paddingHorizontal: 4,
         borderRadius: 4,
     },
@@ -267,7 +307,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#333',
+        backgroundColor: Colors.neutral700,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 10,
@@ -275,7 +315,7 @@ const styles = StyleSheet.create({
     cameraButtonText: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#333',
+        color: Colors.neutral700,
     },
     loadingContainer: {
         flex: 1,
@@ -286,7 +326,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 10,
         fontSize: 14,
-        color: '#666',
+        color: Colors.neutral500,
     },
     footerLoader: {
         margin: 20,

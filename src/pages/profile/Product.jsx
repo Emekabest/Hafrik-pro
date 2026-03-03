@@ -4,6 +4,7 @@ import ProfileTabs from './tabs';
 import Profile from '../Profile';
 import { ProfileProductsController } from '../../controllers/profilecontroller';
 import { useAuth } from '../../AuthContext';
+import { Colors } from '../../theme/colors';
 
 const Product = ({ header, tabs, activeTab, onTabChange, userId }) =>{
 
@@ -35,9 +36,9 @@ const Product = ({ header, tabs, activeTab, onTabChange, userId }) =>{
 
                 {products && products.length > 0 ? (
                     products.map((product) => (
-                        <View key={product.id} style={{ padding: 10, borderBottomWidth: 1, borderColor: '#ccc' }}>
+                        <View key={product.id} style={{ padding: 10, borderBottomWidth: 1, borderColor: Colors.neutral250 }}>
                             <Text style={{ fontSize: 16, fontWeight: 'bold' }}>{product.name}</Text>
-                            <Text style={{ color: '#888' }}>${product.price}</Text>
+                            <Text style={{ color: Colors.neutral400 }}>${product.price}</Text>
                         </View>
 
                     ))

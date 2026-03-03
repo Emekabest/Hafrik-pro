@@ -18,15 +18,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
 import { fetchMarketplaceProducts } from './marketplaceApi';
 import { ProductCard } from './ProductCard';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const API   = 'https://hafrik.com/api/v1/marketplace/get_marketplace.php';
 const LIMIT = 10;
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.deepSlate;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const CATS = ['All', 'Electronics', 'Clothing', 'Food', 'Furniture', 'Services', 'Other'];
 
@@ -142,7 +150,7 @@ export default function MarketplaceScreen({ navigation }) {
 
       {/* Header */}
       <LinearGradient
-        colors={[BRAND, '#1a5c63']}
+        colors={[BRAND, Colors.tealHeader]}
         style={[styles.header, { paddingTop: top + 4 }]}
       >
         <View style={styles.headerTop}>
@@ -155,7 +163,7 @@ export default function MarketplaceScreen({ navigation }) {
               style={styles.iconBtn}
               onPress={() => navigation.navigate('MyListings')}
             >
-              <Ionicons name="list-outline" size={20} color="#fff" />
+              <Ionicons name="list-outline" size={20} color={Colors.white} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.iconBtn, { backgroundColor: ACCENT }]}
@@ -168,18 +176,18 @@ export default function MarketplaceScreen({ navigation }) {
 
         {/* Search */}
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color="rgba(255,255,255,0.7)" />
+          <Ionicons name="search" size={16} color={withOpacity(Colors.white, 0.7)} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search listings..."
-            placeholderTextColor="rgba(255,255,255,0.45)"
+            placeholderTextColor={withOpacity(Colors.white, 0.45)}
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={17} color="rgba(255,255,255,0.55)" />
+              <Ionicons name="close-circle" size={17} color={withOpacity(Colors.white, 0.55)} />
             </TouchableOpacity>
           )}
         </View>
@@ -242,7 +250,7 @@ export default function MarketplaceScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F3F6F8' },
+  root: { flex: 1, backgroundColor: Colors.surfaceSky },
 
   header: { paddingHorizontal: 16, paddingBottom: 14 },
   headerTop: {
@@ -251,23 +259,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  headerSub:   { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
+  headerTitle: { color: Colors.white, fontSize: 22, fontWeight: '800' },
+  headerSub:   { color: withOpacity(Colors.white, 0.65), fontSize: 12, marginTop: 2 },
   headerActions: { flexDirection: 'row', gap: 8 },
   iconBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center', alignItems: 'center',
   },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
   },
-  searchInput: { flex: 1, color: '#fff', fontSize: 14 },
+  searchInput: { flex: 1, color: Colors.white, fontSize: 14 },
 
   catsRow: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
@@ -275,12 +283,12 @@ const styles = StyleSheet.create({
   catPill:      { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 100, borderWidth: 1.5, borderColor: BORDER },
   catPillActive:{ backgroundColor: BRAND, borderColor: BRAND },
   catTxt:       { fontSize: 12, fontWeight: '600', color: MUTED },
-  catTxtActive: { color: '#fff' },
+  catTxtActive: { color: Colors.white },
 
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   errorTxt:  { fontSize: 14, color: MUTED, textAlign: 'center', paddingHorizontal: 24 },
   retryBtn:  { backgroundColor: BRAND, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10 },
-  retryTxt:  { color: '#fff', fontWeight: '700', fontSize: 14 },
+  retryTxt:  { color: Colors.white, fontWeight: '700', fontSize: 14 },
 
   grid: { paddingHorizontal: 10, paddingTop: 10, paddingBottom: 40 },
   row:  { gap: 8 },
@@ -288,6 +296,6 @@ const styles = StyleSheet.create({
   footerLoader: { paddingVertical: 20, alignItems: 'center' },
 
   emptyWrap:  { alignItems: 'center', paddingTop: 60, gap: 8, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#0D1B1E' },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: Colors.deepSlate },
   emptySub:   { fontSize: 13, color: MUTED, textAlign: 'center' },
 });

@@ -6,6 +6,7 @@ import CalculateElapsedTime from '../../../../../helpers/calculateelapsedtime';
 import CommentProductItem from './commentproductitem';
 import CleanText from '../../../../../helpers/cleantext';
 import AppDetails from '../../../../../helpers/appdetails';
+import { Colors } from '../../../../../theme/colors';
 
 const MEDIA_HEIGHT = 520;
 const MEDIA_WIDTH = 270;
@@ -26,7 +27,7 @@ const CommentSharedPostItem = ({ post, isLeaving, parentFeedId }) => {
     return (
         <View style={{ 
             borderWidth: isMultimediapostMode ? 0 : 1,
-            borderColor: '#e0e0e0',
+            borderColor: Colors.neutral200,
             borderRadius: 10,
             marginTop: 10,
             padding: 10, 
@@ -39,7 +40,7 @@ const CommentSharedPostItem = ({ post, isLeaving, parentFeedId }) => {
                     <Image source={{ uri: avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
                     <View style={{ marginLeft: 10 }}>
                         <Text style={{ fontWeight: 'bold' }}>{fullName}</Text>
-                        <Text style={{ color: '#787878ff' }}>{CalculateElapsedTime(postCreated)}</Text>
+                        <Text style={{ color: Colors.neutral430 }}>{CalculateElapsedTime(postCreated)}</Text>
                     </View>
                 </View>
                 <View>
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
         borderTopRightRadius:10,
         borderLeftWidth:1,
         borderRightWidth:1,
-        borderColor:"#dedede",
+        borderColor:Colors.neutral210,
     }
 })
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { Colors } from '../../../theme/colors';
 
 const SkeletonBusinessPageCard = () => {
     return (
@@ -21,7 +22,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 12,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderRadius: 12,
         margin: 6,
         overflow: 'hidden'
@@ -37,7 +38,7 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         borderRadius: 50,
-        backgroundColor: '#e6e6e6'
+        backgroundColor: Colors.neutral170
     },
     right: {
         flex: 1,
@@ -47,21 +48,21 @@ const styles = StyleSheet.create({
         width: '40%',
         height: 16,
         borderRadius: 8,
-        backgroundColor: '#e6e6e6',
+        backgroundColor: Colors.neutral170,
         marginBottom: 8
     },
     lineMedium: {
         width: '30%',
         height: 12,
         borderRadius: 6,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: Colors.neutral150,
         marginBottom: 12
     },
     buttonPlaceholder: {
         width: 100,
         height: 32,
         borderRadius: 6,
-        backgroundColor: '#e6e6e6'
+        backgroundColor: Colors.neutral170
     }
 });
 

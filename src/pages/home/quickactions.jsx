@@ -14,6 +14,13 @@ import {
   PanGestureHandler,
   State,
 } from "react-native-gesture-handler";
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || '').replace('#', '');
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0');
+  return `#${normalized}${alpha}`;
+};
 
 const { width } = Dimensions.get("window");
 const TAB_WIDTH = (width - 40) / 3;
@@ -23,22 +30,22 @@ const tabs = [
     key: "nearby",
     label: "Nearby",
     icon: "location-sharp",
-    gradient: ["#0C3F44", "#0B8557"],
-    inactiveColor: "rgba(12,63,68,0.6)",
+    gradient: [Colors.primaryDark, Colors.greenDeep],
+    inactiveColor: withOpacity(Colors.primaryDark, 0.6),
   },
   {
     key: "trending",
     label: "Trending",
     icon: "flame",
-    gradient: ["#FF5E3A", "#FF2A00"],
-    inactiveColor: "rgba(255,94,58,0.6)",
+    gradient: [Colors.orangeHot, Colors.orangeHotDark],
+    inactiveColor: withOpacity(Colors.orangeHot, 0.6),
   },
   {
     key: "recent",
     label: "Recent",
     icon: "time",
-    gradient: ["#1F9D8B", "#146356"],
-    inactiveColor: "rgba(31,157,139,0.6)",
+    gradient: [Colors.teal, Colors.tealDark],
+    inactiveColor: withOpacity(Colors.teal, 0.6),
   },
 ];
 
@@ -102,7 +109,7 @@ export default function HafrikTabs({ activeTab, onTabChange }) {
               styles.slider,
               {
                 transform: [{ translateX }],
-                shadowColor: isTrending ? "#FF3B1F" : "#000",
+                shadowColor: isTrending ? Colors.redHot : Colors.black,
                 shadowOpacity: isTrending ? 0.25 : 0.05,
               },
             ]}
@@ -135,7 +142,7 @@ export default function HafrikTabs({ activeTab, onTabChange }) {
                   <Ionicons
                     name={tab.icon}
                     size={18}
-                    color={isActive ? "#fff" : tab.inactiveColor}
+                    color={isActive ? Colors.white : tab.inactiveColor}
                     style={{ marginRight: 6 }}
                   />
                   <Text
@@ -185,9 +192,9 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: 18,
     overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: withOpacity(Colors.white, 0.6),
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: withOpacity(Colors.black, 0.05),
   },
 
   slider: {
@@ -215,12 +222,12 @@ const styles = StyleSheet.create({
 
   text: {
     fontSize: 13,
-    color: "#5F6B6D",
+    color: Colors.mutedText,
     fontFamily: "ReadexPro_400Regular",
   },
 
   activeText: {
-    color: "#fff",
+    color: Colors.white,
     fontFamily: "ReadexPro_600SemiBold",
   },
 

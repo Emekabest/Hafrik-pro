@@ -4,6 +4,14 @@ import { Ionicons } from "@expo/vector-icons";
 import ToggleSaveController from '../../../controllers/tooglesavecontroller';
 import { useAuth } from '../../../AuthContext';
 import AppDetails from '../../../helpers/appdetails';
+import { Colors } from '../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const OptionsModal = ({ visible, postId, onClose }) => {
 
@@ -37,20 +45,20 @@ const OptionsModal = ({ visible, postId, onClose }) => {
                             <Text style={styles.bottomSheetTitle}>Options</Text>
                             
                             <TouchableOpacity style={styles.bottomSheetOption} onPress={handleSavePost}>
-                                <Ionicons name="bookmark-outline" size={24} color="#333" />
+                                <Ionicons name="bookmark-outline" size={24} color={Colors.neutral700} />
                                 <Text style={styles.bottomSheetOptionText}>Save Post</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.bottomSheetOption}>
-                                <Ionicons name="eye-off-outline" size={24} color="#333" />
+                                <Ionicons name="eye-off-outline" size={24} color={Colors.neutral700} />
                                 <Text style={styles.bottomSheetOptionText}>Edit Post</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.bottomSheetOption}>
-                                <Ionicons name="trash-outline" size={24} color="#333" />
-                                <Text style={[styles.bottomSheetOptionText, {color: '#333'}]}>Delete Post</Text>
+                                <Ionicons name="trash-outline" size={24} color={Colors.neutral700} />
+                                <Text style={[styles.bottomSheetOptionText, {color: Colors.neutral700}]}>Delete Post</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.bottomSheetOption}>
-                                <Ionicons name="alert-circle-outline" size={24} color="#333" />
-                                <Text style={[styles.bottomSheetOptionText, {color: '#333'}]}>Turn off Commenting</Text>
+                                <Ionicons name="alert-circle-outline" size={24} color={Colors.neutral700} />
+                                <Text style={[styles.bottomSheetOptionText, {color: Colors.neutral700}]}>Turn off Commenting</Text>
                             </TouchableOpacity>
                         </View>
                     </TouchableWithoutFeedback>
@@ -64,10 +72,10 @@ const styles = StyleSheet.create({
     bottomSheetContainer: {
         flex: 1,
         justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: withOpacity(Colors.black, 0.5),
     },
     bottomSheetContent: {
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         width: '100%',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
@@ -76,7 +84,7 @@ const styles = StyleSheet.create({
     bottomSheetHandle: {
         width: 40,
         height: 5,
-        backgroundColor: '#e0e0e0',
+        backgroundColor: Colors.neutral200,
         borderRadius: 2.5,
         alignSelf: 'center',
         marginBottom: 15,
@@ -85,7 +93,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         marginBottom: 20,
         textAlign: 'center',
-        color: '#333',
+        color: Colors.neutral700,
         fontFamily:"ReadexPro_600SemiBold",
     },
     bottomSheetOption: {
@@ -93,12 +101,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: Colors.neutral150,
     },
     bottomSheetOptionText: {
         fontSize: 16,
         marginLeft: 15,
-        color: '#333',
+        color: Colors.neutral700,
         fontFamily:AppDetails.fontFamily.redex.medium,
     },
 });

@@ -11,6 +11,7 @@ import {
   Image 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../theme/colors';
 
 const CategoriesScreen = ({ navigation, route }) => {
   const categories = [
@@ -19,7 +20,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Technology', 
       icon: 'laptop-outline', 
       count: 245,
-      color: '#0C3F44',
+      color: Colors.primaryDark,
       image: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -27,7 +28,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Sports', 
       icon: 'football-outline', 
       count: 189,
-      color: '#FF6B35',
+      color: Colors.orange,
       image: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -35,7 +36,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Entertainment', 
       icon: 'film-outline', 
       count: 167,
-      color: '#9C27B0',
+      color: Colors.purple,
       image: 'https://images.unsplash.com/photo-1489599809505-fb40ebc16d30?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -43,7 +44,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Food & Drink', 
       icon: 'restaurant-outline', 
       count: 143,
-      color: '#4CAF50',
+      color: Colors.green,
       image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -51,7 +52,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Travel', 
       icon: 'airplane-outline', 
       count: 132,
-      color: '#2196F3',
+      color: Colors.blue,
       image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -59,7 +60,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Fashion', 
       icon: 'shirt-outline', 
       count: 118,
-      color: '#E91E63',
+      color: Colors.pink,
       image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -67,7 +68,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Health & Fitness', 
       icon: 'fitness-outline', 
       count: 95,
-      color: '#00BCD4',
+      color: Colors.cyan,
       image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -75,7 +76,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Education', 
       icon: 'school-outline', 
       count: 87,
-      color: '#FF9800',
+      color: Colors.amber,
       image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -83,7 +84,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Art & Design', 
       icon: 'brush-outline', 
       count: 76,
-      color: '#795548',
+      color: Colors.brown,
       image: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
     { 
@@ -91,7 +92,7 @@ const CategoriesScreen = ({ navigation, route }) => {
       name: 'Business', 
       icon: 'business-outline', 
       count: 154,
-      color: '#607D8B',
+      color: Colors.blueGrey,
       image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80'
     },
   ];
@@ -111,7 +112,7 @@ const CategoriesScreen = ({ navigation, route }) => {
         <Text style={styles.categoryName}>{item.name}</Text>
         <Text style={styles.categoryCount}>{item.count} posts</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#666" />
+      <Ionicons name="chevron-forward" size={20} color={Colors.neutral500} />
     </TouchableOpacity>
   );
 
@@ -123,11 +124,11 @@ const CategoriesScreen = ({ navigation, route }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={Colors.neutral700} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Categories</Text>
         <TouchableOpacity style={styles.searchButton}>
-          <Ionicons name="search-outline" size={24} color="#333" />
+          <Ionicons name="search-outline" size={24} color={Colors.neutral700} />
         </TouchableOpacity>
       </View>
 
@@ -146,7 +147,7 @@ const CategoriesScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.neutral150,
   },
   backButton: {
     padding: 4,
@@ -163,7 +164,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.neutral700,
   },
   searchButton: {
     padding: 4,
@@ -174,12 +175,12 @@ const styles = StyleSheet.create({
   categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.neutral120,
     padding: 15,
     borderRadius: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: Colors.neutral150,
   },
   categoryIcon: {
     width: 50,
@@ -195,12 +196,12 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: Colors.neutral700,
     marginBottom: 4,
   },
   categoryCount: {
     fontSize: 12,
-    color: '#666',
+    color: Colors.neutral500,
   },
 });
 

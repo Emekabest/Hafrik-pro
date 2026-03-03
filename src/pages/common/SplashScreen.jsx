@@ -8,12 +8,20 @@ import {
   Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width, height } = Dimensions.get('window');
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const LIGHT  = '#1a6b73';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const LIGHT  = Colors.tealWave;
 
 // ─── Floating particles (matches Login onboarding style) ─────────────────────
 const FloatingParticles = () => {
@@ -177,7 +185,7 @@ const ArcLines = () => (
           width: d, height: d,
           borderRadius: d / 2,
           borderWidth: 0.5,
-          borderColor: `rgba(19,194,150,${0.07 - i * 0.015})`,
+          borderColor: withOpacity(Colors.tealAccent, 0.07 - i * 0.015),
         }}
       />
     ))}
@@ -242,7 +250,7 @@ export default function SplashScreen({ fadeAnim }) {
     <Animated.View style={[styles.root, { opacity: wrapperOpacity }]}>
       {/* Background gradient */}
       <LinearGradient
-        colors={[BRAND, '#0a2e33', '#061a1e']}
+        colors={[BRAND, Colors.brandDeepAlt, Colors.brandDeepStrong]}
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.85, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -273,7 +281,7 @@ export default function SplashScreen({ fadeAnim }) {
             ]}
           >
             <LinearGradient
-              colors={[ACCENT, '#0F9B80', LIGHT]}
+              colors={[ACCENT, Colors.tealAccentAlt, LIGHT]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.logoOrbGrad}
@@ -355,14 +363,14 @@ const styles = StyleSheet.create({
   logoLetter: {
     fontSize: 48,
     fontWeight: '900',
-    color: '#fff',
+    color: Colors.white,
     letterSpacing: -1,
   },
 
   brandName: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#fff',
+    color: Colors.white,
     letterSpacing: 9,
     marginTop: 16,
     marginBottom: 8,
@@ -379,13 +387,13 @@ const styles = StyleSheet.create({
   tag1: {
     fontSize: 22,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.92)',
+    color: withOpacity(Colors.white, 0.92),
     letterSpacing: 0.2,
   },
   tag2: {
     fontSize: 22,
     fontWeight: '300',
-    color: 'rgba(255,255,255,0.55)',
+    color: withOpacity(Colors.white, 0.55),
     letterSpacing: 0.2,
     marginTop: 2,
     marginBottom: 30,
@@ -401,13 +409,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 99,
     borderWidth: 1,
-    borderColor: 'rgba(19,194,150,0.32)',
-    backgroundColor: 'rgba(19,194,150,0.10)',
+    borderColor: withOpacity(Colors.tealAccent, 0.32),
+    backgroundColor: withOpacity(Colors.tealAccent, 0.10),
   },
   chipTxt: {
     fontSize: 11.5,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.72)',
+    color: withOpacity(Colors.white, 0.72),
     letterSpacing: 0.2,
   },
 
@@ -415,7 +423,7 @@ const styles = StyleSheet.create({
     width: 130,
     height: 3,
     borderRadius: 99,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: withOpacity(Colors.white, 0.10),
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -436,7 +444,7 @@ const styles = StyleSheet.create({
   },
   bottomTxt: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.28)',
+    color: withOpacity(Colors.white, 0.28),
     letterSpacing: 1.3,
     textTransform: 'uppercase',
     marginTop: 8,

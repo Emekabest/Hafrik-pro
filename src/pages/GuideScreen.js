@@ -12,12 +12,20 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
+import { Colors } from '../theme/colors';
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const PURPLE = '#8B5CF6';
-const MUTED  = '#7A9198';
-const BORDER = 'rgba(12,63,68,0.09)';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const PURPLE = Colors.violet;
+const MUTED  = Colors.secondaryText;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const BASE_URL = 'https://hafrik.com/api/v1';
 
@@ -59,12 +67,12 @@ const cleanText = (t = '') =>
 const categoryMeta = (categoryIdOrName) => {
   // You can tune these per category (icons + gradient)
   const metaByName = {
-    'Visa & Legal': { icon: 'document-text-outline', colors: ['#8B5CF6', '#6D28D9'] },
-    Housing:        { icon: 'home-outline',          colors: ['#F59E0B', '#F97316'] },
-    Banking:        { icon: 'card-outline',          colors: ['#13C296', '#0a8a68'] },
-    Shopping:       { icon: 'storefront-outline',    colors: ['#EC4899', '#BE185D'] },
-    Health:         { icon: 'medkit-outline',        colors: ['#EF4444', '#B91C1C'] },
-    Language:       { icon: 'chatbubble-ellipses-outline', colors: ['#3B82F6', '#1D4ED8'] },
+    'Visa & Legal': { icon: 'document-text-outline', colors: [Colors.violet, Colors.violetDeep] },
+    Housing:        { icon: 'home-outline',          colors: [Colors.amberStrong, Colors.orangeStrong] },
+    Banking:        { icon: 'card-outline',          colors: [Colors.tealAccent, Colors.tealDarkAlt] },
+    Shopping:       { icon: 'storefront-outline',    colors: [Colors.pinkBright, Colors.pinkDeep] },
+    Health:         { icon: 'medkit-outline',        colors: [Colors.redStrong, Colors.redDeep] },
+    Language:       { icon: 'chatbubble-ellipses-outline', colors: [Colors.blueAccent, Colors.blueDeep] },
   };
 
   // If API returns category_id, try to reverse map it to a label
@@ -72,7 +80,7 @@ const categoryMeta = (categoryIdOrName) => {
     Object.entries(CATEGORY_ID_MAP).find(([, id]) => String(id) === String(categoryIdOrName))?.[0];
 
   const label = nameFromId || String(categoryIdOrName || 'All');
-  const meta = metaByName[label] || { icon: 'newspaper-outline', colors: ['#0C3F44', '#0a5a60'] };
+  const meta = metaByName[label] || { icon: 'newspaper-outline', colors: [Colors.primaryDark, Colors.tealDeepAlt] };
 
   return { label, ...meta };
 };
@@ -181,7 +189,7 @@ const GuideScreen = ({ navigation }) => {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <Ionicons name={meta.icon} size={22} color="#fff" />
+          <Ionicons name={meta.icon} size={22} color={Colors.white} />
         </LinearGradient>
 
         <View style={styles.cardContent}>
@@ -219,13 +227,13 @@ const GuideScreen = ({ navigation }) => {
 
       {/* Header */}
       <LinearGradient
-        colors={['#8B5CF6', '#6D28D9']}
+        colors={[Colors.violet, Colors.violetDeep]}
         style={styles.header}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+          <Ionicons name="arrow-back" size={22} color={Colors.white} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
@@ -235,7 +243,7 @@ const GuideScreen = ({ navigation }) => {
 
         {/* Hook this to your search screen/modal later */}
         <TouchableOpacity style={styles.searchBtn} onPress={() => { /* open search UI */ }}>
-          <Ionicons name="search-outline" size={22} color="#fff" />
+          <Ionicons name="search-outline" size={22} color={Colors.white} />
         </TouchableOpacity>
       </LinearGradient>
 
@@ -300,7 +308,7 @@ const GuideScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7F8' },
+  container: { flex: 1, backgroundColor: Colors.surfaceBase },
 
   header: {
     flexDirection: 'row',
@@ -312,24 +320,24 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.white, letterSpacing: 0.3 },
+  headerSub: { fontSize: 11, color: withOpacity(Colors.white, 0.7), marginTop: 2 },
   searchBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   filterWrap: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
@@ -344,16 +352,16 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     borderWidth: 1.5,
     borderColor: BORDER,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   filterPillActive: { backgroundColor: BRAND, borderColor: BRAND },
   filterPillText: { fontSize: 12, fontWeight: '600', color: MUTED },
-  filterPillTextActive: { color: '#fff' },
+  filterPillTextActive: { color: Colors.white },
 
   list: { padding: 14, gap: 12 },
 
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 14,
     flexDirection: 'row',
@@ -381,7 +389,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   categoryPill: {
-    backgroundColor: 'rgba(139,92,246,0.1)',
+    backgroundColor: withOpacity(Colors.violet, 0.1),
     borderRadius: 100,
     paddingHorizontal: 8,
     paddingVertical: 2,

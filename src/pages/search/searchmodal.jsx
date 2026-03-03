@@ -24,20 +24,26 @@ import SearchSuggestionController from "../../controllers/searchsuggestioncontro
 import { useAuth } from "../../AuthContext";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Colors } from "../../theme";
 
-const PRIMARY = AppDetails.primaryColor; // #0C3F44
-const ACCENT  = "#13C296";
+const PRIMARY = Colors.primaryDark;
+const ACCENT  = Colors.primary;
+const WHITE   = Colors.white;
+const DARK    = Colors.black;
+const MUTED   = Colors.secondaryText;
+const BORDER  = Colors.border;
+const SURFACE = Colors.surfaceTint;
 const { width: SW } = Dimensions.get("window");
 
 const REEL_W  = Math.round(Math.max(SW * 0.26, 96));
 const REEL_H  = Math.round(REEL_W * 1.5);
 
 const TYPE_META = {
-  user:  { label: "Person",  icon: "person-outline",   bg: "#E4EFF0", color: PRIMARY     },
-  post:  { label: "Post",    icon: "document-outline",  bg: "#EDF8F4", color: "#0b8557"   },
-  page:  { label: "Page",    icon: "business-outline",  bg: "#EDF0F0", color: PRIMARY     },
-  group: { label: "Group",   icon: "people-outline",    bg: "#EDF8F4", color: "#0b8557"   },
-  event: { label: "Event",   icon: "calendar-outline",  bg: "#FEF3EC", color: "#E07B39"   },
+  user:  { label: "Person",  icon: "person-outline",   bg: SURFACE, color: PRIMARY },
+  post:  { label: "Post",    icon: "document-outline",  bg: ACCENT + "14", color: ACCENT },
+  page:  { label: "Page",    icon: "business-outline",  bg: SURFACE, color: PRIMARY },
+  group: { label: "Group",   icon: "people-outline",    bg: ACCENT + "14", color: ACCENT },
+  event: { label: "Event",   icon: "calendar-outline",  bg: Colors.warning + "14", color: Colors.warning },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,7 +105,7 @@ const Shimmer = ({ width, height, borderRadius = 8, style }) => {
     loop.start();
     return () => loop.stop();
   }, []);
-  return <Animated.View style={[{ width, height, borderRadius, backgroundColor: "#e2e8e8", opacity: anim }, style]} />;
+  return <Animated.View style={[{ width, height, borderRadius, backgroundColor: SURFACE, opacity: anim }, style]} />;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -170,12 +176,12 @@ const TrendingReelsRow = ({ token, onReelPress, onSeeAllPress }) => {
 
                   {/* play button */}
                   <View style={styles.reelPlayBtn}>
-                    <Ionicons name="play" size={14} color="#fff" />
+                    <Ionicons name="play" size={14} color={WHITE} />
                   </View>
 
                   {/* view count */}
                   <View style={styles.reelViewsBadge}>
-                    <Ionicons name="eye-outline" size={11} color="#fff" />
+                    <Ionicons name="eye-outline" size={11} color={WHITE} />
                     <Text style={styles.reelViewsText}>
                       {r.views >= 1000 ? `${(r.views / 1000).toFixed(1)}k` : String(r.views)}
                     </Text>
@@ -308,7 +314,7 @@ const PeopleNearYouRow = ({ token, onPersonPress }) => {
       <View style={styles.section}>
         <View style={styles.sectionHead}>
           <View style={styles.sectionHeadLeft}>
-            <View style={[styles.sectionDot, { backgroundColor: "#E07B39" }]} />
+            <View style={[styles.sectionDot, { backgroundColor: Colors.warning }]} />
             <Text style={styles.sectionTitle}>People Near You</Text>
           </View>
           <Text style={styles.nearbyHint}>Make friends faster</Text>
@@ -360,7 +366,7 @@ const PeopleNearYouRow = ({ token, onPersonPress }) => {
 // Suggestion type badge
 // ─────────────────────────────────────────────────────────────────────────────
 const TypeBadge = ({ type }) => {
-  const meta = TYPE_META[type] || { label: type, icon: "search-outline", bg: "#f0f0f0", color: "#555" };
+  const meta = TYPE_META[type] || { label: type, icon: "search-outline", bg: SURFACE, color: MUTED };
   return (
     <View style={[styles.typeBadge, { backgroundColor: meta.bg }]}>
       <Ionicons name={meta.icon} size={10} color={meta.color} style={{ marginRight: 3 }} />
@@ -553,7 +559,7 @@ const SearchModal = () => {
       animationType="slide"
       transparent={false}
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: WHITE }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -562,12 +568,12 @@ const SearchModal = () => {
           {/* ── Header ─────────────────────────────────────────────────── */}
           <View style={styles.header}>
             <View style={styles.searchBarOuter}>
-              <Ionicons name="search-outline" size={17} color="#999" style={styles.searchIcon} />
+              <Ionicons name="search-outline" size={17} color={MUTED} style={styles.searchIcon} />
               <TextInput
                 ref={inputRef}
                 style={styles.searchInput}
                 placeholder="Search Hafrik…"
-                placeholderTextColor="#bbb"
+                placeholderTextColor={MUTED}
                 autoFocus
                 value={searchText}
                 onChangeText={handleChangeText}
@@ -584,7 +590,7 @@ const SearchModal = () => {
                   onPress={() => { setSearchText(""); setSuggestions([]); }}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="close-circle" size={18} color="#bbb" />
+                  <Ionicons name="close-circle" size={18} color={MUTED} />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -629,7 +635,7 @@ const SearchModal = () => {
                   <View style={styles.section}>
                     <View style={styles.sectionHead}>
                       <View style={styles.sectionHeadLeft}>
-                        <View style={[styles.sectionDot, { backgroundColor: "#888" }]} />
+                        <View style={[styles.sectionDot, { backgroundColor: MUTED }]} />
                         <Text style={styles.sectionTitle}>Recent</Text>
                       </View>
                       {recentSearches.length > 5 && (
@@ -648,14 +654,14 @@ const SearchModal = () => {
                           onPress={() => goSearch(item.text)}
                         >
                           <View style={styles.recentIconWrap}>
-                            <Ionicons name="time-outline" size={15} color="#999" />
+                            <Ionicons name="time-outline" size={15} color={MUTED} />
                           </View>
                           <Text style={styles.recentText} numberOfLines={1}>{item.text}</Text>
                           <TouchableOpacity
                             onPress={() => deleteRecent(idx)}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                           >
-                            <Ionicons name="close" size={15} color="#ccc" />
+                            <Ionicons name="close" size={15} color={BORDER} />
                           </TouchableOpacity>
                         </TouchableOpacity>
                       ))}
@@ -678,7 +684,7 @@ const SearchModal = () => {
                       {youMayLike.map((item) => (
                         <TouchableOpacity
                           key={item.id}
-                          style={[styles.topicPill, { backgroundColor: "#EDF5F5" }]}
+                          style={[styles.topicPill, { backgroundColor: SURFACE }]}
                           activeOpacity={0.75}
                           onPress={() => handlePostPress(item.id)}
                         >
@@ -700,7 +706,7 @@ const SearchModal = () => {
             <View style={styles.body}>
               {displayedSuggestions.length === 0 && !isLoading ? (
                 <View style={styles.noResultsWrap}>
-                  <Ionicons name="search-outline" size={40} color="#ddd" />
+                  <Ionicons name="search-outline" size={40} color={BORDER} />
                   <Text style={styles.noResultsText}>No results for "{searchText}"</Text>
                   <Text style={styles.noResultsSub}>Try different keywords</Text>
                 </View>
@@ -741,7 +747,7 @@ const SearchModal = () => {
               {/* See all results */}
               <View style={styles.seeAllBar}>
                 <TouchableOpacity style={styles.seeAllBarBtn} onPress={() => goSearch()} activeOpacity={0.82}>
-                  <Ionicons name="search" size={16} color="#fff" style={{ marginRight: 8 }} />
+                  <Ionicons name="search" size={16} color={WHITE} style={{ marginRight: 8 }} />
                   <Text style={styles.seeAllBarText}>See all results for "{searchText}"</Text>
                 </TouchableOpacity>
               </View>
@@ -760,7 +766,7 @@ const SearchModal = () => {
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
 
-  safe: { flex: 1, backgroundColor: "#fff" },
+  safe: { flex: 1, backgroundColor: WHITE },
 
   // ─ Header ─
 header: {
@@ -769,15 +775,15 @@ header: {
   paddingHorizontal: 16,
   paddingTop: 12,
   paddingBottom: 14,
-  backgroundColor: "#fff",
+  backgroundColor: WHITE,
   borderBottomWidth: StyleSheet.hairlineWidth,
-  borderBottomColor: "#e8e8e8",
+  borderBottomColor: BORDER,
 },
  searchBarOuter: {
   flex: 1,
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: "#F2F4F4",
+  backgroundColor: SURFACE,
   borderRadius: 16,
   paddingHorizontal: 14,
   height: 44,
@@ -786,7 +792,7 @@ header: {
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: "#111",
+    color: DARK,
     fontFamily: AppDetails.fontFamily.inter?.regular || "Inter_400Regular",
     paddingVertical: 0,
   },
@@ -798,7 +804,7 @@ header: {
   },
 
   // ─ Body ─
-  body: { flex: 1, backgroundColor: "#F5F7F7" },
+  body: { flex: 1, backgroundColor: Colors.background },
   bodyContent: { paddingVertical: 10, paddingBottom: 60 },
 
   // ─ Section ─
@@ -824,7 +830,7 @@ header: {
   sectionTitle: {
     fontSize: 15,
     fontFamily: AppDetails.fontFamily.inter?.semiBold || "Inter_600SemiBold",
-    color: "#111",
+    color: DARK,
   },
   seeAllBtn: { flexDirection: "row", alignItems: "center" },
   seeAllBtnText: {
@@ -835,7 +841,7 @@ header: {
   },
   nearbyHint: {
     fontSize: 12,
-    color: "#aaa",
+    color: MUTED,
     fontFamily: AppDetails.fontFamily.inter?.regular || "Inter_400Regular",
   },
 
@@ -846,11 +852,11 @@ header: {
     height: REEL_H,
     borderRadius: 14,
     overflow: "hidden",
-    backgroundColor: "#e2e8e8",
+    backgroundColor: SURFACE,
   },
   reelGradient: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.18)",
+    backgroundColor: DARK + "2E",
     // simulate gradient: stronger at bottom
   },
   reelPlayBtn: {
@@ -862,7 +868,7 @@ header: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: DARK + "73",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -872,14 +878,14 @@ header: {
     bottom: 8,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: DARK + "73",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
     gap: 4,
   },
   reelViewsText: {
-    color: "#fff",
+    color: WHITE,
     fontSize: 11,
     fontFamily: AppDetails.fontFamily.inter?.semiBold || "Inter_600SemiBold",
   },
@@ -889,14 +895,14 @@ header: {
   topicPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F0F4F4",
+    backgroundColor: SURFACE,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
   },
   topicText: {
     fontSize: 13,
-    color: "#333",
+    color: DARK,
     fontFamily: AppDetails.fontFamily.inter?.semiBold || "Inter_600SemiBold",
     maxWidth: SW * 0.35,
   },
@@ -904,7 +910,7 @@ header: {
   // ─ People near you ─
   personCard: {
     width: 120,
-    backgroundColor: "#F5F7F7",
+    backgroundColor: Colors.background,
     borderRadius: 14,
     padding: 12,
     alignItems: "center",
@@ -913,13 +919,13 @@ header: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#ddd",
+    backgroundColor: BORDER,
   },
   personAvatarFallback: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#E4EFF0",
+    backgroundColor: SURFACE,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -927,13 +933,13 @@ header: {
     marginTop: 8,
     fontSize: 13,
     fontFamily: AppDetails.fontFamily.inter?.semiBold || "Inter_600SemiBold",
-    color: "#111",
+    color: DARK,
     textAlign: "center",
   },
   personDist: {
     marginTop: 2,
     fontSize: 11,
-    color: "#aaa",
+    color: MUTED,
     fontFamily: AppDetails.fontFamily.inter?.regular || "Inter_400Regular",
     textAlign: "center",
   },
@@ -945,14 +951,14 @@ header: {
     borderRadius: 20,
   },
   personFollowBtnText: {
-    color: "#fff",
+    color: WHITE,
     fontSize: 12,
     fontFamily: AppDetails.fontFamily.inter?.semiBold || "Inter_600SemiBold",
   },
 
   // ─ Recent searches ─
   recentList: {
-    backgroundColor: "#F5F7F7",
+    backgroundColor: Colors.background,
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -962,13 +968,13 @@ header: {
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e8e8e8",
+    borderBottomColor: BORDER,
   },
   recentIconWrap: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#E8EDEE",
+    backgroundColor: SURFACE,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -976,7 +982,7 @@ header: {
   recentText: {
     flex: 1,
     fontSize: 14,
-    color: "#222",
+    color: DARK,
     fontFamily: AppDetails.fontFamily.inter?.regular || "Inter_400Regular",
   },
 
@@ -987,25 +993,25 @@ header: {
     paddingHorizontal: 16,
     paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#f0f0f0",
-    backgroundColor: "#fff",
+    borderBottomColor: BORDER,
+    backgroundColor: WHITE,
     gap: 12,
   },
   suggAvatar: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#eee",
+    backgroundColor: BORDER,
   },
   suggBody: { flex: 1 },
   suggTitle: {
     fontSize: 15,
     fontFamily: AppDetails.fontFamily.inter?.semiBold || "Inter_600SemiBold",
-    color: "#111",
+    color: DARK,
   },
   suggSub: {
     fontSize: 13,
-    color: "#aaa",
+    color: MUTED,
     fontFamily: AppDetails.fontFamily.inter?.regular || "Inter_400Regular",
     marginTop: 2,
   },
@@ -1032,9 +1038,9 @@ header: {
     right: 0,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#fff",
+    backgroundColor: WHITE,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#eee",
+    borderTopColor: BORDER,
   },
   seeAllBarBtn: {
     flexDirection: "row",
@@ -1045,7 +1051,7 @@ header: {
     borderRadius: 14,
   },
   seeAllBarText: {
-    color: "#fff",
+    color: WHITE,
     fontSize: 14,
     fontFamily: AppDetails.fontFamily.inter?.semiBold || "Inter_600SemiBold",
   },
@@ -1060,13 +1066,13 @@ header: {
     marginTop: 14,
     fontSize: 17,
     fontFamily: AppDetails.fontFamily.inter?.semiBold || "Inter_600SemiBold",
-    color: "#333",
+    color: DARK,
     textAlign: "center",
   },
   noResultsSub: {
     marginTop: 6,
     fontSize: 14,
-    color: "#aaa",
+    color: MUTED,
     fontFamily: AppDetails.fontFamily.inter?.regular || "Inter_400Regular",
   },
 });

@@ -6,6 +6,14 @@ import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import AppDetails from "../../../../helpers/appdetails";
+import { Colors } from '../../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 
 const MediaLinkContent = ({ text }) => {
@@ -75,7 +83,7 @@ const MediaLinkContent = ({ text }) => {
 
             {isBuffering && (
                 <View style={styles.loadingOverlay}>
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={Colors.white} />
                 </View>
             )}
             </View>
@@ -95,7 +103,7 @@ const styles = StyleSheet.create({
         overflow: "hidden", 
         width: "100%", 
         borderRadius:15, 
-        backgroundColor: "#000" 
+        backgroundColor: Colors.black 
     },
 
     playButtoncontainerOverlay:{
@@ -104,7 +112,7 @@ const styles = StyleSheet.create({
         position:"absolute",
         alignItems:"center",
         justifyContent:"center",
-        backgroundColor:"rgba(0, 0, 0, 0.12)",
+        backgroundColor:withOpacity(Colors.black, 0.12),
     },
 
     url:{

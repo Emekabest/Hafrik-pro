@@ -1,6 +1,14 @@
 import React, { useRef } from "react";
 import { View, StyleSheet, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 export default function HeartBurst({ visibleKey }) {
   // visibleKey changes -> play animation
@@ -27,7 +35,7 @@ export default function HeartBurst({ visibleKey }) {
   return (
     <View pointerEvents="none" style={styles.wrap}>
       <Animated.View style={{ opacity, transform: [{ scale }] }}>
-        <Ionicons name="heart" size={92} color="rgba(255,255,255,0.92)" />
+        <Ionicons name="heart" size={92} color={withOpacity(Colors.white, 0.92)} />
       </Animated.View>
     </View>
   );

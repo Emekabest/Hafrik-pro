@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Colors } from '../../theme/colors';
 
 const filters = ["all", "joined", "suggested", "trending"];
 
@@ -40,16 +41,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: "#eee",
+    backgroundColor: Colors.neutral180,
   },
   activeButton: {
-    backgroundColor: "#0b8557",
+    backgroundColor: Colors.greenDeep,
   },
   text: {
     fontSize: 12,
-    color: "#555",
+    color: Colors.neutral600,
   },
   activeText: {
-    color: "#fff",
+    color: Colors.white,
   },
 });

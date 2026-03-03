@@ -8,6 +8,7 @@ import { useAuth } from '../../AuthContext';
 import GetFeedsController from '../../controllers/getfeedscontroller';
 import useStore from '../../repository/store';
 import AppDetails from '../../helpers/appdetails';
+import { Colors } from '../../theme/colors';
 
 
 
@@ -82,7 +83,7 @@ const WhatsNearbyScreen = () => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F0E8' },
+  container: { flex: 1, backgroundColor: Colors.surfaceWarm },
 });
 
 export default WhatsNearbyScreen;

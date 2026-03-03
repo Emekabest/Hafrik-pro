@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { Colors } from '../../theme';
 
 
 // ─── API imports ────────────────────────────────────────────────────────────
@@ -18,13 +19,43 @@ import { getBusinessList, toggleFollowBusiness } from '../pages_/Businessapi';
 const { width: SCREEN_W } = Dimensions.get('window');
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F5F7F7';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const BORDER = 'rgba(12,63,68,0.08)';
-const CARD   = '#ffffff';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.background;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.black;
+const BORDER = BRAND + '14';
+const CARD   = Colors.white;
+const WHITE  = Colors.white;
+const BLACK  = Colors.black;
+const FEATURE_GOLD = Colors.gradientOrange[0];
+const FEATURE_AMBER = Colors.gradientOrange[1];
+const COVER_TINT = ACCENT + 'CC';
+const SCRIM_STRONG = BLACK + 'C7';
+const SCRIM_MEDIUM = BLACK + '8C';
+const SCRIM_SOFT = BLACK + '73';
+const ON_DARK_80 = WHITE + 'CC';
+const ON_DARK_85 = WHITE + 'D9';
+const ON_DARK_55 = WHITE + '8C';
+const ON_DARK_50 = WHITE + '80';
+const ON_DARK_40 = WHITE + '66';
+const ON_DARK_15 = WHITE + '26';
+const ON_DARK_14 = WHITE + '24';
+const ON_DARK_10 = WHITE + '1A';
+const ON_DARK_04 = WHITE + '0A';
+const ACCENT_SOFT_08 = ACCENT + '14';
+const ACCENT_SOFT_09 = ACCENT + '17';
+const ACCENT_SOFT_10 = ACCENT + '1A';
+const ACCENT_SOFT_12 = ACCENT + '1F';
+const ACCENT_SOFT_18 = ACCENT + '2E';
+const ACCENT_SOFT_22 = ACCENT + '38';
+const ACCENT_SOFT_25 = ACCENT + '40';
+const ACCENT_SOFT_26 = ACCENT + '42';
+const ACCENT_SOFT_50 = ACCENT + '80';
+const BRAND_SOFT_11 = BRAND + '1C';
+const BRAND_SOFT_07 = BRAND + '12';
+const TEXT_ACCENT_DARK = BRAND;
+const TEXT_SUBDUED = Colors.grey;
 
 // ─── Static business filter options ──────────────────────────────────────────
 const BUSINESS_FILTERS = ['All', 'Sourcing', 'Shipping', 'Food', 'Legal', 'Fashion'];
@@ -98,27 +129,27 @@ const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
           <Image source={{ uri: cover }} style={cc.cover} resizeMode="cover" />
         ) : (
           <LinearGradient
-            colors={[BRAND, '#0b6272', ACCENT + '88']}
+            colors={[BRAND, ACCENT, COVER_TINT]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={cc.cover}
           />
         )}
         {/* Gradient fade for text legibility */}
         <LinearGradient
-          colors={['transparent', 'rgba(6,22,26,0.78)']}
+          colors={['transparent', SCRIM_STRONG]}
           style={cc.coverFade}
         />
         {/* Top badges */}
         <View style={cc.topBadges}>
           {promoted && (
             <View style={cc.featBadge}>
-              <Ionicons name="star" size={9} color="#F9C846" />
+              <Ionicons name="star" size={9} color={FEATURE_GOLD} />
               <Text style={cc.featTxt}>Featured</Text>
             </View>
           )}
           {private_ && (
             <View style={cc.privBadge}>
-              <Ionicons name="lock-closed" size={10} color="#fff" />
+              <Ionicons name="lock-closed" size={10} color={Colors.white} />
             </View>
           )}
         </View>
@@ -126,7 +157,7 @@ const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
         <View style={cc.coverBottom}>
           <Text style={cc.coverTitle} numberOfLines={1}>{title || 'Community'}</Text>
           <View style={cc.coverMeta}>
-            <Ionicons name="people" size={12} color="rgba(255,255,255,0.8)" />
+            <Ionicons name="people" size={12} color={ON_DARK_80} />
             <Text style={cc.coverMetaTxt}>{fmtCount(memberCount)} members</Text>
             {isMember && (
               <View style={cc.joinedPill}>
@@ -146,8 +177,8 @@ const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
             {isRealImage(avatar) ? (
               <Image source={{ uri: avatar }} style={cc.avatar} resizeMode="cover" />
             ) : (
-              <LinearGradient colors={[BRAND, '#1a6b75']} style={[cc.avatar, cc.avatarFb]}>
-                <Ionicons name="people" size={18} color="#fff" />
+              <LinearGradient colors={[BRAND, ACCENT]} style={[cc.avatar, cc.avatarFb]}>
+                <Ionicons name="people" size={18} color={WHITE} />
               </LinearGradient>
             )}
           </View>
@@ -186,7 +217,7 @@ const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
           activeOpacity={0.85}
         >
           {joining
-            ? <ActivityIndicator size="small" color={isMember ? BRAND : '#fff'} />
+            ? <ActivityIndicator size="small" color={isMember ? BRAND : Colors.white} />
             : <Text style={[cc.joinTxt, isMember && cc.leaveTxt]}>{isMember ? 'Leave' : 'Join Group'}</Text>
           }
         </TouchableOpacity>
@@ -238,7 +269,7 @@ const BusinessCard = ({ business, onOpen }) => {
         <Image source={{ uri: cover }} style={gs.cover} resizeMode="cover" />
       ) : (
         <LinearGradient
-          colors={['#062A2E', BRAND, '#0a4a52']}
+          colors={[BRAND, ACCENT, BRAND]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={gs.cover}
         >
@@ -249,7 +280,7 @@ const BusinessCard = ({ business, onOpen }) => {
       {isVerified && (
         <View style={[gs.coverBadges, { justifyContent: 'flex-end' }]}>
           <View style={gs.verifiedChip}>
-            <Ionicons name="checkmark-circle" size={11} color="#fff" />
+            <Ionicons name="checkmark-circle" size={11} color={WHITE} />
             <Text style={gs.verifiedTxt}>Verified</Text>
           </View>
         </View>
@@ -260,8 +291,8 @@ const BusinessCard = ({ business, onOpen }) => {
           {isRealImage(avatar) && !String(avatar).includes('default-avatar') ? (
             <Image source={{ uri: avatar }} style={[gs.avatar, { borderRadius: 26 }]} resizeMode="cover" />
           ) : (
-            <LinearGradient colors={['#062A2E', BRAND]} style={[gs.avatar, gs.avatarFallback, { borderRadius: 26 }]}>
-              <Ionicons name="business" size={22} color="#fff" />
+            <LinearGradient colors={[BRAND, ACCENT]} style={[gs.avatar, gs.avatarFallback, { borderRadius: 26 }]}>
+              <Ionicons name="business" size={22} color={WHITE} />
             </LinearGradient>
           )}
           <View style={{ flex: 1 }}>
@@ -310,7 +341,7 @@ const BusinessCard = ({ business, onOpen }) => {
           disabled={following}
         >
           {following
-            ? <ActivityIndicator size="small" color={isFollowing ? BRAND : '#fff'} />
+            ? <ActivityIndicator size="small" color={isFollowing ? BRAND : Colors.white} />
             : <Text style={[gs.joinTxt, isFollowing && gs.leaveTxt]}>
                 {isFollowing ? 'Following' : 'Follow'}
               </Text>
@@ -324,10 +355,10 @@ const BusinessCard = ({ business, onOpen }) => {
 // ─── Community Card Styles ──────────────────────────────────────────────────
 const cc = StyleSheet.create({
   card: {
-    backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 5 },
+    backgroundColor: WHITE, borderRadius: 20, overflow: 'hidden',
+    shadowColor: BLACK, shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.1, shadowRadius: 16, elevation: 5,
-    borderWidth: 1, borderColor: 'rgba(12,63,68,0.07)',
+    borderWidth: 1, borderColor: BRAND_SOFT_07,
   },
   coverWrap: { height: 140, position: 'relative', overflow: 'hidden' },
   cover:     { width: '100%', height: '100%' },
@@ -338,32 +369,32 @@ const cc = StyleSheet.create({
   },
   featBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.52)', borderRadius: 100,
+    backgroundColor: BLACK + '85', borderRadius: 100,
     paddingHorizontal: 9, paddingVertical: 4,
   },
-  featTxt:   { fontSize: 9, fontWeight: '900', color: '#F9C846', letterSpacing: 0.3 },
+  featTxt:   { fontSize: 9, fontWeight: '900', color: FEATURE_GOLD, letterSpacing: 0.3 },
   privBadge: {
     width: 26, height: 26, borderRadius: 13,
-    backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: SCRIM_MEDIUM, alignItems: 'center', justifyContent: 'center',
   },
   coverBottom:  { position: 'absolute', bottom: 0, left: 14, right: 14, paddingBottom: 12 },
-  coverTitle:   { fontSize: 16, fontWeight: '900', color: '#fff', marginBottom: 5 },
+  coverTitle:   { fontSize: 16, fontWeight: '900', color: WHITE, marginBottom: 5 },
   coverMeta:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  coverMetaTxt: { fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+  coverMetaTxt: { fontSize: 11, color: ON_DARK_85, fontWeight: '600' },
   joinedPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(19,194,150,0.26)', borderRadius: 100,
+    backgroundColor: ACCENT_SOFT_26, borderRadius: 100,
     paddingHorizontal: 7, paddingVertical: 2,
-    borderWidth: 1, borderColor: 'rgba(19,194,150,0.5)',
+    borderWidth: 1, borderColor: ACCENT_SOFT_50,
   },
   joinedTxt: { fontSize: 10, fontWeight: '800', color: ACCENT },
   body:      { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8 },
   bodyTop:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
   avatarWrap: {
     width: 46, height: 46, borderRadius: 13,
-    overflow: 'hidden', borderWidth: 3, borderColor: '#fff',
+    overflow: 'hidden', borderWidth: 3, borderColor: WHITE,
     marginTop: -26,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14, shadowRadius: 8, elevation: 4,
   },
   avatar:   { width: '100%', height: '100%' },
@@ -372,18 +403,18 @@ const cc = StyleSheet.create({
     backgroundColor: ACCENT + '18', borderRadius: 100,
     paddingHorizontal: 10, paddingVertical: 4,
   },
-  catTxt:   { fontSize: 10, fontWeight: '800', color: '#0a7a5a' },
-  about:    { fontSize: 13, color: '#4a6068', lineHeight: 19 },
+  catTxt:   { fontSize: 10, fontWeight: '800', color: TEXT_ACCENT_DARK },
+  about:    { fontSize: 13, color: TEXT_SUBDUED, lineHeight: 19 },
   footer: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 14, paddingVertical: 11,
-    borderTopWidth: 1, borderTopColor: 'rgba(12,63,68,0.07)', gap: 10,
+    borderTopWidth: 1, borderTopColor: BRAND_SOFT_07, gap: 10,
   },
   postBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: 'rgba(19,194,150,0.09)', borderRadius: 100,
+    backgroundColor: ACCENT_SOFT_09, borderRadius: 100,
     paddingHorizontal: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'rgba(19,194,150,0.22)',
+    borderWidth: 1, borderColor: ACCENT_SOFT_22,
   },
   postTxt:  { fontSize: 12, fontWeight: '700', color: ACCENT },
   hintRow:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -393,8 +424,8 @@ const cc = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 9,
     alignItems: 'center', minWidth: 95,
   },
-  leaveBtn: { backgroundColor: '#fff', borderWidth: 1.5, borderColor: BRAND },
-  joinTxt:  { fontSize: 12, fontWeight: '900', color: '#fff' },
+  leaveBtn: { backgroundColor: WHITE, borderWidth: 1.5, borderColor: BRAND },
+  joinTxt:  { fontSize: 12, fontWeight: '900', color: Colors.white },
   leaveTxt: { color: BRAND },
 });
 
@@ -647,7 +678,7 @@ const CommunitiesScreen = ({ route }) => {
 
       {/* ── Header ── */}
       <LinearGradient
-        colors={[BRAND, '#0A5560']}
+        colors={[BRAND, ACCENT]}
         style={[gs.header, { paddingTop: top + 8 }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -659,7 +690,7 @@ const CommunitiesScreen = ({ route }) => {
         {/* Back + title row */}
         <View style={gs.headerTop}>
           <TouchableOpacity style={gs.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={20} color="#fff" />
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
           </TouchableOpacity>
 
           <View style={{ flex: 1 }}>
@@ -674,18 +705,18 @@ const CommunitiesScreen = ({ route }) => {
             activeOpacity={0.85}
             onPress={() => Alert.alert('Coming soon', 'Creating a group will be available soon.')}
           >
-            <Ionicons name="add" size={16} color="#fff" />
+            <Ionicons name="add" size={16} color={Colors.white} />
             <Text style={gs.createBtnTxt}>{activeTab === 0 ? 'Create' : 'Add Page'}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Search bar */}
         <View style={gs.searchBar}>
-          <Ionicons name="search-outline" size={16} color="rgba(255,255,255,0.55)" style={{ marginRight: 8 }} />
+          <Ionicons name="search-outline" size={16} color={ON_DARK_55} style={{ marginRight: 8 }} />
           <TextInput
             style={gs.searchInput}
             placeholder={activeTab === 0 ? 'Search communities…' : 'Search businesses…'}
-            placeholderTextColor="rgba(255,255,255,0.4)"
+            placeholderTextColor={ON_DARK_40}
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
@@ -694,7 +725,7 @@ const CommunitiesScreen = ({ route }) => {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.5)" />
+              <Ionicons name="close-circle" size={18} color={ON_DARK_50} />
             </TouchableOpacity>
           )}
         </View>
@@ -774,55 +805,55 @@ const gs = StyleSheet.create({
   },
   decor1: {
     position: 'absolute', width: 200, height: 200, borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.04)', top: -80, right: -60,
+    backgroundColor: ON_DARK_04, top: -80, right: -60,
   },
   decor2: {
     position: 'absolute', width: 120, height: 120, borderRadius: 60,
-    backgroundColor: 'rgba(19,194,150,0.08)', bottom: -40, left: -30,
+    backgroundColor: ACCENT_SOFT_08, bottom: -40, left: -30,
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: ON_DARK_14, alignItems: 'center', justifyContent: 'center',
   },
   headerEyebrow: { fontSize: 9, fontWeight: '700', letterSpacing: 2.5, color: ACCENT, marginBottom: 2 },
-  headerTitle:   { fontSize: 22, fontWeight: '900', color: '#fff' },
+  headerTitle:   { fontSize: 22, fontWeight: '900', color: Colors.white },
   createBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: ACCENT, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100,
   },
-  createBtnTxt: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  createBtnTxt: { fontSize: 12, fontWeight: '800', color: Colors.white },
 
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 100,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: ON_DARK_10, borderRadius: 100,
+    borderWidth: 1, borderColor: ON_DARK_15,
     paddingHorizontal: 14, height: 42, marginBottom: 14,
   },
-  searchInput: { flex: 1, color: '#fff', fontSize: 13 },
+  searchInput: { flex: 1, color: Colors.white, fontSize: 13 },
 
   tabBar: {
-    flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)',
+    flexDirection: 'row', backgroundColor: ON_DARK_10,
     borderRadius: 100, padding: 3, height: 40, position: 'relative',
   },
   tabInd: {
     position: 'absolute', top: 3, bottom: 3, width: '47%',
-    backgroundColor: '#fff', borderRadius: 100,
+    backgroundColor: WHITE, borderRadius: 100,
   },
   tabBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
-  tabTxt: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.55)' },
+  tabTxt: { fontSize: 13, fontWeight: '700', color: ON_DARK_55 },
   tabTxtOn: { color: BRAND },
 
   // Filter
   filterWrap: { paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
   filterPill: {
     height: 32, paddingHorizontal: 14, borderRadius: 100,
-    backgroundColor: 'rgba(12,63,68,0.07)', borderWidth: 1, borderColor: BORDER,
+    backgroundColor: BRAND_SOFT_07, borderWidth: 1, borderColor: BORDER,
     alignItems: 'center', justifyContent: 'center',
   },
   filterPillOn: { backgroundColor: BRAND, borderColor: BRAND },
   filterTxt:    { fontSize: 12, fontWeight: '600', color: DARK },
-  filterTxtOn:  { color: '#fff' },
+  filterTxtOn:  { color: Colors.white },
 
   // Stats
   statsBar:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 10, gap: 0 },
@@ -837,13 +868,13 @@ const gs = StyleSheet.create({
   card: {
     backgroundColor: CARD, borderRadius: 20, overflow: 'hidden',
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowColor: BLACK, shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
   },
   cover: { width: '100%', height: 88 },
   coverPattern: {
     position: 'absolute', inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: BLACK + '14',
   },
   coverBadges: {
     position: 'absolute', top: 8, left: 8, right: 8,
@@ -851,19 +882,19 @@ const gs = StyleSheet.create({
   },
   promotedChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 100,
+    backgroundColor: SCRIM_SOFT, borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  promotedTxt: { fontSize: 9, fontWeight: '800', color: '#F4A535' },
+  promotedTxt: { fontSize: 9, fontWeight: '800', color: FEATURE_AMBER },
   privateChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 100,
+    backgroundColor: SCRIM_SOFT, borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  privateTxt: { fontSize: 9, fontWeight: '700', color: '#fff' },
+  privateTxt: { fontSize: 9, fontWeight: '700', color: Colors.white },
   memberChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 100,
+    backgroundColor: SCRIM_SOFT, borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
   memberChipTxt: { fontSize: 9, fontWeight: '700', color: ACCENT },
@@ -872,7 +903,7 @@ const gs = StyleSheet.create({
     backgroundColor: ACCENT, borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  verifiedTxt: { fontSize: 9, fontWeight: '800', color: '#fff' },
+  verifiedTxt: { fontSize: 9, fontWeight: '800', color: Colors.white },
 
   cardBody: { padding: 14 },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 10 },
@@ -882,15 +913,15 @@ const gs = StyleSheet.create({
   title:  { fontSize: 15, fontWeight: '900', color: DARK, flexShrink: 1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   catPill: {
-    backgroundColor: 'rgba(19,194,150,0.12)', borderRadius: 100,
+    backgroundColor: ACCENT_SOFT_12, borderRadius: 100,
     paddingHorizontal: 8, paddingVertical: 2, maxWidth: 160,
   },
-  catTxt: { fontSize: 10, fontWeight: '700', color: '#0a7a5a' },
+  catTxt: { fontSize: 10, fontWeight: '700', color: TEXT_ACCENT_DARK },
   memberStat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   memberStatTxt: { fontSize: 11, color: MUTED },
 
   descWrap: { marginTop: 2 },
-  desc:     { fontSize: 13, color: '#4a6068', lineHeight: 19 },
+  desc:     { fontSize: 13, color: TEXT_SUBDUED, lineHeight: 19 },
   descToggle: { fontSize: 12, fontWeight: '700', color: ACCENT, marginTop: 4 },
 
   footer: {
@@ -901,7 +932,7 @@ const gs = StyleSheet.create({
   postBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100,
-    backgroundColor: 'rgba(19,194,150,0.1)', borderWidth: 1, borderColor: 'rgba(19,194,150,0.25)',
+    backgroundColor: ACCENT_SOFT_10, borderWidth: 1, borderColor: ACCENT_SOFT_25,
   },
   postBtnTxt: { fontSize: 12, fontWeight: '700', color: ACCENT },
 
@@ -910,7 +941,7 @@ const gs = StyleSheet.create({
     borderRadius: 100, minWidth: 90, alignItems: 'center',
   },
   leaveBtn: { backgroundColor: CARD, borderWidth: 1.5, borderColor: BRAND },
-  joinTxt:  { fontSize: 12, fontWeight: '800', color: '#fff' },
+  joinTxt:  { fontSize: 12, fontWeight: '800', color: Colors.white },
   leaveTxt: { color: BRAND },
 
   msgBtn: {

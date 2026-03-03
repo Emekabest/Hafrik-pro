@@ -23,8 +23,9 @@ import AppDetails from '../../helpers/appdetails.js';
 import { getProfileAvatarController } from '../../controllers/profilecontroller.js';
 import { useAuth } from '../../AuthContext.js';
 import { useLiveCounts } from '../../hooks/useLiveCounts.js';
+import { Colors } from '../../theme/colors';
 
-const BRAND = '#0C3F44';
+const BRAND = Colors.primaryDark;
 
 const HomePage = () => {
   const { height } = Dimensions.get("window");
@@ -134,11 +135,11 @@ const HomePage = () => {
 
       {tabletMode ? (
         <View style={[styles.homeContainer, { height: homeViewHeight, flexDirection: 'row' }]}>
-          <View style={{ width: tabletDimension === 'XL' ? '20%' : tabletDimension === 'L' ? '10%' : '20%', height: '100%', backgroundColor: '#f0f0f0' }} />
-          <View onLayout={handleFeedLayout} style={{ width: tabletDimension === 'XL' ? '60%' : tabletDimension === 'L' ? '80%' : '60%', height: '100%', backgroundColor: '#fff' }}>
+          <View style={{ width: tabletDimension === 'XL' ? '20%' : tabletDimension === 'L' ? '10%' : '20%', height: '100%', backgroundColor: Colors.neutral150 }} />
+          <View onLayout={handleFeedLayout} style={{ width: tabletDimension === 'XL' ? '60%' : tabletDimension === 'L' ? '80%' : '60%', height: '100%', backgroundColor: Colors.white }}>
             {homeItem()}
           </View>
-          <View style={{ width: tabletDimension === 'XL' ? '20%' : tabletDimension === 'L' ? '10%' : '20%', height: '100%', backgroundColor: '#f0f0f0' }} />
+          <View style={{ width: tabletDimension === 'XL' ? '20%' : tabletDimension === 'L' ? '10%' : '20%', height: '100%', backgroundColor: Colors.neutral150 }} />
         </View>
       ) : (
         <View style={[styles.homeContainer, { height: homeViewHeight }]}>
@@ -152,7 +153,7 @@ const HomePage = () => {
         activeOpacity={0.88}
         onPress={() => openComposer()}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={28} color={Colors.white} />
       </TouchableOpacity>
 
       <PostComposerModal />
@@ -163,7 +164,7 @@ const HomePage = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
   },
   homeContainer: { width: '100%' },
   screenArea: { flex: 1 },

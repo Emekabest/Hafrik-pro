@@ -8,11 +8,12 @@ import useStore from "../../repository/store.js";
 import AppDetails from "../../helpers/appdetails.js";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "../../theme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const BRAND  = "#0C3F44";
-const ACCENT = "#13C296";
-const MUTED  = "#7A9198";
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const WHITE  = Colors.white;
 
 // ─────────────────────────────────────────────────────
 // Trending Header
@@ -38,7 +39,7 @@ const TrendingHeader = ({ count, totalViews }) => {
   return (
     <Animated.View style={{ opacity, transform: [{ translateY: slideY }] }}>
       <LinearGradient
-        colors={[BRAND, "#0a4a52", "#073038"]}
+        colors={[BRAND, ACCENT + "CC", BRAND + "F0"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={th.wrap}
@@ -97,12 +98,12 @@ const th = StyleSheet.create({
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
     flexDirection: "row", flexWrap: "wrap", gap: 22, padding: 10,
   },
-  dot: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#fff" },
+  dot: { width: 38, height: 38, borderRadius: 19, backgroundColor: WHITE },
   badge: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(19,194,150,0.18)",
+    backgroundColor: ACCENT + "2E",
     borderWidth: 1,
-    borderColor: "rgba(19,194,150,0.35)",
+    borderColor: ACCENT + "59",
     borderRadius: 99,
     paddingHorizontal: 11,
     paddingVertical: 4,
@@ -117,16 +118,16 @@ const th = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: "900",
-    color: "#fff",
+    color: WHITE,
     lineHeight: 32,
     marginBottom: 18,
     letterSpacing: -0.3,
   },
   statsRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   statChip: { flexDirection: "row", alignItems: "center", gap: 4 },
-  statVal:  { fontSize: 13, fontWeight: "800", color: "#fff" },
-  statLbl:  { fontSize: 11, color: "rgba(255,255,255,0.55)" },
-  statDivider: { width: 1, height: 12, backgroundColor: "rgba(255,255,255,0.18)" },
+  statVal:  { fontSize: 13, fontWeight: "800", color: WHITE },
+  statLbl:  { fontSize: 11, color: WHITE + "8C" },
+  statDivider: { width: 1, height: 12, backgroundColor: WHITE + "2E" },
 });
 
 // ─────────────────────────────────────────────────────

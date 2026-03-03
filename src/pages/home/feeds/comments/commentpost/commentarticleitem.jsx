@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import CleanText from '../../../../../helpers/cleantext';
+import { Colors } from '../../../../../theme/colors';
 
 
 
@@ -31,7 +32,7 @@ const CommentArticleItem = ({ post }) => {
              {cover ? (
                 <ExpoImage 
                     source={{ uri: cover }} 
-                    style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 15, backgroundColor: '#f0f0f0' }} 
+                    style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 15, backgroundColor: Colors.neutral150 }} 
                     contentFit='cover' 
                     cachePolicy="memory-disk"
                     
@@ -39,19 +40,19 @@ const CommentArticleItem = ({ post }) => {
             ) : null}
             
             {cleanTitle ? (
-                <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#000', marginBottom: 10, lineHeight: 28 }}>
+                <Text style={{ fontSize: 22, fontWeight: 'bold', color: Colors.black, marginBottom: 10, lineHeight: 28 }}>
                     {cleanTitle}
                 </Text>
             ) : null}
             
             {cleanText ? (
-                <Text style={{ fontSize: 16, color: '#333', lineHeight: 24 }}>
+                <Text style={{ fontSize: 16, color: Colors.neutral700, lineHeight: 24 }}>
                     {cleanText}
                 </Text>
             ) : (
                 <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 5}}>
-                     <Text style={{ fontSize: 14, color: '#787878', fontWeight: '500' }}>Read full article</Text>
-                     <Ionicons name="arrow-forward" size={14} color="#787878" style={{marginLeft: 4}} />
+                     <Text style={{ fontSize: 14, color: Colors.neutral430, fontWeight: '500' }}>Read full article</Text>
+                     <Ionicons name="arrow-forward" size={14} color={Colors.neutral430} style={{marginLeft: 4}} />
                 </View>
             )}
         </View>

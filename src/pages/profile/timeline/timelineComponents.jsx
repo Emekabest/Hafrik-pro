@@ -5,6 +5,7 @@ import FeedsHeader from "../../home/feedsheader";
 import FilterHeader from "../filterheader";
 import AppDetails from "../../../helpers/appdetails";
 import ProfileCompletionContainer from "./profilecompletioncontainer";
+import { Colors } from '../../../theme/colors';
 
 
 const TimelineComponents = ({isOwner, getFeeds})=>{
@@ -32,11 +33,11 @@ const TimelineComponents = ({isOwner, getFeeds})=>{
     return(
         <View style={styles.container}>
              <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+                    <Ionicons name="search" size={20} color={Colors.neutral350} style={styles.searchIcon} />
                     <TextInput
                         placeholder="Search"
                         style={styles.searchInput}
-                        placeholderTextColor="#646464"
+                        placeholderTextColor={Colors.neutral520}
                     />
             </View>
 
@@ -57,7 +58,7 @@ const TimelineComponents = ({isOwner, getFeeds})=>{
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         paddingBottom: 10,
     },
    searchContainer: {
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: 14,
-        color: '#000',
+        color: Colors.black,
         height: '100%',
     },
 

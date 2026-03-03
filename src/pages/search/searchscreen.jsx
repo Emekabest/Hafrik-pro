@@ -21,6 +21,7 @@ import {
   SectionHeader, SkeletonCard, ResultsLabel, ShowMoreButton,
 } from '../../components/search/SearchCards';
 import SearchEmptyState from '../../components/search/SearchEmptyState';
+import { Colors } from '../../theme/colors';
 
 const RECENT_KEY = 'hafrik_recent_searches';
 const MAX_RECENT = 5;
@@ -170,9 +171,7 @@ const SearchScreen = () => {
     if (type === 'group')   return navigation.navigate('GroupDetails',    { groupId: item.id });
     if (type === 'event')   return navigation.navigate('EventDetail',     { event: item });
     if (type === 'article') return navigation.navigate('ArticleDetails',  { postId: item.id, title: item.title, link: item.link });
-    // Post — reel detection
-    const isReel = item.is_video === 1 || item.is_video === '1' || item.is_video === true;
-    if (isReel) return navigation.navigate('Reels2', { initialPostId: item.id });
+    // Post — always open the post detail (reels and videos included)
     navigation.navigate('CommentScreen', { feedId: item.id });
   }, [navigation, saveRecent, searchQuery]);
 
@@ -421,7 +420,7 @@ const SearchScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F5F7F7' },
+  screen: { flex: 1, backgroundColor: Colors.surfaceTint },
   listContent: {
     paddingHorizontal: 14,
     paddingTop: 14,

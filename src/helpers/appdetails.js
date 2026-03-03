@@ -1,5 +1,6 @@
 import { Dimensions, Platform } from "react-native";
 import { link } from "superagent";
+import { Colors, FontFamily } from "../theme";
 
 const screenWidth = Dimensions.get("window").width;
 // Calculate offset: Container Padding (10) + Left Column Width (13% of available space) + Right Column Padding (5)
@@ -11,11 +12,11 @@ const baseUrl = "https://hafrik.com/api/v1";
 
 const AppDetails = {
 
-    primaryColor: "#0C3F44",
-    bodyColor: "#171717ff",
-    linkColor: "#0b8557",
-    borderLineColor: "rgb(235, 235, 235)",
-    warningColor: "#fc7c5f",
+    primaryColor: Colors.primaryDark,
+    bodyColor: Colors.black,
+    linkColor: Colors.primary,
+    borderLineColor: Colors.border,
+    warningColor: Colors.warning,
 
     flatList:{
         scrollEventThrottle: 16,
@@ -35,32 +36,36 @@ const AppDetails = {
 
     fontFamily:{
         redex:{
-            regular: "ReadexPro_400Regular",
-            medium: "ReadexPro_500Medium",
-            bold: "ReadexPro_700Bold",
+            regular: FontFamily.readexRegular,
+            medium: FontFamily.readexMedium,
+            semiBold: FontFamily.readexSemiBold,
+            bold: FontFamily.readexBold,
         },
         worksans:{
-            regular: "WorkSans_400Regular",
-            medium: "WorkSans_500Medium",
-            bold: "WorkSans_700Bold",
+            regular: FontFamily.workSansRegular,
+            medium: FontFamily.workSansMedium,
+            bold: FontFamily.workSansBold,
         },
         inter:{
-            regular: "Inter_400Regular",
-            medium: "Inter_500Medium",
-            semiBold: "Inter_600SemiBold",
-            bold: "Inter_700Bold",
+            regular: FontFamily.interRegular,
+            medium: FontFamily.interMedium,
+            semiBold: FontFamily.interSemiBold,
+            bold: FontFamily.interBold,
         },
         outfit:{
-            regular: "Outfit_400Regular",
-            medium: "Outfit_500Medium",
-            semiBold: "Outfit_600SemiBold",
+            regular: FontFamily.outfitRegular,
+            medium: FontFamily.outfitMedium,
+            semiBold: FontFamily.outfitSemiBold,
         },
 
 
-        heading: "ReadexPro_700Bold",
-        title: "Inter_700Bold",
-        body: "Inter_500Medium",
-        bodyItalic:"Inter_500Medium_Italic",
+        heading: FontFamily.readexBold,
+        title: FontFamily.interBold,
+        body: FontFamily.readexRegular,
+        bodyItalic: FontFamily.interMediumItalic,
+
+        marketingHeadline: FontFamily.workSansBold,
+        marketingTagline: FontFamily.shadowsIntoLight,
 
     
 

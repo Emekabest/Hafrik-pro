@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { joinGroup, leaveGroup } from "../services/groupApi";
+import Button from "../../../components/common/Button";
+import { Colors, Radius, Spacing } from "../../../theme";
 
 export default function JoinButton({ group, onJoin }) {
   const [loading, setLoading] = useState(false);
@@ -29,32 +31,23 @@ export default function JoinButton({ group, onJoin }) {
   };
 
   return (
-    <TouchableOpacity
-      style={[styles.button, joined && styles.joined]}
+    <Button
+      title={joined ? "✓ Joined" : "Join"}
       onPress={handlePress}
-    >
-      <Text style={[styles.text, joined && styles.joinedText]}>
-        {joined ? "✓ Joined" : "Join"}
-      </Text>
-    </TouchableOpacity>
+      loading={loading}
+      style={[styles.button, joined && styles.joined]}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: "#0c3f44",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: Colors.primaryDark,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.pill,
   },
   joined: {
-    backgroundColor: "#1f8f4e",
-  },
-  text: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  joinedText: {
-    color: "#fff",
+    backgroundColor: Colors.primary,
   },
 });

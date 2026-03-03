@@ -9,13 +9,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import { getGroupMembers } from './services/groupApi';
+import { Colors } from '../../theme/colors';
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F5F7F7';
-const DARK   = '#0D1B1E';
-const MUTED  = '#7A9198';
-const BORDER = 'rgba(12,63,68,0.09)';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.background;
+const DARK   = Colors.deepSlate;
+const MUTED  = Colors.secondaryText;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 const LIMIT  = 30;
 
 const isRealImg = (url) =>
@@ -62,8 +70,8 @@ const MemberRow = React.memo(({ item, index }) => {
       {isRealImg(avatar) ? (
         <Image source={{ uri: avatar }} style={s.avatar} />
       ) : (
-        <LinearGradient colors={[BRAND, '#1a6b75']} style={[s.avatar, s.avatarFb]}>
-          <Ionicons name="person" size={20} color="#fff" />
+        <LinearGradient colors={[BRAND, Colors.tealWaveAlt]} style={[s.avatar, s.avatarFb]}>
+          <Ionicons name="person" size={20} color={Colors.white} />
         </LinearGradient>
       )}
 
@@ -152,11 +160,11 @@ export default function GroupMembers({ route }) {
 
       {/* Header */}
       <LinearGradient
-        colors={[BRAND, '#0a5560']}
+        colors={[BRAND, Colors.tealNavy]}
         style={[s.header, { paddingTop: top + 10 }]}
       >
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.85}>
-          <Ionicons name="arrow-back" size={20} color="#fff" />
+          <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
         <View style={s.headerCenter}>
           <Text style={s.headerTitle}>Members</Text>
@@ -212,12 +220,12 @@ const s = StyleSheet.create({
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     alignItems: 'center', justifyContent: 'center',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
-  headerSub:   { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
+  headerTitle: { fontSize: 16, fontWeight: '900', color: Colors.white, letterSpacing: 0.3 },
+  headerSub:   { fontSize: 11, color: withOpacity(Colors.white, 0.65), marginTop: 1 },
 
   loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loaderTxt:  { fontSize: 13, fontWeight: '600', color: MUTED },
@@ -226,7 +234,7 @@ const s = StyleSheet.create({
 
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 13,
+    backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 13,
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
   rowSelf: { backgroundColor: ACCENT + '0D' },
@@ -238,20 +246,20 @@ const s = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name:    { fontSize: 14, fontWeight: '800', color: DARK, flexShrink: 1 },
   username:{ fontSize: 12, color: MUTED },
-  bio:     { fontSize: 12, color: '#5a7a80', lineHeight: 17 },
+  bio:     { fontSize: 12, color: Colors.slateSoft, lineHeight: 17 },
 
   youPill: {
     marginLeft: 6, backgroundColor: ACCENT + '22',
     borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2,
   },
-  youTxt: { fontSize: 9, fontWeight: '900', color: '#0a7a5a', letterSpacing: 0.5 },
+  youTxt: { fontSize: 9, fontWeight: '900', color: Colors.successStrong, letterSpacing: 0.5 },
 
   rolePill: {
     backgroundColor: ACCENT + '22', borderRadius: 100,
     paddingHorizontal: 9, paddingVertical: 4,
   },
   rolePillOwner: { backgroundColor: BRAND + '18' },
-  roleTxt: { fontSize: 9, fontWeight: '900', color: '#0a7a5a', letterSpacing: 0.5 },
+  roleTxt: { fontSize: 9, fontWeight: '900', color: Colors.successStrong, letterSpacing: 0.5 },
 
   emptyWrap:   { alignItems: 'center', paddingTop: 64, gap: 14 },
   emptyCircle: { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center' },

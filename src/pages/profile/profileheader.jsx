@@ -9,6 +9,14 @@ import ImageViewModal from "../imageviewmodal";
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../AuthContext';
 import { UploadProfileImageController } from '../../controllers/profilecontroller';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -82,7 +90,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
             }
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ImagePicker.MediaType.images,
                 allowsEditing: false,
                 aspect: [16, 9],
                 quality: 1,
@@ -200,21 +208,21 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                             style={styles.actionButton} 
                             activeOpacity={1}
                         >
-                            <Ionicons name="image-outline" size={18} color="#fff" />
+                            <Ionicons name="image-outline" size={18} color={Colors.white} />
                         </TouchableOpacity>
                         <TouchableOpacity 
                             style={styles.actionButton} 
                             activeOpacity={1}
                             onPress={() => setFullscreenImage(coverImage?.uri || user?.cover)}
                         >
-                            <Ionicons name="expand-outline" size={18} color="#fff" />
+                            <Ionicons name="expand-outline" size={18} color={Colors.white} />
                         </TouchableOpacity>
                         <TouchableOpacity 
                             disabled={coverImage?.uploading}
                             style={styles.actionButton} 
                             activeOpacity={1}
                         >
-                            <Ionicons name="trash-outline" size={18} color="#fff" />
+                            <Ionicons name="trash-outline" size={18} color={Colors.white} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -236,7 +244,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                         activeOpacity={1}
                         style={[styles.avatarEditButton, avatarImage?.uploading && { opacity: 0.5 }]}
                     >
-                        <Ionicons name="image-outline" size={16} color="#333" />
+                        <Ionicons name="image-outline" size={16} color={Colors.neutral700} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -253,7 +261,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     <Ionicons 
                         name={getGender(userDetails?.gender).toLowerCase() === 'female' ? 'female' : 'male'} 
                         size={14} 
-                        color="#666" 
+                        color={Colors.neutral500} 
                     />
                     <Text style={styles.genderText}>{getGender(userDetails?.gender)}</Text>
                 </View>
@@ -317,34 +325,34 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                      
                             <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} onPress={() => { setAvatarOptionsVisible(false); pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'); }}>
                                 <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="cloud-upload-outline" size={18} color="#333" style={styles.avatarOptionIcon} />
+                                    <Ionicons name="cloud-upload-outline" size={18} color={Colors.neutral700} style={styles.avatarOptionIcon} />
                                     <Text style={styles.avatarOptionText}>Upload Photo</Text>
                                 </View>
                             </TouchableOpacity>
                             <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} onPress={() => { setAvatarOptionsVisible(false); pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'); }}>
                                 <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="images-outline" size={18} color="#333" style={styles.avatarOptionIcon} />
+                                    <Ionicons name="images-outline" size={18} color={Colors.neutral700} style={styles.avatarOptionIcon} />
                                     <Text style={styles.avatarOptionText}>Select Photo</Text>
                                 </View>
                             </TouchableOpacity>
                             <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} onPress={() => { setAvatarOptionsVisible(false); console.log('Crop Photo - not implemented'); }}>
                                 <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="crop-outline" size={18} color="#333" style={styles.avatarOptionIcon} />
+                                    <Ionicons name="crop-outline" size={18} color={Colors.neutral700} style={styles.avatarOptionIcon} />
                                     <Text style={styles.avatarOptionText}>Crop Photo</Text>
                                 </View>
                             </TouchableOpacity>
 
                             <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} onPress={() => { setAvatarOptionsVisible(false); setFullscreenImage(avatarImage?.uri || user?.avatar); }}>
                                 <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="eye-outline" size={18} color="#333" style={styles.avatarOptionIcon} />
+                                    <Ionicons name="eye-outline" size={18} color={Colors.neutral700} style={styles.avatarOptionIcon} />
                                     <Text style={styles.avatarOptionText}>See profile picture</Text>
                                 </View>
                             </TouchableOpacity>
 
                             <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} >
                                 <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="trash-outline" size={18} color="#d00" style={styles.avatarOptionIcon} />
-                                    <Text style={[styles.avatarOptionText, { color: '#d00' }]}>Delete Photo</Text>
+                                    <Ionicons name="trash-outline" size={18} color={Colors.destructive} style={styles.avatarOptionIcon} />
+                                    <Text style={[styles.avatarOptionText, { color: Colors.destructive }]}>Delete Photo</Text>
                                 </View>
                             </TouchableOpacity>
                             
@@ -367,17 +375,17 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
     },
     profileHeaderSection: {
         width: '100%',
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         paddingBottom: 60,
     },
     coverPhotoContainer: {
         width: '100%',
         height: 180,
-        backgroundColor: '#eee',
+        backgroundColor: Colors.neutral180,
         overflow: 'hidden',
     },
     coverImage: {
@@ -389,7 +397,7 @@ const styles = StyleSheet.create({
         top: 10,
         left: 10,
         flexDirection: 'row',
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: withOpacity(Colors.black, 0.5),
         borderRadius: 25,
         paddingHorizontal: 8,
         paddingVertical: 4,
@@ -409,8 +417,8 @@ const styles = StyleSheet.create({
         height: 100,
         borderRadius: 50,
         borderWidth: 4,
-        borderColor: '#fff',
-        backgroundColor: '#eee',
+        borderColor: Colors.white,
+        backgroundColor: Colors.neutral180,
         overflow: 'hidden',
     },
     mainAvatar: {
@@ -421,16 +429,16 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: "#fff",
+        backgroundColor: Colors.white,
         width: 30,
         height: 30,
         borderRadius: 15,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 3,
-        borderColor: '#fff',
+        borderColor: Colors.white,
         elevation: 2,
-        shadowColor: '#000',
+        shadowColor: Colors.black,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.2,
         shadowRadius: 1.41,
@@ -442,11 +450,11 @@ const styles = StyleSheet.create({
     fullNameText: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#000',
+        color: Colors.black,
     },
     usernameText: {
         fontSize: 14,
-        color: '#666',
+        color: Colors.neutral500,
         marginTop: 2,
     },
     statsScroll: {
@@ -466,7 +474,7 @@ const styles = StyleSheet.create({
     statText: {
         fontSize: 13,
         fontFamily: AppDetails.fontFamily.body,
-        color: '#333',
+        color: Colors.neutral700,
         marginLeft: 5,
     },
     genderSection: {
@@ -476,7 +484,7 @@ const styles = StyleSheet.create({
     },
     genderText: {
         fontSize: 14,
-        color: '#666',
+        color: Colors.neutral500,
         marginLeft: 5,
         textTransform: 'capitalize',
     },
@@ -487,11 +495,11 @@ const styles = StyleSheet.create({
     followCount: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#333',
+        color: Colors.neutral700,
     },
     followLabel: {
         fontSize: 14,
-        color: '#666',
+        color: Colors.neutral500,
         marginLeft: 5,
     },
     profileCompletionContainer: {
@@ -501,7 +509,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
     },
     editButton: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: Colors.neutral150,
         borderRadius: 50,
         height: 40,
         justifyContent: 'center',
@@ -512,15 +520,15 @@ const styles = StyleSheet.create({
     editButtonText: {
         fontSize: 15,
         fontFamily:AppDetails.fontFamily.outfit.medium,
-        color: '#333',
+        color: Colors.neutral700,
     },
     avatarOptionsContainer: {
         position: 'absolute',
         width: 250,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderRadius: 20,
         elevation: 6,
-        shadowColor: '#000',
+        shadowColor: Colors.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
@@ -533,7 +541,7 @@ const styles = StyleSheet.create({
     avatarOptionText: {
         fontSize: 14,
         fontFamily: AppDetails.fontFamily.body,
-        color: '#111'
+        color: Colors.neutral900
     },
     avatarOptionRow: {
         flexDirection: 'row',

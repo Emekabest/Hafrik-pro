@@ -16,14 +16,22 @@ import AppDetails from '../helpers/appdetails';
 import SvgIcon    from '../assl.js/svg/svg';
 import { useAuth } from '../AuthContext';
 import useStore   from '../repository/store';
+import { Colors } from '../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const Tab     = createBottomTabNavigator();
-const BRAND   = '#0C3F44';
-const MUTED   = '#9BA8AD';
-const ACCENT  = '#13C296';
+const BRAND   = Colors.primaryDark;
+const MUTED   = Colors.secondaryText;
+const ACCENT  = Colors.primary;
 
 // ─── Custom Tab Bar ─────────────────────────────────────────
-const CustomTabBar = ({ state, navigation, unreadCount }) => {
+const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
   const { bottom } = useSafeAreaInsets();
 
   return (
@@ -32,12 +40,20 @@ const CustomTabBar = ({ state, navigation, unreadCount }) => {
         const isFocused = state.index === index;
 
         const onPress = () => {
-          navigation.navigate(route.name);
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
         };
 
         // ── BIG CENTER BUTTON = FEED ─────────────────────
         if (route.name === 'Feed') {
-          return <FeedFab key={route.key} onPress={onPress} />;
+          return <FeedFab key={route.key} onPress={onPress} notifCount={notifCount} />;
         }
 
         let icon;
@@ -126,11 +142,18 @@ const CustomTabBar = ({ state, navigation, unreadCount }) => {
 };
 
 // ─── Feed FAB (center) ─────────────────────────────
-const FeedFab = ({ onPress }) => {
+const FeedFab = ({ onPress, notifCount }) => {
   return (
     <TouchableOpacity onPress={onPress} style={styles.fabTab} activeOpacity={0.85}>
       <View style={styles.fabButton}>
-        <Ionicons name="home" size={28} color="#fff" />
+        <Ionicons name="home" size={28} color={Colors.white} />
+        {notifCount > 0 && (
+          <View style={styles.fabBadge}>
+            <Text style={styles.badgeText}>
+              {notifCount > 99 ? '99+' : notifCount}
+            </Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -139,12 +162,13 @@ const FeedFab = ({ onPress }) => {
 // ─── Navigator ────────────────────────────────────
 const MainTabNavigator = () => {
   const { token }      = useAuth();
-  const unreadCount    = useStore((s) => s.messageCount ?? 0);
+  const unreadCount    = useStore((s) => s.messageCount      ?? 0);
+  const notifCount     = useStore((s) => s.notificationCount ?? 0);
 
   return (
     <Tab.Navigator
-      initialRouteName="Home"
-      tabBar={props => <CustomTabBar {...props} unreadCount={unreadCount} />}
+      initialRouteName="Feed"
+      tabBar={props => <CustomTabBar {...props} unreadCount={unreadCount} notifCount={notifCount} />}
       screenOptions={{ headerShown: false }}
     >
       {/* Home tab → Explore / Discovery */}
@@ -167,10 +191,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: AppDetails.mainTabNavigatorHeight,
     paddingTop: 8,
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.white,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(12,63,68,0.08)',
-    shadowColor: '#000',
+    borderTopColor: withOpacity(Colors.primaryDark, 0.08),
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -189,17 +213,17 @@ const styles = StyleSheet.create({
   },
 
   iconContainerActive: {
-    backgroundColor: 'rgba(19,194,150,0.12)',
+    backgroundColor: Colors.primary + '1F',
   },
 
   tabLabel: {
     fontSize: 10.5,
-    color: '#9BA8AD',
+    color: Colors.secondaryText,
     fontFamily: AppDetails.fontFamily.redex.medium,
   },
 
   tabLabelActive: {
-    color: '#0C3F44',
+    color: Colors.primaryDark,
   },
 
   fabTab: {
@@ -213,17 +237,17 @@ const styles = StyleSheet.create({
     width: 66,
     height: 66,
     borderRadius: 33,
-    backgroundColor: '#0C3F44',
+    backgroundColor: Colors.primaryDark,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0C3F44',
+    shadowColor: Colors.primaryDark,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 12,
   },
 
-  // Unread badge on Notifications icon
+  // Unread badge on Messages tab icon
   badge: {
     position: 'absolute',
     top: -4,
@@ -236,10 +260,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 3,
     borderWidth: 1.5,
-    borderColor: '#fff',
+    borderColor: Colors.white,
+  },
+  // Notification badge on Feed FAB
+  fabBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 9,
+    backgroundColor: Colors.coral,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: Colors.primaryDark,
   },
   badgeText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 9,
     fontWeight: '900',
   },

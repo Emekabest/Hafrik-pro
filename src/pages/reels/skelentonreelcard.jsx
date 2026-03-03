@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { View, StyleSheet, Dimensions, Animated } from "react-native";
 import AppDetails from "../../helpers/appdetails";
+import { Colors } from '../../theme/colors';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
 const FALLBACK_HEIGHT = SCREEN_HEIGHT - (AppDetails.mainTabNavigatorHeight || 0);
@@ -45,19 +46,19 @@ const SkeletonReelCard = ({ height = FALLBACK_HEIGHT }) => {
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    backgroundColor: "#111",
+    backgroundColor: Colors.neutral900,
     position: "relative",
     overflow: "hidden",
   },
   mediaWrapper: {
     width: MEDIA_WIDTH,
     height: "100%",
-    backgroundColor: "#000",
+    backgroundColor: Colors.black,
   },
   mediaPlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#000",
+    backgroundColor: Colors.black,
   },
   rightColumn: {
     position: "absolute",
@@ -70,7 +71,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#2a2a2a",
+    backgroundColor: Colors.neutral780,
   },
   bottomInfo: {
     position: "absolute",
@@ -82,14 +83,14 @@ const styles = StyleSheet.create({
     width: "55%",
     height: 14,
     borderRadius: 6,
-    backgroundColor: "#2a2a2a",
+    backgroundColor: Colors.neutral780,
     marginBottom: 8,
   },
   captionPlaceholder: {
     width: "90%",
     height: 48,
     borderRadius: 6,
-    backgroundColor: "#262626",
+    backgroundColor: Colors.neutral790,
   },
 });
 

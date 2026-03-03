@@ -1,5 +1,6 @@
 import React from "react";
 import {
+import { Colors } from '../../theme/colors';
   View,
   Text,
   StyleSheet,
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 16,
-    backgroundColor: "#0c3f44",
+    backgroundColor: Colors.primaryDark,
   },
 
   info: {
@@ -98,24 +99,24 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#111",
+    color: Colors.neutral900,
   },
 
   members: {
     fontSize: 14,
-    color: "#777",
+    color: Colors.neutral450,
     marginTop: 4,
   },
 
   joinBtn: {
-    backgroundColor: "#1f8b4c",
+    backgroundColor: Colors.successAlt,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 24,
   },
 
   joinedBtn: {
-    backgroundColor: "#1f8b4c",
+    backgroundColor: Colors.successAlt,
   },
 
   joinText: {

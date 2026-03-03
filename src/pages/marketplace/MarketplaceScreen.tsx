@@ -10,13 +10,14 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { ProductCard } from "../../components/ProductCard";
+import { Colors } from '../../theme/colors';
 
 // TODO: set this to your real endpoint
 const MARKETPLACE_ENDPOINT =
   "https://hafrik.com/api/v1/marketplace/get_marketplace.php";
 
-const BRAND = "#1F2937";
-const ACCENT = "#3B82F6";
+const BRAND = Colors.textStrongAlt;
+const ACCENT = Colors.blueAccent;
 
 export default function MarketplaceScreen({ navigation }: any) {
   const [items, setItems] = useState<MarketplaceProduct[]>([]);
@@ -108,7 +109,7 @@ export default function MarketplaceScreen({ navigation }: any) {
             value={search}
             onChangeText={setSearch}
             placeholder="Search products..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={Colors.placeholder}
             style={styles.searchInput}
             returnKeyType="search"
             onSubmitEditing={() => setAppliedSearch(search.trim())}
@@ -132,7 +133,7 @@ export default function MarketplaceScreen({ navigation }: any) {
     return (
       <View style={styles.center}>
         <ActivityIndicator />
-        <Text style={{ marginTop: 10, color: "#6B7280" }}>Loading…</Text>
+        <Text style={{ marginTop: 10, color: Colors.secondaryText }}>Loading…</Text>
       </View>
     );
   }
@@ -212,16 +213,16 @@ export async function fetchMarketplaceProducts(
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#F7F8FA" },
+  screen: { flex: 1, backgroundColor: Colors.surfaceAlt },
   center: {
     flex: 1,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: Colors.surfaceAlt,
     alignItems: "center",
     justifyContent: "center",
   },
   header: { marginBottom: 10 },
   headerTitle: { fontSize: 22, fontWeight: "900", color: BRAND },
-  smallMeta: { marginTop: 6, color: "#6B7280", fontSize: 12 },
+  smallMeta: { marginTop: 6, color: Colors.secondaryText, fontSize: 12 },
 
   searchRow: { marginTop: 12, flexDirection: "row", gap: 10 },
   searchInput: {
@@ -229,10 +230,10 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     paddingHorizontal: 12,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    color: "#111827",
+    borderColor: Colors.neutral190,
+    color: Colors.textStrong,
   },
   searchBtn: {
     height: 44,
@@ -242,5 +243,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  searchBtnText: { color: "#fff", fontWeight: "900" },
+  searchBtnText: { color: Colors.white, fontWeight: "900" },
 });

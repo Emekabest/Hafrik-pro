@@ -3,6 +3,14 @@ import { View, ScrollView, Text, TouchableOpacity, Dimensions, StyleSheet } from
 import { Image as ExpoImage } from 'expo-image';
 import ProductDetails from "./productdetails";
 import useStore from '../../../../repository/store';
+import { Colors } from '../../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const defaultScreenWidth = Dimensions.get("window").width;
 
@@ -92,7 +100,7 @@ const styles = StyleSheet.create({
         // height:"100%",
         width: '100%',
         borderRadius: 10,
-        backgroundColor: '#dadadaff',
+        backgroundColor: Colors.neutral207,
         overflow: 'hidden'
     },
     productImage: {
@@ -103,13 +111,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 10,
         right: 10,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: withOpacity(Colors.black, 0.6),
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12
     },
     imageCounterText: {
-        color: '#fff',
+        color: Colors.white,
         fontSize: 10,
         fontWeight: 'bold'
     }

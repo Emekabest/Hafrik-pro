@@ -1,6 +1,7 @@
 import React, { memo, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Text, ScrollView, StyleSheet } from 'react-native';
 import AppDetails from '../../helpers/appdetails';
+import { Colors } from '../../theme/colors';
 
 
 // Keep last horizontal scroll position across mounts
@@ -54,9 +55,9 @@ const ProfileTabs = memo(({ tabs, activeTab, onTabChange }) => {
 
 const styles = StyleSheet.create({
     tabsWrapper: {
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: Colors.neutral150,
     },
     tabsContainer: {
         paddingHorizontal: 15,
@@ -67,18 +68,18 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         marginRight: 10,
         borderRadius: 20,
-        backgroundColor: '#f8f8f8',
+        backgroundColor: Colors.neutral120,
     },
     activeTabItem: {
         backgroundColor: AppDetails.primaryColor,
     },
     tabText: {
         fontSize: 14,
-        color: '#666',
+        color: Colors.neutral500,
         fontWeight: '500',
     },
     activeTabText: {
-        color: '#fff',
+        color: Colors.white,
     },
 });
 

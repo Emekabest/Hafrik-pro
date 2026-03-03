@@ -18,15 +18,18 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
 import AppDetails from '../../helpers/appdetails';
+import { Colors } from '../../theme';
 
 const BASE_URL = 'https://hafrik.com';
-const BRAND    = '#0C3F44';
-const ACCENT   = '#13C296';
-const CREAM    = '#F5F7F7';
-const DARK     = '#0D1B1E';
-const MUTED    = '#7A9198';
+const BRAND    = Colors.primaryDark;
+const ACCENT   = Colors.primary;
+const CREAM    = Colors.surfaceTint;
+const DARK     = Colors.black;
+const MUTED    = Colors.secondaryText;
+const WHITE    = Colors.white;
+const BLACK    = Colors.black;
 const BUBBLE_ME    = BRAND;
-const BUBBLE_THEM  = '#fff';
+const BUBBLE_THEM  = WHITE;
 
 const apiFetch = async (path, token, opts = {}) => {
   try {
@@ -68,7 +71,7 @@ const Skel = ({ w, h, r = 8, alignSelf }) => {
   }, []);
   return (
     <Animated.View
-      style={{ width: w, height: h, borderRadius: r, backgroundColor: 'rgba(12,63,68,0.09)', opacity: anim, alignSelf }}
+      style={{ width: w, height: h, borderRadius: r, backgroundColor: BRAND + '17', opacity: anim, alignSelf }}
     />
   );
 };
@@ -110,14 +113,14 @@ const Bubble = ({ item, isMe, otherAvatar, otherIsDefault }) => {
           )}
           {item.media_type === 'video' && (
             <View style={styles.bubbleVideoPlaceholder}>
-              <Ionicons name="play-circle" size={32} color={isMe ? 'rgba(255,255,255,0.8)' : BRAND} />
-              <Text style={[styles.bubbleVideoText, { color: isMe ? 'rgba(255,255,255,0.7)' : MUTED }]}>Video</Text>
+              <Ionicons name="play-circle" size={32} color={isMe ? WHITE + 'CC' : BRAND} />
+              <Text style={[styles.bubbleVideoText, { color: isMe ? WHITE + 'B3' : MUTED }]}>Video</Text>
             </View>
           )}
           {item.media_type === 'voice' && (
             <View style={styles.bubbleVoicePlaceholder}>
-              <Ionicons name="mic" size={18} color={isMe ? 'rgba(255,255,255,0.8)' : BRAND} />
-              <Text style={[styles.bubbleVideoText, { color: isMe ? 'rgba(255,255,255,0.7)' : MUTED }]}>Voice message</Text>
+              <Ionicons name="mic" size={18} color={isMe ? WHITE + 'CC' : BRAND} />
+              <Text style={[styles.bubbleVideoText, { color: isMe ? WHITE + 'B3' : MUTED }]}>Voice message</Text>
             </View>
           )}
           {!!text && (
@@ -259,7 +262,7 @@ export default function ThreadScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={21} color="#fff" />
+          <Ionicons name="arrow-back" size={21} color={WHITE} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -271,7 +274,7 @@ export default function ThreadScreen() {
             <Image source={{ uri: otherAvatar }} style={styles.headerAvatar} />
           ) : (
             <View style={[styles.headerAvatar, styles.headerAvatarFb]}>
-              <Ionicons name="person" size={16} color="#fff" />
+              <Ionicons name="person" size={16} color={WHITE} />
             </View>
           )}
           <View>
@@ -328,9 +331,9 @@ export default function ThreadScreen() {
             disabled={!text.trim() || sending}
           >
             {sending ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={WHITE} />
             ) : (
-              <Ionicons name="send" size={18} color="#fff" />
+              <Ionicons name="send" size={18} color={WHITE} />
             )}
           </TouchableOpacity>
         </View>
@@ -358,20 +361,20 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.13)',
+    backgroundColor: WHITE + '21',
     alignItems: 'center', justifyContent: 'center',
   },
   headerUser: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
   },
   headerAvatar: { width: 38, height: 38, borderRadius: 19, borderWidth: 2, borderColor: ACCENT },
-  headerAvatarFb: { backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  headerAvatarFb: { backgroundColor: WHITE + '2E', alignItems: 'center', justifyContent: 'center' },
   headerName: {
-    fontSize: 15, fontWeight: '800', color: '#fff',
+    fontSize: 15, fontWeight: '800', color: WHITE,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
   headerStatus: {
-    fontSize: 11, color: 'rgba(255,255,255,0.55)',
+    fontSize: 11, color: WHITE + '8C',
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
   },
 
@@ -379,7 +382,7 @@ const styles = StyleSheet.create({
 
   // Day separator
   daySep: { flexDirection: 'row', alignItems: 'center', marginVertical: 12, gap: 8 },
-  daySepLine: { flex: 1, height: 1, backgroundColor: 'rgba(12,63,68,0.1)' },
+  daySepLine: { flex: 1, height: 1, backgroundColor: BRAND + '1A' },
   daySepText: {
     fontSize: 11, color: MUTED,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
@@ -409,14 +412,14 @@ const styles = StyleSheet.create({
   bubbleThem: {
     backgroundColor: BUBBLE_THEM,
     borderBottomLeftRadius: 4,
-    shadowColor: '#000',
+    shadowColor: BLACK,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 1,
   },
   bubbleText: { fontSize: 15, lineHeight: 22 },
-  bubbleTextMe:   { color: '#fff', fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System' },
+  bubbleTextMe:   { color: WHITE, fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System' },
   bubbleTextThem: { color: DARK,  fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System' },
   bubbleTime: { fontSize: 10, marginTop: 3 },
   bubbleTimeMe:   { color: MUTED, textAlign: 'right',  fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System' },
@@ -439,9 +442,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingTop: 10,
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(12,63,68,0.08)',
+    borderTopColor: BRAND + '14',
     gap: 8,
   },
   inputWrap: {
@@ -449,7 +452,7 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(12,63,68,0.12)',
+    borderColor: BRAND + '1F',
     paddingHorizontal: 16,
     paddingVertical: 10,
     maxHeight: 120,
@@ -470,5 +473,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  sendBtnDisabled: { backgroundColor: `${BRAND}60`, shadowOpacity: 0 },
+  sendBtnDisabled: { backgroundColor: BRAND + '60', shadowOpacity: 0 },
 });

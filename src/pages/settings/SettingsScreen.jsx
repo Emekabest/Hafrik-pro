@@ -12,12 +12,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import AppDetails from '../../helpers/appdetails';
+import { Colors } from '../../theme/colors';
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F5F7F7';
-const DARK   = '#0D1B1E';
-const MUTED  = '#7A9198';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.background;
+const DARK   = Colors.deepSlate;
+const MUTED  = Colors.secondaryText;
 
 const Section = ({ title, children }) => (
   <View style={styles.section}>
@@ -40,7 +48,7 @@ const Row = ({ icon, iconColor = BRAND, label, value, onPress, destructive, last
     {value ? (
       <Text style={styles.rowValue}>{value}</Text>
     ) : onPress ? (
-      <Ionicons name="chevron-forward" size={16} color="rgba(0,0,0,0.25)" />
+      <Ionicons name="chevron-forward" size={16} color={withOpacity(Colors.black, 0.25)} />
     ) : null}
   </TouchableOpacity>
 );
@@ -78,7 +86,7 @@ export default function SettingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={21} color="#fff" />
+          <Ionicons name="arrow-back" size={21} color={Colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={{ width: 38 }} />
@@ -158,7 +166,7 @@ export default function SettingsScreen() {
         <Section title="Account Actions">
           <Row
             icon="log-out-outline"
-            iconColor="#b00020"
+            iconColor={Colors.warningStrong}
             label="Log out"
             destructive
             onPress={handleLogout}
@@ -188,13 +196,13 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.13)',
+    backgroundColor: withOpacity(Colors.white, 0.13),
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 17, fontWeight: '800', color: '#fff',
+    fontSize: 17, fontWeight: '800', color: Colors.white,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
 
@@ -206,10 +214,10 @@ const styles = StyleSheet.create({
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
   sectionCard: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(12,63,68,0.07)',
+    borderColor: withOpacity(Colors.primaryDark, 0.07),
     overflow: 'hidden',
   },
 
@@ -219,7 +227,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(12,63,68,0.07)',
+    borderBottomColor: withOpacity(Colors.primaryDark, 0.07),
     gap: 12,
   },
   rowLast: { borderBottomWidth: 0 },
@@ -231,7 +239,7 @@ const styles = StyleSheet.create({
     flex: 1, fontSize: 14, fontWeight: '700', color: DARK,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
-  rowLabelRed: { color: '#b00020' },
+  rowLabelRed: { color: Colors.warningStrong },
   rowValue: {
     fontSize: 13, color: MUTED,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',

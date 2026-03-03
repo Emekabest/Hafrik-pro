@@ -3,6 +3,7 @@ import AppDetails from "../../helpers/appdetails";
 import { useState, useEffect, memo } from "react";
 import SvgIcon from "../../assl.js/svg/svg";
 import useStore from "../../repository/store";
+import { Colors } from '../../theme/colors';
 
 const bottomContainerIcons = [
     { id: 1, name: "photos" },
@@ -37,7 +38,7 @@ const PostFeed = () => {
                     <TextInput
                         style={styles.containerTopTextContainer_Input}
                         placeholder={`What is on your mind? #Hashtag.. \n @Mention.. Link..`}
-                        placeholderTextColor="#848484ff"
+                        placeholderTextColor={Colors.neutral405}
                         multiline={true}
                         editable={false}
                         pointerEvents="none"
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
     container: {
         marginHorizontal: 10,
         minHeight: 180,
-        backgroundColor: "#fff",
+        backgroundColor: Colors.white,
         borderRadius: 10,
         overflow: "hidden",
     },
@@ -102,7 +103,7 @@ const styles = StyleSheet.create({
     },
     containerTopTextContainer_Input: {
         fontSize: 15,
-        color: "#000",
+        color: Colors.black,
         fontFamily: AppDetails.fontFamily.body,
         textAlignVertical: "center",
     },
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         borderBottomWidth: 1,
-        borderBottomColor: "#f0f0f0ff",
+        borderBottomColor: Colors.neutral150,
     },
     containerBottomLeft: {
         height: "100%",
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
         borderRadius: 50,
     },
     postButtonText: {
-        color: "#fff",
+        color: Colors.white,
         fontFamily: "WorkSans_600SemiBold",
     },
 });

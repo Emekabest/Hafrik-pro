@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
+import { Colors } from '../../../theme/colors';
 
 export default function PostCard({ post }) {
   return (
@@ -64,7 +65,7 @@ export default function PostCard({ post }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     margin: 16,
     padding: 14,
     borderRadius: 14,
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 12,
-    color: "#777",
+    color: Colors.neutral450,
   },
   text: {
     fontSize: 15,
@@ -100,7 +101,7 @@ const styles = StyleSheet.create({
   videoPlaceholder: {
     height: 200,
     borderRadius: 10,
-    backgroundColor: "#eee",
+    backgroundColor: Colors.neutral180,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,

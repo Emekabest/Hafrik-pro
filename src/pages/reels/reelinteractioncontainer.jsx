@@ -14,14 +14,28 @@ import AppDetails from '../../helpers/appdetails';
 import CalculateElapsedTime from '../../helpers/calculateelapsedtime';
 import { followUser, toggleLike } from './reelsApi';
 import ReelEngagementBar from './reelengagementbar';
+import { Colors } from '../../theme/colors';
 
-const ACCENT = '#13C296';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const ACCENT = Colors.primary;
+
+const TEXT_SHADOW = {
+  textShadowColor:  withOpacity(Colors.black, 0.80),
+  textShadowOffset: { width: 0, height: 1 },
+  textShadowRadius: 4,
+};
 
 const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   const { token } = useAuth();
   const { bottom: safeBottom } = useSafeAreaInsets();
-  // paddingBottom = tab bar height + device safe area + breathing room
-  const interactionBottom = AppDetails.mainTabNavigatorHeight + safeBottom + 10;
+  // Bottom padding clears the device tab bar + safe area
+  const panelBottom = AppDetails.mainTabNavigatorHeight + safeBottom + 10;
 
   const {
     id: postId,
@@ -34,10 +48,9 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
     is_saved,
   } = reel;
 
-  // API returns user.id (not user.user_id)
   const userId = user?.id;
 
-  const [liked, setLiked] = useState(!!is_liked);
+  const [liked,    setLiked]    = useState(!!is_liked);
   const [likesCount, setLikesCount] = useState(likes_count ?? 0);
   const [following, setFollowing] = useState(false);
   const [captionExpanded, setCaptionExpanded] = useState(false);
@@ -57,10 +70,7 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
     }
   }, [liked, likesCount, postId, token]);
 
-  // Expose triggerLike so ReelCard can call it on double-tap
-  useImperativeHandle(ref, () => ({
-    triggerLike: handleLike,
-  }), [handleLike]);
+  useImperativeHandle(ref, () => ({ triggerLike: handleLike }), [handleLike]);
 
   const handleFollow = useCallback(async () => {
     const prev = following;
@@ -74,21 +84,19 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   }, [following, userId, token]);
 
   const isCaptionLong = caption && caption.length > 80;
+  const audioLabel = user?.username ? `@${user.username}` : 'Original audio';
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.interactionContainer, { paddingBottom: interactionBottom }]}>
+    <View style={styles.overlay}>
+      <View style={[styles.panel, { paddingBottom: panelBottom }]}>
 
-        {/* ── Left: username + caption ── */}
+        {/* ── Left: username · caption · music ─────────────────────────── */}
         <View style={styles.leftSide}>
-          <View style={styles.userInfo}>
+
+          {/* Username + verified + time */}
+          <View style={styles.userRow}>
             {user?.verified ? (
-              <Ionicons
-                name="checkmark-circle"
-                size={14}
-                color={ACCENT}
-                style={{ marginRight: 4 }}
-              />
+              <Ionicons name="checkmark-circle" size={14} color={ACCENT} style={{ marginRight: 4 }} />
             ) : null}
             <Text style={styles.username} numberOfLines={1}>
               @{user?.username}
@@ -96,6 +104,7 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
             <Text style={styles.time}> · {CalculateElapsedTime(created)}</Text>
           </View>
 
+          {/* Caption */}
           {caption ? (
             <TouchableOpacity
               activeOpacity={0.85}
@@ -107,17 +116,30 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
               >
                 {caption}
               </Text>
-              {isCaptionLong && (
+              {isCaptionLong ? (
                 <Text style={styles.captionToggle}>
                   {captionExpanded ? 'less' : 'more'}
                 </Text>
-              )}
+              ) : null}
             </TouchableOpacity>
           ) : null}
+
+          {/* Music row — TikTok-style */}
+          <View style={styles.musicRow}>
+            <View style={styles.musicDisc}>
+              <Ionicons name="musical-notes" size={10} color={Colors.white} />
+            </View>
+            <Text style={styles.musicLabel} numberOfLines={1}>
+              {audioLabel}
+            </Text>
+          </View>
+
         </View>
 
-        {/* ── Right: avatar + engagement bar ── */}
+        {/* ── Right: avatar + follow + engagement icons ─────────────────── */}
         <View style={styles.rightSide}>
+
+          {/* Avatar with follow badge */}
           <View style={styles.avatarWrapper}>
             <View style={styles.avatarRing}>
               <ExpoImage
@@ -134,12 +156,13 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
             >
               <Ionicons
                 name={following ? 'checkmark' : 'add'}
-                size={14}
-                color="#fff"
+                size={13}
+                color={Colors.white}
               />
             </TouchableOpacity>
           </View>
 
+          {/* Like / Comment / Bookmark / Share */}
           <ReelEngagementBar
             postId={postId}
             userId={userId}
@@ -150,56 +173,114 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
             commentCount={comments_count}
             isSavedInitial={!!is_saved}
           />
-        </View>
 
+        </View>
       </View>
     </View>
   );
 });
 
-const TEXT_SHADOW = {
-  textShadowColor: 'rgba(0,0,0,0.75)',
-  textShadowOffset: { width: 0, height: 1 },
-  textShadowRadius: 4,
-};
-
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
+    zIndex: 3,
   },
-  interactionContainer: {
+  panel: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
   },
+
+  // ── Left column ──────────────────────────────────────────────────────────
   leftSide: {
     flex: 1,
     justifyContent: 'flex-end',
-    paddingRight: 10,
-    paddingBottom: 4,
+    paddingRight: 12,
+    paddingBottom: 6,
   },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    flexWrap: 'wrap',
+  },
+  username: {
+    fontSize: 15,
+    fontFamily: 'ReadexPro_600SemiBold',
+    color: Colors.white,
+    ...TEXT_SHADOW,
+  },
+  time: {
+    fontSize: 12,
+    color: withOpacity(Colors.white, 0.60),
+    fontFamily: 'WorkSans_500Medium',
+    ...TEXT_SHADOW,
+  },
+  caption: {
+    fontSize: 13.5,
+    color: withOpacity(Colors.white, 0.92),
+    fontFamily: 'WorkSans_500Medium',
+    lineHeight: 20,
+    ...TEXT_SHADOW,
+  },
+  captionToggle: {
+    color: withOpacity(Colors.white, 0.55),
+    fontFamily: 'WorkSans_600SemiBold',
+    fontSize: 12,
+    marginTop: 3,
+    ...TEXT_SHADOW,
+  },
+  // Music row at bottom of left column
+  musicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 7,
+  },
+  musicDisc: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.nearBlackSoft,
+    borderWidth: 3,
+    borderColor: Colors.neutral700,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  musicLabel: {
+    fontSize: 12.5,
+    color: withOpacity(Colors.white, 0.85),
+    fontFamily: 'WorkSans_500Medium',
+    flex: 1,
+    ...TEXT_SHADOW,
+  },
+
+  // ── Right column ─────────────────────────────────────────────────────────
   rightSide: {
-    width: 64,
+    width: 62,
     alignItems: 'center',
     justifyContent: 'flex-end',
+    paddingBottom: 4,
   },
+
+  // Avatar
   avatarWrapper: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 22,
     position: 'relative',
   },
   avatarRing: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     borderWidth: 2.5,
-    borderColor: '#fff',
+    borderColor: Colors.white,
     overflow: 'hidden',
-    backgroundColor: '#1E3A40',
-    shadowColor: '#000',
+    backgroundColor: Colors.blueGreenDeep,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.55,
     shadowRadius: 6,
     elevation: 6,
   },
@@ -208,56 +289,24 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   followBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#0C3F44',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'absolute',
-    bottom: -9,
+    bottom: -8,
     borderWidth: 2,
-    borderColor: '#000',
-    shadowColor: '#000',
+    borderColor: Colors.black,
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.45,
     shadowRadius: 3,
     elevation: 4,
   },
   followBtnActive: {
     backgroundColor: ACCENT,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5,
-    flexWrap: 'wrap',
-  },
-  username: {
-    fontSize: 15,
-    fontFamily: 'ReadexPro_600SemiBold',
-    color: '#fff',
-    ...TEXT_SHADOW,
-  },
-  time: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.65)',
-    fontFamily: 'WorkSans_500Medium',
-    ...TEXT_SHADOW,
-  },
-  caption: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.92)',
-    fontFamily: 'WorkSans_500Medium',
-    lineHeight: 20,
-    ...TEXT_SHADOW,
-  },
-  captionToggle: {
-    color: 'rgba(255,255,255,0.55)',
-    fontFamily: 'WorkSans_600SemiBold',
-    fontSize: 12,
-    marginTop: 3,
-    ...TEXT_SHADOW,
   },
 });
 

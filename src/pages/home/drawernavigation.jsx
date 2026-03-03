@@ -22,15 +22,19 @@ import axios from "axios";
 import AppDetails from "../../helpers/appdetails";
 import { useAuth } from "../../AuthContext";
 import useStore from "../../repository/store";
+import { Colors } from "../../theme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
 // ─── Brand ────────────────────────────────────────────────────────────────────
-const BRAND  = "#0C3F44";
-const ACCENT = "#13C296";
-const CREAM  = "#F5F0E8";
-const DARK   = "#0D1B1E";
-const MUTED  = "#7A9198";
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.background;
+const DARK   = Colors.black;
+const MUTED  = Colors.secondaryText;
+const WHITE  = Colors.white;
+const DANGER = Colors.destructive;
+const BLACK  = Colors.black;
 
 const DRAWER_W = Math.min(SCREEN_W * 0.78, 320);
 
@@ -62,7 +66,7 @@ const DrawerItem = ({ icon, title, subtitle, right, onPress, iconColor, iconBg }
       </View>
     </View>
     <View style={styles.itemRight}>
-      {right ?? <Ionicons name="chevron-forward" size={18} color="rgba(0,0,0,0.35)" />}
+      {right ?? <Ionicons name="chevron-forward" size={18} color={BLACK + '59'} />}
     </View>
   </TouchableOpacity>
 );
@@ -331,7 +335,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                 activeOpacity={0.88}
                 onPress={() => handleNavigate("InAppBrowser", { url: "https://hafrik.com/wallet", title: "Wallet" })}
               >
-                <Ionicons name="wallet-outline" size={18} color="#fff" />
+                <Ionicons name="wallet-outline" size={18} color={WHITE} />
                 <View style={{ alignItems: 'center' }}>
                   <Text style={styles.quickBtnText}>Wallet</Text>
                   {wallet && (
@@ -348,7 +352,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                 activeOpacity={0.88}
                 onPress={() => handleNavigate("InAppBrowser", { url: "https://hafrik.com/settings/points", title: "Points" })}
               >
-                <Ionicons name="star-outline" size={18} color="#fff" />
+                <Ionicons name="star-outline" size={18} color={WHITE} />
                 <View style={{ alignItems: 'center' }}>
                   <Text style={styles.quickBtnText}>Points</Text>
                   {points && (
@@ -423,13 +427,13 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
               onPress={handleLogout}
             >
               <View style={styles.logoutIconWrap}>
-                <Ionicons name="log-out-outline" size={18} color="#b00020" />
+                <Ionicons name="log-out-outline" size={18} color={DANGER} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.logoutText}>Sign Out</Text>
                 <Text style={styles.logoutSub}>Log out of your account</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="rgba(176,0,32,0.4)" />
+              <Ionicons name="chevron-forward" size={16} color={DANGER + '66'} />
             </TouchableOpacity>
           </ScrollView>
         </Animated.View>
@@ -447,7 +451,7 @@ const styles = StyleSheet.create({
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: BLACK + "8C",
   },
 
   drawer: {
@@ -460,7 +464,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     borderBottomRightRadius: 22,
     overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: Colors.black,
     shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 18,
@@ -487,9 +491,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: WHITE + "1F",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.16)",
+    borderColor: WHITE + "29",
   },
   brandDot: {
     width: 8,
@@ -498,7 +502,7 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
   },
   brandPillText: {
-    color: "#fff",
+    color: WHITE,
     fontSize: 11,
     letterSpacing: 1.2,
     fontWeight: "900",
@@ -509,7 +513,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: "#fff",
+    backgroundColor: WHITE,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -517,9 +521,9 @@ const styles = StyleSheet.create({
   profileRow: {
     flexDirection: "row",
     gap: 12,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: WHITE + "1F",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.16)",
+    borderColor: WHITE + "29",
     borderRadius: 18,
     padding: 12,
     alignItems: "center",
@@ -529,35 +533,35 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: WHITE + "33",
     borderWidth: 2,
-    borderColor: "rgba(19,194,150,0.9)",
+    borderColor: ACCENT + "E6",
   },
   avatarFallback: {
     width: 54,
     height: 54,
     borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: WHITE + "2E",
     borderWidth: 2,
-    borderColor: "rgba(19,194,150,0.9)",
+    borderColor: ACCENT + "E6",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitials: {
-    color: "#fff",
+    color: WHITE,
     fontSize: 16,
     fontWeight: "900",
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
   },
 
   name: {
-    color: "#fff",
+    color: WHITE,
     fontSize: 16,
     fontWeight: "900",
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
   },
   email: {
-    color: "rgba(255,255,255,0.72)",
+    color: WHITE + "B8",
     fontSize: 12,
     marginTop: 2,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
@@ -590,19 +594,19 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: ACCENT,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
+    borderColor: WHITE + "2E",
   },
   quickBtnAlt: {
-    backgroundColor: "rgba(255,255,255,0.14)",
+    backgroundColor: WHITE + "24",
   },
   quickBtnText: {
-    color: "#fff",
+    color: WHITE,
     fontSize: 12,
     fontWeight: "900",
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
   },
   quickBtnBalance: {
-    color: "rgba(255,255,255,0.75)",
+    color: WHITE + "BF",
     fontSize: 10,
     fontWeight: "700",
     marginTop: 1,
@@ -624,11 +628,11 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: WHITE,
     marginHorizontal: 12,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(12,63,68,0.08)",
+    borderColor: BRAND + "14",
     overflow: "hidden",
   },
 
@@ -639,7 +643,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(12,63,68,0.06)",
+    borderBottomColor: BRAND + "0F",
   },
   itemLeft: {
     flexDirection: "row",
@@ -651,7 +655,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: "rgba(19,194,150,0.14)",
+    backgroundColor: ACCENT + "24",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -664,7 +668,7 @@ const styles = StyleSheet.create({
   itemSub: {
     marginTop: 2,
     fontSize: 11.5,
-    color: "rgba(0,0,0,0.45)",
+    color: BLACK + "73",
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
   },
   itemRight: {
@@ -686,7 +690,7 @@ const styles = StyleSheet.create({
   },
   footerSub: {
     marginTop: 3,
-    color: "rgba(0,0,0,0.45)",
+    color: BLACK + "73",
     fontSize: 11,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
   },
@@ -694,10 +698,10 @@ const styles = StyleSheet.create({
   logoutBtn: {
     marginTop: 14,
     marginHorizontal: 12,
-    backgroundColor: "#fff",
+    backgroundColor: WHITE,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(176,0,32,0.18)",
+    borderColor: DANGER + "2E",
     paddingVertical: 12,
     paddingHorizontal: 14,
     flexDirection: "row",
@@ -708,19 +712,19 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: "rgba(176,0,32,0.08)",
+    backgroundColor: DANGER + "14",
     alignItems: "center",
     justifyContent: "center",
   },
   logoutText: {
-    color: "#b00020",
+    color: DANGER,
     fontSize: 14,
     fontWeight: "900",
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
   },
   logoutSub: {
     marginTop: 2,
-    color: "rgba(176,0,32,0.55)",
+    color: DANGER + '8C',
     fontSize: 11,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
   },

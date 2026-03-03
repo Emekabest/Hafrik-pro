@@ -22,8 +22,16 @@ import { AddCommentController } from '../../../../controllers/commentscontroller
 import CommentBonds from './commentsbonds';
 import useStore from '../../../../repository/store';
 import { useGlobalVideoPlayer } from '../../../../helpers/GlobalVideoPlayerContext';
+import { Colors } from '../../../../theme/colors';
 
-const BRAND = '#0C3F44';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND = Colors.primaryDark;
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const OriginalPostMemo = React.memo(CommentMainPostContent);
@@ -131,7 +139,7 @@ const CommentModal = () => {
                             onPress={handleClose}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                            <Ionicons name="close" size={22} color="#000" />
+                            <Ionicons name="close" size={22} color={Colors.black} />
                         </TouchableOpacity>
                     </View>
 
@@ -171,7 +179,7 @@ const CommentModal = () => {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Write a comment…"
-                                placeholderTextColor="#aaa"
+                                placeholderTextColor={Colors.neutral300}
                                 value={commentText}
                                 onChangeText={setCommentText}
                                 multiline
@@ -187,7 +195,7 @@ const CommentModal = () => {
                                 <Ionicons
                                     name="send"
                                     size={20}
-                                    color={commentText.trim() ? BRAND : '#ccc'}
+                                    color={commentText.trim() ? BRAND : Colors.neutral250}
                                 />
                             </TouchableOpacity>
                         </View>
@@ -202,14 +210,14 @@ const styles = StyleSheet.create({
     overlay: {
         flex: 1,
         justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: withOpacity(Colors.black, 0.45),
     },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
     },
     sheet: {
         height: SCREEN_HEIGHT * 0.85,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.white,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         overflow: 'hidden',
@@ -224,7 +232,7 @@ const styles = StyleSheet.create({
         width: 36,
         height: 4,
         borderRadius: 2,
-        backgroundColor: '#e0e0e0',
+        backgroundColor: Colors.neutral200,
     },
 
     // ── Header ───────────────────────────────────────────────────────────────
@@ -235,12 +243,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingBottom: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#efefef',
+        borderBottomColor: Colors.neutral175,
     },
     title: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#000',
+        color: Colors.black,
     },
 
     // ── Scrollable content ───────────────────────────────────────────────────
@@ -265,8 +273,8 @@ const styles = StyleSheet.create({
         paddingTop: 10,
         paddingBottom: Platform.OS === 'ios' ? 28 : 12,
         borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: '#eee',
-        backgroundColor: '#fff',
+        borderTopColor: Colors.neutral180,
+        backgroundColor: Colors.white,
     },
     avatar: {
         width: 32,
@@ -274,14 +282,14 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     avatarFallback: {
-        backgroundColor: 'rgba(12,63,68,0.08)',
+        backgroundColor: withOpacity(Colors.primaryDark, 0.08),
         alignItems: 'center',
         justifyContent: 'center',
     },
     input: {
         flex: 1,
         fontSize: 14,
-        color: '#000',
+        color: Colors.black,
         maxHeight: 100,
         paddingTop: 6,
         paddingBottom: 6,

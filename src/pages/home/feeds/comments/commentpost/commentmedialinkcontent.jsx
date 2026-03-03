@@ -5,6 +5,7 @@ import { View, StyleSheet, Dimensions, Linking, Text } from 'react-native';
 import YoutubeIframe from "react-native-youtube-iframe";
 import { parseLinkFromText } from "../../../../../helpers/linkparser";
 import AppDetails from '../../../../../helpers/appdetails';
+import { Colors } from '../../../../../theme/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -50,12 +51,12 @@ const styles = StyleSheet.create({
         marginTop: 12,
         marginBottom: 12,
         borderRadius: 16,
-        backgroundColor: '#000', // Black background for video feel
+        backgroundColor: Colors.black, // Black background for video feel
         overflow: 'hidden',
         alignSelf: 'flex-start', // Don't stretch if not needed (though width is fixed)
     },
     videoWrapper: {
-        backgroundColor: '#000',
+        backgroundColor: Colors.black,
     },
     url:{
         fontSize:15,

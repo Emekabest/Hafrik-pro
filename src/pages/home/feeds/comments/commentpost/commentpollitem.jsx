@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
+import { Colors } from '../../../../../theme/colors';
 
 const { width } = Dimensions.get("window");
 
@@ -68,17 +69,17 @@ const CommentPollItem = ({ post, onVote }) => {
 const styles = StyleSheet.create({
 	card: {
 		width,
-		backgroundColor: "#fff",
+		backgroundColor: Colors.white,
 		paddingVertical: 12,
 		paddingHorizontal: 12,
 		borderTopWidth: 1,
-		borderTopColor: "#eee",
+		borderTopColor: Colors.neutral180,
 	},
 	question: {
 		fontSize: 16,
 		fontWeight: "700",
 		marginBottom: 10,
-		color: "#111",
+		color: Colors.neutral900,
 	},
 	options: {
 		gap: 8,
@@ -87,10 +88,10 @@ const styles = StyleSheet.create({
 		paddingVertical: 10,
 		paddingHorizontal: 10,
 		borderRadius: 8,
-		backgroundColor: "#f7f7f7",
+		backgroundColor: Colors.neutral125,
 	},
 	optionRowActive: {
-		backgroundColor: "#e6f0ff",
+		backgroundColor: Colors.infoSurface,
 	},
 	optionTextWrap: {
 		flexDirection: "row",
@@ -100,34 +101,34 @@ const styles = StyleSheet.create({
 	},
 	optionText: {
 		fontSize: 14,
-		color: "#111",
+		color: Colors.neutral900,
 		flex: 1,
 		marginRight: 8,
 	},
 	optionTextActive: {
 		fontWeight: "700",
-		color: "#044cff",
+		color: Colors.linkBlue,
 	},
 	optionCount: {
 		fontSize: 13,
-		color: "#666",
+		color: Colors.neutral500,
 		minWidth: 28,
 		textAlign: "right",
 	},
 	progressTrack: {
 		height: 8,
-		backgroundColor: "#e9e9e9",
+		backgroundColor: Colors.neutral160,
 		borderRadius: 6,
 		overflow: "hidden",
 	},
 	progressFill: {
 		height: "100%",
-		backgroundColor: "#044cff",
+		backgroundColor: Colors.linkBlue,
 	},
 	pctText: {
 		marginTop: 6,
 		fontSize: 12,
-		color: "#666",
+		color: Colors.neutral500,
 		textAlign: "right",
 	},
 	footer: {
@@ -137,11 +138,11 @@ const styles = StyleSheet.create({
 	},
 	total: {
 		fontSize: 12,
-		color: "#666",
+		color: Colors.neutral500,
 	},
 	created: {
 		fontSize: 12,
-		color: "#999",
+		color: Colors.neutral350,
 	},
 });
 

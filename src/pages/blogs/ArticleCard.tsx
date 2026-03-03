@@ -3,12 +3,20 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ArticleListItem } from './articlesApi';
+import { Colors } from '../../theme/colors';
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const BORDER = 'rgba(12,63,68,0.09)';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.deepSlate;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 interface ArticleCardProps {
   item: ArticleListItem;
@@ -90,12 +98,12 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ item, onPress }) => {
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: BORDER,
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
@@ -104,12 +112,12 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: 120,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: Colors.neutral150,
   },
   imagePlaceholder: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(12,63,68,0.08)',
+    backgroundColor: withOpacity(Colors.primaryDark, 0.08),
   },
 
   content: {
@@ -135,7 +143,7 @@ const styles = StyleSheet.create({
   categoryBadge: {
     marginTop: 8,
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(19,194,150,0.12)',
+    backgroundColor: withOpacity(Colors.tealAccent, 0.12),
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -150,7 +158,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: withOpacity(Colors.white, 0.9),
     width: 28,
     height: 28,
     borderRadius: 14,

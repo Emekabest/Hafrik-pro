@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,48 +10,75 @@ import {
   BackHandler,
   Platform,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../AuthContext';
+import AuthenticatedWebView from '../../components/AuthenticatedWebView';
+import { Colors } from '../../theme/colors';
 
-const BRAND = '#0C3F44';
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const BRIDGE_URL = 'https://hafrik.com/api/v1/auth/webview-login.php';
+const BRAND = Colors.primaryDark;
 
 export default function MarketplaceWebviewScreen({ navigation, route }) {
   const { url, title } = route.params || {};
   const { token, user } = useAuth();
 
-  const webViewRef  = useRef(null);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(false);
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState(url || 'https://hafrik.com/marketplace');
+  const webViewRef = useRef(null);
 
-  const getAuthScript = useCallback(() => {
-    if (!token || !user) return '';
-    const safeUser = JSON.stringify(user).replace(/'/g, "\\'");
-    return `
-      (function() {
-        try {
-          localStorage.setItem('hafrik_token', '${token}');
-          localStorage.setItem('access_token', '${token}');
-          localStorage.setItem('app_user', '${safeUser}');
-          localStorage.setItem('is_mobile_app', 'true');
-          document.cookie = 'hafrik_token=${token}; path=/; domain=hafrik.com; max-age=31536000';
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'auth_ok' }));
-          }
-        } catch(e) {}
-      })();
-      true;
-    `;
-  }, [token, user]);
+  const [ready,       setReady]       = useState(false);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(false);
+  const [bridgeError, setBridgeError] = useState(null);
+  const [canGoBack,    setCanGoBack]    = useState(false);
+  const [currentUrl,   setCurrentUrl]   = useState(url || 'https://hafrik.com/marketplace');
+  const [sessionCreds, setSessionCreds] = useState(null);
+
+  // ─── Bridge + Cookie injection ─────────────────────────────────────────────
+  const initSession = useCallback(async () => {
+    setBridgeError(null);
+    try {
+      const res = await fetch(BRIDGE_URL, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+      console.log('Bridge response:', data);
+
+      if (data.status !== 'success') {
+        setBridgeError('Bridge error: ' + (data.message || 'unknown'));
+        return;
+      }
+
+      setSessionCreds({ phpsessid: data.phpsessid, session_token: data.session_token });
+      console.log('✅ Session ready, PHPSESSID:', data.phpsessid);
+      setReady(true);
+    } catch (e) {
+      console.error('Bridge error:', e);
+      setBridgeError(e.message);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (token) initSession();
+  }, [token]);
+
+  const injectedScript = useMemo(() => {
+    const cookiePart = sessionCreds
+      ? `(function(){if(document.cookie.indexOf('PHPSESSID=')!==-1)return;var e=new Date();e.setDate(e.getDate()+30);var x=e.toUTCString();document.cookie='PHPSESSID=${sessionCreds.phpsessid};path=/;domain=.hafrik.com;expires='+x;document.cookie='session_token=${sessionCreds.session_token};path=/;domain=.hafrik.com;expires='+x;window.location.reload();})();`
+      : '';
+    return cookiePart + `(function(){var p=window.location.pathname.toLowerCase();var a=['/login','/signin','/register','/signup'];if(a.some(function(x){return p.includes(x);})){window.location.replace('/');}})();true;`;
+  }, [sessionCreds]);
 
   const handleBack = () => {
-    if (canGoBack && webViewRef.current) {
-      webViewRef.current.goBack();
-    } else {
-      navigation.goBack();
-    }
+    if (canGoBack && webViewRef.current) webViewRef.current.goBack();
+    else navigation.goBack();
   };
 
   const handleReload = () => {
@@ -62,15 +89,13 @@ export default function MarketplaceWebviewScreen({ navigation, route }) {
 
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (canGoBack && webViewRef.current) {
-        webViewRef.current.goBack();
-        return true;
-      }
+      if (canGoBack && webViewRef.current) { webViewRef.current.goBack(); return true; }
       return false;
     });
     return () => handler.remove();
   }, [canGoBack]);
 
+  // Guards
   if (!token || !user) {
     return (
       <SafeAreaView style={styles.center}>
@@ -84,71 +109,74 @@ export default function MarketplaceWebviewScreen({ navigation, route }) {
     );
   }
 
+  if (bridgeError) {
+    return (
+      <SafeAreaView style={styles.center}>
+        <Ionicons name="warning-outline" size={48} color={Colors.warningCoral} />
+        <Text style={styles.lockTitle}>Session Error</Text>
+        <Text style={styles.lockSub}>{bridgeError}</Text>
+        <TouchableOpacity style={styles.goBack} onPress={initSession}>
+          <Text style={styles.goBackText}>Retry</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <SafeAreaView style={styles.center}>
+        <ActivityIndicator size="large" color={BRAND} />
+        <Text style={styles.lockSub}>Authenticating…</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.white }}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={handleBack}>
           <Ionicons name="arrow-back" size={22} color={BRAND} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {title || 'Marketplace'}
-        </Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{title || 'Marketplace'}</Text>
         <TouchableOpacity style={styles.headerBtn} onPress={handleReload}>
           <Ionicons name="refresh" size={22} color={BRAND} />
         </TouchableOpacity>
       </View>
 
-      {/* WebView */}
-      <WebView
+      <AuthenticatedWebView
         ref={webViewRef}
-        source={{
-          uri: currentUrl,
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'X-Is-Mobile-App': 'true',
-          },
-        }}
+        source={{ uri: currentUrl }}
         style={{ flex: 1 }}
-        javaScriptEnabled
-        domStorageEnabled
-        sharedCookiesEnabled
-        cacheEnabled
-        originWhitelist={['*']}
-        injectedJavaScript={getAuthScript()}
+        injectedJavaScript={injectedScript}
         onLoadStart={() => { setLoading(true); setError(false); }}
-        onLoadEnd={() => {
-          setLoading(false);
-          if (token && user) {
-            setTimeout(() => webViewRef.current?.injectJavaScript(getAuthScript()), 400);
-          }
-        }}
+        onLoadEnd={() => setLoading(false)}
         onError={() => { setLoading(false); setError(true); }}
         onNavigationStateChange={(nav) => {
           setCanGoBack(nav.canGoBack);
           setCurrentUrl(nav.url);
         }}
+        onContentProcessDidTerminate={handleReload}
+        cacheEnabled={true}
+        originWhitelist={['*']}
         userAgent={`Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) HafrikApp/${Platform.OS}`}
       />
 
-      {/* Loading overlay */}
       {loading && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color={BRAND} />
-          <Text style={styles.loadingText}>Loading…</Text>
+          <Text style={styles.lockSub}>Loading…</Text>
         </View>
       )}
 
-      {/* Error overlay */}
       {error && (
         <View style={styles.overlay}>
-          <Ionicons name="wifi-outline" size={48} color="#ff6b6b" />
-          <Text style={styles.errorTitle}>Connection Error</Text>
-          <Text style={styles.errorSub}>Check your connection and try again.</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={handleReload}>
-            <Text style={styles.retryText}>Retry</Text>
+          <Ionicons name="wifi-outline" size={48} color={Colors.warningCoral} />
+          <Text style={styles.lockTitle}>Connection Error</Text>
+          <Text style={styles.lockSub}>Check your connection and try again.</Text>
+          <TouchableOpacity style={styles.goBack} onPress={handleReload}>
+            <Text style={styles.goBackText}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -159,21 +187,20 @@ export default function MarketplaceWebviewScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   center: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#fff', gap: 10, padding: 24,
+    backgroundColor: Colors.white, gap: 10, padding: 24,
   },
-  lockTitle: { fontSize: 20, fontWeight: '800', color: '#0D1B1E', marginTop: 8 },
-  lockSub: { fontSize: 14, color: '#7A9198', textAlign: 'center' },
+  lockTitle: { fontSize: 20, fontWeight: '800', color: Colors.deepSlate, marginTop: 8 },
+  lockSub: { fontSize: 14, color: Colors.mutedBlueGray, textAlign: 'center', marginTop: 4 },
   goBack: {
-    marginTop: 8, backgroundColor: BRAND,
+    marginTop: 8, backgroundColor: Colors.primaryDark,
     paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12,
   },
-  goBackText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-
+  goBackText: { color: Colors.white, fontWeight: '700', fontSize: 14 },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 12, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(12,63,68,0.09)',
-    backgroundColor: '#fff',
+    borderBottomWidth: 1, borderBottomColor: withOpacity(Colors.primaryDark, 0.09),
+    backgroundColor: Colors.white,
   },
   headerBtn: {
     width: 38, height: 38, borderRadius: 19,
@@ -181,20 +208,11 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1, fontSize: 15, fontWeight: '700',
-    color: '#0D1B1E', textAlign: 'center', marginHorizontal: 8,
+    color: Colors.deepSlate, textAlign: 'center', marginHorizontal: 8,
   },
-
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: Colors.white, justifyContent: 'center', alignItems: 'center',
     zIndex: 10, gap: 10,
   },
-  loadingText: { fontSize: 14, color: '#7A9198' },
-  errorTitle: { fontSize: 18, fontWeight: '800', color: '#0D1B1E', marginTop: 8 },
-  errorSub: { fontSize: 13, color: '#7A9198', textAlign: 'center' },
-  retryBtn: {
-    marginTop: 8, backgroundColor: BRAND,
-    paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12,
-  },
-  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

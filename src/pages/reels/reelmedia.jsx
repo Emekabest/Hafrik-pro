@@ -7,6 +7,7 @@ import { useEvent } from "expo";
 import { useIsFocused } from "@react-navigation/native";
 import useStore from "../../repository/store";
 import VideoPreloader from "../../helpers/VideoPreloader";
+import { Colors } from '../../theme/colors';
 
 
 /**
@@ -112,8 +113,14 @@ const ActiveReelPlayer = memo(({ reelId, media, isActive, isPaused = false, isMu
     const playerValidRef = useRef(false);
 
     // Get video source (cached or original)
-    const source = media?.video_url 
-        ? VideoPreloader.getBestUri(media.video_url) 
+    // Guard: never pass ph:// or other non-remote URIs to the video player.
+    // useVideoPlayer accepts null safely, so we resolve to null here and bail
+    // after all hooks have been called (rules of hooks must not be broken).
+    const rawUrl = media?.video_url
+        ? VideoPreloader.getBestUri(media.video_url)
+        : null;
+    const source = rawUrl && typeof rawUrl === 'string' && rawUrl.startsWith('http')
+        ? rawUrl
         : null;
 
     // Create player with error handling
@@ -264,8 +271,8 @@ const ActiveReelPlayer = memo(({ reelId, media, isActive, isPaused = false, isMu
         };
     }, [reelId, player]);
 
-    // Early return if player is invalid
-    if (!player || isReleasedRef.current || !playerValidRef.current) {
+    // Early return if player is invalid or source URL was not a valid remote URL
+    if (!source || !player || isReleasedRef.current || !playerValidRef.current) {
         return null;
     }
 
@@ -274,7 +281,7 @@ const ActiveReelPlayer = memo(({ reelId, media, isActive, isPaused = false, isMu
             style={styles.videoOverlay}
             player={player}
             nativeControls={false}
-            contentFit="contain"
+            contentFit="cover"
             usePoster={false}
             onError={(error) => {
                 console.log('Reel VideoView onError', error);
@@ -287,7 +294,7 @@ const ActiveReelPlayer = memo(({ reelId, media, isActive, isPaused = false, isMu
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: Colors.black,
     },
     videoOverlay: {
         flex: 1,

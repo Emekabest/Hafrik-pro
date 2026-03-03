@@ -8,6 +8,14 @@ import UserDetails from './userdetails.jsx';
 import Videocontent from './videocontent.jsx';
 import ProductContent from './productcontent.jsx';
 import useStore from '../../../../repository/store';
+import { Colors } from '../../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 
 const MEDIA_HEIGHT = 470;
@@ -113,7 +121,7 @@ const isMultiMedia =
             {post.type === 'poll' ? (
                 // Lightweight inline poll rendering to avoid circular imports
                 <View style={{ marginTop: 5, paddingRight: 5, width: '100%' }}>
-                    <Text style={{ color: '#787878ff', fontSize: 12 }}>Poll</Text>
+                    <Text style={{ color: Colors.neutral430, fontSize: 12 }}>Poll</Text>
                 </View>
             ) : post.type === 'product' ? (
                 // <SharedProductItem post={post} />
@@ -123,32 +131,32 @@ const isMultiMedia =
                     {post.payload.cover && (
                         <ExpoImage 
                             source={{ uri: post.payload.cover }} 
-                            style={{ width: '100%', height: 160, borderRadius: 8, backgroundColor: '#f0f0f0' }} 
+                            style={{ width: '100%', height: 160, borderRadius: 8, backgroundColor: Colors.neutral150 }} 
                             contentFit="cover"
                             cachePolicy="memory-disk" 
                         />
                     )}
                     <View style={{ marginTop: 8 }}>
-                        <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#333' }} numberOfLines={2}>{post.payload.title}</Text>
+                        <Text style={{ fontWeight: 'bold', fontSize: 15, color: Colors.neutral700 }} numberOfLines={2}>{post.payload.title}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                            <Text style={{ fontSize: 12, color: '#787878', fontWeight: '500' }}>Read article</Text>
-                            <Ionicons name="arrow-forward" size={12} color="#787878" style={{ marginLeft: 2 }} />
+                            <Text style={{ fontSize: 12, color: Colors.neutral430, fontWeight: '500' }}>Read article</Text>
+                            <Ionicons name="arrow-forward" size={12} color={Colors.neutral430} style={{ marginLeft: 2 }} />
                         </View>
                     </View>
                 </TouchableOpacity>
             ) : (
                 mediaItem ? (
                     hasError ? (
-                        <View style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginTop: 10, backgroundColor: '#202020', borderRadius: 10, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
-                            <Ionicons name="alert-circle-outline" size={30} color="#fff" />
-                            <Text style={{color: '#fff', fontSize: 14, marginTop: 10}}>Something went wrong</Text>
-                            <TouchableOpacity onPress={handleRetry} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: '#333', borderRadius: 20}}>
-                                <Text style={{color: '#fff', fontSize: 12}}>Try Again</Text>
+                        <View style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginTop: 10, backgroundColor: Colors.neutral800, borderRadius: 10, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+                            <Ionicons name="alert-circle-outline" size={30} color={Colors.white} />
+                            <Text style={{color: Colors.white, fontSize: 14, marginTop: 10}}>Something went wrong</Text>
+                            <TouchableOpacity onPress={handleRetry} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: Colors.neutral700, borderRadius: 20}}>
+                                <Text style={{color: Colors.white, fontSize: 12}}>Try Again</Text>
                             </TouchableOpacity>
                         </View>
                     ) : (
                     <TouchableWithoutFeedback onPress={handlePress}>
-                    <View style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginTop: 10, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
+                    <View style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginTop: 10, backgroundColor: Colors.black, borderRadius: 10, overflow: 'hidden' }}>
                         {isVideo ? (
                              <Videocontent feedId={parentFeedId} media={post.media} />
                         ) : (
@@ -173,7 +181,7 @@ const isMultiMedia =
 const styles = StyleSheet.create({
     sharedPostContainer: {
         borderWidth: 1,
-        borderColor: '#dededeff',
+        borderColor: Colors.neutral210,
         borderRadius: 10,
         padding: 10,
     },
@@ -181,7 +189,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 10,
         right: 10,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: withOpacity(Colors.black, 0.6),
         padding: 8,
         borderRadius: 20,
     },
@@ -194,7 +202,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius:10,
         borderTopRightRadius:10,
         marginBottom:5,
-        borderColor:"#e0e0e0ff",
+        borderColor:Colors.neutral200,
     },
     postText: {
         marginTop: 10, 
@@ -203,7 +211,7 @@ const styles = StyleSheet.create({
         color: AppDetails.bodyColor,
     },
     seeMoreText: {
-        color: '#787878', 
+        color: Colors.neutral430, 
         fontWeight: '600',
     },
 });

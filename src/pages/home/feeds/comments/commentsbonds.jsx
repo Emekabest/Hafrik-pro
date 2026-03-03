@@ -8,18 +8,26 @@ import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import { GetCommentsController } from '../../../../controllers/commentscontroller';
 import CalculateElapsedTime from '../../../../helpers/calculateelapsedtime';
+import { Colors } from '../../../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const BASE   = 'https://hafrik.com';
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F5F7F7';
-const DARK   = '#0D1B1E';
-const MUTED  = '#7A9198';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.background;
+const DARK   = Colors.deepSlate;
+const MUTED  = Colors.secondaryText;
 
 // ------------------------------------------------------------------
-// Single comment card
+// Single comment card (exported so CommentScreen can use it in its FlatList)
 // ------------------------------------------------------------------
-const CommentItem = React.memo(({ comment, token, onReply }) => {
+export const CommentItem = React.memo(({ comment, token, onReply }) => {
   const navigation = useNavigation();
   const [liked,     setLiked]     = useState(!!comment.is_liked);
   const [likeCount, setLikeCount] = useState(Number(comment.likes_count ?? comment.like_count ?? 0));
@@ -93,10 +101,10 @@ const CommentItem = React.memo(({ comment, token, onReply }) => {
               <Ionicons
                 name={liked ? 'heart' : 'heart-outline'}
                 size={16}
-                color={liked ? '#E8485A' : MUTED}
+                color={liked ? Colors.coralStrong : MUTED}
               />
             </Animated.View>
-            {likeCount > 0 && <Text style={[cs.actionCount, liked && { color: '#E8485A' }]}>{likeCount}</Text>}
+            {likeCount > 0 && <Text style={[cs.actionCount, liked && { color: Colors.coralStrong }]}>{likeCount}</Text>}
           </TouchableOpacity>
 
           {/* Reply */}
@@ -173,7 +181,7 @@ const CommentBonds = ({ postId, token, onReply }) => {
   if (!comments.length) {
     return (
       <View style={cs.emptyWrap}>
-        <Ionicons name="chatbubbles-outline" size={40} color="#d8e0e2" />
+        <Ionicons name="chatbubbles-outline" size={40} color={Colors.borderCool} />
         <Text style={cs.emptyTitle}>No comments yet</Text>
         <Text style={cs.emptySub}>Be the first to share your thoughts!</Text>
       </View>
@@ -196,12 +204,12 @@ const cs = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: withOpacity(Colors.black, 0.05),
   },
   avatar: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#dde6e8', marginRight: 12, marginTop: 2,
-    borderWidth: 1.5, borderColor: 'rgba(12,63,68,0.12)',
+    backgroundColor: Colors.borderLightAlt, marginRight: 12, marginTop: 2,
+    borderWidth: 1.5, borderColor: withOpacity(Colors.primaryDark, 0.12),
   },
   cardBody: { flex: 1 },
 
@@ -209,7 +217,7 @@ const cs = StyleSheet.create({
   nameText: { fontSize: 13.5, fontWeight: '800', color: DARK, flexShrink: 1 },
   timeText: { fontSize: 11.5, color: MUTED },
 
-  commentText: { fontSize: 14.5, color: '#1a2527', lineHeight: 21, marginBottom: 8 },
+  commentText: { fontSize: 14.5, color: Colors.textStrongDeep, lineHeight: 21, marginBottom: 8 },
 
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -219,22 +227,22 @@ const cs = StyleSheet.create({
   // Replies
   replyRow: {
     flexDirection: 'row', marginTop: 10, paddingTop: 10,
-    borderTopWidth: 0.5, borderTopColor: 'rgba(0,0,0,0.05)',
+    borderTopWidth: 0.5, borderTopColor: withOpacity(Colors.black, 0.05),
     paddingLeft: 4,
   },
   replyAvatar: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#dde6e8', marginRight: 10,
+    backgroundColor: Colors.borderLightAlt, marginRight: 10,
   },
   replyNameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2, gap: 6 },
   replyName: { fontSize: 12.5, fontWeight: '700', color: DARK },
-  replyText: { fontSize: 13.5, color: '#2a3d40', lineHeight: 19 },
+  replyText: { fontSize: 13.5, color: Colors.textBodyMuted, lineHeight: 19 },
 
   // States
   loaderWrap: { paddingVertical: 30, alignItems: 'center' },
   emptyWrap:  { paddingVertical: 40, alignItems: 'center', gap: 6 },
-  emptyTitle: { fontSize: 15, fontWeight: '800', color: '#9bb0b4' },
-  emptySub:   { fontSize: 13, color: '#b8c9cc' },
+  emptyTitle: { fontSize: 15, fontWeight: '800', color: Colors.mutedBlueGraySoft },
+  emptySub:   { fontSize: 13, color: Colors.mutedBlueGraySofter },
 });
 
 export default CommentBonds;

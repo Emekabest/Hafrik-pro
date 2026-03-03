@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from "react-native";
 import CalculateElapsedTime from "../../helpers/calculateelapsedtime";
+import { Colors } from '../../theme/colors';
 
 const SearchPostCard = ({ item, onPress }) => {
     const MEDIA_HEIGHT = 400;
@@ -67,11 +68,11 @@ const SearchPostCard = ({ item, onPress }) => {
 const styles = StyleSheet.create({
     container: {
         borderTopWidth: 1,
-        borderTopColor: "#efefefff",
+        borderTopColor: Colors.neutral175,
         width: "100%",
         padding: 10,
         flexDirection: "row",
-        backgroundColor: '#fff'
+        backgroundColor: Colors.white
     },
     containerLeft: {
         height: "100%",
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
         width: "100%",
         borderRadius: 50,
         overflow: "hidden",
-        backgroundColor: "#e9e9e9ff"
+        backgroundColor: Colors.neutral160
     },
     firstSection: {
         flexDirection: "row",
@@ -99,25 +100,25 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     nameText: {
-        color: "#000",
+        color: Colors.black,
         fontFamily: "WorkSans_600SemiBold",
         fontSize: 15,
     },
     metaText: {
-        color: "#787878ff",
+        color: Colors.neutral430,
         fontSize: 12,
         fontFamily: "WorkSans_400Regular",
         marginTop: 2,
     },
     titleText: {
         fontSize: 14,
-        color: "#000",
+        color: Colors.black,
         fontFamily: "WorkSans_400Regular",
         marginTop: 6,
     },
     subtitleText: {
         fontSize: 13,
-        color: "#888",
+        color: Colors.neutral400,
         fontFamily: "WorkSans_400Regular",
         marginTop: 4,
     },
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
         height: 180,
         borderRadius: 8,
         marginTop: 10,
-        backgroundColor: '#b1aaaaff'
+        backgroundColor: Colors.neutral285
     }
 });
 

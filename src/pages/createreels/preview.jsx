@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { setAudioModeAsync } from 'expo-audio';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const Preview = ({ videoUri, onBack, onNext, isFocused, appState, primaryColor }) => {
     const [videoMounted, setVideoMounted] = useState(false);
@@ -45,7 +54,7 @@ const Preview = ({ videoUri, onBack, onNext, isFocused, appState, primaryColor }
         }).catch(e => console.log('Audio mode setup error', e));
 
         return () => {
-            if (player) player.pause();
+            try { if (player) player.pause(); } catch (_) {}
             // Reset audio mode so background music resumes
             setAudioModeAsync({
                 playsInSilentMode: false,
@@ -68,21 +77,31 @@ const Preview = ({ videoUri, onBack, onNext, isFocused, appState, primaryColor }
                     />
                 ) : (
                     <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-                        <ActivityIndicator size="large" color="#fff" />
+                        <ActivityIndicator size="large" color={Colors.white} />
                     </View>
                 )}
                 
                 <TouchableOpacity style={styles.backButtonOverlay} onPress={onBack}>
-                    <Ionicons name="arrow-back" size={28} color="white" />
+                    <View style={styles.backCircle}>
+                        <Ionicons name="arrow-back" size={22} color="white" />
+                    </View>
                 </TouchableOpacity>
 
                 <View style={styles.previewBottomBar}>
-                    <TouchableOpacity 
-                        activeOpacity={1}
-                        style={[styles.nextButton, { backgroundColor: "#fff" }]} 
+                    <TouchableOpacity
+                        activeOpacity={0.86}
+                        style={styles.nextButton}
                         onPress={onNext}
                     >
-                        <Text style={styles.nextButtonText}>Next</Text>
+                        <LinearGradient
+                            colors={[Colors.tealAccent, Colors.tealAccentDark]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.nextGradient}
+                        >
+                            <Text style={styles.nextButtonText}>Next</Text>
+                            <Ionicons name="arrow-forward" size={18} color={Colors.white} />
+                        </LinearGradient>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -105,31 +124,45 @@ const styles = StyleSheet.create({
     },
     backButtonOverlay: {
         position: 'absolute',
-        top: Platform.OS === 'android' ? 40 : 20,
-        left: 20,
+        top: Platform.OS === 'android' ? 40 : 58,
+        left: 16,
         zIndex: 10,
-        padding: 8,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        borderRadius: 20,
+    },
+    backCircle: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: withOpacity(Colors.black, 0.5),
+        borderWidth: 1,
+        borderColor: withOpacity(Colors.white, 0.15),
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     previewBottomBar: {
         position: 'absolute',
-        bottom: 30,
+        bottom: 40,
         right: 20,
         left: 20,
         alignItems: 'flex-end',
     },
     nextButton: {
-        height:60,
-        width:"50%",
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    nextGradient: {
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 10,
+        gap: 8,
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 16,
     },
     nextButtonText: {
-        color: '#000',
-        fontWeight: 'bold',
-        fontSize: 16,
+        color: Colors.white,
+        fontWeight: '900',
+        fontSize: 17,
+        letterSpacing: 0.3,
     },
 });
 

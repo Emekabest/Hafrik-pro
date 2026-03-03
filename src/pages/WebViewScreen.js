@@ -1,458 +1,209 @@
 // src/pages/WebViewScreen.js
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  StatusBar, 
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
   TouchableOpacity,
-  Dimensions,
   ActivityIndicator,
-  Alert,
   BackHandler,
-  Platform
+  Platform,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../AuthContext';
+import AuthenticatedWebView from '../components/AuthenticatedWebView';
+import { Colors } from '../theme';
 
-const { height: screenHeight } = Dimensions.get('window');
+const BRAND = Colors.primaryDark;
+const WHITE = Colors.white;
+const DARK = Colors.black;
+const MUTED = Colors.secondaryText;
+const BORDER = Colors.border;
+const WARNING = Colors.warning;
+
+const BRIDGE_URL = 'https://hafrik.com/api/v1/auth/webview-login.php';
 
 const WebViewScreen = ({ navigation, route }) => {
-
-
   const { url, title } = route.params || {};
   const { token, user } = useAuth();
   const webViewRef = useRef(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState(url || 'https://hafrik.com');
 
-  console.log("This is url passed::" + currentUrl)
+  const [ready,       setReady]       = useState(false);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(false);
+  const [bridgeError, setBridgeError] = useState(null);
+  const [canGoBack,    setCanGoBack]    = useState(false);
+  const [currentUrl,   setCurrentUrl]   = useState(url || 'https://hafrik.com');
+  const [sessionCreds, setSessionCreds] = useState(null);
 
+  // ─── 1. Bridge + Cookie injection ─────────────────────────────────────────
+  const initSession = useCallback(async () => {
+    setBridgeError(null);
+    try {
+      const res = await fetch(BRIDGE_URL, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-  // Enhanced authentication injection script
-  const getAuthInjectionScript = useCallback(() => {
-    if (!token || !user) return '';
-    
-    const userData = JSON.stringify(user).replace(/'/g, "\\'");
-    
-    return `
-      (function() {
-        console.log('🔐 Mobile App Authentication Injection');
-        
-        // Function to set authentication tokens
-        function setAuthTokens() {
-          try {
-            // Set localStorage tokens
-            if (typeof localStorage !== 'undefined') {
-              localStorage.setItem('hafrik_token', '${token}');
-              localStorage.setItem('access_token', '${token}');
-              localStorage.setItem('app_user', '${userData}');
-              localStorage.setItem('user_data', '${userData}');
-              localStorage.setItem('is_mobile_app', 'true');
-              localStorage.setItem('app_auth_timestamp', Date.now().toString());
-              
-              // Set user data
-              const user = ${userData};
-              if (user && user.id) {
-                localStorage.setItem('user_id', user.id.toString());
-                localStorage.setItem('username', user.username || '');
-                localStorage.setItem('email', user.email || '');
-              }
-            }
-            
-            // Set cookies for domain
-            const domain = 'hafrik.com';
-            const subdomains = ['', '.hafrik.com', 'www.hafrik.com'];
-            
-            const cookieNames = [
-              'hafrik_token',
-              'access_token',
-              'auth_token',
-              'token',
-              'app_session'
-            ];
-            
-            subdomains.forEach(domainPart => {
-              const domainStr = domainPart ? ' domain=' + domainPart + domain + ';' : ' domain=' + domain + ';';
-              cookieNames.forEach(cookieName => {
-                try {
-                  document.cookie = \`\${cookieName}=${token}; path=/;\${domainStr} max-age=31536000; Secure; SameSite=None\`;
-                } catch (e) {
-                  console.log('Cookie error:', e);
-                }
-              });
-            });
-            
-            // Dispatch authentication event
-            const authEvent = new CustomEvent('mobileAppAuth', {
-              detail: { token: '${token}', user: ${userData} }
-            });
-            window.dispatchEvent(authEvent);
-            
-            return true;
-          } catch (error) {
-            console.error('Auth injection error:', error);
-            return false;
-          }
-        }
-        
-        // Function to hide login elements
-        function hideLoginElements() {
-          try {
-            const selectors = [
-              '.login-container', '#login-form', '.signin-form', '.auth-modal',
-              '[href*="/login"]', '[href*="/signin"]', '[href*="/auth"]',
-              '.login-button', '.sign-in-button',
-              'form[action*="login"]', 'form[action*="signin"]', 'form[action*="auth"]'
-            ];
-            
-            selectors.forEach(selector => {
-              try {
-                document.querySelectorAll(selector).forEach(el => {
-                  el.style.display = 'none !important';
-                  el.style.visibility = 'hidden !important';
-                  el.style.opacity = '0 !important';
-                });
-              } catch (e) {
-                console.error('Selector error:', e);
-              }
-            });
-            return true;
-          } catch (error) {
-            console.error('Hide elements error:', error);
-            return false;
-          }
-        }
-        
-        // Function to simulate logged in state
-        function simulateLoggedIn() {
-          try {
-            const user = ${userData};
-            if (!user) return;
+      const data = await res.json();
+      console.log('Bridge response:', data);
 
-            // Update user display elements
-            document.querySelectorAll('.username, .user-name, .profile-name').forEach(el => {
-              if (el.textContent) {
-                el.textContent = user.username || user.email || 'User';
-              }
-            });
-            
-            // Update navigation
-            document.querySelectorAll('a[href*="/login"], a[href*="/signin"]').forEach(link => {
-              link.href = '/profile';
-              link.textContent = 'Profile';
-              link.onclick = (e) => {
-                e.preventDefault();
-                window.location.href = '/profile';
-              };
-            });
-            return true;
-          } catch (error) {
-            console.error('Simulate login error:', error);
-            return false;
-          }
-        }
-        
-        // Function to check if we're on an auth page
-        function isAuthPage() {
-          const path = window.location.pathname.toLowerCase();
-          const authPaths = ['/login', '/signin', 'auth', '/register', '/signup'];
-          return authPaths.some(authPath => path.includes(authPath));
-        }
-        
-        // Function to redirect from auth pages
-        function redirectFromAuthPages() {
-          if (isAuthPage()) {
-            console.log('Redirecting from auth page to home');
-            window.location.replace('/');
-          }
-        }
-        
-        // Main execution
-        if (window.authInjected) {
-          console.log('Auth already injected');
-          return;
-        }
-        window.authInjected = true;
-        
-        if (setAuthTokens()) {
-          console.log('✅ Auth tokens injected successfully');
-          
-          try {
-            hideLoginElements();
-            simulateLoggedIn();
-            redirectFromAuthPages();
-          } catch (e) {
-            console.error('Main injection function error:', e);
-          }
-          
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'auth_success',
-              timestamp: Date.now()
-            }));
-          }
-        } else {
-          console.log('❌ Auth injection failed');
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'auth_failed',
-              timestamp: Date.now()
-            }));
-          }
-        }
-        
-        // Re-inject on page changes
-        window.addEventListener('load', function() {
-          setTimeout(() => {
-            try {
-              setAuthTokens();
-              hideLoginElements();
-              simulateLoggedIn();
-              redirectFromAuthPages();
-            } catch (e) {
-              console.error('Re-injection error:', e);
-            }
-          }, 500);
-        });
-        
-      })();
-      true;
-    `;
-  }, [token, user]);
+      if (data.status !== 'success') {
+        setBridgeError('Bridge error: ' + (data.message || 'unknown'));
+        return;
+      }
 
-  // Initial headers with authentication
-  const getInitialHeaders = () => {
-    if (!token || !user) return {};
-    
-    return {
-      'Authorization': `Bearer ${token}`,
-      'X-Auth-Token': token,
-      'X-Access-Token': token,
-      'X-User-Id': user?.id?.toString() || '',
-      'X-Username': user?.username || '',
-      'X-Email': user?.email || '',
-      'X-Is-Mobile-App': 'true',
-      'Accept': 'application/json, text/html, */*',
-      'Cookie': `hafrik_token=${token}; access_token=${token};`
-    };
-  };
-
-  const handleLoadStart = (syntheticEvent) => {
-    const { nativeEvent } = syntheticEvent;
-    setLoading(true);
-    setError(false);
-  };
-
-  const handleLoadEnd = (syntheticEvent) => {
-    const { nativeEvent } = syntheticEvent;
-    setLoading(false);
-    
-    // Inject authentication script after load
-    if (webViewRef.current && token && user) {
-      setTimeout(() => {
-        webViewRef.current.injectJavaScript(getAuthInjectionScript());
-      }, 500);
+      setSessionCreds({ phpsessid: data.phpsessid, session_token: data.session_token });
+      console.log('✅ Session ready, PHPSESSID:', data.phpsessid);
+      setReady(true);
+    } catch (e) {
+      console.error('Bridge error:', e);
+      setBridgeError(e.message);
     }
-  };
+  }, [token]);
 
-  const handleError = (syntheticEvent) => {
-    const { nativeEvent } = syntheticEvent;
-    console.error('WebView error:', nativeEvent);
-    setLoading(false);
-    setError(true);
-  };
+  useEffect(() => {
+    if (token) initSession();
+  }, [token]);
+
+  // ─── 2. Cookie injection + redirect away from auth pages ─────────────────
+  const injectedScript = useMemo(() => {
+    const cookiePart = sessionCreds
+      ? `(function(){if(document.cookie.indexOf('PHPSESSID=')!==-1)return;var e=new Date();e.setDate(e.getDate()+30);var x=e.toUTCString();document.cookie='PHPSESSID=${sessionCreds.phpsessid};path=/;domain=.hafrik.com;expires='+x;document.cookie='session_token=${sessionCreds.session_token};path=/;domain=.hafrik.com;expires='+x;window.location.reload();})();`
+      : '';
+    return cookiePart + `(function(){var p=window.location.pathname.toLowerCase();var a=['/login','/signin','/register','/signup'];if(a.some(function(x){return p.includes(x);})){window.location.replace('/');}})();true;`;
+  }, [sessionCreds]);
+
+  // ─── 3. Navigation handlers ───────────────────────────────────────────────
+  const handleLoadStart = () => { setLoading(true);  setError(false); };
+  const handleLoadEnd   = () =>   setLoading(false);
+  const handleError     = () => { setLoading(false);  setError(true); };
 
   const handleNavigationStateChange = (navState) => {
     setCanGoBack(navState.canGoBack);
     setCurrentUrl(navState.url);
-    
-    if (!navState.loading && token && user) {
-      // Re-inject auth on navigation
-      setTimeout(() => {
-        if (webViewRef.current) {
-          webViewRef.current.injectJavaScript(getAuthInjectionScript());
-        }
-      }, 300);
-    }
-  };
-
-  const handleMessage = (event) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-
-      
-      if (data.type === 'auth_failed') {
-        Alert.alert(
-          'Authentication Required',
-          'Please log in through the app to access this content.',
-          [
-            {
-              text: 'Go to Login',
-              onPress: () => navigation.navigate('Auth')
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel'
-            }
-          ]
-        );
-      }
-    } catch (e) {
-      // Ignore parse errors
-    }
   };
 
   const handleReload = () => {
     setError(false);
     setLoading(true);
-    if (webViewRef.current) {
-      webViewRef.current.reload();
-    }
+    webViewRef.current?.reload();
   };
 
   const handleBack = () => {
-    if (canGoBack && webViewRef.current) {
-      webViewRef.current.goBack();
-    } else {
-      navigation.goBack();
-    }
+    if (canGoBack && webViewRef.current) webViewRef.current.goBack();
+    else navigation.goBack();
   };
 
-  // Handle Android back button
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      () => {
-        if (canGoBack && webViewRef.current) {
-          webViewRef.current.goBack();
-          return true;
-        }
-        return false;
-      }
-    );
-
-    return () => backHandler.remove();
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (canGoBack && webViewRef.current) { webViewRef.current.goBack(); return true; }
+      return false;
+    });
+    return () => handler.remove();
   }, [canGoBack]);
 
-  // Show login required if no token
-  console.log("Webviewscreen is working")
-
+  // ─── 4. Guard: no token ───────────────────────────────────────────────────
   if (!token || !user) {
-
-
-
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
-        <View style={styles.authRequiredContainer}>
-          <Ionicons name="lock-closed-outline" size={64} color="#0C3F44" />
-          <Text style={styles.authRequiredTitle}>Authentication Required</Text>
-          <Text style={styles.authRequiredText}>
-            Please log in to access web content
-          </Text>
-          <TouchableOpacity 
-            style={styles.loginButton}
-            onPress={() => navigation.navigate('Auth')}
-          >
-            <Text style={styles.loginButtonText}>Go to Login</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
+        <View style={styles.centeredContainer}>
+          <Ionicons name="lock-closed-outline" size={64} color={BRAND} />
+          <Text style={styles.titleText}>Authentication Required</Text>
+          <Text style={styles.subText}>Please log in to access this content</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Auth')}>
+            <Text style={styles.primaryBtnText}>Go to Login</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  
+  // ─── 5. Guard: bridge failed ──────────────────────────────────────────────
+  if (bridgeError) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredContainer}>
+          <Ionicons name="warning-outline" size={64} color={WARNING} />
+          <Text style={styles.titleText}>Session Error</Text>
+          <Text style={styles.subText}>{bridgeError}</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={initSession}>
+            <Text style={styles.primaryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ─── 6. Guard: waiting for cookies ────────────────────────────────────────
+  if (!ready) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredContainer}>
+          <ActivityIndicator size="large" color={BRAND} />
+          <Text style={styles.subText}>Authenticating…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ─── 7. Main WebView ──────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
-      {/* Header */}
+
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButtonHeader}
-          onPress={handleBack}
-        >
-          <Ionicons name="arrow-back" size={24} color="#0C3F44" />
+        <TouchableOpacity style={styles.iconBtn} onPress={handleBack}>
+          <Ionicons name="arrow-back" size={24} color={BRAND} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {title || 'Hafrik'}
-        </Text>
-        <TouchableOpacity 
-          style={styles.reloadButton}
-          onPress={handleReload}
-        >
-          <Ionicons name="refresh" size={24} color="#0C3F44" />
+        <Text style={styles.headerTitle} numberOfLines={1}>{title || 'Hafrik'}</Text>
+        <TouchableOpacity style={styles.iconBtn} onPress={handleReload}>
+          <Ionicons name="refresh" size={24} color={BRAND} />
         </TouchableOpacity>
       </View>
 
-      {/* WebView */}
-      <WebView
+      <AuthenticatedWebView
         ref={webViewRef}
-        source={{ 
-          uri: currentUrl,
-          headers: getInitialHeaders()
-        }}
+        source={{ uri: currentUrl }}
         style={styles.webview}
-        startInLoadingState={true}
-        allowsBackForwardNavigationGestures={true}
+        injectedJavaScript={injectedScript}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
         onNavigationStateChange={handleNavigationStateChange}
-        onMessage={handleMessage}
-        injectedJavaScript={getAuthInjectionScript()}
         onContentProcessDidTerminate={handleReload}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        sharedCookiesEnabled={true}
-        thirdPartyCookiesEnabled={true}
         cacheEnabled={true}
         originWhitelist={['*']}
-        mixedContentMode="always"
-        overScrollMode="content"
-        userAgent={`Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 HafrikApp/${Platform.OS}/${user.id}`}
-        applicationNameForUserAgent="HafrikApp"
-        setSupportMultipleWindows={false}
+        userAgent={`Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 HafrikApp/${Platform.OS}`}
       />
 
-      {/* Loading Indicator */}
       {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0C3F44" />
-          <Text style={styles.loadingText}>Loading...</Text>
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color={BRAND} />
+          <Text style={styles.subText}>Loading…</Text>
         </View>
       )}
 
-      {/* Error State */}
       {error && (
-        <View style={styles.errorContainer}>
-          <Ionicons name="warning-outline" size={64} color="#ff6b6b" />
-          <Text style={styles.errorTitle}>Connection Error</Text>
-          <Text style={styles.errorText}>
-            Unable to load the content. Please check your connection and try again.
-          </Text>
-          <TouchableOpacity style={styles.retryButton} onPress={handleReload}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
+        <View style={styles.overlay}>
+          <Ionicons name="warning-outline" size={64} color={WARNING} />
+          <Text style={styles.titleText}>Connection Error</Text>
+          <Text style={styles.subText}>Check your connection and try again.</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleReload}>
+            <Text style={styles.primaryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Debug Info (Dev only) */}
       {__DEV__ && (
-        <View style={styles.debugInfo}>
+        <View style={styles.debugBar}>
           <Text style={styles.debugText}>
-            User: {user?.username} | URL: {currentUrl?.substring(0, 30)}...
+            {user?.username} | {currentUrl?.substring(0, 40)}
           </Text>
         </View>
       )}
@@ -461,10 +212,7 @@ const WebViewScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: WHITE },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -472,122 +220,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
+    borderBottomColor: BORDER,
+    backgroundColor: WHITE,
   },
-  backButtonHeader: {
-    padding: 5,
-  },
+  iconBtn: { padding: 5 },
   headerTitle: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: DARK,
     textAlign: 'center',
     marginHorizontal: 10,
   },
-  reloadButton: {
-    padding: 5,
-  },
-  webview: {
-    flex: 1,
-  },
-  loadingContainer: {
+  webview: { flex: 1 },
+  overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     zIndex: 10,
-  },
-  loadingText: {
-    marginTop: 10,
-    color: '#666',
-    fontSize: 16,
-  },
-  errorContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
     padding: 20,
-    zIndex: 10,
   },
-  errorTitle: {
+  centeredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  titleText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: DARK,
     marginTop: 16,
     marginBottom: 8,
   },
-  errorText: {
-    fontSize: 16,
-    color: '#666',
+  subText: {
+    fontSize: 15,
+    color: MUTED,
     textAlign: 'center',
-    lineHeight: 22,
+    marginTop: 8,
     marginBottom: 20,
   },
-  retryButton: {
-    backgroundColor: '#0C3F44',
+  primaryBtn: {
+    backgroundColor: BRAND,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
+    marginTop: 10,
   },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  authRequiredContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  authRequiredTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  authRequiredText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  loginButton: {
-    backgroundColor: '#0C3F44',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  backButton: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  debugInfo: {
-    backgroundColor: '#0C3F44',
-    padding: 5,
-  },
-  debugText: {
-    color: '#fff',
-    fontSize: 10,
-  },
+  primaryBtnText: { color: WHITE, fontSize: 16, fontWeight: '600' },
+  debugBar: { backgroundColor: BRAND, padding: 5 },
+  debugText: { color: WHITE, fontSize: 10 },
 });
 
 export default WebViewScreen;

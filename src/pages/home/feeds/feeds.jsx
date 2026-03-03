@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Text,
   ScrollView,
+  Image,
+  Platform,
 } from "react-native";
 import FeedCard from "./feedcard.jsx";
 import { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
@@ -16,7 +18,7 @@ import QuickLinks from "../quicklinks.jsx";
 import PostFeed from "../postfeed.jsx";
 import { useAuth } from "../../../AuthContext.js";
 import FeedsHeader from "../feedsheader.jsx";
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import useStore from "../../../repository/store.js";
 import VideoPreloader from "../../../helpers/VideoPreloader.js";
 import { FlashList } from "@shopify/flash-list";
@@ -25,21 +27,116 @@ import CommentModal from "./comments/commentmodal.jsx";
 import ProfileTabs from "../../profile/tabs.jsx";
 import TimelineComponents from "../../profile/timeline/timelineComponents.jsx";
 import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "../../../theme";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const BG_BASE = '#F0F5F5';
-const BG_CARD = '#ffffff';
-const BRAND   = '#0C3F44';
-const ACCENT  = '#13C296';
+const BG_BASE = Colors.surfaceTint;
+const BG_CARD = Colors.white;
+const BRAND   = Colors.primaryDark;
+const ACCENT  = Colors.primary;
+const MUTED   = Colors.secondaryText;
 
 // ─── Filter definitions ───────────────────────────────────────────────────────
 const FEED_FILTERS = [
-  { label: 'All',      value: '',         icon: 'grid-outline'      },
-  { label: 'Pictures', value: 'pictures', icon: 'image-outline'     },
-  { label: 'Videos',   value: 'videos',   icon: 'videocam-outline'  },
-  { label: 'Reels',    value: 'reels',    icon: 'flame-outline'     },
-  { label: 'Articles', value: 'articles', icon: 'newspaper-outline' },
+  { label: 'All',      value: '',        icon: 'grid-outline',      params: {} },
+  { label: 'Photos',   value: 'photos',  icon: 'image-outline',     params: { type: 'photos' } },
+  { label: 'Videos',   value: 'video',   icon: 'videocam-outline',  params: { type: 'video' } },
+  { label: 'Reels',    value: 'reel',    icon: 'flame-outline',     params: { type: 'reel' } },
+  { label: 'Articles', value: 'article', icon: 'newspaper-outline', params: { type: 'article' } },
 ];
+
+// ─── People You May Know card ─────────────────────────────────────────────────
+const PeopleYouMayKnow = memo(({ people }) => {
+  const navigation = useNavigation();
+  if (!people?.length) return null;
+  return (
+    <View style={styles.peopleCard}>
+      {/* Header */}
+      <View style={styles.peopleHeader}>
+        <View style={styles.peopleHeaderLeft}>
+          <View style={styles.peopleIconBubble}>
+            <Ionicons name="people" size={15} color={Colors.white} />
+          </View>
+          <Text style={styles.peopleCardTitle}>People You May Know</Text>
+        </View>
+        <TouchableOpacity activeOpacity={0.7}>
+          <Text style={styles.peopleSeeAll}>See All</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Horizontal scroll */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.peopleList}
+      >
+        {people.map((person, idx) => (
+          <TouchableOpacity
+            key={person.id ?? idx}
+            style={styles.personItem}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Profile', { userId: person.id })}
+          >
+            <View style={styles.personAvatarRing}>
+              <Image
+                source={{ uri: person.avatar || person.profile_picture }}
+                style={styles.personAvatar}
+              />
+            </View>
+            <Text style={styles.personName} numberOfLines={2}>
+              {person.name || person.username}
+            </Text>
+            <TouchableOpacity style={styles.connectBtn} activeOpacity={0.8}>
+              <Ionicons name="person-add-outline" size={11} color={Colors.white} />
+              <Text style={styles.connectBtnText}>Connect</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+});
+
+// ─── Ad card ─────────────────────────────────────────────────────────────────
+const AdCard = memo(({ ad }) => {
+  const navigation = useNavigation();
+  if (!ad) return null;
+  return (
+    <TouchableOpacity
+      style={styles.adCard}
+      activeOpacity={0.9}
+      onPress={() => ad.link && navigation.navigate('WebView', { url: ad.link, title: ad.title || 'Ad' })}
+    >
+      {/* Image or gradient fallback */}
+      <View style={styles.adImageWrapper}>
+        {ad.image ? (
+          <Image source={{ uri: ad.image }} style={styles.adImage} resizeMode="cover" />
+        ) : (
+          <View style={styles.adImageFallback} />
+        )}
+        {/* Sponsored badge overlay */}
+        <View style={styles.adBadge}>
+          <View style={styles.adBadgeDot} />
+          <Text style={styles.adBadgeText}>Sponsored</Text>
+        </View>
+      </View>
+
+      {/* Body */}
+      <View style={styles.adBody}>
+        <View style={styles.adBodyText}>
+          <Text style={styles.adTitle} numberOfLines={2}>{ad.title}</Text>
+          {!!ad.description && (
+            <Text style={styles.adDesc} numberOfLines={2}>{ad.description}</Text>
+          )}
+        </View>
+        <View style={styles.adCta}>
+          <Text style={styles.adCtaText}>Learn More</Text>
+          <Ionicons name="arrow-forward" size={13} color={ACCENT} />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 // ─── Memoized section components ──────────────────────────────────────────────
 const MemoizedBanner      = memo(Banner);
@@ -114,13 +211,13 @@ const InlineFiltersBar = memo(({ contentFilter, onFilterPress, onLayout, indicat
             key={item.value || 'all'}
             style={[styles.filterButton, active && styles.filterButtonActive]}
             activeOpacity={0.85}
-            onPress={() => onFilterPress(item.value, index)}
+            onPress={() => onFilterPress(item, index)}
             onLayout={(e) => onLayout(e, index, contentFilter, item.value)}
           >
             <Ionicons
               name={item.icon}
               size={16}
-              color={active ? '#fff' : '#2b2b2b'}
+              color={active ? Colors.white : Colors.black}
               style={{ marginRight: 6 }}
             />
             <Text style={[styles.filterText, active && styles.filterTextActive]}>
@@ -132,7 +229,8 @@ const InlineFiltersBar = memo(({ contentFilter, onFilterPress, onLayout, indicat
     </ScrollView>
   </View>
 ));
-
+// ─── Stable separator (never re-created) ────────────────────────────────────────────
+const Separator = () => <View style={styles.separator} />;
 // ─── Feeds ────────────────────────────────────────────────────────────────────
 const Feeds = ({
   feedsName,
@@ -149,7 +247,12 @@ const Feeds = ({
   const loadingMoreRef = useRef(false);
   const [loadingMore,    setLoadingMore]    = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [visibleFeedId,  setVisibleFeedId]  = useState(null); // ✅ track visible video
+  const [visibleFeedId,  setVisibleFeedId]  = useState(null); // drives extraData re-render
+  const visibleFeedIdRef  = useRef(null);   // stable ref for renderItem (immediate)
+  const visibleDebounceRef = useRef(null);  // debounce timer for extraData state
+  const flashListRef       = useRef(null);
+  const [showScrollTop,  setShowScrollTop]  = useState(false);
+  const scrollTopVisible  = useRef(false);
   const { token } = useAuth();
 
   const BASE_URL = 'https://hafrik.com';
@@ -204,10 +307,30 @@ const Feeds = ({
     }
   }, [feeds.length, initialLoading, feedsController, API_URL, token]);
 
-  // ✅ Track which feed item is visible on screen (video) + send view to backend once per session
+  // Track scroll offset → show/hide back-to-top button
+  const handleScroll = useCallback((e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const shouldShow = y > 900;
+    if (shouldShow !== scrollTopVisible.current) {
+      scrollTopVisible.current = shouldShow;
+      setShowScrollTop(shouldShow);
+    }
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
+
+  // Track which feed item is visible on screen (video) + send view to backend once per session
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     const firstFeed = viewableItems.find(v => v.item?.type === 'feed');
-    setVisibleFeedId(firstFeed?.item?.data?.id ?? null);
+    const nextId = firstFeed?.item?.data?.id ?? null;
+    // Update the ref immediately so renderCombinedItem always reads the right value
+    visibleFeedIdRef.current = nextId;
+    // Debounce the state update that drives extraData — prevents FlashList from
+    // re-evaluating all visible cells on every single scroll tick
+    clearTimeout(visibleDebounceRef.current);
+    visibleDebounceRef.current = setTimeout(() => setVisibleFeedId(nextId), 150);
 
     viewableItems.forEach((v) => {
       const postId = v?.item?.type === 'feed' ? v?.item?.data?.id : null;
@@ -224,7 +347,7 @@ const Feeds = ({
   });
 
   const viewabilityConfig = useMemo(() => ({
-    itemVisiblePercentThreshold: 60,
+    itemVisiblePercentThreshold: 70,
     waitForInteraction: false,
   }), []);
 
@@ -266,21 +389,27 @@ const Feeds = ({
       case 'feed':
         return (
           <View style={styles.feedCardWrapper}>
-            {/* ✅ Pass isVisible so video pauses when scrolled away */}
+            {/* read from ref so this callback stays stable (no visibleFeedId dep) */}
             <FeedCard
               feed={item.data}
-              isVisible={visibleFeedId === item.data.id}
+              isVisible={visibleFeedIdRef.current === item.data.id}
               onPostPress={onPostPress}
             />
           </View>
         );
+
+      case 'peoplecard':
+        return <PeopleYouMayKnow people={item.data} />;
+
+      case 'ad':
+        return <AdCard ad={item.data} />;
 
       default:
         // Generic catch-all: lets Explore/profile sections pass a renderComponent fn
         if (typeof item?.renderComponent === 'function') return item.renderComponent();
         return null;
     }
-  }, [visibleFeedId, onPostPress]); // ✅ visibleFeedId and onPostPress in deps
+  }, [onPostPress]); // stable — visibleFeedId read via ref, not closure
 
   const renderFooter = useCallback(
     () => <FooterLoader visible={loadingMore} />,
@@ -297,27 +426,43 @@ const Feeds = ({
   return (
     <View style={styles.container}>
       <FlashList
+        ref={flashListRef}
         data={combinedData}
         estimatedItemSize={550}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
         renderItem={renderCombinedItem}
         onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.3}
+        onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
         refreshing={refreshing}
         onRefresh={onRefresh}
-        onViewableItemsChanged={onViewableItemsChanged.current} // ✅
-        viewabilityConfig={viewabilityConfig}           // ✅
+        onViewableItemsChanged={onViewableItemsChanged.current}
+        viewabilityConfig={viewabilityConfig}
+        extraData={visibleFeedId}
         ListFooterComponent={renderFooter}
         contentContainerStyle={styles.listContent}
         stickyHeaderIndices={stickyHeaderIndices?.length ? stickyHeaderIndices : []}
+        onScroll={handleScroll}
+        scrollEventThrottle={200}
         removeClippedSubviews
         initialNumToRender={4}
         maxToRenderPerBatch={4}
         windowSize={5}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={Separator}
       />
+
+      {/* ── Back-to-top FAB ──────────────────────────────────────────────── */}
+      {showScrollTop && (
+        <TouchableOpacity
+          style={styles.scrollTopBtn}
+          onPress={scrollToTop}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="chevron-up" size={20} color={Colors.white} />
+        </TouchableOpacity>
+      )}
+
       <CommentModal />
     </View>
   );
@@ -328,6 +473,24 @@ const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: BG_BASE },
   listContent: { backgroundColor: BG_BASE, paddingBottom: 40 },
   separator:   { height: 6, backgroundColor: BG_BASE },
+
+  scrollTopBtn: {
+    position:        'absolute',
+    bottom:          24,
+    right:           18,
+    width:           44,
+    height:          44,
+    borderRadius:    22,
+    backgroundColor: BRAND,
+    alignItems:      'center',
+    justifyContent:  'center',
+    shadowColor:     BRAND,
+    shadowOffset:    { width: 0, height: 4 },
+    shadowOpacity:   0.35,
+    shadowRadius:    8,
+    elevation:       8,
+    zIndex:          50,
+  },
 
   feedCardWrapper: {
     backgroundColor: BG_CARD,
@@ -356,11 +519,176 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
   },
 
+  // ── People You May Know ──────────────────────────────────────────────────
+  peopleCard: {
+    backgroundColor: BG_CARD,
+    paddingTop: 14,
+    paddingBottom: 18,
+    borderLeftWidth: 3,
+    borderLeftColor: ACCENT,
+  },
+  peopleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    marginBottom: 14,
+  },
+  peopleHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  peopleIconBubble: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  peopleCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BRAND,
+    letterSpacing: -0.2,
+  },
+  peopleSeeAll: {
+    fontSize: 12,
+    color: ACCENT,
+    fontWeight: '600',
+  },
+  peopleList: {
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  personItem: {
+    alignItems: 'center',
+    width: 76,
+  },
+  personAvatarRing: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    borderWidth: 2,
+    borderColor: ACCENT,
+    padding: 2,
+    backgroundColor: BG_CARD,
+  },
+  personAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+    backgroundColor: Colors.surfaceTint,
+  },
+  personName: {
+    fontSize: 11,
+    color: Colors.black,
+    marginTop: 6,
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 14,
+  },
+  connectBtn: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: BRAND,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  connectBtnText: {
+    fontSize: 10,
+    color: Colors.white,
+    fontWeight: '700',
+  },
+
+  // ── Ad card ──────────────────────────────────────────────────────────────
+  adCard: {
+    backgroundColor: BG_CARD,
+    overflow: 'hidden',
+  },
+  adImageWrapper: {
+    position: 'relative',
+  },
+  adImage: {
+    width: '100%',
+    height: 190,
+  },
+  adImageFallback: {
+    width: '100%',
+    height: 190,
+    backgroundColor: BRAND,
+  },
+  adBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.black + '8C',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  adBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: ACCENT,
+  },
+  adBadgeText: {
+    fontSize: 10,
+    color: Colors.white,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  adBody: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  adBodyText: {
+    flex: 1,
+  },
+  adTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.black,
+    lineHeight: 19,
+  },
+  adDesc: {
+    fontSize: 12,
+    color: MUTED,
+    marginTop: 3,
+    lineHeight: 16,
+  },
+  adCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: ACCENT,
+  },
+  adCtaText: {
+    fontSize: 12,
+    color: ACCENT,
+    fontWeight: '700',
+  },
+
   // Filter bar
   filterWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#0C3F44',
+    borderBottomColor: BRAND,
   },
   filterContainer: {
     paddingHorizontal: 12,
@@ -376,21 +704,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   filterButtonActive: {
-    backgroundColor: '#0C3F44',
+    backgroundColor: BRAND,
   },
   filterText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2b2b2b',
+    color: Colors.black,
   },
   filterTextActive: {
-    color: '#fff',
+    color: Colors.white,
   },
   filterIndicator: {
     position: 'absolute',
     top: 10,
     bottom: 10,
-    backgroundColor: '#0C3F44',
+    backgroundColor: BRAND,
     borderRadius: 20,
     zIndex: -1,
   },

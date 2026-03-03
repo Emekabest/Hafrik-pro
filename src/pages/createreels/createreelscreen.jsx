@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Alert, SafeAreaView, KeyboardAvoidingView, Platform, Image, AppState, Modal } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  ActivityIndicator, Alert, SafeAreaView, KeyboardAvoidingView,
+  Platform, AppState, Modal, Animated, Dimensions, ScrollView,
+} from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../AuthContext';
@@ -13,9 +20,26 @@ import Preview from './preview';
 import ReelsManager from '../../helpers/reelsmanager';
 import VideoManager from '../../helpers/videomanager';
 import useStore from '../../repository/store';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
+
+const { width: SW } = Dimensions.get('window');
+const DARK   = Colors.nearBlack;
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const GLASS  = withOpacity(Colors.white, 0.07);
+const BORDER = withOpacity(Colors.white, 0.11);
+const MAX_CAPTION = 300;
 
 const CreateReels = ({ navigation, route }) => {
     const { token } = useAuth();
+    const { top, bottom } = useSafeAreaInsets();
     const [caption, setCaption] = useState('');
     const [location, setLocation] = useState('');
     const [selectedVideo, setSelectedVideo] = useState(null);
@@ -23,6 +47,16 @@ const CreateReels = ({ navigation, route }) => {
     const [posting, setPosting] = useState(false);
     const [step, setStep] = useState('gallery'); // 'gallery' | 'preview' | 'details'
     const [uploadProgress, setUploadProgress] = useState(0);
+
+    // Animated progress bar width
+    const barAnim = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        Animated.timing(barAnim, {
+            toValue: uploadProgress / 100,
+            duration: 350,
+            useNativeDriver: false,
+        }).start();
+    }, [uploadProgress]);
 
     const currentReel_store = useStore((state)=> state.currentReel);
     const isNextVideo_store = useStore((state) => state.isNextVideo);
@@ -223,7 +257,7 @@ const CreateReels = ({ navigation, route }) => {
     const handleChangeThumbnail = async () => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ImagePicker.MediaType.images,
                 allowsEditing: true,
                 aspect: [9, 16],
                 quality: 1,
@@ -292,239 +326,486 @@ const CreateReels = ({ navigation, route }) => {
 
 
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => {
-                    uploadIdRef.current = 0;
-                    setUploading(false);
-                    setStep('preview');
-                }}>
-                    <Ionicons name="arrow-back" size={28} color="black" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>New Reel</Text>
-                <View style={{ width: 28 }} />
-            </View>
-            
-            <View style={styles.content}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Write a caption..."
-                    value={caption}
-                    onChangeText={setCaption}
-                    multiline
-                />
+    const canPost = !!selectedVideo?.serverUrl && !posting && !uploading;
 
-                <View style={styles.locationContainer}>
-                    <Ionicons name="location-outline" size={20} color="#666" />
-                    <TextInput
-                        style={styles.locationInput}
-                        placeholder="Add Location"
-                        placeholderTextColor="#999"
-                        value={location}
-                        onChangeText={setLocation}
-                    />
+    return (
+        <KeyboardAvoidingView
+            style={{ flex: 1, backgroundColor: DARK }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+            <SafeAreaView style={{ flex: 1, backgroundColor: DARK }}>
+
+                {/* ── Header ── */}
+                <View style={[s.header, { paddingTop: Platform.OS === 'android' ? top + 6 : 0 }]}>
+                    <TouchableOpacity
+                        style={s.backBtn}
+                        onPress={() => {
+                            uploadIdRef.current = 0;
+                            setUploading(false);
+                            setStep('preview');
+                        }}
+                    >
+                        <Ionicons name="arrow-back" size={22} color={Colors.white} />
+                    </TouchableOpacity>
+
+                    <Text style={s.headerTitle}>New Reel</Text>
+
+                    <TouchableOpacity
+                        style={[s.postPill, !canPost && { opacity: 0.35 }]}
+                        onPress={handlePost}
+                        disabled={!canPost}
+                        activeOpacity={0.8}
+                    >
+                        <LinearGradient
+                            colors={[ACCENT, Colors.tealAccentMid]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={s.postPillGrad}
+                        >
+                            {posting
+                                ? <ActivityIndicator size="small" color={Colors.white} />
+                                : <Text style={s.postPillTxt}>Share</Text>
+                            }
+                        </LinearGradient>
+                    </TouchableOpacity>
                 </View>
-                
-                {selectedVideo ? (
-                    <View style={styles.selectedMediaContainer}>
-                        <View style={styles.thumbnailRow}>
-                            <Image
-                                source={{ uri: selectedVideo.localThumbnailUri || selectedVideo.thumbnailUrl }}
-                                style={styles.smallThumbnail}
-                                resizeMode="cover"
-                            />
-                            <TouchableOpacity onPress={handleChangeThumbnail} style={styles.changeThumbnailButton} disabled={uploading}>
-                                <Ionicons name="image-outline" size={24} color={uploading ? "#ccc" : "#333"} />
-                                <Text style={[styles.changeThumbnailText, uploading && {color: '#ccc'}]}>Change Cover</Text>
+
+                <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={s.scroll}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* ── Preview card + form row ── */}
+                    <View style={s.mainRow}>
+
+                        {/* Thumbnail */}
+                        <View style={s.thumbWrap}>
+                            {selectedVideo?.localThumbnailUri || selectedVideo?.thumbnailUrl ? (
+                                <ExpoImage
+                                    source={{ uri: selectedVideo.localThumbnailUri || selectedVideo.thumbnailUrl }}
+                                    style={s.thumb}
+                                    contentFit="cover"
+                                    cachePolicy="memory"
+                                />
+                            ) : (
+                                <View style={[s.thumb, s.thumbPlaceholder]}>
+                                    <Ionicons name="videocam-outline" size={28} color={withOpacity(Colors.white, 0.25)} />
+                                </View>
+                            )}
+                            {/* change cover */}
+                            <TouchableOpacity
+                                style={s.changeCoverBtn}
+                                onPress={handleChangeThumbnail}
+                                disabled={uploading}
+                            >
+                                <Ionicons name="image-outline" size={14} color={Colors.white} />
+                                <Text style={s.changeCoverTxt}>Cover</Text>
                             </TouchableOpacity>
                         </View>
 
-                        {(uploading || uploadProgress === 100) && (
-                            <View style={styles.uploadStatusContainer}>
-                                <Text style={styles.uploadTextLabel}>{uploading ? "Uploading Media..." : "Upload Complete"}</Text>
-                                <View style={styles.progressBarContainer}>
-                                    <View style={[styles.progressBarFill, { width: `${uploadProgress}%` }]} />
-                                </View>
-                                <Text style={styles.uploadPercentage}>{Math.round(uploadProgress)}%</Text>
+                        {/* Caption */}
+                        <View style={s.captionCard}>
+                            <TextInput
+                                style={s.captionInput}
+                                placeholder="Write a caption, add hashtags..."
+                                placeholderTextColor={withOpacity(Colors.white, 0.28)}
+                                value={caption}
+                                onChangeText={(t) => setCaption(t.slice(0, MAX_CAPTION))}
+                                multiline
+                                maxLength={MAX_CAPTION}
+                                selectionColor={ACCENT}
+                            />
+                            <Text style={s.charCount}>
+                                {caption.length}/{MAX_CAPTION}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* ── Upload progress ── */}
+                    {(uploading || uploadProgress > 0) && (
+                        <View style={s.progressWrap}>
+                            <View style={s.progressRow}>
+                                <Text style={s.progressLabel}>
+                                    {uploadProgress < 100 ? 'Uploading…' : '✓ Upload complete'}
+                                </Text>
+                                <Text style={s.progressPct}>{Math.round(uploadProgress)}%</Text>
                             </View>
-                        )}
-                    
-                    </View>
-                ) : (
-                    <TouchableOpacity style={styles.uploadButton} onPress={() => setStep('gallery')}>
-                        <Ionicons name="videocam-outline" size={40} color="#666" />
-                        <Text style={styles.uploadText}>Select Video</Text>
-                    </TouchableOpacity>
-                )}
+                            <View style={s.progressTrack}>
+                                <Animated.View
+                                    style={[
+                                        s.progressFill,
+                                        {
+                                            width: barAnim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: ['0%', '100%'],
+                                            }),
+                                        },
+                                    ]}
+                                />
+                                {/* glow dot */}
+                                {uploading && (
+                                    <Animated.View
+                                        style={[
+                                            s.progressGlow,
+                                            {
+                                                left: barAnim.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: ['0%', '100%'],
+                                                }),
+                                            },
+                                        ]}
+                                    />
+                                )}
+                            </View>
+                        </View>
+                    )}
 
-                <View style={styles.bottomActionContainer}>
-                    <TouchableOpacity 
-                        activeOpacity={1}
-                        onPress={handlePost} 
-                        disabled={posting || uploading || !selectedVideo}
-                        style={[styles.bottomPostButton, { backgroundColor: AppDetails.primaryColor }, (posting || uploading || !selectedVideo) && { opacity: 0.5 }]}>
-                        <Text style={styles.bottomPostButtonText}>{posting ? "Posting..." : "Post"}</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
+                    {/* ── Options ── */}
+                    <View style={s.optionsWrap}>
 
-            <Modal
-                transparent={true}
-                animationType="fade"
-                visible={posting}
-                onRequestClose={() => {}}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.loadingBox}>
-                        <ActivityIndicator size="large" color={AppDetails.primaryColor} />
-                        <Text style={{marginTop: 10, color: '#333', fontWeight: '600'}}>Posting Reel...</Text>
+                        {/* Location */}
+                        <View style={s.optionRow}>
+                            <View style={s.optionIcon}>
+                                <Ionicons name="location-outline" size={18} color={ACCENT} />
+                            </View>
+                            <TextInput
+                                style={s.optionInput}
+                                placeholder="Add location"
+                                placeholderTextColor={withOpacity(Colors.white, 0.28)}
+                                value={location}
+                                onChangeText={setLocation}
+                                selectionColor={ACCENT}
+                            />
+                            {location.length > 0 && (
+                                <TouchableOpacity onPress={() => setLocation('')}>
+                                    <Ionicons name="close-circle" size={16} color={withOpacity(Colors.white, 0.35)} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        <View style={s.divider} />
+
+                        {/* Audience pill */}
+                        <View style={s.optionRow}>
+                            <View style={s.optionIcon}>
+                                <Ionicons name="earth-outline" size={18} color={ACCENT} />
+                            </View>
+                            <Text style={s.optionLabel}>Audience</Text>
+                            <View style={s.audiencePill}>
+                                <Text style={s.audiencePillTxt}>Everyone</Text>
+                            </View>
+                        </View>
+
+                        <View style={s.divider} />
+
+                        {/* Comments */}
+                        <View style={s.optionRow}>
+                            <View style={s.optionIcon}>
+                                <Ionicons name="chatbubble-ellipses-outline" size={18} color={ACCENT} />
+                            </View>
+                            <Text style={s.optionLabel}>Allow comments</Text>
+                            <View style={s.audiencePill}>
+                                <Text style={s.audiencePillTxt}>On</Text>
+                            </View>
+                        </View>
                     </View>
-                </View>
-            </Modal>
-        </SafeAreaView>
+
+                    {/* ── Big post button ── */}
+                    <TouchableOpacity
+                        onPress={handlePost}
+                        disabled={!canPost}
+                        activeOpacity={0.86}
+                        style={{ marginHorizontal: 18, marginTop: 28, marginBottom: Math.max(bottom + 20, 36) }}
+                    >
+                        <LinearGradient
+                            colors={canPost ? [ACCENT, Colors.tealAccentDark] : [Colors.neutral780, Colors.neutral780]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={s.bigPostBtn}
+                        >
+                            {posting ? (
+                                <>
+                                    <ActivityIndicator size="small" color={Colors.white} />
+                                    <Text style={s.bigPostTxt}>Posting…</Text>
+                                </>
+                            ) : uploading ? (
+                                <>
+                                    <ActivityIndicator size="small" color={Colors.white} />
+                                    <Text style={s.bigPostTxt}>Uploading…</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Ionicons name="send" size={20} color={Colors.white} />
+                                    <Text style={s.bigPostTxt}>Post Reel</Text>
+                                </>
+                            )}
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </ScrollView>
+
+                {/* Posting overlay */}
+                <Modal transparent animationType="fade" visible={posting} onRequestClose={() => {}}>
+                    <View style={s.overlay}>
+                        <View style={s.overlayBox}>
+                            <ActivityIndicator size="large" color={ACCENT} />
+                            <Text style={s.overlayTxt}>Posting reel…</Text>
+                        </View>
+                    </View>
+                </Modal>
+            </SafeAreaView>
+        </KeyboardAvoidingView>
     );
 };
 
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-        paddingTop: Platform.OS === 'android' ? 30 : 0
-    },
+const s = StyleSheet.create({
+    // Header
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        height: 50,
+        paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: BORDER,
+    },
+    backBtn: {
+        width: 38, height: 38,
+        borderRadius: 19,
+        backgroundColor: GLASS,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: '600',
+        color: Colors.white,
+        fontSize: 17,
+        fontWeight: '800',
+        letterSpacing: 0.3,
     },
-    postButton: {
-        color: '#0095f6',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    content: {
-        flex: 1,
-        padding: 16,
-    },
-    input: {
-        fontSize: 16,
-        marginBottom: 10,
-        minHeight: 60,
-    },
-    locationContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    locationInput: {
-        flex: 1,
-        fontSize: 16,
-        marginLeft: 10,
-    },
-    uploadButton: {
-        height: 200,
-        backgroundColor: '#f0f0f0',
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    uploadText: {
-        marginTop: 10,
-        color: '#666',
-        fontSize: 16,
-    },
-    selectedMediaContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginVertical: 20,
-    },
-    smallThumbnail: {
-        width: 100,
-        height: 100,
-        borderRadius: 10,
-        backgroundColor: '#eee',
-    },
-    thumbnailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    changeThumbnailButton: {
-        marginLeft: 20,
-        alignItems: 'center',
-    },
-    changeThumbnailText: {
-        fontSize: 12,
-        marginTop: 5,
-        color: '#333',
-    },
-    uploadStatusContainer: {
-        width: '100%',
-        alignItems: 'center',
-        marginTop: 15,
-    },
-    uploadTextLabel: {
-        color: '#333',
-        marginBottom: 8,
-        fontWeight: '500',
-        fontSize: 14,
-    },
-    progressBarContainer: {
-        width: '80%',
-        height: 12,
-        backgroundColor: '#e0e0e0',
-        borderRadius: 10,
+    postPill: {
+        borderRadius: 22,
         overflow: 'hidden',
     },
-    progressBarFill: {
+    postPillGrad: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    postPillTxt: {
+        color: Colors.white,
+        fontWeight: '900',
+        fontSize: 14,
+        letterSpacing: 0.4,
+    },
+
+    // Scroll
+    scroll: { paddingTop: 20 },
+
+    // Main row: thumb + caption
+    mainRow: {
+        flexDirection: 'row',
+        paddingHorizontal: 18,
+        gap: 14,
+        marginBottom: 20,
+    },
+    thumbWrap: {
+        width: SW * 0.28,
+        aspectRatio: 9 / 16,
+        borderRadius: 14,
+        overflow: 'hidden',
+        backgroundColor: Colors.nearBlackSoft,
+        position: 'relative',
+    },
+    thumb: {
+        width: '100%',
         height: '100%',
-        backgroundColor: AppDetails.primaryColor,
+        borderRadius: 14,
     },
-    uploadPercentage: {
-        color: '#666',
-        marginTop: 5,
-        fontSize: 12,
+    thumbPlaceholder: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: Colors.nearBlackSoft,
+        borderWidth: 1,
+        borderColor: BORDER,
+        borderStyle: 'dashed',
     },
-    bottomActionContainer: {
-        marginTop: 'auto',
-        alignItems: 'flex-end',
-        paddingBottom: 10,
-    },
-    bottomPostButton: {
-        height:60,
-        width:"50%",
+    changeCoverBtn: {
+        position: 'absolute',
+        bottom: 8,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 10,
+        gap: 4,
+        backgroundColor: withOpacity(Colors.black, 0.55),
+        paddingVertical: 5,
     },
-    bottomPostButtonText: {
-        color: 'white',
-        fontFamily:"WorkSans_600SemiBold",
-        fontSize: 18,
+    changeCoverTxt: {
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: '700',
     },
-    modalOverlay: {
+    captionCard: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: GLASS,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: BORDER,
+        padding: 14,
+        justifyContent: 'space-between',
+        minHeight: SW * 0.28 * (16 / 9),
+    },
+    captionInput: {
+        flex: 1,
+        color: Colors.white,
+        fontSize: 14.5,
+        lineHeight: 22,
+    },
+    charCount: {
+        alignSelf: 'flex-end',
+        color: withOpacity(Colors.white, 0.3),
+        fontSize: 11,
+        marginTop: 6,
+    },
+
+    // Progress
+    progressWrap: {
+        marginHorizontal: 18,
+        marginBottom: 18,
+        backgroundColor: GLASS,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: BORDER,
+        padding: 14,
+    },
+    progressRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    progressLabel: {
+        color: withOpacity(Colors.white, 0.6),
+        fontSize: 12.5,
+        fontWeight: '600',
+    },
+    progressPct: {
+        color: ACCENT,
+        fontSize: 12.5,
+        fontWeight: '900',
+    },
+    progressTrack: {
+        height: 5,
+        backgroundColor: withOpacity(Colors.white, 0.08),
+        borderRadius: 99,
+        overflow: 'visible',
+        position: 'relative',
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: ACCENT,
+        borderRadius: 99,
+    },
+    progressGlow: {
+        position: 'absolute',
+        top: -5,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: ACCENT,
+        shadowColor: ACCENT,
+        shadowOpacity: 1,
+        shadowRadius: 6,
+        marginLeft: -7,
+    },
+
+    // Options
+    optionsWrap: {
+        marginHorizontal: 18,
+        backgroundColor: GLASS,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BORDER,
+        overflow: 'hidden',
+    },
+    optionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        gap: 12,
+    },
+    optionIcon: {
+        width: 30,
+        alignItems: 'center',
+    },
+    optionInput: {
+        flex: 1,
+        color: Colors.white,
+        fontSize: 14,
+    },
+    optionLabel: {
+        flex: 1,
+        color: withOpacity(Colors.white, 0.75),
+        fontSize: 14,
+    },
+    audiencePill: {
+        backgroundColor: withOpacity(Colors.tealAccent, 0.15),
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderWidth: 1,
+        borderColor: withOpacity(Colors.tealAccent, 0.3),
+    },
+    audiencePillTxt: {
+        color: ACCENT,
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: BORDER,
+        marginLeft: 58,
+    },
+
+    // Big post button
+    bigPostBtn: {
+        height: 58,
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    bigPostTxt: {
+        color: Colors.white,
+        fontSize: 17,
+        fontWeight: '900',
+        letterSpacing: 0.3,
+    },
+
+    // Modal
+    overlay: {
+        flex: 1,
+        backgroundColor: withOpacity(Colors.black, 0.75),
         justifyContent: 'center',
         alignItems: 'center',
     },
-    loadingBox: {
-        backgroundColor: 'white',
-        padding: 20,
-        borderRadius: 10,
+    overlayBox: {
+        backgroundColor: Colors.nearBlackSoft,
+        borderRadius: 20,
+        padding: 30,
         alignItems: 'center',
-        elevation: 5,
+        gap: 14,
+        borderWidth: 1,
+        borderColor: BORDER,
+    },
+    overlayTxt: {
+        color: Colors.white,
+        fontWeight: '700',
+        fontSize: 15,
     },
 });
 

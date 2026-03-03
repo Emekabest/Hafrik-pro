@@ -17,15 +17,17 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getGroupMedia } from './services/groupApi';
+import { Colors } from '../../theme';
 
 const { width: W } = Dimensions.get('window');
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F5F7F7';
-const DARK   = '#0D1B1E';
-const MUTED  = '#7A9198';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const DARK   = Colors.black;
+const MUTED  = Colors.secondaryText;
+const BORDER = BRAND + '17';
+const WHITE  = Colors.white;
+const BLACK  = Colors.black;
 
 const LIMIT = 24;
 
@@ -67,10 +69,10 @@ const MediaCell = React.memo(({ item, type }) => {
         <Image source={{ uri: item.url }} style={mg.reelImg} resizeMode="cover" />
         <View style={mg.overlay}>
           <View style={mg.playCircle}>
-            <Ionicons name="play" size={22} color="#fff" />
+            <Ionicons name="play" size={22} color={WHITE} />
           </View>
           <View style={mg.reelBadge}>
-            <Ionicons name="film-outline" size={11} color="#fff" />
+            <Ionicons name="film-outline" size={11} color={WHITE} />
             <Text style={mg.reelBadgeTxt}>REEL</Text>
           </View>
         </View>
@@ -90,7 +92,7 @@ const MediaCell = React.memo(({ item, type }) => {
       {isVideo && (
         <View style={mg.videoOverlay}>
           <View style={mg.playCircleSmall}>
-            <Ionicons name="play" size={14} color="#fff" />
+            <Ionicons name="play" size={14} color={WHITE} />
           </View>
         </View>
       )}
@@ -279,7 +281,7 @@ const mg = StyleSheet.create({
   // sub-type bar
   typeBar: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: WHITE,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
@@ -309,17 +311,17 @@ const mg = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.20)',
+    backgroundColor: BLACK + '33',
   },
   playCircle: {
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: BLACK + '8C',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.8)',
+    borderColor: WHITE + 'CC',
   },
   reelBadge: {
     position: 'absolute',
@@ -328,13 +330,13 @@ const mg = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(0,0,0,0.52)',
+    backgroundColor: BLACK + '85',
     borderRadius: 100,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
   reelBadgeTxt: {
-    color: '#fff',
+    color: WHITE,
     fontSize: 9,
     fontWeight: '900',
     letterSpacing: 0.8,
@@ -345,13 +347,13 @@ const mg = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.16)',
+    backgroundColor: BLACK + '29',
   },
   playCircleSmall: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: BLACK + '8C',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -371,7 +373,7 @@ const mg = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 100,
   },
-  retryTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  retryTxt: { color: WHITE, fontSize: 13, fontWeight: '800' },
 
   // empty state
   emptyWrap: {

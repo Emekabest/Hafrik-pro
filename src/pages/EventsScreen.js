@@ -18,16 +18,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchEvents, fetchEventCategories } from './events/eventsApi';
+import { Colors } from '../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const WARM   = '#F4A535';
-const MUTED  = '#7A9198';
-const DARK   = '#0D1B1E';
-const CREAM  = '#F5F0E8';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const WARM   = Colors.warm;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.deepSlate;
+const CREAM  = Colors.background;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const FILTERS = [
   { key: 'upcoming', label: 'Upcoming', icon: 'calendar-outline' },
@@ -37,9 +45,9 @@ const FILTERS = [
 ];
 
 const STATUS_COLORS = {
-  upcoming: { bg: 'rgba(12,63,68,0.88)',  text: '#fff' },
-  ongoing:  { bg: 'rgba(19,194,150,0.92)', text: '#fff' },
-  past:     { bg: 'rgba(122,145,152,0.85)', text: '#fff' },
+  upcoming: { bg: withOpacity(Colors.primaryDark, 0.88),  text: Colors.white },
+  ongoing:  { bg: withOpacity(Colors.tealAccent, 0.92), text: Colors.white },
+  past:     { bg: withOpacity(Colors.mutedBlueGray, 0.85), text: Colors.white },
 };
 
 const formatNum = (n) => {
@@ -73,12 +81,12 @@ const EventCard = ({ item, onPress }) => {
           <Image source={{ uri: item.cover }} style={styles.cover} resizeMode="cover" />
         ) : (
           <View style={[styles.cover, styles.coverFallback]}>
-            <Ionicons name="calendar-outline" size={36} color="rgba(255,255,255,0.5)" />
+            <Ionicons name="calendar-outline" size={36} color={withOpacity(Colors.white, 0.5)} />
           </View>
         )}
 
         <LinearGradient
-          colors={['transparent', 'rgba(13,27,30,0.72)']}
+          colors={['transparent', withOpacity(Colors.deepSlate, 0.72)]}
           style={styles.coverGradient}
         />
 
@@ -255,7 +263,7 @@ export default function EventsScreen({ navigation }) {
             <Ionicons
               name={f.icon}
               size={13}
-              color={filter === f.key ? '#fff' : MUTED}
+              color={filter === f.key ? Colors.white : MUTED}
             />
             <Text style={[styles.filterTxt, filter === f.key && styles.filterTxtActive]}>
               {f.label}
@@ -332,12 +340,12 @@ export default function EventsScreen({ navigation }) {
 
       {/* Header */}
       <LinearGradient
-        colors={[BRAND, '#155960']}
+        colors={[BRAND, Colors.tealDeepStrong]}
         style={[styles.header, { paddingTop: top + 4 }]}
       >
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={20} color="#fff" />
+            <Ionicons name="arrow-back" size={20} color={Colors.white} />
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
@@ -346,7 +354,7 @@ export default function EventsScreen({ navigation }) {
           </View>
 
           <TouchableOpacity style={styles.backBtn}>
-            <Ionicons name="search-outline" size={20} color="#fff" />
+            <Ionicons name="search-outline" size={20} color={Colors.white} />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -384,7 +392,7 @@ export default function EventsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F3F6F8' },
+  root: { flex: 1, backgroundColor: Colors.surfaceSky },
 
   // Header
   header: { paddingHorizontal: 16, paddingBottom: 16 },
@@ -394,47 +402,47 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: withOpacity(Colors.white, 0.15),
     justifyContent: 'center', alignItems: 'center',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  headerSub:   { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 1 },
+  headerTitle: { color: Colors.white, fontSize: 20, fontWeight: '800' },
+  headerSub:   { color: withOpacity(Colors.white, 0.6), fontSize: 11, marginTop: 1 },
 
   // Filters
   filterRow: { paddingHorizontal: 14, paddingVertical: 14, gap: 8 },
   filterPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER,
+    backgroundColor: Colors.white, borderWidth: 1, borderColor: BORDER,
   },
   filterPillActive: { backgroundColor: BRAND, borderColor: BRAND },
   filterTxt: { fontSize: 12.5, fontWeight: '700', color: MUTED },
-  filterTxtActive: { color: '#fff' },
+  filterTxtActive: { color: Colors.white },
 
   // Category chips
   catRow: { paddingHorizontal: 14, paddingBottom: 10, gap: 8 },
   catChip: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
-    backgroundColor: 'rgba(12,63,68,0.07)',
-    borderWidth: 1, borderColor: 'rgba(12,63,68,0.10)',
+    backgroundColor: withOpacity(Colors.primaryDark, 0.07),
+    borderWidth: 1, borderColor: withOpacity(Colors.primaryDark, 0.10),
   },
   catChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
   catChipTxt: { fontSize: 11.5, fontWeight: '700', color: DARK },
-  catChipTxtActive: { color: '#fff' },
+  catChipTxtActive: { color: Colors.white },
   catCount: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: withOpacity(Colors.white, 0.3),
     borderRadius: 999, paddingHorizontal: 5, paddingVertical: 1,
   },
-  catCountTxt: { fontSize: 9, fontWeight: '800', color: '#fff' },
+  catCountTxt: { fontSize: 9, fontWeight: '800', color: Colors.white },
 
   // Event card
   card: {
     marginHorizontal: 14, marginBottom: 14,
-    backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden',
+    backgroundColor: Colors.white, borderRadius: 18, overflow: 'hidden',
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06, shadowRadius: 10, elevation: 3,
   },
   coverWrap: { position: 'relative' },
@@ -457,15 +465,15 @@ const styles = StyleSheet.create({
   badgeTxt: { fontSize: 9.5, fontWeight: '900', letterSpacing: 0.4 },
   onlineBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(245,240,232,0.95)',
+    backgroundColor: withOpacity(Colors.surfaceWarm, 0.95),
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
   },
   onlineTxt: { fontSize: 9.5, fontWeight: '700', color: ACCENT },
   sponsoredBadge: {
-    backgroundColor: 'rgba(244,165,53,0.90)',
+    backgroundColor: withOpacity(Colors.warm, 0.90),
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
   },
-  sponsoredTxt: { fontSize: 9.5, fontWeight: '800', color: '#fff' },
+  sponsoredTxt: { fontSize: 9.5, fontWeight: '800', color: Colors.white },
 
   cardBody: { padding: 14 },
   metaTop: {
@@ -476,7 +484,7 @@ const styles = StyleSheet.create({
     backgroundColor: `${ACCENT}18`, borderRadius: 6,
     paddingHorizontal: 8, paddingVertical: 3,
   },
-  catPillTxt: { fontSize: 10, fontWeight: '800', color: '#0a7a5a' },
+  catPillTxt: { fontSize: 10, fontWeight: '800', color: Colors.successStrong },
   dateStr: { fontSize: 11.5, color: MUTED, fontWeight: '600', flex: 1 },
 
   cardTitle: { fontSize: 17, fontWeight: '900', color: DARK, lineHeight: 23, marginBottom: 8 },

@@ -11,16 +11,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../AuthContext';
 import FeedCard from '../home/feeds/feedcard.jsx';
+import { Colors } from '../../theme/colors';
+
+const withOpacity = (hex, opacity) => {
+  const normalized = (hex || "").replace("#", "");
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  return `#${normalized}${alpha}`;
+};
+
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const BASE_URL  = 'https://hafrik.com';
 const CELL_SIZE = Math.floor((SCREEN_W - 6) / 3);
-const BRAND  = '#0C3F44';
-const ACCENT = '#13C296';
-const CREAM  = '#F0F5F5';
-const DARK   = '#0D1B1E';
-const MUTED  = '#7A9198';
-const BORDER = 'rgba(12,63,68,0.09)';
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const CREAM  = Colors.surfaceTint;
+const DARK   = Colors.deepSlate;
+const MUTED  = Colors.secondaryText;
+const BORDER = withOpacity(Colors.primaryDark, 0.09);
 const TABS   = ['posts', 'media', 'communities', 'pages'];
 
 const decodeHtml = (t = '') =>
@@ -64,7 +72,7 @@ const MediaCell = memo(({ item, onPress }) => {
       }
       {isVideo && (
         <View style={ss.mediaCellPlay}>
-          <Ionicons name="play-circle" size={24} color="#fff" />
+          <Ionicons name="play-circle" size={24} color={Colors.white} />
         </View>
       )}
     </TouchableOpacity>
@@ -408,7 +416,7 @@ export default function UserProfileScreen({ navigation, route }) {
         )}
 
         <TouchableOpacity style={ss.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color="#fff" />
+          <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
 
         <View style={ss.avatarWrap}>
@@ -458,7 +466,7 @@ export default function UserProfileScreen({ navigation, route }) {
             disabled={followLoad}
           >
             {followLoad
-              ? <ActivityIndicator size="small" color={isFollowing ? BRAND : '#fff'} />
+              ? <ActivityIndicator size="small" color={isFollowing ? BRAND : Colors.white} />
               : <Text style={[ss.followBtnTxt, isFollowing && ss.followingBtnTxt]}>
                   {isFollowing ? '✓  Following' : '+ Follow'}
                 </Text>
@@ -561,69 +569,69 @@ const ss = StyleSheet.create({
 
   stickyHeader: {
     position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white,
     paddingHorizontal: 14, paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
-  stickyBack: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F5F7F8', alignItems: 'center', justifyContent: 'center' },
+  stickyBack: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.surfaceBase, alignItems: 'center', justifyContent: 'center' },
   stickyName: { flex: 1, fontSize: 16, fontWeight: '800', color: DARK, textAlign: 'center' },
 
   hero:        { backgroundColor: BRAND, paddingHorizontal: 20, paddingBottom: 24, alignItems: 'center', overflow: 'hidden' },
-  blob1:       { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(19,194,150,0.12)', top: -20, right: -40 },
-  blob2:       { position: 'absolute', width: 140, height: 140, borderRadius: 70,  backgroundColor: 'rgba(255,255,255,0.05)', bottom: -30, left: -20 },
-  backBtn:     { alignSelf: 'flex-start', width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  blob1:       { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: withOpacity(Colors.tealAccent, 0.12), top: -20, right: -40 },
+  blob2:       { position: 'absolute', width: 140, height: 140, borderRadius: 70,  backgroundColor: withOpacity(Colors.white, 0.05), bottom: -30, left: -20 },
+  backBtn:     { alignSelf: 'flex-start', width: 38, height: 38, borderRadius: 19, backgroundColor: withOpacity(Colors.white, 0.15), alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   avatarWrap:  { marginTop: 8 },
   avatar:      { width: 92, height: 92, borderRadius: 46, borderWidth: 3, borderColor: ACCENT },
-  avatarFallback: { backgroundColor: '#13C29622', alignItems: 'center', justifyContent: 'center' },
+  avatarFallback: { backgroundColor: withOpacity(Colors.tealAccent, 0.1333), alignItems: 'center', justifyContent: 'center' },
 
-  displayName: { fontSize: 22, fontWeight: '900', color: '#fff' },
-  handleTxt:   { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 3 },
-  bio:         { marginTop: 10, fontSize: 13, color: 'rgba(255,255,255,0.75)', textAlign: 'center', lineHeight: 19 },
+  displayName: { fontSize: 22, fontWeight: '900', color: Colors.white },
+  handleTxt:   { fontSize: 13, color: withOpacity(Colors.white, 0.6), marginTop: 3 },
+  bio:         { marginTop: 10, fontSize: 13, color: withOpacity(Colors.white, 0.75), textAlign: 'center', lineHeight: 19 },
 
   statsRow:  { flexDirection: 'row', gap: 28, marginTop: 20 },
   statItem:  { alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '900', color: '#fff' },
-  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.6)' },
+  statValue: { fontSize: 20, fontWeight: '900', color: Colors.white },
+  statLabel: { fontSize: 11, color: withOpacity(Colors.white, 0.6) },
 
   followBtn:       { marginTop: 18, paddingHorizontal: 36, paddingVertical: 10, borderRadius: 999, backgroundColor: ACCENT },
-  followingBtn:    { backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' },
-  followBtnTxt:    { fontSize: 14, fontWeight: '800', color: '#fff' },
-  followingBtnTxt: { color: '#fff' },
+  followingBtn:    { backgroundColor: withOpacity(Colors.white, 0.15), borderWidth: 1, borderColor: withOpacity(Colors.white, 0.4) },
+  followBtnTxt:    { fontSize: 14, fontWeight: '800', color: Colors.white },
+  followingBtnTxt: { color: Colors.white },
 
   tabsBar:      { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 12, backgroundColor: CREAM, gap: 8 },
-  tabBtn:       { flex: 1, paddingVertical: 10, borderRadius: 999, backgroundColor: '#fff', borderWidth: 1, borderColor: BORDER, alignItems: 'center' },
+  tabBtn:       { flex: 1, paddingVertical: 10, borderRadius: 999, backgroundColor: Colors.white, borderWidth: 1, borderColor: BORDER, alignItems: 'center' },
   tabBtnActive: { backgroundColor: BRAND, borderColor: BRAND },
   tabTxt:       { fontSize: 12, fontWeight: '800', color: MUTED },
-  tabTxtActive: { color: '#fff' },
+  tabTxtActive: { color: Colors.white },
 
   mediaCell:         { width: CELL_SIZE, height: CELL_SIZE, margin: 1 },
   mediaCellImg:      { width: '100%', height: '100%' },
-  mediaCellFallback: { flex: 1, backgroundColor: '#eee', alignItems: 'center', justifyContent: 'center' },
-  mediaCellPlay:     { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.22)' },
+  mediaCellFallback: { flex: 1, backgroundColor: Colors.neutral180, alignItems: 'center', justifyContent: 'center' },
+  mediaCellPlay:     { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: withOpacity(Colors.black, 0.22) },
 
-  groupCard:       { backgroundColor: '#fff', borderRadius: 14, marginHorizontal: 14, marginTop: 10, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  groupCard:       { backgroundColor: Colors.white, borderRadius: 14, marginHorizontal: 14, marginTop: 10, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', shadowColor: Colors.black, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
   groupBanner:     { width: '100%', height: 80 },
   groupBody:       { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
   groupAvatarWrap: { marginTop: -28 },
-  groupAvatar:     { width: 46, height: 46, borderRadius: 12, borderWidth: 2, borderColor: '#fff' },
+  groupAvatar:     { width: 46, height: 46, borderRadius: 12, borderWidth: 2, borderColor: Colors.white },
   groupName:       { fontSize: 14, fontWeight: '800', color: DARK },
   groupSub:        { fontSize: 11, color: MUTED, marginTop: 2 },
   joinBtn:         { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: BRAND, borderRadius: 999 },
-  joinBtnTxt:      { fontSize: 12, fontWeight: '800', color: '#fff' },
+  joinBtnTxt:      { fontSize: 12, fontWeight: '800', color: Colors.white },
 
-  pageCard:   { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 14, marginHorizontal: 14, marginTop: 10, padding: 14, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
+  pageCard:   { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.white, borderRadius: 14, marginHorizontal: 14, marginTop: 10, padding: 14, borderWidth: 1, borderColor: BORDER, shadowColor: Colors.black, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
   pageAvatar: { width: 52, height: 52, borderRadius: 14 },
   pageName:   { fontSize: 14, fontWeight: '800', color: DARK, flex: 1 },
   pageCat:    { fontSize: 11, color: ACCENT, marginTop: 2 },
   pageSub:    { fontSize: 11, color: MUTED, marginTop: 2 },
-  viewBtn:    { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: 'rgba(12,63,68,0.06)', borderRadius: 999 },
+  viewBtn:    { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: withOpacity(Colors.primaryDark, 0.06), borderRadius: 999 },
   viewBtnTxt: { fontSize: 12, fontWeight: '700', color: BRAND },
 
   emptyWrap: { alignItems: 'center', paddingTop: 48, gap: 10 },
   emptyTxt:  { fontSize: 14, color: MUTED },
 
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet:   { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: withOpacity(Colors.black, 0.4) },
+  modalSheet:   { backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%' },
   modalHandle:  { width: 36, height: 4, borderRadius: 2, backgroundColor: BORDER, alignSelf: 'center', marginTop: 10 },
   modalHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: BORDER },
   modalTitle:   { fontSize: 17, fontWeight: '900', color: DARK },
