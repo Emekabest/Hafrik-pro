@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  FlatList, Image, ActivityIndicator, Animated, Dimensions,
+  FlatList, Image, ActivityIndicator,
   Alert, ScrollView, StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,9 +14,8 @@ import { Colors } from '../../theme';
 
 // ─── API imports ────────────────────────────────────────────────────────────
 import { getGroups, getCategories, joinGroup, leaveGroup } from './services/groupApi';
-import { getBusinessList, toggleFollowBusiness } from '../pages_/Businessapi';
-
-const { width: SCREEN_W } = Dimensions.get('window');
+import useStore from '../../repository/store';
+import CreateModal from './CreateModal';
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const BRAND  = Colors.primaryDark;
@@ -47,18 +46,13 @@ const ACCENT_SOFT_08 = ACCENT + '14';
 const ACCENT_SOFT_09 = ACCENT + '17';
 const ACCENT_SOFT_10 = ACCENT + '1A';
 const ACCENT_SOFT_12 = ACCENT + '1F';
-const ACCENT_SOFT_18 = ACCENT + '2E';
 const ACCENT_SOFT_22 = ACCENT + '38';
 const ACCENT_SOFT_25 = ACCENT + '40';
 const ACCENT_SOFT_26 = ACCENT + '42';
 const ACCENT_SOFT_50 = ACCENT + '80';
-const BRAND_SOFT_11 = BRAND + '1C';
 const BRAND_SOFT_07 = BRAND + '12';
 const TEXT_ACCENT_DARK = BRAND;
 const TEXT_SUBDUED = Colors.grey;
-
-// ─── Static business filter options ──────────────────────────────────────────
-const BUSINESS_FILTERS = ['All', 'Sourcing', 'Shipping', 'Food', 'Legal', 'Fashion'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const decodeHtml = (text = '') =>
@@ -87,7 +81,6 @@ const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
   const [joining,     setJoining]     = useState(false);
   const [isMember,    setIsMember]    = useState(group.is_joined === true || group.is_joined === 1 || group._isMember === true);
   const [memberCount, setMemberCount] = useState(group.members_count ?? group.members ?? 0);
-  const [expanded,    setExpanded]    = useState(false);
 
   useEffect(() => {
     setIsMember(group.is_joined === true || group.is_joined === 1 || group._isMember === true);
@@ -226,132 +219,6 @@ const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
   );
 };
 
-// ─── Business Card ────────────────────────────────────────────────────────────
-const BusinessCard = ({ business, onOpen }) => {
-  const [following,     setFollowing]     = useState(false);
-  const [isFollowing,   setIsFollowing]   = useState(business.is_following ?? false);
-  const [followerCount, setFollowerCount] = useState(business.followers_count ?? business.followers ?? 0);
-  const [expanded,      setExpanded]      = useState(false);
-
-  useEffect(() => {
-    setIsFollowing(business.is_following ?? false);
-    setFollowerCount(business.followers_count ?? business.followers ?? 0);
-  }, [business.is_following, business.followers_count, business.followers]);
-
-  const isVerified = business.verified_value === 1 || business.verified === true;
-
-  const handleFollow = async () => {
-    if (following) return;
-    setFollowing(true);
-    const was = isFollowing;
-    try {
-      await toggleFollowBusiness(business.id, token);
-      setIsFollowing(!was);
-      setFollowerCount((c) => was ? Math.max(0, c - 1) : c + 1);
-    } catch {
-      Alert.alert('Error', 'Could not update follow. Please try again.');
-      setIsFollowing(was);
-    } finally {
-      setFollowing(false);
-    }
-  };
-
-  const title    = cleanText(business.title ?? '');
-  const about    = cleanText(business.about ?? '');
-  const location = cleanText(business.location ?? '');
-  const avatar   = business.avatar ?? null;
-  const cover    = business.cover ?? business.banner ?? null;
-
-  return (
-    <View style={gs.card}>
-      {/* Cover */}
-      {isRealImage(cover) ? (
-        <Image source={{ uri: cover }} style={gs.cover} resizeMode="cover" />
-      ) : (
-        <LinearGradient
-          colors={[BRAND, ACCENT, BRAND]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={gs.cover}
-        >
-          <View style={gs.coverPattern} />
-        </LinearGradient>
-      )}
-
-      {isVerified && (
-        <View style={[gs.coverBadges, { justifyContent: 'flex-end' }]}>
-          <View style={gs.verifiedChip}>
-            <Ionicons name="checkmark-circle" size={11} color={WHITE} />
-            <Text style={gs.verifiedTxt}>Verified</Text>
-          </View>
-        </View>
-      )}
-
-      <TouchableOpacity style={gs.cardBody} activeOpacity={0.88} onPress={() => onOpen && onOpen(business)}>
-        <View style={gs.avatarRow}>
-          {isRealImage(avatar) && !String(avatar).includes('default-avatar') ? (
-            <Image source={{ uri: avatar }} style={[gs.avatar, { borderRadius: 26 }]} resizeMode="cover" />
-          ) : (
-            <LinearGradient colors={[BRAND, ACCENT]} style={[gs.avatar, gs.avatarFallback, { borderRadius: 26 }]}>
-              <Ionicons name="business" size={22} color={WHITE} />
-            </LinearGradient>
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={gs.title} numberOfLines={1}>{title || 'Business'}</Text>
-            <View style={gs.metaRow}>
-              <View style={gs.memberStat}>
-                <Ionicons name="heart-outline" size={11} color={MUTED} />
-                <Text style={gs.memberStatTxt}>{fmtCount(followerCount)} followers</Text>
-              </View>
-              {!!location && (
-                <View style={gs.memberStat}>
-                  <Ionicons name="location-outline" size={11} color={MUTED} />
-                  <Text style={gs.memberStatTxt} numberOfLines={1}>{location}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {!!about && (
-          <View style={gs.descWrap}>
-            <Text style={gs.desc} numberOfLines={expanded ? undefined : 2}>{about}</Text>
-            {about.length > 90 && (
-              <TouchableOpacity onPress={() => setExpanded((e) => !e)} activeOpacity={0.7}>
-                <Text style={gs.descToggle}>{expanded ? 'Show less' : 'Read more'}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </TouchableOpacity>
-
-      <View style={gs.footer}>
-        <TouchableOpacity
-          style={gs.msgBtn}
-          activeOpacity={0.85}
-          onPress={() => Alert.alert('Coming soon', 'Messaging will be available soon.')}
-        >
-          <Ionicons name="chatbubble-outline" size={13} color={BRAND} />
-          <Text style={gs.msgTxt}>Message</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[gs.joinBtn, isFollowing && gs.leaveBtn]}
-          onPress={handleFollow}
-          activeOpacity={0.85}
-          disabled={following}
-        >
-          {following
-            ? <ActivityIndicator size="small" color={isFollowing ? BRAND : Colors.white} />
-            : <Text style={[gs.joinTxt, isFollowing && gs.leaveTxt]}>
-                {isFollowing ? 'Following' : 'Follow'}
-              </Text>
-          }
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
-
 // ─── Community Card Styles ──────────────────────────────────────────────────
 const cc = StyleSheet.create({
   card: {
@@ -480,31 +347,22 @@ const Empty = ({ loading, label }) =>
     </View>
   );
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
-const CommunitiesScreen = ({ route }) => {
-  const navigation = useNavigation();
-  const { top }    = useSafeAreaInsets();
-  const { token }  = useAuth();
+// ─── Main Screen (Communities only) ─────────────────────────────────────────
+const CommunitiesScreen = () => {
+  const navigation      = useNavigation();
+  const { top }         = useSafeAreaInsets();
+  const { token, user } = useAuth();
+  const openComposer    = useStore((s) => s.openComposer);
 
-  const initialTab = route?.params?.initialTab ?? 0;
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const tabAnim = useRef(new Animated.Value(initialTab)).current;
-
-  const [groups,       setGroups]       = useState([]);
-  const [groupsLoad,   setGroupsLoad]   = useState(true);
-  const [groupsPage,   setGroupsPage]   = useState(1);
-  const [groupsMore,   setGroupsMore]   = useState(true);
-  const [groupFilter,  setGroupFilter]  = useState('All');
-  const [categories,   setCategories]   = useState([]);
-
-  const [businesses, setBusinesses] = useState([]);
-  const [bizLoad,    setBizLoad]    = useState(true);
-  const [bizPage,    setBizPage]    = useState(1);
-  const [bizMore,    setBizMore]    = useState(true);
-  const [bizFilter,  setBizFilter]  = useState('All');
-
-  const [search, setSearch] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+  const [showCreate,   setShowCreate]  = useState(false);
+  const [groups,       setGroups]      = useState([]);
+  const [groupsLoad,   setGroupsLoad]  = useState(true);
+  const [groupsPage,   setGroupsPage]  = useState(1);
+  const [groupsMore,   setGroupsMore]  = useState(true);
+  const [groupFilter,  setGroupFilter] = useState('All');
+  const [categories,   setCategories]  = useState([]);
+  const [search,       setSearch]      = useState('');
+  const [refreshing,   setRefreshing]  = useState(false);
 
   const loadGroups = useCallback(async (page = 1, replace = false) => {
     try {
@@ -517,7 +375,7 @@ const CommunitiesScreen = ({ route }) => {
         setGroupsPage(page);
       }
     } catch (e) {
-      console.log('[Groups] loadGroups error:', e);
+      console.log('[Communities] loadGroups error:', e);
     } finally {
       setGroupsLoad(false);
     }
@@ -527,60 +385,27 @@ const CommunitiesScreen = ({ route }) => {
     try {
       const res = await getCategories(token);
       if (res?.status === 'success') {
-        // Sort by group_count descending so most popular come first
         const cats = Array.isArray(res.data)
           ? [...res.data].sort((a, b) => (Number(b.group_count) || 0) - (Number(a.group_count) || 0))
           : [];
         setCategories(cats);
       }
     } catch (e) {
-      console.log('[Groups] loadCategories error:', e);
+      console.log('[Communities] loadCategories error:', e);
     }
   }, [token]);
 
-  const loadBusinesses = useCallback(async (page = 1, replace = false) => {
-    try {
-      setBizLoad(true);
-      const res = await getBusinessList(page, 15);
-      if (res?.status === 'success') {
-        const items = res.data?.data ?? res.data ?? [];
-        setBusinesses((p) => (replace ? items : [...p, ...items]));
-        setBizMore(items.length >= 15);
-        setBizPage(page);
-      }
-    } catch (e) {
-      console.log('[Groups] loadBusinesses error:', e);
-    } finally {
-      setBizLoad(false);
-    }
-  }, []);
-
   useEffect(() => {
     loadGroups(1, true);
-    loadBusinesses(1, true);
     loadCategories();
   }, []); // eslint-disable-line
 
-  useEffect(() => {
-    if (route?.params?.initialTab !== undefined && route.params.initialTab !== activeTab) {
-      switchTab(route.params.initialTab);
-    }
-  }, [route?.params?.initialTab]); // eslint-disable-line
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadGroups(1, true), loadBusinesses(1, true)]);
+    await loadGroups(1, true);
     setRefreshing(false);
-  }, [loadGroups, loadBusinesses]);
+  }, [loadGroups]);
 
-  const switchTab = (idx) => {
-    setActiveTab(idx);
-    Animated.spring(tabAnim, { toValue: idx, useNativeDriver: false, tension: 120, friction: 8 }).start();
-  };
-
-  const indLeft = tabAnim.interpolate({ inputRange: [0, 1], outputRange: ['2%', '52%'] });
-
-  // Build community filter pills dynamically from categories API + fixed labels
   const communityFilters = useMemo(() => {
     const catNames = categories.map((c) => cleanText(c.name ?? c.category_name ?? ''));
     return ['All', 'My Groups', ...catNames].filter(Boolean);
@@ -604,40 +429,9 @@ const CommunitiesScreen = ({ route }) => {
     return [...r].sort((a, b) => (b.is_promoted ? 1 : 0) - (a.is_promoted ? 1 : 0));
   }, [groups, search, groupFilter]);
 
-  const filteredBusinesses = useMemo(() => {
-    let r = businesses;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      r = r.filter((b) =>
-        cleanText(b.title ?? '').toLowerCase().includes(q) ||
-        cleanText(b.about ?? '').toLowerCase().includes(q) ||
-        cleanText(b.location ?? '').toLowerCase().includes(q)
-      );
-    }
-    if (bizFilter !== 'All') {
-      const kw = {
-        Sourcing: ['sourcing', 'import', 'wholesale'],
-        Shipping: ['shipping', 'freight', 'logistics'],
-        Food:     ['food', 'restaurant', 'kitchen'],
-        Legal:    ['legal', 'law', 'visa'],
-        Fashion:  ['fashion', 'cloth', 'boutique', 'style'],
-      }[bizFilter] ?? [];
-      r = r.filter((b) => {
-        const hay = `${cleanText(b.title)} ${cleanText(b.about)} ${cleanText(b.category_name ?? '')}`.toLowerCase();
-        return kw.some((k) => hay.includes(k));
-      });
-    }
-    return [...r].sort((a, b) => {
-      const av = a.verified_value === 1 || a.verified === true ? 1 : 0;
-      const bv = b.verified_value === 1 || b.verified === true ? 1 : 0;
-      return bv - av;
-    });
-  }, [businesses, search, bizFilter]);
-
   const handlePostInGroup = useCallback((group) => {
-    // Navigate to GroupDetails — it has the Create Post button that opens the composer
-    navigation.navigate('GroupDetails', { groupId: group.id, openCompose: true });
-  }, [navigation]);
+    openComposer({ _type: 'group', id: group.id, title: group.title, locked: true });
+  }, [openComposer]);
 
   const renderGroup = useCallback(
     ({ item }) => (
@@ -650,26 +444,10 @@ const CommunitiesScreen = ({ route }) => {
     [navigation, handlePostInGroup]
   );
 
-  const renderBusiness = useCallback(
-    ({ item }) => (
-      <BusinessCard
-        business={item}
-        onOpen={(b) => navigation.navigate('BusinessDetails', { pageId: b.id })}
-      />
-    ),
-    [navigation]
-  );
-
   const groupStats = [
     { label: 'Groups',  value: fmtCount(groups.length) },
     { label: 'Joined',  value: fmtCount(groups.filter((g) => g.is_joined === true || g.is_joined === 1 || g._isMember).length) },
     { label: 'Showing', value: fmtCount(filteredGroups.length) },
-  ];
-
-  const bizStats = [
-    { label: 'Pages',    value: fmtCount(businesses.length) },
-    { label: 'Verified', value: fmtCount(businesses.filter((b) => b.verified_value === 1).length) },
-    { label: 'Showing',  value: fmtCount(filteredBusinesses.length) },
   ];
 
   return (
@@ -695,18 +473,16 @@ const CommunitiesScreen = ({ route }) => {
 
           <View style={{ flex: 1 }}>
             <Text style={gs.headerEyebrow}>HAFRIK</Text>
-            <Text style={gs.headerTitle}>
-              {activeTab === 0 ? 'Communities' : 'Business Pages'}
-            </Text>
+            <Text style={gs.headerTitle}>Communities</Text>
           </View>
 
           <TouchableOpacity
             style={gs.createBtn}
             activeOpacity={0.85}
-            onPress={() => Alert.alert('Coming soon', 'Creating a group will be available soon.')}
+            onPress={() => setShowCreate(true)}
           >
             <Ionicons name="add" size={16} color={Colors.white} />
-            <Text style={gs.createBtnTxt}>{activeTab === 0 ? 'Create' : 'Add Page'}</Text>
+            <Text style={gs.createBtnTxt}>Create</Text>
           </TouchableOpacity>
         </View>
 
@@ -715,7 +491,7 @@ const CommunitiesScreen = ({ route }) => {
           <Ionicons name="search-outline" size={16} color={ON_DARK_55} style={{ marginRight: 8 }} />
           <TextInput
             style={gs.searchInput}
-            placeholder={activeTab === 0 ? 'Search communities…' : 'Search businesses…'}
+            placeholder="Search communities…"
             placeholderTextColor={ON_DARK_40}
             value={search}
             onChangeText={setSearch}
@@ -730,66 +506,39 @@ const CommunitiesScreen = ({ route }) => {
           )}
         </View>
 
-        {/* Tab pills */}
-        <View style={gs.tabBar}>
-          <Animated.View style={[gs.tabInd, { left: indLeft }]} />
-          {['Communities', 'Business'].map((t, i) => (
-            <TouchableOpacity key={t} style={gs.tabBtn} onPress={() => switchTab(i)} activeOpacity={0.8}>
-              <Text style={[gs.tabTxt, activeTab === i && gs.tabTxtOn]}>{t}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </LinearGradient>
 
-      {/* ── Communities tab ── */}
-      {activeTab === 0 && (
-        <View style={{ flex: 1 }}>
-          <FilterRow filters={communityFilters} active={groupFilter} onChange={setGroupFilter} />
-          <StatsBar items={groupStats} />
-          <FlatList
-            data={filteredGroups}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={renderGroup}
-            contentContainerStyle={gs.listContent}
-            showsVerticalScrollIndicator={false}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            onEndReached={() => { if (groupsMore && !groupsLoad) loadGroups(groupsPage + 1); }}
-            onEndReachedThreshold={0.4}
-            ListEmptyComponent={<Empty loading={groupsLoad} label="communities" />}
-            ListFooterComponent={
-              groupsLoad && groups.length > 0
-                ? <ActivityIndicator color={ACCENT} style={{ marginVertical: 20 }} />
-                : null
-            }
-          />
-        </View>
-      )}
+      <View style={{ flex: 1 }}>
+        <FilterRow filters={communityFilters} active={groupFilter} onChange={setGroupFilter} />
+        <StatsBar items={groupStats} />
+        <FlatList
+          data={filteredGroups}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderGroup}
+          contentContainerStyle={gs.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onEndReached={() => { if (groupsMore && !groupsLoad) loadGroups(groupsPage + 1); }}
+          onEndReachedThreshold={0.4}
+          ListEmptyComponent={<Empty loading={groupsLoad} label="communities" />}
+          ListFooterComponent={
+            groupsLoad && groups.length > 0
+              ? <ActivityIndicator color={ACCENT} style={{ marginVertical: 20 }} />
+              : null
+          }
+        />
+      </View>
 
-      {/* ── Business tab ── */}
-      {activeTab === 1 && (
-        <View style={{ flex: 1 }}>
-          <FilterRow filters={BUSINESS_FILTERS} active={bizFilter} onChange={setBizFilter} />
-          <StatsBar items={bizStats} />
-          <FlatList
-            data={filteredBusinesses}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={renderBusiness}
-            contentContainerStyle={gs.listContent}
-            showsVerticalScrollIndicator={false}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            onEndReached={() => { if (bizMore && !bizLoad) loadBusinesses(bizPage + 1); }}
-            onEndReachedThreshold={0.4}
-            ListEmptyComponent={<Empty loading={bizLoad} label="businesses" />}
-            ListFooterComponent={
-              bizLoad && businesses.length > 0
-                ? <ActivityIndicator color={ACCENT} style={{ marginVertical: 20 }} />
-                : null
-            }
-          />
-        </View>
-      )}
+      <CreateModal
+        visible={showCreate}
+        type="community"
+        navigation={navigation}
+        token={token}
+        user={user}
+        onClose={() => setShowCreate(false)}
+        onCreated={() => loadGroups(1, true)}
+      />
     </View>
   );
 };
@@ -831,18 +580,6 @@ const gs = StyleSheet.create({
     paddingHorizontal: 14, height: 42, marginBottom: 14,
   },
   searchInput: { flex: 1, color: Colors.white, fontSize: 13 },
-
-  tabBar: {
-    flexDirection: 'row', backgroundColor: ON_DARK_10,
-    borderRadius: 100, padding: 3, height: 40, position: 'relative',
-  },
-  tabInd: {
-    position: 'absolute', top: 3, bottom: 3, width: '47%',
-    backgroundColor: WHITE, borderRadius: 100,
-  },
-  tabBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
-  tabTxt: { fontSize: 13, fontWeight: '700', color: ON_DARK_55 },
-  tabTxtOn: { color: BRAND },
 
   // Filter
   filterWrap: { paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
@@ -944,12 +681,9 @@ const gs = StyleSheet.create({
   joinTxt:  { fontSize: 12, fontWeight: '800', color: Colors.white },
   leaveTxt: { color: BRAND },
 
-  msgBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100,
-    borderWidth: 1.5, borderColor: BRAND,
-  },
-  msgTxt: { fontSize: 12, fontWeight: '700', color: BRAND },
+  followerRow:    { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  followerRowTxt: { fontSize: 12, color: MUTED, fontWeight: '600' },
+  followerRowTxtOn: { color: ACCENT },
 
   // Empty
   emptyWrap:   { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 14 },

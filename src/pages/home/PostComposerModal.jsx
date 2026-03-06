@@ -1,19 +1,20 @@
 import React, {
-    useState, useRef, useEffect, useCallback, memo,
+    useState, useRef, useEffect, useCallback, memo, useMemo,
 } from 'react';
 import {
     StyleSheet, Text, View, TouchableOpacity, FlatList,
     Modal, TextInput, Dimensions, Image, ActivityIndicator,
-    ScrollView, Platform, Animated, KeyboardAvoidingView, Alert, Linking,
+    ScrollView, Platform, KeyboardAvoidingView, Alert, Linking,
+    Animated as RNAnimated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../AuthContext';
-import PostFeedController from '../../controllers/postfeedcontroller';
-import UploadMediaController from '../../controllers/uploadmediacontroller';
+import { startBackgroundUpload } from '../../helpers/BackgroundUploadManager';
 import PostFeedList from '../../helpers/postfeedlists';
 import useStore from '../../repository/store';
 import { Colors } from '../../theme';
@@ -68,6 +69,7 @@ const TargetChip = memo(({ item, isSelected, onPress }) => {
     );
 });
 
+
 // ─── Main component ────────────────────────────────────────────────────────────
 const PostComposerModal = () => {
     const { top }        = useSafeAreaInsets();
@@ -76,7 +78,6 @@ const PostComposerModal = () => {
     const closeComposer  = useStore((s) => s.closeComposer);
     const composerConfig = useStore((s) => s.composerConfig);
     const userAvatar     = useStore((s) => s.userAvatar);
-    const triggerRefresh = useStore((s) => s.triggerRefresh);
 
     // ── Targets ─────────────────────────────────────────────────────────────
     const [targets,           setTargets]           = useState([]);
@@ -110,11 +111,6 @@ const PostComposerModal = () => {
     const [selectedVideo,  setSelectedVideo]  = useState(null);
     const [selectedThumbnail, setSelectedThumbnail] = useState(null);
     const [selectedCategory,  setSelectedCategory]  = useState(null);
-
-    // ── Upload / post state ───────────────────────────────────────────────────
-    const [uploadState, setUploadState] = useState(null);
-    const [postSuccess, setPostSuccess] = useState(false);
-    const successScale = useRef(new Animated.Value(0)).current;
 
     // ── Video player ──────────────────────────────────────────────────────────
     const videoPlayer = useVideoPlayer(null, (p) => { if (p) p.loop = true; });
@@ -175,15 +171,44 @@ const PostComposerModal = () => {
         setPostText(''); setLocationText(''); setShowLocation(false);
         setSelectedImages([]); setSelectedVideo(null);
         setSelectedThumbnail(null); setSelectedCategory(null);
-        setUploadState(null); setPostSuccess(false);
-        successScale.setValue(0);
     }, []); // eslint-disable-line
 
     const handleClose = useCallback(() => { resetAll(); closeComposer(); }, [resetAll, closeComposer]);
 
+    // ── Upload tracking inside modal ──────────────────────────────────────────
+    const activeUpload = useStore((s) => s.activeUpload);
+    const clearUpload  = useStore((s) => s.clearUpload);
+    const [isUploading, setIsUploading] = useState(false);
+    const uploadBarAnim = useRef(new RNAnimated.Value(0)).current;
+
+    // Animate the progress bar width to match real upload %
+    useEffect(() => {
+        if (!isUploading || !activeUpload) return;
+        RNAnimated.timing(uploadBarAnim, {
+            toValue: activeUpload.pct ?? 0,
+            duration: 250,
+            useNativeDriver: false,
+        }).start();
+    }, [activeUpload?.pct, isUploading]);
+
+    // Auto-close modal when upload completes
+    useEffect(() => {
+        if (!isUploading) return;
+        if (activeUpload?.phase === 'done') {
+            // Brief pause so the user sees 100%
+            const t = setTimeout(() => {
+                setIsUploading(false);
+                uploadBarAnim.setValue(0);
+                handleClose();
+            }, 1200);
+            return () => clearTimeout(t);
+        }
+    }, [activeUpload?.phase, isUploading]);
+
     // ── Can post? ─────────────────────────────────────────────────────────────
     const canPost = (() => {
-        if (uploadState || postSuccess) return false;
+        // Block posting while uploading
+        if (isUploading || activeUpload) return false;
         if (activeTab === 'text')   return postText.trim().length > 0;
         if (activeTab === 'photos') return selectedImages.length > 0;
         if (activeTab === 'video')  return !!selectedVideo;
@@ -235,6 +260,12 @@ const PostComposerModal = () => {
         const a = result.assets[0];
         setSelectedVideo({ id: `${Date.now()}`, uri: a.uri, fileName: a.fileName || 'video.mp4', type: 'video', fileType: 'video' });
         setSelectedThumbnail(null);
+        try {
+            const { uri } = await VideoThumbnails.getThumbnailAsync(a.uri, { time: 1000 });
+            setSelectedThumbnail({ id: `${Date.now()}`, uri, fileName: 'thumb.jpg', type: 'image', fileType: 'photo' });
+        } catch (_) {
+            // Auto-generation failed — thumbnail stays null; user can pick manually.
+        }
     };
 
     const pickThumbnail = async () => {
@@ -251,56 +282,46 @@ const PostComposerModal = () => {
     // ── Post ──────────────────────────────────────────────────────────────────
     const handlePost = async () => {
         if (!canPost) return;
+
+        // Build only the base post body — NO media URLs here.
+        // BackgroundUploadManager uploads files first, then appends
+        // media / video_url / thumbnail before calling create.php.
         const mappedType = activeTab === 'text' ? 'post' : activeTab;
-        const postBody = { type: mappedType, target_type: selectedTargetType };
-        if (postText.trim()) postBody.text = postText.trim();
+        const postBody = {
+            type: mappedType,
+            target_type: selectedTargetType,
+            privacy: 'public',
+        };
+        if (postText.trim())    postBody.text     = postText.trim();
         if (locationText.trim()) postBody.location = locationText.trim();
-        if ((selectedTargetType === 'group' || selectedTargetType === 'page') && selectedTargetId) {
+        if (selectedTargetType === 'page' && selectedTargetId) {
+            postBody.target_id = selectedTargetId;
+        } else if (selectedTargetType === 'group' && selectedTargetId) {
             postBody.target_id = selectedTargetId;
         }
-        try {
-            if (activeTab === 'photos' && selectedImages.length > 0) {
-                const total = selectedImages.length;
-                setUploadState({ phase: 'uploading', done: 0, total });
-                const urls = [];
-                for (let i = 0; i < total; i++) {
-                    const res = await UploadMediaController(selectedImages[i], token);
-                    if (res.status === 'success') urls.push(res.data.url);
-                    setUploadState({ phase: 'uploading', done: i + 1, total });
-                }
-                postBody.media = urls;
-            } else if (activeTab === 'video' || activeTab === 'reel') {
-                const total = selectedThumbnail ? 2 : 1;
-                setUploadState({ phase: 'uploading', done: 0, total });
-                const vidRes = await UploadMediaController(selectedVideo, token);
-                if (vidRes.status === 'success') postBody.video_url = vidRes.data.url;
-                setUploadState({ phase: 'uploading', done: 1, total });
-                if (selectedThumbnail) {
-                    const tRes = await UploadMediaController(selectedThumbnail, token);
-                    if (tRes.status === 'success') postBody.thumbnail = tRes.data.url;
-                    setUploadState({ phase: 'uploading', done: 2, total });
-                }
-                if (activeTab === 'video' && selectedCategory) postBody.category_id = selectedCategory;
-            }
-            setUploadState({ phase: 'publishing', done: 0, total: 1 });
-            const response = await PostFeedController(postBody, token);
-            if (response.status === 'success') {
-                setUploadState(null);
-                setPostSuccess(true);
-                triggerRefresh();
-                Animated.sequence([
-                    Animated.spring(successScale, { toValue: 1, useNativeDriver: true, friction: 6 }),
-                    Animated.delay(1000),
-                    Animated.timing(successScale, { toValue: 0, duration: 160, useNativeDriver: true }),
-                ]).start(() => handleClose());
-            } else {
-                setUploadState(null);
-                Alert.alert('Post Failed', response.data?.message || response.message || 'Please try again.');
-            }
-        } catch (err) {
-            setUploadState(null);
-            Alert.alert('Error', err?.message || 'Something went wrong. Please try again.');
-        }
+
+        // Capture media references locally
+        const images    = [...selectedImages];
+        const video     = selectedVideo;
+        const thumbnail = selectedThumbnail;
+        const category  = selectedCategory;
+        const tab       = activeTab;
+        const authToken = token;
+
+        // Show in-modal progress overlay (don't close yet)
+        setIsUploading(true);
+        uploadBarAnim.setValue(0);
+
+        // Start upload — updates Zustand store with progress, modal watches it
+        startBackgroundUpload({
+            postBody,
+            activeTab: tab,
+            selectedImages: images,
+            selectedVideo: video,
+            selectedThumbnail: thumbnail,
+            selectedCategory: category,
+            token: authToken,
+        });
     };
 
     // ── Tab content ───────────────────────────────────────────────────────────
@@ -473,10 +494,6 @@ const PostComposerModal = () => {
         return null;
     };
 
-    const uploadLabel = uploadState
-        ? uploadState.phase === 'uploading' ? `Uploading ${uploadState.done}/${uploadState.total}…` : 'Publishing…'
-        : '';
-
     return (
         <Modal
             visible={isComposerOpen}
@@ -516,13 +533,10 @@ const PostComposerModal = () => {
                                 <TouchableOpacity
                                     style={[styles.postBtn, !canPost && styles.postBtnOff]}
                                     onPress={handlePost}
-                                    disabled={!canPost || !!uploadState}
+                                    disabled={!canPost}
                                     activeOpacity={0.85}
                                 >
-                                    {uploadState
-                                        ? <ActivityIndicator size="small" color={WHITE} />
-                                        : <Text style={styles.postBtnText}>Post</Text>
-                                    }
+                                    <Text style={styles.postBtnText}>Post</Text>
                                 </TouchableOpacity>
                             </LinearGradient>
 
@@ -613,34 +627,73 @@ const PostComposerModal = () => {
                                 {renderContent()}
                             </ScrollView>
 
-                            {/* ── UPLOAD OVERLAY ─────────────────────────────────────── */}
-                            {!!uploadState && (
-                                <View style={styles.overlay}>
-                                    <View style={styles.overlayCard}>
-                                        <ActivityIndicator size="large" color={ACCENT} />
-                                        <Text style={styles.overlayLabel}>{uploadLabel}</Text>
-                                        {uploadState.phase === 'uploading' && uploadState.total > 1 && (
-                                            <View style={styles.progressBar}>
-                                                <View style={[styles.progressFill, { width: `${(uploadState.done / uploadState.total) * 100}%` }]} />
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-                            )}
-
-                            {/* ── SUCCESS OVERLAY ─────────────────────────────────────── */}
-                            {postSuccess && (
-                                <View style={styles.overlay}>
-                                    <Animated.View style={[styles.overlayCard, { transform: [{ scale: successScale }] }]}>
-                                        <LinearGradient colors={[ACCENT, BRAND]} style={styles.successCircle}>
-                                            <Ionicons name="checkmark" size={40} color={WHITE} />
-                                        </LinearGradient>
-                                        <Text style={styles.successLabel}>Posted!</Text>
-                                        <Text style={styles.successSub}>Your post is live</Text>
-                                    </Animated.View>
-                                </View>
-                            )}
                         </KeyboardAvoidingView>
+
+                        {/* ── UPLOAD PROGRESS OVERLAY ─────────────────────────── */}
+                        {isUploading && (
+                            <View style={styles.uploadOverlay}>
+                                <View style={styles.uploadCard}>
+                                    {activeUpload?.phase === 'error' ? (
+                                        <>
+                                            <View style={styles.uploadIconWrap}>
+                                                <Ionicons name="alert-circle" size={40} color="#E53935" />
+                                            </View>
+                                            <Text style={styles.uploadLabel}>
+                                                {activeUpload?.error || 'Upload failed'}
+                                            </Text>
+                                            <TouchableOpacity
+                                                style={styles.uploadDismissBtn}
+                                                activeOpacity={0.8}
+                                                onPress={() => {
+                                                    setIsUploading(false);
+                                                    uploadBarAnim.setValue(0);
+                                                    clearUpload();
+                                                }}
+                                            >
+                                                <Text style={styles.uploadDismissTxt}>Dismiss</Text>
+                                            </TouchableOpacity>
+                                        </>
+                                    ) : activeUpload?.phase === 'done' ? (
+                                        <>
+                                            <View style={[styles.uploadIconWrap, { backgroundColor: '#43A047' + '1A' }]}>
+                                                <Ionicons name="checkmark-circle" size={40} color="#43A047" />
+                                            </View>
+                                            <Text style={styles.uploadLabel}>Posted successfully!</Text>
+                                            <View style={styles.uploadBarTrack}>
+                                                <View style={[styles.uploadBarFill, styles.uploadBarDone, { width: '100%' }]} />
+                                            </View>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <View style={styles.uploadIconWrap}>
+                                                <ActivityIndicator size="large" color={ACCENT} />
+                                            </View>
+                                            <Text style={styles.uploadLabel}>
+                                                {activeUpload?.label || 'Uploading…'}
+                                            </Text>
+                                            <Text style={styles.uploadPct}>
+                                                {Math.round(activeUpload?.pct ?? 0)}%
+                                            </Text>
+                                            <View style={styles.uploadBarTrack}>
+                                                <RNAnimated.View
+                                                    style={[
+                                                        styles.uploadBarFill,
+                                                        {
+                                                            width: uploadBarAnim.interpolate({
+                                                                inputRange: [0, 100],
+                                                                outputRange: ['0%', '100%'],
+                                                                extrapolate: 'clamp',
+                                                            }),
+                                                        },
+                                                    ]}
+                                                />
+                                            </View>
+                                            <Text style={styles.uploadHint}>Please wait…</Text>
+                                        </>
+                                    )}
+                                </View>
+                            </View>
+                        )}
                     </View>
                 </KeyboardAvoidingView>
             </View>
@@ -860,31 +913,87 @@ const styles = StyleSheet.create({
     catPillText: { fontSize: 12, color: MUTED, fontWeight: '600' },
     catPillTextActive: { color: WHITE, fontWeight: '800' },
 
-    // ── Upload / Success overlay ──────────────────────────────────────────────
-    overlay: {
+    // ── Upload progress overlay ───────────────────────────────────────────────
+    uploadOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: BRAND + '8C',
-        justifyContent: 'center', alignItems: 'center', zIndex: 100,
+        backgroundColor: WHITE + 'F2',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
     },
-    overlayCard: {
-        backgroundColor: WHITE, borderRadius: 24,
-        paddingHorizontal: 44, paddingVertical: 36,
-        alignItems: 'center', gap: 14,
-        shadowColor: BLACK, shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2, shadowRadius: 24, elevation: 16, minWidth: 220,
+    uploadCard: {
+        width: '82%',
+        backgroundColor: WHITE,
+        borderRadius: 24,
+        paddingVertical: 36,
+        paddingHorizontal: 28,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+        elevation: 12,
+        borderWidth: 1,
+        borderColor: BORDER,
     },
-    overlayLabel: { fontSize: 15, fontWeight: '700', color: BRAND },
-    progressBar: {
-        width: 160, height: 5, backgroundColor: BG,
-        borderRadius: 3, overflow: 'hidden',
+    uploadIconWrap: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: ACCENT + '14',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 18,
     },
-    progressFill: { height: '100%', backgroundColor: ACCENT, borderRadius: 3 },
-    successCircle: {
-        width: 78, height: 78, borderRadius: 39,
-        justifyContent: 'center', alignItems: 'center',
+    uploadLabel: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: BRAND,
+        textAlign: 'center',
+        marginBottom: 6,
     },
-    successLabel: { fontSize: 22, fontWeight: '900', color: BRAND },
-    successSub: { fontSize: 13, color: MUTED },
+    uploadPct: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: ACCENT,
+        letterSpacing: -1,
+        marginBottom: 16,
+    },
+    uploadBarTrack: {
+        width: '100%',
+        height: 7,
+        backgroundColor: BG,
+        borderRadius: 4,
+        overflow: 'hidden',
+        marginBottom: 10,
+    },
+    uploadBarFill: {
+        height: '100%',
+        backgroundColor: ACCENT,
+        borderRadius: 4,
+    },
+    uploadBarDone: {
+        backgroundColor: '#43A047',
+    },
+    uploadHint: {
+        fontSize: 12,
+        color: MUTED,
+        marginTop: 4,
+    },
+    uploadDismissBtn: {
+        marginTop: 16,
+        paddingHorizontal: 24,
+        paddingVertical: 10,
+        borderRadius: 22,
+        backgroundColor: '#E53935' + '14',
+    },
+    uploadDismissTxt: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#E53935',
+    },
 });
 
 export default memo(PostComposerModal);

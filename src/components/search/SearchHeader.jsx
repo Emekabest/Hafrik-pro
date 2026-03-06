@@ -22,7 +22,6 @@ export const TABS = [
   { label: 'Posts',    icon: 'document-text', type: 'post'    },
   { label: 'Pages',    icon: 'business',      type: 'page'    },
   { label: 'Groups',   icon: 'albums',        type: 'group'   },
-  { label: 'Events',   icon: 'calendar',      type: 'event'   },
   { label: 'Articles', icon: 'newspaper',     type: 'article' },
 ];
 

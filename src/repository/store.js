@@ -48,6 +48,26 @@ const useStore = create((set, get) => ({
     triggerRefresh: () => set((state) => ({ refreshSignal: state.refreshSignal + 1 })),
 
 
+    /** Background Upload Section ............................................... */
+    // activeUpload shape: { id, phase, pct, done, total, label, error }  or null
+    activeUpload: null,
+    startUpload: (label = 'Uploading…') => set({
+        activeUpload: { id: Date.now(), phase: 'uploading', pct: 0, done: 0, total: 1, label, error: null },
+    }),
+    updateUploadProgress: (patch) => set((state) => {
+        if (!state.activeUpload) return {};
+        return { activeUpload: { ...state.activeUpload, ...patch } };
+    }),
+    completeUpload: () => set((state) => {
+        if (!state.activeUpload) return {};
+        return { activeUpload: { ...state.activeUpload, phase: 'done', pct: 100, error: null } };
+    }),
+    failUpload: (error) => set((state) => {
+        if (!state.activeUpload) return {};
+        return { activeUpload: { ...state.activeUpload, phase: 'error', error } };
+    }),
+    clearUpload: () => set({ activeUpload: null }),
+
 
     /**Feeds Section............................................... */
     feeds:{
@@ -57,7 +77,16 @@ const useStore = create((set, get) => ({
             trendingFeeds: [],
             whatsNearbyFeeds: [],
             profileTimelineFeeds: [],
-        }
+            // ── Unified feed tabs ──────────────────────────────────────────
+            forYouFeeds: [],
+            discoverFeeds: [],
+            popularFeeds: [],
+            followingFeeds: [],
+            reelsFeeds: [],
+            watchFeeds: [],
+        },
+        // pagination metadata per list  { page, totalPages, newestId }
+        meta: {},
     },
     setFeeds:(state)=> set({
         feeds: state
@@ -78,12 +107,13 @@ const useStore = create((set, get) => ({
 
     addFeedsToList: (listName, feedsArray) => set((state) => {
         const feedsById = { ...state.feeds.feedsById };
+        const existingList = state.feeds.lists[listName] || [];
         const idsToAdd = [];
 
         feedsArray.forEach(feed => {
             feedsById[feed.id] = feed;
 
-            if (!state.feeds.lists[listName].includes(feed.id)) {
+            if (!existingList.includes(feed.id)) {
             idsToAdd.push(feed.id);
             }
         });
@@ -94,7 +124,7 @@ const useStore = create((set, get) => ({
             feedsById,
             lists: {
                 ...state.feeds.lists,
-                [listName]: [...state.feeds.lists[listName], ...idsToAdd]
+                [listName]: [...existingList, ...idsToAdd]
             }
             }
         };
@@ -104,7 +134,8 @@ const useStore = create((set, get) => ({
     // Prepends only genuinely new items (by id) — used for background focus refresh
     prependFeedsToList: (listName, feedsArray) => set((state) => {
         const feedsById = { ...state.feeds.feedsById };
-        const existingIds = new Set(state.feeds.lists[listName].map(String));
+        const existingList = state.feeds.lists[listName] || [];
+        const existingIds = new Set(existingList.map(String));
         const newIds = [];
 
         feedsArray.forEach(feed => {
@@ -122,14 +153,14 @@ const useStore = create((set, get) => ({
                 feedsById,
                 lists: {
                     ...state.feeds.lists,
-                    [listName]: [...newIds, ...state.feeds.lists[listName]],
+                    [listName]: [...newIds, ...existingList],
                 },
             },
         };
     }),
 
     clearFeedsList: (listName) => set((state) => {
-        const idsToRemove = state.feeds.lists[listName];
+        const idsToRemove = state.feeds.lists[listName] || [];
         const feedsById = { ...state.feeds.feedsById };
         
         // Remove feeds that aren't used by other lists
@@ -153,6 +184,17 @@ const useStore = create((set, get) => ({
             }
         };
     }),
+
+    // ── Pagination metadata per feed list ────────────────────────────────
+    setFeedsMeta: (listName, meta) => set((state) => ({
+        feeds: {
+            ...state.feeds,
+            meta: {
+                ...state.feeds.meta,
+                [listName]: { ...(state.feeds.meta[listName] || {}), ...meta },
+            },
+        },
+    })),
 /**...................................................................................
 /**................................................................................... */
 

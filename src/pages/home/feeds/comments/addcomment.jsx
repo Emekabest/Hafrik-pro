@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import { AddCommentController } from '../../../../controllers/commentscontroller';
+import { AddCommentController, AddReplyController } from '../../../../controllers/commentscontroller';
 import { Colors } from '../../../../theme/colors';
 import { Spacing } from '../../../../theme/spacing';
 
@@ -54,19 +54,24 @@ const AddComment = forwardRef(({ user, feedId, token, replyingTo, onCancelReply,
   const handlePost = async () => {
     const trimmed = commentText.trim();
     if (!trimmed || posting) return;
-    setPosting(true);
+    // Clear input immediately so it feels instant
     setCommentText('');
+    setPosting(true);
 
     try {
       if (replyingTo) {
-        await axios.post(
-          `${BASE}/api/v1/feed/add_comment_reply.php`,
-          { comment_id: replyingTo.commentId, reply: trimmed },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await AddReplyController(feedId, replyingTo.commentId, trimmed, token);
+        if (res && res.status !== 200) {
+          setCommentText(trimmed);
+          Alert.alert('Error', 'Failed to post reply. Please try again.');
+          setPosting(false);
+          return;
+        }
       } else {
         const res = await AddCommentController(feedId, trimmed, token);
         if (res && res.status !== 200) {
+          // Restore text so user can retry
+          setCommentText(trimmed);
           Alert.alert('Error', 'Failed to post comment. Please try again.');
           setPosting(false);
           return;
@@ -75,6 +80,8 @@ const AddComment = forwardRef(({ user, feedId, token, replyingTo, onCancelReply,
       onPosted?.();
       onCancelReply?.();
     } catch {
+      // Restore text so user can retry
+      setCommentText(trimmed);
       Alert.alert('Error', 'Failed to post. Please try again.');
     }
     setPosting(false);
@@ -116,9 +123,9 @@ const AddComment = forwardRef(({ user, feedId, token, replyingTo, onCancelReply,
             placeholder={replyingTo ? `Reply to @${replyingTo.username}…` : 'Write a comment…'}
             placeholderTextColor={Colors.mutedBlueGrayPlaceholder}
             multiline
+            blurOnSubmit={false}
             style={cs.input}
-            returnKeyType="send"
-            onSubmitEditing={handlePost}
+            scrollEnabled
           />
         </View>
 

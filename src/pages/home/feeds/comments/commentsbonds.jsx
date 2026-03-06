@@ -5,8 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
-import { GetCommentsController } from '../../../../controllers/commentscontroller';
+import { GetCommentsController, LikeCommentController, DeleteCommentController, GetRepliesController } from '../../../../controllers/commentscontroller';
 import CalculateElapsedTime from '../../../../helpers/calculateelapsedtime';
 import { Colors } from '../../../../theme/colors';
 
@@ -30,8 +29,9 @@ const MUTED  = Colors.secondaryText;
 export const CommentItem = React.memo(({ comment, token, onReply }) => {
   const navigation = useNavigation();
   const [liked,     setLiked]     = useState(!!comment.is_liked);
-  const [likeCount, setLikeCount] = useState(Number(comment.likes_count ?? comment.like_count ?? 0));
+  const [likeCount, setLikeCount] = useState(Number(comment.likes_count ?? comment.like_count ?? comment.likes ?? 0));
   const [showReplies, setShowReplies] = useState(false);
+  const [deleted, setDeleted] = useState(false);
   const scale = useState(new Animated.Value(1))[0];
 
   const handleUserPress = useCallback(() => {
@@ -55,11 +55,12 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
     setLiked(next);
     setLikeCount((c) => c + (next ? 1 : -1));
     try {
-      await axios.post(
-        `${BASE}/api/v1/feed/like_comment.php`,
-        { comment_id: comment.id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await LikeCommentController(comment.id, token);
+      if (res.status === 200 && res.data) {
+        // Sync with server truth
+        if (typeof res.data.is_liked !== 'undefined') setLiked(!!res.data.is_liked);
+        if (typeof res.data.likes !== 'undefined') setLikeCount(Number(res.data.likes));
+      }
     } catch {
       // Roll back
       setLiked(!next);
@@ -67,11 +68,40 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
     }
   }, [liked, comment.id, token]);
 
-  const replies = Array.isArray(comment.replies) ? comment.replies : [];
-  const hasReplies = replies.length > 0;
+  const handleDelete = useCallback(() => {
+    if (!comment.is_mine) return;
+    Alert.alert('Delete Comment', 'Are you sure you want to delete this comment?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await DeleteCommentController(comment.id, token);
+            if (res.status === 200) {
+              setDeleted(true);
+            }
+          } catch { /* silent */ }
+        },
+      },
+    ]);
+  }, [comment.id, comment.is_mine, token]);
+
+  const [replies, setReplies] = useState(Array.isArray(comment.replies) ? comment.replies : []);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+  const replyCount = Number(comment.reply_count ?? replies.length);
+  const hasReplies = replyCount > 0;
+  const fetchedRepliesRef = React.useRef(false);
+
+  // If deleted, don't render
+  if (deleted) return null;
 
   return (
-    <View style={cs.card}>
+    <TouchableOpacity
+      style={cs.card}
+      activeOpacity={1}
+      onLongPress={comment.is_mine ? handleDelete : undefined}
+      delayLongPress={500}
+    >
       {/* Avatar — tap to view profile */}
       <TouchableOpacity onPress={handleUserPress} activeOpacity={0.8}>
         <Image
@@ -119,17 +149,41 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
 
           {/* Toggle replies */}
           {hasReplies && (
-            <TouchableOpacity style={cs.actionBtn} onPress={() => setShowReplies((v) => !v)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={cs.actionBtn}
+              onPress={async () => {
+                const next = !showReplies;
+                setShowReplies(next);
+                // Fetch replies from API on first expand if we don't have them yet
+                if (next && replies.length === 0 && !fetchedRepliesRef.current) {
+                  fetchedRepliesRef.current = true;
+                  setLoadingReplies(true);
+                  try {
+                    const res = await GetRepliesController(comment.id, token);
+                    if (Array.isArray(res?.data) && res.data.length > 0) {
+                      setReplies(res.data);
+                    }
+                  } catch { /* silent */ }
+                  setLoadingReplies(false);
+                }
+              }}
+              activeOpacity={0.7}
+            >
               <Ionicons name={showReplies ? 'chevron-up' : 'chevron-down'} size={14} color={ACCENT} />
               <Text style={[cs.actionLabel, { color: ACCENT }]}>
-                {showReplies ? 'Hide' : `${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
+                {showReplies ? 'Hide' : `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`}
               </Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Inline reply thread */}
-        {showReplies && replies.map((r, i) => (
+        {showReplies && loadingReplies && (
+          <View style={{ paddingVertical: 10, paddingLeft: 4 }}>
+            <ActivityIndicator size="small" color={ACCENT} />
+          </View>
+        )}
+        {showReplies && !loadingReplies && replies.map((r, i) => (
           <View key={r.id ?? i} style={cs.replyRow}>
             <Image source={{ uri: r.user?.avatar }} style={cs.replyAvatar} />
             <View style={{ flex: 1 }}>
@@ -142,7 +196,7 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
           </View>
         ))}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 });
 

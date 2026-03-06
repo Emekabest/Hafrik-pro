@@ -113,15 +113,33 @@ export async function fetchReels(
 }
 
 // ─────────────────────────────────────────────
-// ENGAGEMENT
+// ENGAGEMENT  (unified feed endpoints)
 // ─────────────────────────────────────────────
+const FEED_BASE = 'https://hafrik.com/api/v1/feed';
 
-export async function toggleLike(postId, token) {
-  return authPost('toggle_like.php', { post_id: postId }, token);
+async function feedJsonPost(endpoint, bodyObj, token) {
+  const res = await fetch(`${FEED_BASE}/${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(bodyObj),
+  });
+  const json = await safeJson(res);
+  if (!json || json.status !== 'success') {
+    console.warn('[reelsApi] Feed endpoint error:', json);
+    return null;
+  }
+  return json.data ?? null;
+}
+
+export async function toggleLike(postId, token, reaction = 'like') {
+  return feedJsonPost('react.php', { post_id: postId, reaction }, token);
 }
 
 export async function toggleSave(postId, token) {
-  return authPost('toggle_save.php', { post_id: postId }, token);
+  return feedJsonPost('save.php', { post_id: postId }, token);
 }
 
 export async function followUser(userId, token) {
@@ -129,22 +147,22 @@ export async function followUser(userId, token) {
 }
 
 export async function addComment(postId, text, token) {
-  return authPost('comment_add.php', { post_id: postId, text }, token);
+  return feedJsonPost('comments.php', { action: 'comment', post_id: postId, text }, token);
 }
 
-export async function fetchComments(postId) {
-  const res = await fetch(`${BASE}/comments_list.php?post_id=${postId}`);
+export async function fetchComments(postId, token, page = 1, limit = 10) {
+  const url = `${FEED_BASE}/comments.php?post_id=${postId}&page=${page}&limit=${limit}`;
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   const json = await safeJson(res);
-
-  if (!json || json.status !== 'success') {
-    return [];
-  }
-
-  return json.data ?? [];
+  if (!json || json.status !== 'success') return [];
+  const raw = json.data;
+  return Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
 }
 
-export async function shareReel(postId, userId, token) {
-  return authPost('share.php', { post_id: postId, user_id: userId }, token);
+export async function shareReel(postId, token, text = '', privacy = 'public') {
+  return feedJsonPost('share.php', { post_id: postId, text, privacy }, token);
 }
 
 // ─────────────────────────────────────────────

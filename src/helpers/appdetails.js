@@ -24,10 +24,14 @@ const AppDetails = {
     },
 
     apis:{
-        recentUpdateApi:`${baseUrl}/feed/list.php`,
-        trendingApi:`${baseUrl}/feed/trending.php`,
-        whatsnearbyApi:`${baseUrl}/feed/nearby.php`,
-        profileTimeline:`${baseUrl}/users/profile_feed.php`,
+        // ── Unified feed endpoint ──────────────────────────────────────────
+        feedApi:          `${baseUrl}/feed/list.php`,
+
+        // Legacy aliases (still point to the unified endpoint for backward compat)
+        recentUpdateApi:  `${baseUrl}/feed/list.php`,
+        trendingApi:      `${baseUrl}/feed/list.php`,
+        whatsnearbyApi:   `${baseUrl}/feed/nearby.php`,
+        profileTimeline:  `${baseUrl}/users/profile_feed.php`,
     },
 
     headerHeight: 50,

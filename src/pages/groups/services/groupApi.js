@@ -79,12 +79,12 @@ export const getGroupMedia = async (groupId, type = 'all', page = 1, limit = 24,
 
 /* =========================
    GROUP FEED
-   GET /communities/group_feed.php
+   Uses the unified feed endpoint: GET /feed/list.php?get=posts_group&id=GROUP_ID
 ========================= */
 export const getGroupFeed = async (groupId, page = 1, limit = 10, token = null) => {
   try {
-    const response = await axios.get(`${BASE_URL}/group_feed.php`, {
-      params: { group_id: groupId, page, limit },
+    const response = await axios.get(`https://hafrik.com/api/v1/feed/list.php`, {
+      params: { get: 'posts_group', id: groupId, page, limit },
       headers: authHeaders(token),
       timeout: 12000,
     });

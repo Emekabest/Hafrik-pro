@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, StatusBar } from "react-native";
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,11 +12,8 @@ import Followers from './followers';
 import ProfileHeader from './profileheader';
 import DrawerNavigation from '../home/drawernavigation';
 import Photos from './photos';
-import Videos from './videos';
-import Product from './Product';
 import BusinessPages from './businesspages/BusinessPages';
 import Communities from './Communities';
-import Events from './Events';
 import ProgressBarLoader from '../progressbarloader';
 import PostComposerModal from '../home/PostComposerModal';
 import { useLiveCounts } from '../../hooks/useLiveCounts';
@@ -31,8 +28,8 @@ const ProfileScreen = () => {
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState({label: "Timeline", value: "timeline"});
-    const [isTabLoading, setIsTabLoading] = useState(false);
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const setSearchVisible = useStore((state) => state.setSearchVisible);
     const setProfileTabMode = useStore((state) => state.setProfileTabMode);
@@ -53,14 +50,11 @@ const ProfileScreen = () => {
     // ])
 
     const tabs = useRef([
-        {label: "Timeline", value: "timeline"},
-        {label: "Followers", value: "followers"},
-        {label: "Photos", value: "photos"},
-        {label: "Videos", value: "videos"},
-        {label: "Product", value: "product"},
-        {label: "Business Pages", value: "business_pages"},
-        {label: "Communities", value: "communities"},
-        {label: "Events", value: "events"},
+        {label: "Timeline", value: "timeline", icon: "home-outline"},
+        {label: "Followers", value: "followers", icon: "people-outline"},
+        {label: "Media", value: "photos", icon: "images-outline"},
+        {label: "Pages", value: "business_pages", icon: "flag-outline"},
+        {label: "Communities", value: "communities", icon: "globe-outline"},
     ])
 
 
@@ -95,27 +89,29 @@ const ProfileScreen = () => {
         setIsDrawerVisible(false);
     }, []);
 
+    // Pull-to-refresh: re-fetch profile data + timeline feeds
+    const handleRefreshProfile = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            const response = await ProfileHeaderController(token);
+            if (response && response.data) {
+                setProfileData(response.data);
+            }
+        } catch {}
+        setRefreshing(false);
+    }, [token]);
 
 
 
 
 
-    // Handle tab change: show loader immediately, then mount component after paint
+
+    // Handle tab change — simple and fast, no double-RAF
     const handleTabChange = useCallback((tab) => {
         if (tab.value === activeTab.value) return;
-        // Show loader immediately
-        setIsTabLoading(true);
-        // Use double requestAnimationFrame to ensure loader paints before switching
-        // First RAF schedules for next frame, second RAF ensures paint completed
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                setActiveTab(tab); // Update local state to switch tab content
-                setProfileTabMode(tab); // Update global state with active tab
-                // Hide loader after short delay
-                setTimeout(() => setIsTabLoading(false), 400);
-            });
-        });
-    }, [activeTab]);
+        setActiveTab(tab);
+        setProfileTabMode(tab);
+    }, [activeTab.value]);
 
     
 
@@ -132,12 +128,27 @@ const ProfileScreen = () => {
     const isOwner = profileData?.viewer?.is_owner || false;
     const isFollowing = profileData?.viewer?.is_following || false;
 
+    // Memoize the header so it's not recreated on every render
+    const profileHeader = useMemo(() => (
+        <ProfileHeader 
+            userDetails={userDetails} 
+            user={user} 
+            postsCount={postsCount} 
+            followersCount={followersCount} 
+            followingsCount={followingsCount} 
+            groupsCount={groupsCount}
+            pagesCount={pagesCount}
+            isOwner={isOwner}
+            isFollowing={isFollowing}
+        />
+    ), [userDetails, user, postsCount, followersCount, followingsCount, groupsCount, pagesCount, isOwner, isFollowing]);
+
     
 
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <ProgressBarLoader visible={isTabLoading} />
+            <ProgressBarLoader visible={false} />
             {/* Header already handles top safe-area via useSafeAreaInsets internally */}
             <AppHeader onOpenDrawer={openDrawer} />
             <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
@@ -149,44 +160,22 @@ const ProfileScreen = () => {
                 <View style={{ flex: 1 }}>
                     {activeTab.value === 'timeline' && (
                         <Timeline 
-                            header={
-                                <ProfileHeader 
-                                    userDetails={userDetails} 
-                                    user={user} 
-                                    postsCount={postsCount} 
-                                    followersCount={followersCount} 
-                                    followingsCount={followingsCount} 
-                                    groupsCount={groupsCount}
-                                    pagesCount={pagesCount}
-                                    isOwner={isOwner}
-                                    isFollowing={isFollowing}
-                                />
-                            } 
+                            header={profileHeader} 
                             posts={profileData?.posts || []}
                             tabs={tabs.current}
                             activeTab={activeTab}
                             onTabChange={handleTabChange}
                             isOwner={isOwner}
                             userId={userId}
+                            refreshing={refreshing}
+                            onRefresh={handleRefreshProfile}
                         />
                     )}
 
                     {
                         activeTab.value === 'followers' && (
                             <Followers
-                                header={
-                                    <ProfileHeader 
-                                        userDetails={userDetails} 
-                                        user={user} 
-                                        postsCount={postsCount} 
-                                        followersCount={followersCount} 
-                                        followingsCount={followingsCount} 
-                                        groupsCount={groupsCount}
-                                        pagesCount={pagesCount}
-                                        isOwner={isOwner}
-                                        isFollowing={isFollowing}
-                                    />
-                                }
+                                header={profileHeader}
                                 tabs={tabs.current}
                                 activeTab={activeTab}
                                 onTabChange={handleTabChange}
@@ -199,19 +188,7 @@ const ProfileScreen = () => {
                     {
                         activeTab.value === 'photos' && (
                             <Photos
-                                header={
-                                    <ProfileHeader 
-                                        userDetails={userDetails} 
-                                        user={user} 
-                                        postsCount={postsCount} 
-                                        followersCount={followersCount} 
-                                        followingsCount={followingsCount} 
-                                        groupsCount={groupsCount}
-                                        pagesCount={pagesCount}
-                                        isOwner={isOwner}
-                                        isFollowing={isFollowing}
-                                    />
-                                }
+                                header={profileHeader}
                                 tabs={tabs.current}
                                 activeTab={activeTab}
                                 onTabChange={handleTabChange}
@@ -220,70 +197,12 @@ const ProfileScreen = () => {
                         )
                     }
 
-                    {
-                        activeTab.value === 'videos' && (
-                            <Videos
-                                header={
-                                    <ProfileHeader 
-                                        userDetails={userDetails} 
-                                        user={user} 
-                                        postsCount={postsCount} 
-                                        followersCount={followersCount} 
-                                        followingsCount={followingsCount} 
-                                        groupsCount={groupsCount}
-                                        pagesCount={pagesCount}
-                                        isOwner={isOwner}
-                                        isFollowing={isFollowing}
-                                    />
-                                }
-                                tabs={tabs.current}
-                                activeTab={activeTab}
-                                onTabChange={handleTabChange}
-                                userId={userId}
-                            />
-                        )
-                    }
 
-                    {
-                        activeTab.value === 'product' && (
-                            <Product
-                                header={
-                                    <ProfileHeader 
-                                        userDetails={userDetails} 
-                                        user={user} 
-                                        postsCount={postsCount} 
-                                        followersCount={followersCount} 
-                                        followingsCount={followingsCount} 
-                                        groupsCount={groupsCount}
-                                        pagesCount={pagesCount}
-                                        isOwner={isOwner}
-                                        isFollowing={isFollowing}
-                                    />
-                                }
-                                tabs={tabs.current}
-                                activeTab={activeTab}
-                                onTabChange={handleTabChange}
-                                userId={userId}
-                            />
-                        )
-                    }
 
                     {
                         activeTab.value === 'business_pages' && (
                             <BusinessPages
-                                header={
-                                    <ProfileHeader 
-                                        userDetails={userDetails} 
-                                        user={user} 
-                                        postsCount={postsCount} 
-                                        followersCount={followersCount} 
-                                        followingsCount={followingsCount} 
-                                        groupsCount={groupsCount}
-                                        pagesCount={pagesCount}
-                                        isOwner={isOwner}
-                                        isFollowing={isFollowing}
-                                    />
-                                }
+                                header={profileHeader}
                                 tabs={tabs.current}
                                 activeTab={activeTab}
                                 onTabChange={handleTabChange}
@@ -295,43 +214,7 @@ const ProfileScreen = () => {
                     {
                         activeTab.value === 'communities' && (
                             <Communities
-                                header={
-                                    <ProfileHeader 
-                                        userDetails={userDetails} 
-                                        user={user} 
-                                        postsCount={postsCount} 
-                                        followersCount={followersCount} 
-                                        followingsCount={followingsCount} 
-                                        groupsCount={groupsCount}
-                                        pagesCount={pagesCount}
-                                        isOwner={isOwner}
-                                        isFollowing={isFollowing}
-                                    />
-                                }
-                                tabs={tabs.current}
-                                activeTab={activeTab}
-                                onTabChange={handleTabChange}
-                                userId={userId}
-                            />
-                        )
-                    }
-
-                    {
-                        activeTab.value === 'events' && (
-                            <Events
-                                header={
-                                    <ProfileHeader 
-                                        userDetails={userDetails} 
-                                        user={user} 
-                                        postsCount={postsCount} 
-                                        followersCount={followersCount} 
-                                        followingsCount={followingsCount} 
-                                        groupsCount={groupsCount}
-                                        pagesCount={pagesCount}
-                                        isOwner={isOwner}
-                                        isFollowing={isFollowing}
-                                    />
-                                }
+                                header={profileHeader}
                                 tabs={tabs.current}
                                 activeTab={activeTab}
                                 onTabChange={handleTabChange}

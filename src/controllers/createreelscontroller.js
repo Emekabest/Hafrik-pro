@@ -3,7 +3,7 @@ import axios from "axios";
 
 const CreateReelsController = async(postData, token) => {
 
-    const API_URL = `https://hafrik.com/api/v1/posts/create.php`;
+    const API_URL = `https://hafrik.com/api/v1/feed/create.php`;
 
     try {
 

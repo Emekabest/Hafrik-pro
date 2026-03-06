@@ -145,7 +145,7 @@ const Header = ({
         {/* CENTER */}
         <View style={styles.logoWrap} pointerEvents="none">
           <Image
-            source={require('../assl.js/logoTop.png')}
+            source={require('../assl.js/Layer 3.png')}
             style={styles.logo}
             resizeMode="contain"
           />

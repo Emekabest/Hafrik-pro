@@ -17,7 +17,7 @@ import { useAuth } from '../../AuthContext';
 import SearchSuggestionController from '../../controllers/searchsuggestioncontroller';
 import SearchHeader, { TABS } from '../../components/search/SearchHeader';
 import {
-  PersonCard, PostCard, PageCard, GroupCard, EventCard, ArticleCard,
+  PersonCard, PostCard, PageCard, GroupCard, ArticleCard,
   SectionHeader, SkeletonCard, ResultsLabel, ShowMoreButton,
 } from '../../components/search/SearchCards';
 import SearchEmptyState from '../../components/search/SearchEmptyState';
@@ -28,14 +28,13 @@ const MAX_RECENT = 5;
 const ALL_SECTION_LIMIT = 3;   // max items shown per section in "All" tab
 const TAB_ITEM_LIMIT    = 5;   // max items shown in individual tabs before "Show more"
 
-// tabIndex matches TABS array order: 0=All 1=People 2=Posts 3=Pages 4=Groups 5=Events 6=Articles
+// tabIndex matches TABS array order: 0=All 1=People 2=Posts 3=Pages 4=Groups 5=Articles
 const SECTION_ORDER = [
   { type: 'user',    label: 'People',   tabIndex: 1 },
   { type: 'post',    label: 'Posts',    tabIndex: 2 },
   { type: 'page',    label: 'Pages',    tabIndex: 3 },
   { type: 'group',   label: 'Groups',   tabIndex: 4 },
-  { type: 'event',   label: 'Events',   tabIndex: 5 },
-  { type: 'article', label: 'Articles', tabIndex: 6 },
+  { type: 'article', label: 'Articles', tabIndex: 5 },
 ];
 
 const SearchScreen = () => {
@@ -107,7 +106,7 @@ const SearchScreen = () => {
     if (tab == null) return;
     const tabMap = {
       all: 0, people: 1, posts: 2, hashtags: 2,
-      pages: 3, groups: 4, events: 5, articles: 6,
+      pages: 3, groups: 4, articles: 5,
     };
     const idx = typeof tab === 'number' ? tab : tabMap[String(tab).toLowerCase()];
     if (idx !== undefined) setActiveTab(idx);
@@ -169,9 +168,15 @@ const SearchScreen = () => {
     if (type === 'user')    return navigation.navigate('Profile',        { userId: item.id });
     if (type === 'page')    return navigation.navigate('BusinessDetails', { pageId: item.id });
     if (type === 'group')   return navigation.navigate('GroupDetails',    { groupId: item.id });
-    if (type === 'event')   return navigation.navigate('EventDetail',     { event: item });
     if (type === 'article') return navigation.navigate('ArticleDetails',  { postId: item.id, title: item.title, link: item.link });
-    // Post — always open the post detail (reels and videos included)
+    // Reels always open the full-screen Reels viewer
+    if (type === 'reel' || type === 'video') {
+      return navigation.navigate('Reels2', {
+        initialReels: [item],
+        startIndex: 0,
+        initialReelId: item.id,
+      });
+    }
     navigation.navigate('CommentScreen', { feedId: item.id });
   }, [navigation, saveRecent, searchQuery]);
 
@@ -352,7 +357,6 @@ const SearchScreen = () => {
         onJoinToggle={handleJoinToggle}
       />
     );
-    if (item._type === 'event')   return <EventCard   item={item} onPress={onPress} />;
     if (item._type === 'article') return <ArticleCard item={item} onPress={onPress} />;
     return null;
   }, [handleItemPress, followedIds, joinedIds, handleFollowToggle, handleJoinToggle]);

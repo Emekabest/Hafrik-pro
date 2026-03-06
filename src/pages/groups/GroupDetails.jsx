@@ -73,7 +73,7 @@ const ComposeModal = ({ visible, group, token, onClose, onPosted }) => {
       body.append('content',  text.trim());
       body.append('group_id', String(group?.id ?? ''));
       body.append('type',     'text');
-      const res  = await fetch('https://hafrik.com/api/v1/posts/create.php', {
+      const res  = await fetch('https://hafrik.com/api/v1/feed/create.php', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body,
@@ -278,7 +278,11 @@ export default function GroupDetails({ route }) {
 
   useEffect(() => {
     if (autoCompose && isMember) openComposer({
-      _type: 'group', id: groupId, title: group?.title, locked: true,
+      locked: true,
+      _type: 'group',
+      id: group?.id ?? groupId,
+      title: group?.title,
+      avatar: group?.avatar,
     });
   }, [autoCompose, isMember]);
 
@@ -385,8 +389,14 @@ export default function GroupDetails({ route }) {
   };
 
   const openGroupComposer = useCallback(() => {
-    openComposer({ _type: 'group', id: groupId, title: group?.title, locked: true });
-  }, [openComposer, groupId, group?.title]);
+    openComposer({
+      locked: true,
+      _type: 'group',
+      id: group?.id ?? groupId,
+      title: group?.title,
+      avatar: group?.avatar,
+    });
+  }, [openComposer, groupId, group?.id, group?.title, group?.avatar]);
 
   const coverTranslate = scrollY.interpolate({
     inputRange: [0, 180], outputRange: [0, -60], extrapolate: 'clamp',

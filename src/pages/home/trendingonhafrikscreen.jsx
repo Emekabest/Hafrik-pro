@@ -1,6 +1,7 @@
 import { StyleSheet, View, Alert, Text, Animated, Dimensions } from "react-native";
 import { useAuth } from "../../AuthContext";
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, memo } from "react";
+import React from "react";
 import { useNavigation } from "@react-navigation/native";
 import Feeds from "./feeds/feeds";
 import GetFeedsController from "../../controllers/getfeedscontroller";
@@ -14,6 +15,73 @@ const { width: SCREEN_W } = Dimensions.get("window");
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
 const WHITE  = Colors.white;
+
+// Hardcoded rank movement deltas for top-5 trending (positive=rising, negative=dropping)
+const RANK_DELTAS = [2, -1, 0, 1, -2];
+
+// ─────────────────────────────────────────────────────
+// Rank Strip — compact rank badge injected before each top-5 feed
+// ─────────────────────────────────────────────────────
+const RankStrip = memo(({ rank, delta }) => {
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (delta === 0) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.4, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1,   duration: 500, useNativeDriver: true }),
+        Animated.delay(2500),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [delta]);
+
+  const up     = delta > 0;
+  const stable = delta === 0;
+
+  return (
+    <View style={rs.strip}>
+      <Text style={[rs.rankNum, rank === 1 && rs.gold]}>{rank}</Text>
+      <View style={rs.divider} />
+      <Text style={rs.rankLabel}>#{rank} Trending</Text>
+      <View style={{ flex: 1 }} />
+      {stable ? (
+        <Text style={rs.stableText}>—</Text>
+      ) : (
+        <Animated.View style={[rs.deltaWrap, { transform: [{ scale: pulse }] }]}>
+          <Ionicons
+            name={up ? 'caret-up' : 'caret-down'}
+            size={10}
+            color={up ? '#22c55e' : '#ef4444'}
+          />
+          <Text style={[rs.deltaText, { color: up ? '#22c55e' : '#ef4444' }]}>
+            {up ? '+' : ''}{delta}
+          </Text>
+        </Animated.View>
+      )}
+    </View>
+  );
+});
+
+const rs = StyleSheet.create({
+  strip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+  rankNum:    { fontSize: 20, fontWeight: '900', color: BRAND, lineHeight: 24, width: 24, textAlign: 'center' },
+  gold:       { color: '#f59e0b' },
+  divider:    { width: 1, height: 16, backgroundColor: BRAND + '30' },
+  rankLabel:  { fontSize: 11, fontWeight: '700', color: BRAND + 'A0' },
+  deltaWrap:  { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  deltaText:  { fontSize: 10, fontWeight: '800' },
+  stableText: { fontSize: 12, fontWeight: '700', color: BRAND + '60' },
+});
 
 // ─────────────────────────────────────────────────────
 // Trending Header
@@ -153,6 +221,46 @@ const TrendingOnHafrikScreen = () => {
   const refreshSignal = useStore(state => state.refreshSignal);
   const [version, setVersion] = useState(0);
 
+  // ── Interstitial data ────────────────────────────────────────────────────
+  const [adsList,       setAdsList]       = useState([]);
+  const [peopleList,    setPeopleList]    = useState([]);
+  const [bizList,       setBizList]       = useState([]);
+  const [communityList, setCommunityList] = useState([]);
+
+  useEffect(() => {
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+
+    fetch('https://hafrik.com/api/v1/ads/list.php', { headers })
+      .then(r => r.json())
+      .then(d => {
+        const raw = d?.data;
+        setAdsList(Array.isArray(raw) ? raw : (raw?.id ? [raw] : []));
+      })
+      .catch(() => {});
+
+    fetch('https://hafrik.com/api/v1/people/list.php', { headers })
+      .then(r => r.json())
+      .then(d => setPeopleList(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []))
+      .catch(() => {});
+
+    fetch('https://hafrik.com/api/v1/business/list.php?limit=5', { headers })
+      .then(r => r.json())
+      .then(d => {
+        const list = d?.data?.data ?? d?.data?.businesses ?? d?.data?.pages ?? d?.data ?? [];
+        setBizList(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {});
+
+    fetch('https://hafrik.com/api/v1/communities/list.php?limit=5', { headers })
+      .then(r => r.json())
+      .then(d => {
+        const list = d?.data?.data ?? d?.data?.groups ?? d?.data?.communities ?? d?.data ?? [];
+        setCommunityList(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {});
+  }, [token]);
+
   const API_URL = AppDetails.apis.trendingApi;
 
   const extractFeedsArray = (response) => {
@@ -211,19 +319,54 @@ const TrendingOnHafrikScreen = () => {
       ),
     };
 
-    const mappedFeeds = trendingFeedsFromStore.map(feed => ({
-      type: "feed",
-      data: {
-        ...feed,
-        rankingLabel:
-          Array.isArray(feed.ranking_reason) && feed.ranking_reason.length > 0
-            ? feed.ranking_reason.join(" • ")
-            : null,
-      },
-    }));
+    // Build interstitial pool, then shuffle so order varies each load
+    const pool = [];
+    if (adsList.length       > 0) pool.push({ type: 'ad',            data: adsList[0] });
+    if (peopleList.length    > 0) pool.push({ type: 'peoplecard',    data: peopleList });
+    if (bizList.length       > 0) pool.push({ type: 'bizcard',       data: bizList });
+    if (communityList.length > 0) pool.push({ type: 'communitycard', data: communityList });
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
 
-    return [hero, ...mappedFeeds];
-  }, [trendingFeedsFromStore, totalViews]);
+    const MAX_INTERSTITIALS = 2;
+    const FIRST_AT          = 5;
+    const STEP              = 8;
+    let poolIdx    = 0;
+    let nextInsert = FIRST_AT;
+
+    const feedItems = [];
+    trendingFeedsFromStore.forEach((feed, i) => {
+      // Inject rank strip before each of the top-5 posts
+      if (i < RANK_DELTAS.length) {
+        const rank  = i + 1;
+        const delta = RANK_DELTAS[i];
+        feedItems.push({
+          type: 'renderComponent',
+          renderComponent: () => <RankStrip rank={rank} delta={delta} />,
+        });
+      }
+
+      feedItems.push({
+        type: "feed",
+        data: {
+          ...feed,
+          rankingLabel:
+            Array.isArray(feed.ranking_reason) && feed.ranking_reason.length > 0
+              ? feed.ranking_reason.join(" • ")
+              : null,
+        },
+      });
+
+      if ((i + 1) === nextInsert && poolIdx < pool.length && poolIdx < MAX_INTERSTITIALS) {
+        feedItems.push(pool[poolIdx++]);
+        nextInsert += STEP;
+      }
+    });
+
+    return [hero, ...feedItems];
+  }, [trendingFeedsFromStore, totalViews, adsList, peopleList, bizList, communityList]);
 
   return (
     <View style={styles.container}>

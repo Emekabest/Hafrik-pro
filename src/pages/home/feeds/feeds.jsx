@@ -48,51 +48,47 @@ const FEED_FILTERS = [
 // ─── People You May Know card ─────────────────────────────────────────────────
 const PeopleYouMayKnow = memo(({ people }) => {
   const navigation = useNavigation();
-  if (!people?.length) return null;
+  const filtered = (people?.filter(p => !!(p.avatar || p.profile_picture)) ?? []).slice(0, 4);
+  if (!filtered.length) return null;
   return (
-    <View style={styles.peopleCard}>
-      {/* Header */}
-      <View style={styles.peopleHeader}>
-        <View style={styles.peopleHeaderLeft}>
-          <View style={styles.peopleIconBubble}>
-            <Ionicons name="people" size={15} color={Colors.white} />
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeaderLeft}>
+          <View style={[styles.sectionIconBubble, { backgroundColor: BRAND }]}>
+            <Ionicons name="people" size={14} color={Colors.white} />
           </View>
-          <Text style={styles.peopleCardTitle}>People You May Know</Text>
+          <Text style={styles.sectionTitle}>People You May Know</Text>
         </View>
         <TouchableOpacity activeOpacity={0.7}>
-          <Text style={styles.peopleSeeAll}>See All</Text>
+          <Text style={styles.sectionSeeAll}>See All</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Horizontal scroll */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.peopleList}
-      >
-        {people.map((person, idx) => (
-          <TouchableOpacity
-            key={person.id ?? idx}
-            style={styles.personItem}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('Profile', { userId: person.id })}
-          >
-            <View style={styles.personAvatarRing}>
-              <Image
-                source={{ uri: person.avatar || person.profile_picture }}
-                style={styles.personAvatar}
-              />
-            </View>
-            <Text style={styles.personName} numberOfLines={2}>
+      {filtered.map((person, idx) => (
+        <TouchableOpacity
+          key={person.id ?? idx}
+          style={[styles.suggestionRow, idx < filtered.length - 1 && styles.suggestionRowBorder]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Profile', { userId: person.id })}
+        >
+          <Image
+            source={{ uri: person.avatar || person.profile_picture }}
+            style={styles.suggestionAvatar}
+          />
+          <View style={styles.suggestionInfo}>
+            <Text style={styles.suggestionName} numberOfLines={1}>
               {person.name || person.username}
             </Text>
-            <TouchableOpacity style={styles.connectBtn} activeOpacity={0.8}>
-              <Ionicons name="person-add-outline" size={11} color={Colors.white} />
-              <Text style={styles.connectBtnText}>Connect</Text>
-            </TouchableOpacity>
+            {!!person.mutual_friends && (
+              <Text style={styles.suggestionMeta}>{person.mutual_friends} mutual connections</Text>
+            )}
+          </View>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: BRAND }]} activeOpacity={0.8}>
+            <Ionicons name="person-add-outline" size={11} color={Colors.white} style={{ marginRight: 3 }} />
+            <Text style={styles.actionBtnText}>Connect</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 });
@@ -105,7 +101,7 @@ const AdCard = memo(({ ad }) => {
     <TouchableOpacity
       style={styles.adCard}
       activeOpacity={0.9}
-      onPress={() => ad.link && navigation.navigate('WebView', { url: ad.link, title: ad.title || 'Ad' })}
+      onPress={() => ad.url && navigation.navigate('WebView', { url: ad.url, title: ad.title || 'Ad' })}
     >
       {/* Image or gradient fallback */}
       <View style={styles.adImageWrapper}>
@@ -135,6 +131,92 @@ const AdCard = memo(({ ad }) => {
         </View>
       </View>
     </TouchableOpacity>
+  );
+});
+
+// ─── Businesses to Follow card ────────────────────────────────────────────────
+const BusinessToFollow = memo(({ items }) => {
+  const navigation = useNavigation();
+  const list = items?.slice(0, 2) ?? [];
+  if (!list.length) return null;
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeaderLeft}>
+          <View style={[styles.sectionIconBubble, { backgroundColor: ACCENT }]}>
+            <Ionicons name="storefront" size={14} color={Colors.white} />
+          </View>
+          <Text style={styles.sectionTitle}>Businesses to Follow</Text>
+        </View>
+      </View>
+      {list.map((biz, idx) => (
+        <TouchableOpacity
+          key={biz.id ?? idx}
+          style={[styles.suggestionRow, idx < list.length - 1 && styles.suggestionRowBorder]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('BusinessDetails', { pageId: biz.id })}
+        >
+          <Image source={{ uri: biz.avatar ?? biz.logo ?? biz.image }} style={styles.suggestionAvatar} />
+          <View style={styles.suggestionInfo}>
+            <Text style={styles.suggestionName} numberOfLines={1}>{biz.title ?? biz.name}</Text>
+            {!!biz.about && (
+              <Text style={styles.suggestionMeta} numberOfLines={1}>
+                {biz.about.replace(/<[^>]+>/g, '')}
+              </Text>
+            )}
+            {!!biz.followers_count && (
+              <Text style={styles.suggestionMeta}>{biz.followers_count?.toLocaleString()} followers</Text>
+            )}
+          </View>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: ACCENT }]} activeOpacity={0.8}>
+            <Text style={styles.actionBtnText}>Follow</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+});
+
+// ─── Communities to Join card ─────────────────────────────────────────────────
+const CommunityToJoin = memo(({ items }) => {
+  const navigation = useNavigation();
+  const list = items?.slice(0, 2) ?? [];
+  if (!list.length) return null;
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeaderLeft}>
+          <View style={[styles.sectionIconBubble, { backgroundColor: BRAND }]}>
+            <Ionicons name="people-circle" size={14} color={Colors.white} />
+          </View>
+          <Text style={styles.sectionTitle}>Communities to Join</Text>
+        </View>
+      </View>
+      {list.map((group, idx) => (
+        <TouchableOpacity
+          key={group.id ?? idx}
+          style={[styles.suggestionRow, idx < list.length - 1 && styles.suggestionRowBorder]}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('GroupDetails', { groupId: group.id })}
+        >
+          <Image source={{ uri: group.avatar ?? group.cover ?? group.image }} style={styles.suggestionAvatar} />
+          <View style={styles.suggestionInfo}>
+            <Text style={styles.suggestionName} numberOfLines={1}>{group.title ?? group.name}</Text>
+            {!!group.description && (
+              <Text style={styles.suggestionMeta} numberOfLines={1}>
+                {group.description.replace(/<[^>]+>/g, '')}
+              </Text>
+            )}
+            {!!group.members_count && (
+              <Text style={styles.suggestionMeta}>{group.members_count?.toLocaleString()} members</Text>
+            )}
+          </View>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: BRAND }]} activeOpacity={0.8}>
+            <Text style={styles.actionBtnText}>Join</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      ))}
+    </View>
   );
 });
 
@@ -401,6 +483,12 @@ const Feeds = ({
       case 'peoplecard':
         return <PeopleYouMayKnow people={item.data} />;
 
+      case 'bizcard':
+        return <BusinessToFollow items={item.data} />;
+
+      case 'communitycard':
+        return <CommunityToJoin items={item.data} />;
+
       case 'ad':
         return <AdCard ad={item.data} />;
 
@@ -519,88 +607,91 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
   },
 
-  // ── People You May Know ──────────────────────────────────────────────────
-  peopleCard: {
+  // ── Suggestion cards (People / Biz / Community) ──────────────────────────
+  sectionCard: {
     backgroundColor: BG_CARD,
-    paddingTop: 14,
-    paddingBottom: 18,
-    borderLeftWidth: 3,
-    borderLeftColor: ACCENT,
+    marginHorizontal: 0,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  peopleHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    marginBottom: 14,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight ?? '#F0F0F0',
   },
-  peopleHeaderLeft: {
+  sectionHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  peopleIconBubble: {
+  sectionIconBubble: {
     width: 26,
     height: 26,
     borderRadius: 8,
-    backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  peopleCardTitle: {
+  sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: BRAND,
     letterSpacing: -0.2,
   },
-  peopleSeeAll: {
+  sectionSeeAll: {
     fontSize: 12,
     color: ACCENT,
     fontWeight: '600',
   },
-  peopleList: {
-    paddingHorizontal: 14,
-    gap: 12,
-  },
-  personItem: {
-    alignItems: 'center',
-    width: 76,
-  },
-  personAvatarRing: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    borderWidth: 2,
-    borderColor: ACCENT,
-    padding: 2,
-    backgroundColor: BG_CARD,
-  },
-  personAvatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
-    backgroundColor: Colors.surfaceTint,
-  },
-  personName: {
-    fontSize: 11,
-    color: Colors.black,
-    marginTop: 6,
-    textAlign: 'center',
-    fontWeight: '500',
-    lineHeight: 14,
-  },
-  connectBtn: {
-    marginTop: 6,
+  suggestionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    backgroundColor: BRAND,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
   },
-  connectBtnText: {
-    fontSize: 10,
+  suggestionRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight ?? '#F5F5F5',
+  },
+  suggestionAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.surfaceTint,
+  },
+  suggestionInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  suggestionName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BRAND,
+  },
+  suggestionMeta: {
+    fontSize: 11,
+    color: MUTED,
+    lineHeight: 15,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    minWidth: 68,
+    justifyContent: 'center',
+  },
+  actionBtnText: {
+    fontSize: 12,
     color: Colors.white,
     fontWeight: '700',
   },

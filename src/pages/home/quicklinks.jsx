@@ -38,8 +38,7 @@ const items = [
   {
     label: "Business",
     icon: (active) => <Ionicons name="business" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "GroupScreen",
-    params: { initialTab: 1 },
+    screen: "BusinessPages",
     colors: [ACCENT, Colors.tealMint],
   },
   {

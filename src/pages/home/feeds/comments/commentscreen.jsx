@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import {
   StyleSheet, View, Text, TouchableOpacity,
   ActivityIndicator, FlatList, StatusBar, Animated, Share, Alert,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,45 +45,23 @@ const trackView = async (postId, token) => {
 const PostMemo = React.memo(CommentMainPostContent);
 
 // ── List header extracted as a proper memo component ──────────────────────────
-// This prevents the FlatList from treating it as a volatile inline element,
-// which was the root cause of the VirtualizedList slow-update warning.
 const PostListHeader = React.memo(({
-  post, isLeaving, loading, commentsLoading,
-  viewCount, likeCount, commentCount, shareCount, textInputRef,
+  post, isLeaving, loading, commentsLoading, commentCount, textInputRef,
 }) => {
   if (!post && loading) return null;
   return (
     <>
       <PostMemo post={post} isLeaving={isLeaving} textInputRef={textInputRef} />
 
-      {!loading && post && (
-        <View style={cs.statsStrip}>
-          <View style={cs.statItem}>
-            <Ionicons name="eye-outline" size={14} color={MUTED} />
-            <Text style={cs.statTxt}>{viewCount.toLocaleString()} views</Text>
-          </View>
-          <View style={cs.statDot} />
-          <View style={cs.statItem}>
-            <Ionicons name="heart-outline" size={14} color={MUTED} />
-            <Text style={cs.statTxt}>{likeCount.toLocaleString()} likes</Text>
-          </View>
-          <View style={cs.statDot} />
-          <View style={cs.statItem}>
-            <Ionicons name="chatbubble-outline" size={14} color={MUTED} />
-            <Text style={cs.statTxt}>{commentCount.toLocaleString()} comments</Text>
-          </View>
-          <View style={cs.statDot} />
-          <View style={cs.statItem}>
-            <Ionicons name="share-social-outline" size={14} color={MUTED} />
-            <Text style={cs.statTxt}>{shareCount.toLocaleString()} shares</Text>
-          </View>
-        </View>
-      )}
-
+      {/* ── Comments section divider ── */}
       <View style={cs.sectionHead}>
-        <Text style={cs.sectionTitle}>Comments</Text>
+        <View style={cs.sectionLine} />
+        <Text style={cs.sectionTitle}>
+          {commentCount > 0 ? `Comments (${commentCount})` : 'Comments'}
+        </Text>
+        <View style={cs.sectionLine} />
         {commentsLoading && (
-          <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: Spacing.sm }} />
+          <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 8 }} />
         )}
       </View>
     </>
@@ -105,6 +83,8 @@ const CommentScreen = ({ route }) => {
   const [replyingTo,       setReplyingTo]       = useState(null);
   const [comments,         setComments]         = useState([]);
   const [commentsLoading,  setCommentsLoading]  = useState(true);
+  const [commentsPage,     setCommentsPage]     = useState(1);
+  const [hasMoreComments,  setHasMoreComments]  = useState(true);
 
   const addCommentRef     = useRef(null);
   const isNavBackRef      = useRef(false);
@@ -142,12 +122,19 @@ const CommentScreen = ({ route }) => {
     setLoading(false);
   };
 
-  const loadComments = async () => {
+  const loadComments = async (pg = 1) => {
     setCommentsLoading(true);
     try {
-      const res = await GetCommentsController(feedId, token);
-      setComments(Array.isArray(res?.data) ? res.data : []);
-    } catch { setComments([]); }
+      const res = await GetCommentsController(feedId, token, pg, 10);
+      const items = Array.isArray(res?.data) ? res.data : [];
+      if (pg === 1) {
+        setComments(items);
+      } else {
+        setComments(prev => [...prev, ...items]);
+      }
+      setHasMoreComments(items.length >= 10);
+      setCommentsPage(pg);
+    } catch { if (pg === 1) setComments([]); }
     setCommentsLoading(false);
   };
 
@@ -171,30 +158,46 @@ const CommentScreen = ({ route }) => {
   const handleCancelReply = useCallback(() => setReplyingTo(null), []);
 
   const handleCommentPosted = useCallback(() => {
-    loadComments();
+    loadComments(1);
     setReplyingTo(null);
     setPost((p) => p ? { ...p, comments_count: (Number(p.comments_count) || 0) + 1 } : p);
+
+    // Increment comment count in store
+    const { feeds, updateFeedById } = require('../../../../repository/store').default.getState();
+    const currentFeed = feeds.feedsById[feedId];
+    if (currentFeed) {
+      updateFeedById(feedId, {
+        ...currentFeed,
+        comments_count: (Number(currentFeed.comments_count) || 0) + 1,
+      });
+    }
   }, [feedId, token]);
+
+  const handleLoadMoreComments = useCallback(() => {
+    if (commentsLoading || !hasMoreComments) return;
+    loadComments(commentsPage + 1);
+  }, [commentsLoading, hasMoreComments, commentsPage]);
 
   const viewCount    = Number(post?.views_count   ?? post?.view_count   ?? post?.views ?? 0);
   const commentCount = Number(post?.comments_count ?? post?.comment_count ?? 0);
   const likeCount    = Number(post?.likes_count    ?? post?.like_count    ?? 0);
   const shareCount   = Number(post?.shares         ?? post?.share_count    ?? 0);
 
-  // Stable element for ListHeaderComponent — only recreated when data changes
+  // Header height (52) + safe-area top so KAV clears the fixed header
+  const HEADER_HEIGHT = 52;
+  const kavOffset = top + HEADER_HEIGHT;
+
+  // Stable element for ListHeaderComponent
   const listHeader = useMemo(() => (
     <PostListHeader
       post={post}
       isLeaving={isLeaving}
       loading={loading}
       commentsLoading={commentsLoading}
-      viewCount={viewCount}
-      likeCount={likeCount}
       commentCount={commentCount}
-      shareCount={shareCount}
       textInputRef={addCommentRef}
     />
-  ), [post, isLeaving, loading, commentsLoading, viewCount, likeCount, commentCount, shareCount]);
+  ), [post, isLeaving, loading, commentsLoading, commentCount]);
 
   const renderCommentItem = useCallback(({ item }) => (
     <CommentItem comment={item} token={token} onReply={handleReply} />
@@ -223,11 +226,10 @@ const CommentScreen = ({ route }) => {
       </View>
 
       {/* ── Content + Comment bar wrapped in KAV ────────────────────────────── */}
-      {/* KAV sits BELOW the header so keyboardVerticalOffset stays 0           */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={kavOffset}
       >
         {loading ? (
           <View style={cs.loaderWrap}>
@@ -248,9 +250,17 @@ const CommentScreen = ({ route }) => {
                 </View>
               ) : null
             }
+            ListFooterComponent={
+              commentsLoading && comments.length > 0
+                ? <ActivityIndicator size="small" color={ACCENT} style={{ paddingVertical: 12 }} />
+                : null
+            }
+            onEndReached={handleLoadMoreComments}
+            onEndReachedThreshold={0.3}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={cs.listContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             initialNumToRender={10}
             maxToRenderPerBatch={10}
             windowSize={7}
@@ -285,8 +295,8 @@ const cs = StyleSheet.create({
     height: 52,
     paddingHorizontal: Spacing.md,
     backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: withOpacity(Colors.primaryDark, 0.08),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: withOpacity(Colors.primaryDark, 0.10),
   },
   headerTitle: {
     flex: 1,
@@ -302,27 +312,28 @@ const cs = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
 
-  // ── Stats strip ──────────────────────────────────────────────────────────
-  statsStrip: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: Spacing.md, paddingVertical: 10,
-    backgroundColor: CREAM,
-    borderBottomWidth: 1,
-    borderBottomColor: withOpacity(Colors.primaryDark, 0.08),
-  },
-  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statTxt:  { fontSize: 12, color: MUTED, fontWeight: '600' },
-  statDot:  { width: 3, height: 3, borderRadius: 2, backgroundColor: MUTED, marginHorizontal: Spacing.sm },
-
-  // ── Section header ────────────────────────────────────────────────────────
+  // ── Section header (centered divider with "Comments") ─────────────────────
   sectionHead: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.md, paddingBottom: Spacing.sm,
+    paddingVertical: 14,
   },
-  sectionTitle: { fontSize: 14, fontWeight: '900', color: DARK, letterSpacing: 0.3 },
+  sectionLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: withOpacity(Colors.primaryDark, 0.12),
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: MUTED,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    paddingHorizontal: 12,
+  },
 
-  listContent: { paddingBottom: Spacing.md },
+  listContent: { paddingBottom: 24 },
 
   emptyWrap:  { paddingVertical: 40, alignItems: 'center', gap: 6 },
   emptyTitle: { fontSize: 15, fontWeight: '800', color: Colors.mutedBlueGraySoft },

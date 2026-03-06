@@ -68,7 +68,21 @@ const WebViewScreen = ({ navigation, route }) => {
     if (token) initSession();
   }, [token]);
 
-  // ─── 2. Cookie injection + redirect away from auth pages ─────────────────
+  // ─── 2a. Inject user data before page content loads ────────────────────
+  const injectedBeforeContent = useMemo(() => {
+    if (!user) return 'true;';
+    const payload = JSON.stringify({
+      id:       user.id        ?? null,
+      username: user.username  ?? null,
+      email:    user.email     ?? null,
+      name:     user.name ?? user.full_name ?? user.username ?? null,
+      avatar:   user.avatar ?? user.profile_picture ?? null,
+      token:    token ?? null,
+    });
+    return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;true;`;
+  }, [user, token]);
+
+  // ─── 2b. Cookie injection + redirect away from auth pages ─────────────────
   const injectedScript = useMemo(() => {
     const cookiePart = sessionCreds
       ? `(function(){if(document.cookie.indexOf('PHPSESSID=')!==-1)return;var e=new Date();e.setDate(e.getDate()+30);var x=e.toUTCString();document.cookie='PHPSESSID=${sessionCreds.phpsessid};path=/;domain=.hafrik.com;expires='+x;document.cookie='session_token=${sessionCreds.session_token};path=/;domain=.hafrik.com;expires='+x;window.location.reload();})();`
@@ -171,6 +185,7 @@ const WebViewScreen = ({ navigation, route }) => {
         ref={webViewRef}
         source={{ uri: currentUrl }}
         style={styles.webview}
+        injectedJavaScriptBeforeContentLoaded={injectedBeforeContent}
         injectedJavaScript={injectedScript}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}

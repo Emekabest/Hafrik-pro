@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, TouchableOpacity, Image, Text, StyleSheet, Dimensions } from 'react-native';
 import ImageViewModal from '../../../../imageviewmodal';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,10 @@ import parseLinkFromText from '../../../../../helpers/linkparser';
 import CommentEngagementBar from '../commentengagementbar';
 import CommentMultipleSharedProductMediaCard from './commentmultiplesharedproductmediacard';
 import { Colors } from '../../../../../theme/colors';
+import LinkPreview from '../../../../../components/LinkPreview';
+import ShareModal from '../../share';
+import ReactionsModal from '../../feedcardproperties/ReactionsModal';
+import { REACTION_EMOJI_MAP } from '../../feedcardproperties/ReactionPicker';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -38,8 +42,46 @@ const horizontalPadding = 15;
 const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
     const navigation = useNavigation();
     const [viewingImage, setViewingImage] = useState(null);
+    const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [reactionsModalVisible, setReactionsModalVisible] = useState(false);
+
+    // ── Page-post identity swap (mirrors feedcard.jsx logic) ────────────────
+    const pageContext = useMemo(() => {
+        const pg = post?.page;
+        if (!pg) return null;
+        const pageId    = Number(pg.id ?? pg.page_id ?? post?.page_id ?? 0);
+        const pageTitle = pg.title || pg.name || pg.page_title || pg.page_name || null;
+        if (pageId > 0 && pageTitle) {
+            return { id: pageId, title: pageTitle, avatar: pg.avatar || pg.logo || pg.image || null };
+        }
+        return null;
+    }, [post?.page, post?.page_id]);
+
+    const isPagePost = !!pageContext;
+
+    const displayUser = useMemo(() => {
+        const u = post?.user || {};
+        const base = {
+            ...u,
+            full_name: u.full_name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || 'Unknown',
+            avatar: u.avatar || 'https://hafrik.com/default-avatar.png',
+        };
+        if (isPagePost) {
+            return {
+                ...base,
+                full_name: pageContext.title || base.full_name,
+                avatar: pageContext.avatar || base.avatar,
+                verified: false,
+            };
+        }
+        return base;
+    }, [post?.user, isPagePost, pageContext]);
 
     const handleAuthorPress = () => {
+        if (isPagePost && pageContext?.id) {
+            navigation.navigate('BusinessDetails', { pageId: pageContext.id });
+            return;
+        }
         if (!post?.user?.id) return;
         navigation.navigate('UserProfile', {
             userId: post.user.id,
@@ -47,9 +89,23 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
         });
     };
 
+    // ── Reactions summary (top 3 emojis + total) ────────────────────────────
+    const reactionsSummary = useMemo(() => {
+        const reactions = post?.reactions;
+        if (!reactions || typeof reactions !== 'object') return null;
+        const entries = Object.entries(reactions)
+            .filter(([, count]) => Number(count) > 0)
+            .sort((a, b) => Number(b[1]) - Number(a[1]));
+        if (entries.length === 0) return null;
+        const total = entries.reduce((sum, [, c]) => sum + Number(c), 0);
+        const emojis = entries.slice(0, 3).map(([r]) => REACTION_EMOJI_MAP[r]).filter(Boolean);
+        return { emojis, total };
+    }, [post?.reactions]);
+
     if (!post) return null;
 
-    const { text } = post.type === "media" || post.type === "link" ? parseLinkFromText(post.text || '') : {text: post.text || '', url: null};
+    // Always parse + strip URL from text so the LinkPreview card replaces it
+    const { text, url: extractedUrl } = parseLinkFromText(post.text || '');
     const postText = post.text ? CleanText(text) : '';
 
     const actionText = getActionText(post).trim();
@@ -65,7 +121,7 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                 {/* Avatar */}
                 <TouchableOpacity onPress={handleAuthorPress} activeOpacity={0.8}>
                     <Image
-                        source={{ uri: post.user.avatar }}
+                        source={{ uri: displayUser.avatar }}
                         style={styles.authorAvatar}
                     />
                 </TouchableOpacity>
@@ -76,19 +132,26 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                     <View style={styles.authorNameRow}>
                         <TouchableOpacity onPress={handleAuthorPress} activeOpacity={0.7}>
                             <Text style={styles.authorFullName} numberOfLines={1}>
-                                {post.user.full_name}
+                                {displayUser.full_name}
                             </Text>
                         </TouchableOpacity>
 
-                        {post.user.verified && (
+                        {displayUser.verified && (
                             <View style={styles.verifiedIconInline}>
                                 <SvgIcon name="verified" width={16} height={16} color={AppDetails.primaryColor} />
                             </View>
                         )}
 
                         <Text style={styles.userUsername} numberOfLines={1} ellipsizeMode="tail">
-                            @{CleanText(post.user.username)}
+                            @{CleanText(displayUser.username || post?.user?.username || '')}
                         </Text>
+
+                        {isPagePost && (
+                            <View style={styles.pageBadge}>
+                                <Ionicons name="storefront-outline" size={10} color={Colors.primary} />
+                                <Text style={styles.pageBadgeText}>Page</Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Context row: action text + group/event link */}
@@ -160,6 +223,13 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                 </View>
             )}
 
+            {/* ── Link Preview (YouTube / Spotify / generic OG card) ── */}
+            {extractedUrl && !(post.media && post.media.length > 0) && post.type !== 'shared' && post.type !== 'article' && post.type !== 'product' ? (
+                <View style={{ marginHorizontal: horizontalPadding }}>
+                    <LinkPreview url={extractedUrl} />
+                </View>
+            ) : null}
+
 
 
             <View style={{ marginHorizontal:isMultimediapostMode ? 0 : horizontalPadding }}>
@@ -221,22 +291,57 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
 
             </View>
 
-           
-
-
+            {/* ── Reactions summary (tap to open reactions modal) ── */}
+            {reactionsSummary && (
+                <TouchableOpacity
+                    style={styles.reactionsRow}
+                    onPress={() => setReactionsModalVisible(true)}
+                    activeOpacity={0.7}
+                >
+                    <View style={styles.reactionsEmojis}>
+                        {reactionsSummary.emojis.map((emoji, i) => (
+                            <Text key={i} style={styles.reactionEmoji}>{emoji}</Text>
+                        ))}
+                    </View>
+                    <Text style={styles.reactionsCount}>
+                        {reactionsSummary.total.toLocaleString()}
+                    </Text>
+                </TouchableOpacity>
+            )}
 
             <CommentEngagementBar
                 feedId={post.id}
                 initialLiked={post.is_liked}
                 initialLikeCount={post.likes_count}
                 commentsCount={post.comments_count}
+                sharesCount={Number(post.shares ?? post.shares_count ?? post.share_count ?? 0)}
+                isSaved={post.is_saved}
+                myReaction={post.my_reaction}
+                reactions={post.reactions}
                 onCommentPress={() => textInputRef?.current?.focus()}
+                onOpenShare={() => setShareModalVisible(true)}
+                onReactionsPress={() => setReactionsModalVisible(true)}
             />
 
             <ImageViewModal
                 isVisible={!!viewingImage}
                 onClose={() => setViewingImage(null)}
                 imageUrl={viewingImage}
+            />
+
+            {/* ── Share modal ── */}
+            <ShareModal
+                visible={shareModalVisible}
+                onClose={() => setShareModalVisible(false)}
+                feed={post}
+            />
+
+            {/* ── Reactions modal ── */}
+            <ReactionsModal
+                visible={reactionsModalVisible}
+                onClose={() => setReactionsModalVisible(false)}
+                postId={post.id}
+                reactions={post.reactions}
             />
         </View>
     );
@@ -294,6 +399,21 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         flexShrink: 1,
     },
+    pageBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        backgroundColor: Colors.primary + '14',
+        borderRadius: 10,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        marginLeft: 6,
+    },
+    pageBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: Colors.primary,
+    },
     timestamp: {
         fontSize: 12,
         color: 'gray',
@@ -339,6 +459,27 @@ const styles = StyleSheet.create({
         color: Colors.tealAccent,
         fontWeight: '600',
         letterSpacing: 0.2,
+    },
+
+    // ── Reactions summary row ─────────────────────────────────────────────────
+    reactionsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: horizontalPadding,
+        paddingTop: 10,
+        gap: 6,
+    },
+    reactionsEmojis: {
+        flexDirection: 'row',
+        gap: 2,
+    },
+    reactionEmoji: {
+        fontSize: 16,
+    },
+    reactionsCount: {
+        fontSize: 13,
+        color: Colors.secondaryText,
+        fontWeight: '600',
     },
 })
 

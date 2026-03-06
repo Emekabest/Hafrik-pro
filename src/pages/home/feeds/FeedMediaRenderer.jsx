@@ -34,6 +34,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 import useStore from '../../../repository/store';
 import VideoManager from '../../../helpers/videomanager';
 
@@ -329,6 +330,10 @@ const ImageGrid = memo(({ media }) => {
 
 // ─── FeedMediaRenderer ────────────────────────────────────────────────────────
 const FeedMediaRenderer = ({ feed, isVisible }) => {
+  const screenFocused = useIsFocused();
+  // Videos should only play when both visible in viewport AND screen is focused
+  const effectiveVisible = isVisible && screenFocused;
+
   const tabletMode = useStore(state => state.tabletMode);
   const feedWidth  = useStore(state => state.feedWidth);
 
@@ -342,7 +347,7 @@ const FeedMediaRenderer = ({ feed, isVisible }) => {
         post={feed.shared_post}
         parentFeedId={feed.id}
         containerWidth={containerW}
-        isVisible={isVisible}
+        isVisible={effectiveVisible}
       />
     );
   }
@@ -386,9 +391,9 @@ const FeedMediaRenderer = ({ feed, isVisible }) => {
       const safeVideoUrl = item.video_url.startsWith('http') ? item.video_url : null;
       if (!safeVideoUrl) return null;
       // Reels: autoplay portrait player in feed (tracks position for post continuation)
-      if (feed.type === 'reel') return <FeedReelPlayer item={item} isVisible={isVisible} feedId={feed.id} />
-      // Videos get a full expo-av player (auto-pause via isVisible)
-      return <VideoPlayer item={{ ...item, video_url: safeVideoUrl }} isVisible={isVisible} />;
+      if (feed.type === 'reel') return <FeedReelPlayer item={item} isVisible={effectiveVisible} feedId={feed.id} />
+      // Videos get a full expo-av player (auto-pause via effectiveVisible)
+      return <VideoPlayer item={{ ...item, video_url: safeVideoUrl }} isVisible={effectiveVisible} />;
     }
 
     // ── Photos ──────────────────────────────────────────────────────────

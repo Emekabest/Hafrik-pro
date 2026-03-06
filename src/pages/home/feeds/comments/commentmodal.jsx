@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CommentMainPostContent from './commentpost/commentmainpostcontent';
 import { useAuth } from '../../../../AuthContext';
 import getUserPostInteractionController from '../../../../controllers/getuserpostinteractioncontroller';
-import { AddCommentController } from '../../../../controllers/commentscontroller';
+import { AddCommentController, AddReplyController } from '../../../../controllers/commentscontroller';
 import CommentBonds from './commentsbonds';
 import useStore from '../../../../repository/store';
 import { useGlobalVideoPlayer } from '../../../../helpers/GlobalVideoPlayerContext';
@@ -42,6 +42,8 @@ const CommentModal = () => {
     const [loading, setLoading] = useState(true);
     const [commentText, setCommentText] = useState('');
     const [posting, setPosting] = useState(false);
+    const [replyingTo, setReplyingTo] = useState(null);
+    const inputRef = useRef(null);
 
     const commentModal    = useStore(state => state.commentModal);
     const closeCommentModal = useStore(state => state.closeCommentModal);
@@ -77,6 +79,7 @@ const CommentModal = () => {
                 setPost(null);
                 setLoading(true);
                 setCommentText('');
+                setReplyingTo(null);
                 loadedFeedIdRef.current = null;
             }, 300);
             return () => clearTimeout(timer);
@@ -97,10 +100,31 @@ const CommentModal = () => {
         setPosting(true);
         setCommentText('');
         try {
-            await AddCommentController(feedId, text, token);
+            if (replyingTo) {
+                await AddReplyController(feedId, replyingTo.commentId, text, token);
+            } else {
+                await AddCommentController(feedId, text, token);
+            }
+            // Sync comment count to store
+            const { feeds, updateFeedById } = useStore.getState();
+            const currentFeed = feeds.feedsById[feedId];
+            if (currentFeed) {
+                updateFeedById(feedId, {
+                    ...currentFeed,
+                    comments_count: (Number(currentFeed.comments_count) || 0) + 1,
+                });
+            }
+            setReplyingTo(null);
         } catch {}
         setPosting(false);
-    }, [commentText, posting, feedId, token]);
+    }, [commentText, posting, feedId, token, replyingTo]);
+
+    const handleReply = useCallback((commentId, username) => {
+        setReplyingTo({ commentId, username });
+        inputRef.current?.focus();
+    }, []);
+
+    const handleCancelReply = useCallback(() => setReplyingTo(null), []);
 
     const headerElement = useMemo(
         () => <OriginalPostMemo post={post} isLeaving={false} />,
@@ -157,7 +181,7 @@ const CommentModal = () => {
                             >
                                 {headerElement}
                                 {feedId && (
-                                    <CommentBonds postId={feedId} token={token} />
+                                    <CommentBonds postId={feedId} token={token} onReply={handleReply} />
                                 )}
                             </ScrollView>
                         )}
@@ -166,38 +190,53 @@ const CommentModal = () => {
                     {/* Fixed input bar */}
                     {feedId && (
                         <View style={styles.inputBar}>
-                            {user?.avatar ? (
-                                <Image
-                                    source={{ uri: user.avatar }}
-                                    style={styles.avatar}
-                                />
-                            ) : (
-                                <View style={[styles.avatar, styles.avatarFallback]}>
-                                    <Ionicons name="person-outline" size={16} color={BRAND} />
+                            {/* Reply banner */}
+                            {!!replyingTo && (
+                                <View style={styles.replyBanner}>
+                                    <Ionicons name="return-down-forward-outline" size={14} color={BRAND} />
+                                    <Text style={styles.replyBannerText} numberOfLines={1}>
+                                        Replying to <Text style={{ fontWeight: '700' }}>{replyingTo.username}</Text>
+                                    </Text>
+                                    <TouchableOpacity onPress={handleCancelReply} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                        <Ionicons name="close-circle" size={18} color={Colors.neutral400} />
+                                    </TouchableOpacity>
                                 </View>
                             )}
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Write a comment…"
-                                placeholderTextColor={Colors.neutral300}
-                                value={commentText}
-                                onChangeText={setCommentText}
-                                multiline
-                                returnKeyType="send"
-                                onSubmitEditing={handlePost}
-                                blurOnSubmit={false}
-                            />
-                            <TouchableOpacity
-                                onPress={handlePost}
-                                disabled={!commentText.trim() || posting}
-                                style={styles.sendBtn}
-                            >
-                                <Ionicons
-                                    name="send"
-                                    size={20}
-                                    color={commentText.trim() ? BRAND : Colors.neutral250}
+                            <View style={styles.inputRow}>
+                                {user?.avatar ? (
+                                    <Image
+                                        source={{ uri: user.avatar }}
+                                        style={styles.avatar}
+                                    />
+                                ) : (
+                                    <View style={[styles.avatar, styles.avatarFallback]}>
+                                        <Ionicons name="person-outline" size={16} color={BRAND} />
+                                    </View>
+                                )}
+                                <TextInput
+                                    ref={inputRef}
+                                    style={styles.input}
+                                    placeholder={replyingTo ? `Reply to ${replyingTo.username}…` : 'Write a comment…'}
+                                    placeholderTextColor={Colors.neutral300}
+                                    value={commentText}
+                                    onChangeText={setCommentText}
+                                    multiline
+                                    returnKeyType="send"
+                                    onSubmitEditing={handlePost}
+                                    blurOnSubmit={false}
                                 />
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={handlePost}
+                                    disabled={!commentText.trim() || posting}
+                                    style={styles.sendBtn}
+                                >
+                                    <Ionicons
+                                        name="send"
+                                        size={20}
+                                        color={commentText.trim() ? BRAND : Colors.neutral250}
+                                    />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     )}
                 </KeyboardAvoidingView>
@@ -266,15 +305,29 @@ const styles = StyleSheet.create({
 
     // ── Input bar ────────────────────────────────────────────────────────────
     inputBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
         paddingHorizontal: 12,
-        paddingTop: 10,
+        paddingTop: 8,
         paddingBottom: Platform.OS === 'ios' ? 28 : 12,
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: Colors.neutral180,
         backgroundColor: Colors.white,
+    },
+    replyBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 6,
+        paddingVertical: 4,
+    },
+    replyBannerText: {
+        flex: 1,
+        fontSize: 12.5,
+        color: Colors.secondaryText,
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
     },
     avatar: {
         width: 32,

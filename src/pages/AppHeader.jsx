@@ -1,7 +1,7 @@
 // Shared app header — matches Explore/PagesScreen style.
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Animated,
+  View, Text, Image, TouchableOpacity, StyleSheet, Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,6 +68,14 @@ const AppHeader = ({ onOpenDrawer, title }) => {
           <Ionicons name="menu-outline" size={22} color={Colors.white} />
         </TouchableOpacity>
 
+        {/* CENTER — logo */}
+        <View style={styles.center} pointerEvents="none">
+          <Image
+            source={require('../assl.js/Layer 3.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
         {/* RIGHT — search · notifications · messages shortcut */}
         <View style={styles.actions}>
@@ -128,6 +136,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     pointerEvents: 'none',
+  },
+  logo: {
+    height: 30,
+    width: 120,
   },
   logoText: {
     color: Colors.white,

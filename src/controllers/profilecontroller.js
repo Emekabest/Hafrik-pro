@@ -101,8 +101,26 @@ const UploadProfileImageController = async(media, token, api) => {
 const ProfileTimelineController = async(API_URL, token, page = 1) => {
 
     const profileTimelineFilter = await AsyncStorage.getItem("profile_timeline_filter") || "all";
-    const urlWithFilter = `${API_URL}&filter=${profileTimelineFilter}`;
-    const mainUrl =  `${urlWithFilter}&page=${page}`;
+
+    // Build unified feed endpoint: ?get=posts_profile&id=USER_ID
+    // API_URL already has ?user_id=XX  — extract the user_id and map to the unified endpoint
+    let mainUrl;
+    try {
+      const parsed = new URL(API_URL);
+      const userId = parsed.searchParams.get('user_id') || parsed.searchParams.get('id');
+      const unified = new URL('https://hafrik.com/api/v1/feed/list.php');
+      unified.searchParams.set('get', profileTimelineFilter === 'media' ? 'posts_profile_media' : 'posts_profile');
+      if (userId) unified.searchParams.set('id', userId);
+      unified.searchParams.set('page', page);
+      if (profileTimelineFilter && profileTimelineFilter !== 'all' && profileTimelineFilter !== 'media') {
+        unified.searchParams.set('filter', profileTimelineFilter);
+      }
+      mainUrl = unified.toString();
+    } catch {
+      // Fallback to legacy URL construction
+      const urlWithFilter = `${API_URL}&filter=${profileTimelineFilter}`;
+      mainUrl = `${urlWithFilter}&page=${page}`;
+    }
 
 
     try {
@@ -113,8 +131,20 @@ const ProfileTimelineController = async(API_URL, token, page = 1) => {
             }
         });
 
+        // Handle both unified API shape and legacy shape
+        const json = response.data;
+        let feedsArray;
+        if (json?.status === "success" && Array.isArray(json?.data?.data)) {
+          feedsArray = json.data.data;
+        } else if (Array.isArray(json?.data?.data)) {
+          feedsArray = json.data.data;
+        } else if (Array.isArray(json?.data)) {
+          feedsArray = json.data;
+        } else {
+          feedsArray = json?.data ?? [];
+        }
 
-        return {status: response.status, data: response.data.data};
+        return {status: response.status, data: feedsArray};
     } catch (error) {
         return {status: error.response?.status || 500, data: null};
     }
@@ -186,6 +216,76 @@ const ProfilePagesController = async(token, userId, page = 1) => {
 }
 
 
+const UserFollowingController = async(token, userId, page = 1, limit = 10) => {
+    try {
+        const response = await axios.get(`https://hafrik.com/api/v1/users/user_following.php?user_id=${userId}&page=${page}&limit=${limit}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+        return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
+    } catch (error) {
+        return { status: error.response?.status || 500, data: null };
+    }
+}
+
+const UserFollowersController = async(token, userId, page = 1, limit = 10) => {
+    try {
+        const response = await axios.get(`https://hafrik.com/api/v1/users/user_followers.php?user_id=${userId}&page=${page}&limit=${limit}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+        return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
+    } catch (error) {
+        return { status: error.response?.status || 500, data: null };
+    }
+}
+
+const UserMediaController = async(token, userId, page = 1, limit = 10) => {
+    try {
+        const response = await axios.get(`https://hafrik.com/api/v1/users/user_media.php?user_id=${userId}&page=${page}&limit=${limit}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+        return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
+    } catch (error) {
+        return { status: error.response?.status || 500, data: null };
+    }
+}
+
+const UserCommunitiesController = async(token, userId, page = 1, limit = 5) => {
+    try {
+        const response = await axios.get(`https://hafrik.com/api/v1/users/user_communities.php?user_id=${userId}&page=${page}&limit=${limit}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+        return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
+    } catch (error) {
+        return { status: error.response?.status || 500, data: null };
+    }
+}
+
+const UserReelsController = async(token, userId, page = 1, limit = 10) => {
+    try {
+        const response = await axios.get(`https://hafrik.com/api/v1/users/user_reels.php?user_id=${userId}&page=${page}&limit=${limit}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            }
+        });
+        return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
+    } catch (error) {
+        return { status: error.response?.status || 500, data: null };
+    }
+}
+
 
 export  { 
     ProfileHeaderController,
@@ -195,5 +295,10 @@ export  {
     ProfileTimelineController,
     FollowersController,
     ProfileProductsController,
-    ProfilePagesController
+    ProfilePagesController,
+    UserFollowingController,
+    UserFollowersController,
+    UserMediaController,
+    UserCommunitiesController,
+    UserReelsController,
 };

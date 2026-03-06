@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Modal, Dimensions, StatusBar, TouchableWithoutFeedback } from "react-native";
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import AppDetails from "../../helpers/appdetails";
 import SvgIcon from "../../assl.js/svg/svg";
 import EditModal from "./timeline/editmodal";
@@ -17,8 +18,18 @@ const withOpacity = (hex, opacity) => {
   return `#${normalized}${alpha}`;
 };
 
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const TEAL   = Colors.tealAccent;
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+const formatCount = (n) => {
+    if (!n) return '0';
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+    return String(n);
+};
 
 
 const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followingsCount, groupsCount, pagesCount, isOwner, isFollowing }) => {
@@ -30,33 +41,12 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
     const [avatarImage, setAvatarImage] = useState(null);
     const [fullscreenImage, setFullscreenImage] = useState(null);
     const [avatarOptionsVisible, setAvatarOptionsVisible] = useState(false);
-    const [avatarOptionsPos, setAvatarOptionsPos] = useState({ left: 0, top: 0 });
-    const avatarButtonRef = useRef(null);
 
 
     const getGender = (g) => {
         if (g === 1) return 'Male';
         if (g === 2) return 'Female';
         return 'Unknown';
-    };
-
-    const openAvatarOptions = () => {
-        if (!avatarButtonRef.current) {
-            setAvatarOptionsVisible(true);
-            return;
-        }
-        avatarButtonRef.current.measureInWindow((x, y, w, h) => {
-            // position to the right of the button by default
-            const width = 180;
-            let left = x + w + 8;
-            let top = y;
-            // If it would overflow screen, show to the left
-            if (left + width > screenWidth) {
-                left = x - 8 - width;
-            }
-            setAvatarOptionsPos({ left, top });
-            setAvatarOptionsVisible(true);
-        });
     };
 
     useEffect(()=>{
@@ -89,10 +79,11 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                 return;
             }
 
+            const isAvatar = mode === 'avatar';
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaType.images,
-                allowsEditing: false,
-                aspect: [16, 9],
+                mediaTypes: ['images'],
+                allowsEditing: isAvatar,
+                aspect: isAvatar ? [1, 1] : [16, 9],
                 quality: 1,
             });
 
@@ -192,175 +183,230 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
 
     return (
         <View style={styles.container}>
-            <View style={styles.profileHeaderSection}>
-                {/* First container: Cover Photo */}
-                <View style={styles.coverPhotoContainer}>
-                    <ExpoImage
-                        source={{ uri: coverImage?.uri || user?.cover }}
-                        style={styles.coverImage}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                    />
+            {/* ── Cover Photo with gradient overlay ── */}
+            <View style={styles.coverPhotoContainer}>
+                <ExpoImage
+                    source={{ uri: coverImage?.uri || user?.cover }}
+                    style={styles.coverImage}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                />
+                <LinearGradient
+                    colors={['transparent', withOpacity(Colors.black, 0.55)]}
+                    style={styles.coverGradient}
+                />
+                {isOwner && (
                     <View style={[styles.coverActions, coverImage?.uploading && { opacity: 0.5, pointerEvents: 'none' }]}>
                         <TouchableOpacity 
                             disabled={coverImage?.uploading}
                             onPress={() => pickImageFromGallery("cover", "https://hafrik.com/api/v1/users/update_cover.php")} 
                             style={styles.actionButton} 
-                            activeOpacity={1}
+                            activeOpacity={0.8}
                         >
-                            <Ionicons name="image-outline" size={18} color={Colors.white} />
+                            <Ionicons name="camera-outline" size={18} color={Colors.white} />
                         </TouchableOpacity>
                         <TouchableOpacity 
                             style={styles.actionButton} 
-                            activeOpacity={1}
+                            activeOpacity={0.8}
                             onPress={() => setFullscreenImage(coverImage?.uri || user?.cover)}
                         >
                             <Ionicons name="expand-outline" size={18} color={Colors.white} />
                         </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+
+            {/* ── Avatar + Info row ── */}
+            <View style={styles.profileInfoRow}>
+                <View style={styles.avatarSection}>
+                    <View style={styles.mainAvatarWrapper}>
                         <TouchableOpacity 
-                            disabled={coverImage?.uploading}
-                            style={styles.actionButton} 
-                            activeOpacity={1}
+                            activeOpacity={0.8} 
+                            style={styles.mainAvatarContainer}
+                            onPress={() => isOwner ? setAvatarOptionsVisible(true) : setFullscreenImage(avatarImage?.uri || user?.avatar)}
                         >
-                            <Ionicons name="trash-outline" size={18} color={Colors.white} />
+                            <ExpoImage
+                                source={{ uri: avatarImage?.uri }}
+                                style={styles.mainAvatar}
+                                contentFit="cover"
+                                cachePolicy="memory-disk"
+                            />
                         </TouchableOpacity>
+                        {/* Online indicator */}
+                        <View style={styles.onlineIndicator} />
+                        {isOwner && (
+                            <TouchableOpacity
+                                disabled={avatarImage?.uploading}
+                                onPress={() => setAvatarOptionsVisible(true)}
+                                activeOpacity={0.8}
+                                style={[styles.avatarEditButton, avatarImage?.uploading && { opacity: 0.5 }]}
+                            >
+                                <Ionicons name="camera" size={13} color={Colors.white} />
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
 
-                {/* Second container: User Avatar */}
-                <View style={styles.mainAvatarWrapper}>
-                    <TouchableOpacity activeOpacity={0.8} style={styles.mainAvatarContainer}>
-                        <ExpoImage
-                            source={{ uri: avatarImage?.uri}}
-                            style={styles.mainAvatar}
-                            contentFit="cover"
-                            cachePolicy="memory-disk"
-                        />
+                {/* Stats row next to avatar */}
+                <View style={styles.statsRow}>
+                    <TouchableOpacity style={styles.statBlock} activeOpacity={0.7}>
+                        <Text style={styles.statNumber}>{formatCount(postsCount)}</Text>
+                        <Text style={styles.statLabel}>Posts</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        ref={avatarButtonRef}
-                        disabled={avatarImage?.uploading}
-                        onPress={() => openAvatarOptions()}
-                        activeOpacity={1}
-                        style={[styles.avatarEditButton, avatarImage?.uploading && { opacity: 0.5 }]}
-                    >
-                        <Ionicons name="image-outline" size={16} color={Colors.neutral700} />
+                    <TouchableOpacity style={styles.statBlock} activeOpacity={0.7}>
+                        <Text style={styles.statNumber}>{formatCount(followersCount)}</Text>
+                        <Text style={styles.statLabel}>Followers</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.statBlock} activeOpacity={0.7}>
+                        <Text style={styles.statNumber}>{formatCount(followingsCount)}</Text>
+                        <Text style={styles.statLabel}>Following</Text>
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* User Info Section */}
+            {/* ── Name + Username ── */}
             <View style={styles.userInfoSection}>
-                <Text style={styles.fullNameText}>
-                    {userDetails ? `${userDetails.first_name} ${userDetails.last_name || ''}`.trim() : (user?.full_name || 'Hafrik User')}
-                </Text>
+                <View style={styles.nameRow}>
+                    <Text style={styles.fullNameText}>
+                        {userDetails ? `${userDetails.first_name} ${userDetails.last_name || ''}`.trim() : (user?.full_name || 'Hafrik User')}
+                    </Text>
+                    {userDetails?.verified ? (
+                        <View style={styles.verifiedBadge}>
+                            <SvgIcon name="verified" width={18} height={18} color={ACCENT} />
+                        </View>
+                    ) : null}
+                </View>
                 <Text style={styles.usernameText}>@{userDetails?.username || user?.username || 'username'}</Text>
 
-                
-                <View style={styles.genderSection}>
-                    <Ionicons 
-                        name={getGender(userDetails?.gender).toLowerCase() === 'female' ? 'female' : 'male'} 
-                        size={14} 
-                        color={Colors.neutral500} 
-                    />
-                    <Text style={styles.genderText}>{getGender(userDetails?.gender)}</Text>
+                {/* Bio placeholder */}
+                {userDetails?.bio ? (
+                    <Text style={styles.bioText}>{userDetails.bio}</Text>
+                ) : null}
+
+                {/* Quick info chips */}
+                <View style={styles.infoChipsRow}>
+                    <View style={styles.infoChip}>
+                        <Ionicons 
+                            name={getGender(userDetails?.gender).toLowerCase() === 'female' ? 'female' : 'male'} 
+                            size={13} 
+                            color={ACCENT} 
+                        />
+                        <Text style={styles.infoChipText}>{getGender(userDetails?.gender)}</Text>
+                    </View>
+                    {!!(userDetails?.current_city || userDetails?.city || userDetails?.country) && (
+                        <View style={styles.infoChip}>
+                            <Ionicons name="location-outline" size={13} color={ACCENT} />
+                            <Text style={styles.infoChipText}>
+                                {[userDetails?.current_city || userDetails?.city, userDetails?.country].filter(Boolean).join(', ')}
+                            </Text>
+                        </View>
+                    )}
+                    {groupsCount > 0 && (
+                        <View style={styles.infoChip}>
+                            <Ionicons name="people-outline" size={13} color={ACCENT} />
+                            <Text style={styles.infoChipText}>{groupsCount} Groups</Text>
+                        </View>
+                    )}
+                    {pagesCount > 0 && (
+                        <View style={styles.infoChip}>
+                            <Ionicons name="flag-outline" size={13} color={ACCENT} />
+                            <Text style={styles.infoChipText}>{pagesCount} Pages</Text>
+                        </View>
+                    )}
                 </View>
 
-
-                <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.statsScroll}
-                    contentContainerStyle={styles.statsContainer}
-                >
-                    <TouchableOpacity style={styles.followItem}>
-                        <Text style={styles.followCount}>{postsCount}</Text>
-                        <Text style={styles.followLabel}>Posts</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.followItem}>
-                        <Text style={styles.followCount}>{followersCount}</Text>
-                        <Text style={styles.followLabel}>Followers</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.followItem}>
-                        <Text style={styles.followCount}>{followingsCount}</Text>
-                        <Text style={styles.followLabel}>Following</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.followItem}>
-                        <Text style={styles.followCount}>{groupsCount}</Text>
-                        <Text style={styles.followLabel}>Groups</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.followItem}>
-                        <Text style={styles.followCount}>{pagesCount}</Text>
-                        <Text style={styles.followLabel}>Pages</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-
-                {isOwner && (
-                    <>
-                        <View style={styles.profileCompletionContainer}>
-                            {/* Profile completion UI (only visible to owner) */}
+                {/* Location prompt — only for owner with no location set */}
+                {isOwner && !(userDetails?.current_city || userDetails?.city || userDetails?.country) && (
+                    <TouchableOpacity
+                        style={styles.locationPrompt}
+                        activeOpacity={0.8}
+                        onPress={() => setEditModalVisible(true)}
+                    >
+                        <View style={styles.locationPromptIcon}>
+                            <Ionicons name="location" size={16} color={Colors.white} />
                         </View>
-
-                        <TouchableOpacity style={styles.editButton} activeOpacity={1} onPress={() => setEditModalVisible(true)}>
-                            <Text style={styles.editButtonText}>Edit</Text>
-                        </TouchableOpacity>
-
-                        <View style={styles.postFeedContainer}>
-                            {/* Post feed container (owner-only) */}
+                        <View style={styles.locationPromptTextWrap}>
+                            <Text style={styles.locationPromptTitle}>Add your location</Text>
+                            <Text style={styles.locationPromptSub}>Let people know where you're based</Text>
                         </View>
-                    </>
+                        <Ionicons name="chevron-forward" size={16} color={ACCENT} />
+                    </TouchableOpacity>
                 )}
 
-                <EditModal 
-                    visible={editModalVisible} 
-                    onClose={() => setEditModalVisible(false)}
-                    userDetails={userDetails || user}
-                />
+                {/* Action buttons */}
+                {isOwner ? (
+                    <TouchableOpacity style={styles.editButton} activeOpacity={0.8} onPress={() => setEditModalVisible(true)}>
+                        <Ionicons name="create-outline" size={16} color={BRAND} />
+                        <Text style={styles.editButtonText}>Edit Profile</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.actionButtonsRow}>
+                        <TouchableOpacity style={[styles.followButton, isFollowing && styles.followingButton]} activeOpacity={0.8}>
+                            <Ionicons name={isFollowing ? "checkmark" : "person-add-outline"} size={16} color={isFollowing ? ACCENT : Colors.white} />
+                            <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                                {isFollowing ? 'Following' : 'Follow'}
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.messageButton} activeOpacity={0.8}>
+                            <Ionicons name="chatbubble-outline" size={16} color={BRAND} />
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+
+            <EditModal 
+                visible={editModalVisible} 
+                onClose={() => setEditModalVisible(false)}
+                userDetails={userDetails || user}
+            />
             
-            {/* Avatar options popover */}
-            <Modal visible={avatarOptionsVisible} transparent animationType="none" onRequestClose={() => setAvatarOptionsVisible(false)}>
+            {/* Avatar options bottom sheet */}
+            <Modal visible={avatarOptionsVisible} transparent animationType="fade" onRequestClose={() => setAvatarOptionsVisible(false)}>
                 <TouchableWithoutFeedback onPress={() => setAvatarOptionsVisible(false)}>
-                    <View style={{ flex: 1 }}>
-                        <View style={[styles.avatarOptionsContainer, { top: avatarOptionsPos.top, left: avatarOptionsPos.left }]}>
-                     
-                            <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} onPress={() => { setAvatarOptionsVisible(false); pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'); }}>
-                                <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="cloud-upload-outline" size={18} color={Colors.neutral700} style={styles.avatarOptionIcon} />
-                                    <Text style={styles.avatarOptionText}>Upload Photo</Text>
-                                </View>
-                            </TouchableOpacity>
-                            <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} onPress={() => { setAvatarOptionsVisible(false); pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'); }}>
-                                <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="images-outline" size={18} color={Colors.neutral700} style={styles.avatarOptionIcon} />
-                                    <Text style={styles.avatarOptionText}>Select Photo</Text>
-                                </View>
-                            </TouchableOpacity>
-                            <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} onPress={() => { setAvatarOptionsVisible(false); console.log('Crop Photo - not implemented'); }}>
-                                <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="crop-outline" size={18} color={Colors.neutral700} style={styles.avatarOptionIcon} />
-                                    <Text style={styles.avatarOptionText}>Crop Photo</Text>
-                                </View>
-                            </TouchableOpacity>
+                    <View style={styles.avatarOptionsOverlay}>
+                        <TouchableWithoutFeedback>
+                            <View style={styles.avatarOptionsSheet}>
+                                <View style={styles.sheetHandle} />
+                                <Text style={styles.sheetTitle}>Profile Photo</Text>
 
-                            <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} onPress={() => { setAvatarOptionsVisible(false); setFullscreenImage(avatarImage?.uri || user?.avatar); }}>
-                                <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="eye-outline" size={18} color={Colors.neutral700} style={styles.avatarOptionIcon} />
-                                    <Text style={styles.avatarOptionText}>See profile picture</Text>
-                                </View>
-                            </TouchableOpacity>
+                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => { setAvatarOptionsVisible(false); pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'); }}>
+                                    <View style={[styles.sheetOptionIcon, { backgroundColor: withOpacity(ACCENT, 0.12) }]}> 
+                                        <Ionicons name="image-outline" size={20} color={ACCENT} />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.sheetOptionText}>Choose from Gallery</Text>
+                                        <Text style={styles.sheetOptionSub}>Select a photo from your device</Text>
+                                    </View>
+                                </TouchableOpacity>
 
-                            <TouchableOpacity activeOpacity={0.5} style={styles.avatarOption} >
-                                <View style={styles.avatarOptionRow}>
-                                    <Ionicons name="trash-outline" size={18} color={Colors.destructive} style={styles.avatarOptionIcon} />
-                                    <Text style={[styles.avatarOptionText, { color: Colors.destructive }]}>Delete Photo</Text>
-                                </View>
-                            </TouchableOpacity>
-                            
-                        </View>
+                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => { setAvatarOptionsVisible(false); setFullscreenImage(avatarImage?.uri || user?.avatar); }}>
+                                    <View style={[styles.sheetOptionIcon, { backgroundColor: withOpacity(BRAND, 0.1) }]}> 
+                                        <Ionicons name="eye-outline" size={20} color={BRAND} />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.sheetOptionText}>View Photo</Text>
+                                        <Text style={styles.sheetOptionSub}>See your current profile picture</Text>
+                                    </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => { setAvatarOptionsVisible(false); }}>
+                                    <View style={[styles.sheetOptionIcon, { backgroundColor: withOpacity(Colors.destructive, 0.1) }]}> 
+                                        <Ionicons name="trash-outline" size={20} color={Colors.destructive} />
+                                    </View>
+                                    <View>
+                                        <Text style={[styles.sheetOptionText, { color: Colors.destructive }]}>Remove Photo</Text>
+                                        <Text style={styles.sheetOptionSub}>Delete your profile picture</Text>
+                                    </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetCancel} onPress={() => setAvatarOptionsVisible(false)}>
+                                    <Text style={styles.sheetCancelText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </TouchableWithoutFeedback>
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
-            </View>
 
             {/* Custom Image View Modal */}
             <ImageViewModal 
@@ -377,14 +423,11 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: Colors.white,
     },
-    profileHeaderSection: {
-        width: '100%',
-        backgroundColor: Colors.white,
-        paddingBottom: 60,
-    },
+
+    // ── Cover photo ───────────────────────────────────────────────
     coverPhotoContainer: {
         width: '100%',
-        height: 180,
+        height: 200,
         backgroundColor: Colors.neutral180,
         overflow: 'hidden',
     },
@@ -392,163 +435,329 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+    coverGradient: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 100,
+    },
     coverActions: {
         position: 'absolute',
-        top: 10,
-        left: 10,
+        top: 12,
+        right: 12,
         flexDirection: 'row',
-        backgroundColor: withOpacity(Colors.black, 0.5),
-        borderRadius: 25,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        backgroundColor: withOpacity(Colors.black, 0.45),
+        borderRadius: 20,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
     },
     actionButton: {
         padding: 6,
         marginHorizontal: 2,
     },
+
+    // ── Avatar + Stats row ────────────────────────────────────────
+    profileInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        paddingHorizontal: 20,
+        marginTop: -45,
+    },
+    avatarSection: {
+        marginRight: 16,
+    },
     mainAvatarWrapper: {
-        position: 'absolute',
-        bottom: 0,
-        left: 20,
-        zIndex: 1,
+        position: 'relative',
     },
     mainAvatarContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        borderWidth: 4,
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        borderWidth: 3.5,
         borderColor: Colors.white,
         backgroundColor: Colors.neutral180,
         overflow: 'hidden',
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 6,
     },
     mainAvatar: {
         width: '100%',
         height: '100%',
     },
+    onlineIndicator: {
+        position: 'absolute',
+        bottom: 4,
+        right: 4,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: Colors.tealAccent,
+        borderWidth: 2.5,
+        borderColor: Colors.white,
+    },
     avatarEditButton: {
         position: 'absolute',
-        bottom: 0,
-        right: 0,
-        backgroundColor: Colors.white,
-        width: 30,
-        height: 30,
-        borderRadius: 15,
+        bottom: -2,
+        right: -2,
+        backgroundColor: ACCENT,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 3,
+        borderWidth: 2.5,
         borderColor: Colors.white,
-        elevation: 2,
-        shadowColor: Colors.black,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
-    },
-    userInfoSection: {
-        paddingHorizontal: 20,
-        marginTop: 5,
-    },
-    fullNameText: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: Colors.black,
-    },
-    usernameText: {
-        fontSize: 14,
-        color: Colors.neutral500,
-        marginTop: 2,
-    },
-    statsScroll: {
-        marginTop: 15,
-        marginBottom: 5,
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 20,
-        paddingRight: 20,
-    },
-    statItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    statText: {
-        fontSize: 13,
-        fontFamily: AppDetails.fontFamily.body,
-        color: Colors.neutral700,
-        marginLeft: 5,
-    },
-    genderSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    genderText: {
-        fontSize: 14,
-        color: Colors.neutral500,
-        marginLeft: 5,
-        textTransform: 'capitalize',
-    },
-    followItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    followCount: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: Colors.neutral700,
-    },
-    followLabel: {
-        fontSize: 14,
-        color: Colors.neutral500,
-        marginLeft: 5,
-    },
-    profileCompletionContainer: {
-        marginTop: 12,
-    },
-    postFeedContainer: {
-        marginTop: 12,
-    },
-    editButton: {
-        backgroundColor: Colors.neutral150,
-        borderRadius: 50,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 20,
-        marginBottom: 10,
-    },
-    editButtonText: {
-        fontSize: 15,
-        fontFamily:AppDetails.fontFamily.outfit.medium,
-        color: Colors.neutral700,
-    },
-    avatarOptionsContainer: {
-        position: 'absolute',
-        width: 250,
-        backgroundColor: Colors.white,
-        borderRadius: 20,
-        elevation: 6,
+        elevation: 3,
         shadowColor: Colors.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
-        shadowRadius: 4,
+        shadowRadius: 3,
+    },
+    statsRow: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        paddingBottom: 8,
+    },
+    statBlock: {
+        alignItems: 'center',
+    },
+    statNumber: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: BRAND,
+        fontFamily: AppDetails.fontFamily?.inter?.bold,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: Colors.mutedBlueGrayAlt,
+        marginTop: 2,
+        fontFamily: AppDetails.fontFamily?.body,
+        letterSpacing: 0.3,
+    },
+
+    // ── User info ─────────────────────────────────────────────────
+    userInfoSection: {
+        paddingHorizontal: 20,
+        marginTop: 12,
+        paddingBottom: 12,
+    },
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    fullNameText: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: Colors.textBodyIndigo,
+        fontFamily: AppDetails.fontFamily?.inter?.bold,
+        letterSpacing: -0.3,
+    },
+    verifiedBadge: {
+        marginLeft: 6,
+    },
+    usernameText: {
+        fontSize: 14,
+        color: Colors.mutedBlueGray,
+        marginTop: 2,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+    bioText: {
+        fontSize: 14,
+        color: Colors.textBodyMuted,
+        marginTop: 10,
+        lineHeight: 20,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+
+    // ── Info chips ────────────────────────────────────────────────
+    infoChipsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 12,
+        gap: 8,
+    },
+    infoChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.surfaceCool,
+        borderRadius: 20,
+        paddingHorizontal: 12,
         paddingVertical: 6,
     },
-    avatarOption: {
-        paddingVertical: 10,
-        paddingHorizontal: 12,
+    infoChipText: {
+        fontSize: 12,
+        color: Colors.textBodyMuted,
+        marginLeft: 5,
+        fontFamily: AppDetails.fontFamily?.body,
+        fontWeight: '500',
     },
-    avatarOptionText: {
-        fontSize: 14,
-        fontFamily: AppDetails.fontFamily.body,
-        color: Colors.neutral900
-    },
-    avatarOptionRow: {
+
+    // ── Action buttons ────────────────────────────────────────────
+    editButton: {
         flexDirection: 'row',
-        alignItems: 'center'
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: Colors.surfaceCool,
+        borderRadius: 12,
+        height: 44,
+        marginTop: 16,
+        borderWidth: 1,
+        borderColor: Colors.borderSoft,
     },
-    avatarOptionIcon: {
-        marginRight: 10
+    editButtonText: {
+        fontSize: 15,
+        fontFamily: AppDetails.fontFamily?.outfit?.medium,
+        color: BRAND,
+        marginLeft: 6,
+        fontWeight: '600',
+    },
+    actionButtonsRow: {
+        flexDirection: 'row',
+        marginTop: 16,
+        gap: 10,
+    },
+    followButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: ACCENT,
+        borderRadius: 12,
+        height: 44,
+        gap: 6,
+    },
+    followingButton: {
+        backgroundColor: Colors.surfaceCool,
+        borderWidth: 1,
+        borderColor: Colors.borderSoft,
+    },
+    followButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: Colors.white,
+    },
+    followingButtonText: {
+        color: ACCENT,
+    },
+    messageButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: Colors.surfaceCool,
+        borderWidth: 1,
+        borderColor: Colors.borderSoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+
+    // ── Avatar options bottom sheet ────────────────────────────────
+    avatarOptionsOverlay: {
+        flex: 1,
+        backgroundColor: withOpacity(Colors.black, 0.35),
+        justifyContent: 'flex-end',
+    },
+    avatarOptionsSheet: {
+        backgroundColor: Colors.white,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingBottom: 34,
+        paddingTop: 8,
+        paddingHorizontal: 16,
+    },
+    sheetHandle: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: Colors.borderSoft || '#dde',
+        alignSelf: 'center',
+        marginBottom: 14,
+    },
+    sheetTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.textBodyIndigo,
+        fontFamily: AppDetails.fontFamily?.inter?.bold,
+        marginBottom: 12,
+        paddingHorizontal: 4,
+    },
+    sheetOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        gap: 14,
+    },
+    sheetOptionIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sheetOptionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.textBodyIndigo,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+    sheetOptionSub: {
+        fontSize: 12,
+        color: Colors.mutedBlueGray,
+        fontFamily: AppDetails.fontFamily?.body,
+        marginTop: 1,
+    },
+    sheetCancel: {
+        marginTop: 10,
+        paddingVertical: 13,
+        borderRadius: 12,
+        backgroundColor: Colors.surfaceCool || '#f2f4f8',
+        alignItems: 'center',
+    },
+    sheetCancelText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.mutedBlueGray,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+
+    // ── Location prompt banner ────────────────────────────────────
+    locationPrompt: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: withOpacity(ACCENT, 0.08),
+        borderWidth: 1,
+        borderColor: withOpacity(ACCENT, 0.2),
+        borderRadius: 12,
+        padding: 12,
+        marginTop: 14,
+        gap: 10,
+    },
+    locationPromptIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: ACCENT,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    locationPromptTextWrap: {
+        flex: 1,
+    },
+    locationPromptTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: BRAND,
+        letterSpacing: -0.1,
+    },
+    locationPromptSub: {
+        fontSize: 11.5,
+        color: Colors.mutedBlueGray,
+        marginTop: 1,
     },
 });
 

@@ -1,11 +1,13 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   Share,
   StyleSheet,
   Text,
@@ -15,7 +17,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
-import { addComment, fetchComments, shareReel, toggleSave } from './reelsApi';
+import { addComment, fetchComments, shareReel, toggleSave, toggleLike } from './reelsApi';
+import useStore from '../../repository/store';
 import { Colors } from '../../theme/colors';
 
 const withOpacity = (hex, opacity) => {
@@ -24,24 +27,119 @@ const withOpacity = (hex, opacity) => {
   return `#${normalized}${alpha}`;
 };
 
+/** Decode common HTML entities + numeric/hex codes + strip tags */
+const decodeHtml = (str) => {
+  if (!str || typeof str !== 'string') return str ?? '';
+  const entities = {
+    '&rsquo;': '\u2019', '&lsquo;': '\u2018', '&rdquo;': '\u201D',
+    '&ldquo;': '\u201C', '&amp;': '&', '&lt;': '<', '&gt;': '>',
+    '&quot;': '"', '&apos;': "'", '&#39;': "'", '&ndash;': '\u2013',
+    '&mdash;': '\u2014', '&hellip;': '\u2026', '&nbsp;': ' ',
+  };
+  let out = str;
+  for (const [ent, ch] of Object.entries(entities)) out = out.split(ent).join(ch);
+  out = out.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+  out = out.replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
+  return out.replace(/<[^>]*>/g, '').trim();
+};
+
+// ── Reaction definitions ─────────────────────────────────────────────────────
+const REACTIONS = [
+  { type: 'like',  emoji: '👍', label: 'Like' },
+  { type: 'love',  emoji: '❤️', label: 'Love' },
+  { type: 'haha',  emoji: '😂', label: 'Haha' },
+  { type: 'yay',   emoji: '🎉', label: 'Yay' },
+  { type: 'wow',   emoji: '😮', label: 'Wow' },
+  { type: 'sad',   emoji: '😢', label: 'Sad' },
+  { type: 'angry', emoji: '😡', label: 'Angry' },
+];
+
+const REACTION_EMOJI_MAP = {
+  like: '👍', love: '❤️', haha: '😂', yay: '🎉',
+  wow: '😮', sad: '😢', angry: '😡',
+};
 
 const ACCENT = Colors.primary;
 const SHEET_BG = Colors.deepSlate;
 
 const CommentItem = ({ item }) => (
   <View style={styles.commentRow}>
-    <ExpoImage
-      source={{ uri: item.user?.avatar }}
-      style={styles.commentAvatar}
-      contentFit="cover"
-    />
+    <View style={styles.avatarRing}>
+      <ExpoImage
+        source={{ uri: item.user?.avatar }}
+        style={styles.commentAvatar}
+        contentFit="cover"
+      />
+    </View>
     <View style={styles.commentBody}>
-      <Text style={styles.commentUsername}>{item.user?.username ?? 'User'}</Text>
-      <Text style={styles.commentText}>{item.text}</Text>
-      {item.time ? <Text style={styles.commentTime}>{item.time}</Text> : null}
+      <View style={styles.commentHeader}>
+        <Text style={styles.commentUsername}>{item.user?.username ?? 'User'}</Text>
+        {item.time ? <Text style={styles.commentTime}>{item.time}</Text> : null}
+      </View>
+      <Text style={styles.commentText}>{decodeHtml(item.text)}</Text>
     </View>
   </View>
 );
+
+// ── Floating Reaction Picker (for reels) ─────────────────────────────────────
+const ReelReactionPicker = ({ visible, currentReaction, onSelect, onClose }) => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const itemAnims = useRef(REACTIONS.map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(scaleAnim, {
+        toValue: 1, friction: 6, tension: 120, useNativeDriver: true,
+      }).start();
+      itemAnims.forEach((anim, i) => {
+        anim.setValue(0);
+        Animated.spring(anim, {
+          toValue: 1, friction: 5, tension: 100, delay: i * 35, useNativeDriver: true,
+        }).start();
+      });
+    } else {
+      scaleAnim.setValue(0);
+      itemAnims.forEach(a => a.setValue(0));
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      <Animated.View
+        style={[
+          styles.pickerContainer,
+          { transform: [{ scale: scaleAnim }], opacity: scaleAnim },
+        ]}
+      >
+        {REACTIONS.map((r, i) => {
+          const isActive = currentReaction === r.type;
+          return (
+            <Animated.View
+              key={r.type}
+              style={{
+                transform: [
+                  { scale: itemAnims[i] },
+                  { translateY: itemAnims[i].interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
+                ],
+              }}
+            >
+              <TouchableOpacity
+                style={[styles.emojiBtn, isActive && styles.emojiBtnActive]}
+                onPress={() => onSelect(r.type)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.pickerEmoji}>{r.emoji}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          );
+        })}
+      </Animated.View>
+    </>
+  );
+};
 
 const ReelEngagementBar = ({
   postId,
@@ -50,6 +148,8 @@ const ReelEngagementBar = ({
   liked,
   likesCount,
   onLikePress,
+  myReaction: initialMyReaction = null,
+  reactions: initialReactions = null,
   commentCount: initialCommentCount,
   isSavedInitial = false,
 }) => {
@@ -60,14 +160,105 @@ const ReelEngagementBar = ({
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [myReaction, setMyReaction] = useState(initialMyReaction || (liked ? 'like' : null));
+
+  // Sync from props when post changes
+  useEffect(() => {
+    setMyReaction(initialMyReaction || (liked ? 'like' : null));
+  }, [postId, initialMyReaction, liked]);
+
+  useEffect(() => {
+    setSaved(isSavedInitial);
+  }, [postId, isSavedInitial]);
+
+  useEffect(() => {
+    setPickerVisible(false);
+  }, [postId]);
+
+  /** Send a reaction via API — handles toggle and switch */
+  const sendReaction = useCallback(async (reactionType) => {
+    const isRemoving = myReaction === reactionType;
+    const newReaction = isRemoving ? null : reactionType;
+    setMyReaction(newReaction);
+    setPickerVisible(false);
+
+    // Call parent for immediate heart/count update
+    if (onLikePress) onLikePress(reactionType);
+
+    // Sync to Zustand store
+    const { feeds, updateFeedById } = useStore.getState();
+    const currentFeed = feeds.feedsById[postId];
+    if (currentFeed) {
+      updateFeedById(postId, {
+        ...currentFeed,
+        is_liked: !isRemoving,
+        my_reaction: newReaction,
+      });
+    }
+
+    try {
+      const res = await toggleLike(postId, token, reactionType);
+      if (res) {
+        const serverReaction = res.my_reaction || null;
+        setMyReaction(serverReaction);
+        // Sync server truth to store
+        const feed = useStore.getState().feeds.feedsById[postId];
+        if (feed) {
+          const serverReactions = res.reactions || null;
+          let serverTotal = likesCount;
+          if (serverReactions && typeof serverReactions === 'object') {
+            serverTotal = Object.values(serverReactions).reduce((a, b) => a + Number(b || 0), 0);
+          }
+          useStore.getState().updateFeedById(postId, {
+            ...useStore.getState().feeds.feedsById[postId],
+            is_liked: !!res.is_reacted,
+            my_reaction: serverReaction,
+            likes_count: serverTotal,
+            reactions: serverReactions || feed.reactions,
+          });
+        }
+      }
+    } catch {}
+  }, [myReaction, postId, token, onLikePress, likesCount]);
+
+  /** Tap = open / close the reaction picker so users see all options */
+  const handleTap = useCallback(() => {
+    setPickerVisible(v => !v);
+  }, []);
+
+  /** Long press = also open reaction picker (fallback) */
+  const handleLongPress = useCallback(() => {
+    setPickerVisible(true);
+  }, []);
 
   const handleSave = useCallback(async () => {
     const prev = saved;
-    setSaved(s => !s);
+    const newSaved = !prev;
+    setSaved(newSaved);
+
+    // Sync to store
+    const { feeds, updateFeedById } = useStore.getState();
+    const currentFeed = feeds.feedsById[postId];
+    if (currentFeed) {
+      updateFeedById(postId, { ...currentFeed, is_saved: newSaved });
+    }
+
     try {
-      await toggleSave(postId, token);
+      const res = await toggleSave(postId, token);
+      if (res) {
+        const serverSaved = !!res.is_saved;
+        setSaved(serverSaved);
+        const feed = useStore.getState().feeds.feedsById[postId];
+        if (feed) {
+          useStore.getState().updateFeedById(postId, { ...feed, is_saved: serverSaved });
+        }
+      }
     } catch {
       setSaved(prev);
+      if (currentFeed) {
+        useStore.getState().updateFeedById(postId, currentFeed);
+      }
     }
   }, [saved, postId, token]);
 
@@ -75,14 +266,14 @@ const ReelEngagementBar = ({
     setModalVisible(true);
     setLoadingComments(true);
     try {
-      const data = await fetchComments(postId);
+      const data = await fetchComments(postId, token);
       setComments(Array.isArray(data) ? data : []);
     } catch {
       setComments([]);
     } finally {
       setLoadingComments(false);
     }
-  }, [postId]);
+  }, [postId, token]);
 
   const handleSubmitComment = useCallback(async () => {
     const text = commentText.trim();
@@ -93,7 +284,18 @@ const ReelEngagementBar = ({
       await addComment(postId, text, token);
       setCommentText('');
       setCommentCount(c => c + 1);
-      const data = await fetchComments(postId);
+
+      // Sync comment count to store
+      const { feeds, updateFeedById } = useStore.getState();
+      const currentFeed = feeds.feedsById[postId];
+      if (currentFeed) {
+        updateFeedById(postId, {
+          ...currentFeed,
+          comments_count: (Number(currentFeed.comments_count) || 0) + 1,
+        });
+      }
+
+      const data = await fetchComments(postId, token);
       setComments(Array.isArray(data) ? data : []);
     } catch {
       // silent fail
@@ -104,24 +306,56 @@ const ReelEngagementBar = ({
 
   const handleShare = useCallback(async () => {
     try {
-      await shareReel(postId, userId, token);
+      await shareReel(postId, token);
+
+      // Sync share count to store
+      const { feeds, updateFeedById } = useStore.getState();
+      const currentFeed = feeds.feedsById[postId];
+      if (currentFeed) {
+        updateFeedById(postId, {
+          ...currentFeed,
+          shares_count: (Number(currentFeed.shares_count ?? currentFeed.shares ?? 0)) + 1,
+        });
+      }
+
       await Share.share({ message: 'Check out this reel on Hafrik!' });
     } catch {
       // silent
     }
-  }, [postId, userId, token]);
+  }, [postId, token]);
+
+  // Determine what to render on the heart/reaction button
+  const reactionEmoji = myReaction ? REACTION_EMOJI_MAP[myReaction] : null;
 
   return (
     <>
       <View style={styles.container}>
-        {/* Like */}
-        <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={onLikePress}>
-          <Ionicons
-            name={liked ? 'heart' : 'heart-outline'}
-            size={30}
-            color={liked ? Colors.warningPink : Colors.white}
-            style={liked ? styles.likedGlow : undefined}
-          />
+        {/* Reaction picker (floats above like button) */}
+        <ReelReactionPicker
+          visible={pickerVisible}
+          currentReaction={myReaction}
+          onSelect={sendReaction}
+          onClose={() => setPickerVisible(false)}
+        />
+
+        {/* Like / React */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.item}
+          onPress={handleTap}
+          onLongPress={handleLongPress}
+          delayLongPress={350}
+        >
+          {reactionEmoji ? (
+            <Text style={styles.reactionEmojiText}>{reactionEmoji}</Text>
+          ) : (
+            <Ionicons
+              name={liked ? 'heart' : 'heart-outline'}
+              size={30}
+              color={liked ? Colors.warningPink : Colors.white}
+              style={liked ? styles.likedGlow : undefined}
+            />
+          )}
           <Text style={styles.count}>{likesCount ?? 0}</Text>
         </TouchableOpacity>
 
@@ -146,11 +380,12 @@ const ReelEngagementBar = ({
         </TouchableOpacity>
       </View>
 
-      {/* Comments Bottom Sheet */}
+      {/* ── Comments Bottom Sheet ─────────────────────────────────── */}
       <Modal
         visible={modalVisible}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableOpacity
@@ -162,45 +397,70 @@ const ReelEngagementBar = ({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.sheet}
         >
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Comments</Text>
+          {/* Handle + Title row */}
+          <View style={styles.sheetTop}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.titleRow}>
+              <Text style={styles.sheetTitle}>Comments</Text>
+              <Text style={styles.commentBadge}>
+                {comments.length || commentCount}
+              </Text>
+            </View>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.divider} />
 
           {loadingComments ? (
-            <ActivityIndicator color={ACCENT} style={{ marginVertical: 28 }} />
+            <View style={styles.loaderWrap}>
+              <ActivityIndicator color={ACCENT} size="large" />
+              <Text style={styles.loaderText}>Loading comments…</Text>
+            </View>
           ) : (
             <FlatList
               data={comments}
               keyExtractor={(_, i) => String(i)}
               renderItem={({ item }) => <CommentItem item={item} />}
-              contentContainerStyle={{ paddingBottom: 8 }}
+              contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
-                <Text style={styles.emptyText}>No comments yet. Be the first!</Text>
+                <View style={styles.emptyWrap}>
+                  <Ionicons name="chatbubble-outline" size={44} color={Colors.mutedBlueGray} />
+                  <Text style={styles.emptyTitle}>No comments yet</Text>
+                  <Text style={styles.emptySub}>Be the first to share your thoughts</Text>
+                </View>
               }
             />
           )}
 
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="Add a comment…"
-              placeholderTextColor={Colors.mutedBlueGray}
-              value={commentText}
-              onChangeText={setCommentText}
-              returnKeyType="send"
-              onSubmitEditing={handleSubmitComment}
-              multiline
-            />
+          {/* Input bar */}
+          <View style={styles.inputBar}>
+            <View style={styles.inputWrap}>
+              <TextInput
+                style={styles.input}
+                placeholder="Write a comment…"
+                placeholderTextColor={Colors.mutedBlueGray}
+                value={commentText}
+                onChangeText={setCommentText}
+                returnKeyType="send"
+                onSubmitEditing={handleSubmitComment}
+                multiline
+                maxLength={500}
+              />
+            </View>
             <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.sendBtn, submitting && { opacity: 0.5 }]}
+              activeOpacity={0.75}
+              style={[
+                styles.sendBtn,
+                (!commentText.trim() || submitting) && styles.sendBtnDisabled,
+              ]}
               onPress={handleSubmitComment}
-              disabled={submitting}
+              disabled={submitting || !commentText.trim()}
             >
               {submitting ? (
                 <ActivityIndicator size="small" color={Colors.white} />
               ) : (
-                <Ionicons name="send" size={16} color={Colors.white} />
+                <Ionicons name="arrow-up" size={18} color={Colors.white} />
               )}
             </TouchableOpacity>
           </View>
@@ -219,7 +479,7 @@ const styles = StyleSheet.create({
   },
   item: {
     alignItems: 'center',
-    marginVertical: 13,
+    marginVertical: 8,
   },
   count: {
     color: Colors.white,
@@ -236,99 +496,221 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 8,
   },
-  // Modal
+
+  /* ── Modal / Sheet ─────────────────────────────────────────────── */
   backdrop: {
     flex: 1,
-    backgroundColor: withOpacity(Colors.black, 0.5),
+    backgroundColor: withOpacity(Colors.black, 0.55),
   },
   sheet: {
-    backgroundColor: SHEET_BG,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    maxHeight: '62%',
-    paddingHorizontal: 16,
+    backgroundColor: Colors.deepSlateAlt,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    maxHeight: '65%',
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    overflow: 'hidden',
+  },
+  sheetTop: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 2,
   },
   sheetHandle: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.blueGreenMuted,
+    backgroundColor: withOpacity(Colors.mutedBlueGray, 0.4),
     alignSelf: 'center',
-    marginTop: 10,
     marginBottom: 14,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
   },
   sheetTitle: {
     color: Colors.white,
+    fontFamily: 'WorkSans_700Bold',
+    fontSize: 17,
+    letterSpacing: 0.2,
+  },
+  commentBadge: {
+    backgroundColor: withOpacity(ACCENT, 0.2),
+    color: ACCENT,
+    fontFamily: 'WorkSans_600SemiBold',
+    fontSize: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: withOpacity(Colors.mutedBlueGray, 0.15),
+    marginHorizontal: 0,
+  },
+
+  /* ── Loading / Empty states ────────────────────────────────────── */
+  loaderWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  loaderText: {
+    color: Colors.mutedBlueGray,
+    fontFamily: 'WorkSans_400Regular',
+    fontSize: 13,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    gap: 8,
+  },
+  emptyTitle: {
+    color: Colors.mist,
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 16,
-    marginBottom: 12,
+    marginTop: 4,
+  },
+  emptySub: {
+    color: Colors.mutedBlueGray,
+    fontFamily: 'WorkSans_400Regular',
+    fontSize: 13,
+  },
+
+  /* ── Comment list ──────────────────────────────────────────────── */
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
   },
   commentRow: {
     flexDirection: 'row',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.blueGreenDark,
+    paddingVertical: 12,
+    alignItems: 'flex-start',
+  },
+  avatarRing: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    borderColor: withOpacity(ACCENT, 0.35),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   commentAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: Colors.blueGreenDeep,
-    marginRight: 10,
   },
   commentBody: {
     flex: 1,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
   },
   commentUsername: {
     color: Colors.white,
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 13,
-    marginBottom: 2,
   },
   commentText: {
-    color: Colors.mist,
+    color: withOpacity(Colors.mist, 0.9),
     fontFamily: 'WorkSans_400Regular',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 13.5,
+    lineHeight: 19,
   },
   commentTime: {
     color: Colors.mutedBlueGray,
     fontFamily: 'WorkSans_400Regular',
     fontSize: 11,
-    marginTop: 3,
   },
-  emptyText: {
-    color: Colors.mutedBlueGray,
-    fontFamily: 'WorkSans_400Regular',
-    fontSize: 14,
-    textAlign: 'center',
-    marginVertical: 28,
-  },
-  inputRow: {
+
+  /* ── Input bar ─────────────────────────────────────────────────── */
+  inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginTop: 12,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: withOpacity(Colors.mutedBlueGray, 0.12),
+  },
+  inputWrap: {
+    flex: 1,
+    backgroundColor: withOpacity(Colors.blueGreenDark, 0.6),
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: withOpacity(Colors.mutedBlueGray, 0.15),
   },
   input: {
-    flex: 1,
-    backgroundColor: Colors.blueGreenDark,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
     color: Colors.white,
     fontFamily: 'WorkSans_400Regular',
     fontSize: 14,
     maxHeight: 80,
   },
   sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  sendBtnDisabled: {
+    backgroundColor: withOpacity(Colors.mutedBlueGray, 0.3),
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+
+  /* ── Reaction Picker ───────────────────────────────────────────── */
+  pickerContainer: {
+    position: 'absolute',
+    bottom: 48,
+    right: -8,
+    flexDirection: 'column',
+    backgroundColor: withOpacity(Colors.black, 0.85),
+    borderRadius: 28,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    gap: 2,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    zIndex: 999,
+  },
+  emojiBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emojiBtnActive: {
+    backgroundColor: withOpacity(ACCENT, 0.3),
+  },
+  pickerEmoji: {
+    fontSize: 24,
+  },
+  reactionEmojiText: {
+    fontSize: 28,
   },
 });
 

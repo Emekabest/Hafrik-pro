@@ -2,7 +2,7 @@ import axios from "axios"
 
 const RepostController = async(postData, token)=>{
 
-    const API_URL = `https://hafrik.com/api/v1/feed/repost.php`;
+    const API_URL = `https://hafrik.com/api/v1/feed/share.php`;
 
     // const formData = new FormData();
     // formData.append('post_id', post_id);

@@ -43,6 +43,8 @@ const RecentUpdatesScreen = ({ feedWidth }) => {
   const [refreshing,    setRefreshing]    = useState(false);
   const [peopleList,    setPeopleList]    = useState([]);
   const [adsList,       setAdsList]       = useState([]);
+  const [bizList,       setBizList]       = useState([]);
+  const [communityList, setCommunityList] = useState([]);
 
   const BASE_API_URL = AppDetails.apis.recentUpdateApi;
 
@@ -58,7 +60,26 @@ const RecentUpdatesScreen = ({ feedWidth }) => {
 
     fetch('https://hafrik.com/api/v1/ads/list.php', { headers })
       .then(r => r.json())
-      .then(d => setAdsList(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []))
+      .then(d => {
+        const raw = d?.data;
+        setAdsList(Array.isArray(raw) ? raw : (raw?.id ? [raw] : []));
+      })
+      .catch(() => {});
+
+    fetch('https://hafrik.com/api/v1/business/list.php?limit=5', { headers })
+      .then(r => r.json())
+      .then(d => {
+        const list = d?.data?.data ?? d?.data?.businesses ?? d?.data?.pages ?? d?.data ?? [];
+        setBizList(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {});
+
+    fetch('https://hafrik.com/api/v1/communities/list.php?limit=5', { headers })
+      .then(r => r.json())
+      .then(d => {
+        const list = d?.data?.data ?? d?.data?.groups ?? d?.data?.communities ?? d?.data ?? [];
+        setCommunityList(Array.isArray(list) ? list : []);
+      })
       .catch(() => {});
   }, [token]);
 
@@ -229,23 +250,35 @@ const RecentUpdatesScreen = ({ feedWidth }) => {
       { type: 'feedsheader', name: 'Recent Updates', id: feedsName },
     ];
 
-    let adIdx = 0;
+    // Build a one-of-each pool from whatever lists are loaded, then shuffle.
+    const pool = [];
+    if (adsList.length       > 0) pool.push({ type: 'ad',            data: adsList[0] });
+    if (peopleList.length    > 0) pool.push({ type: 'peoplecard',    data: peopleList });
+    if (bizList.length       > 0) pool.push({ type: 'bizcard',       data: bizList });
+    if (communityList.length > 0) pool.push({ type: 'communitycard', data: communityList });
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    // Show at most 2 interstitials, first after 5 posts then every 8 after that.
+    const MAX_INTERSTITIALS = 2;
+    const FIRST_AT          = 5;
+    const STEP              = 8;
+    let poolIdx    = 0;
+    let nextInsert = FIRST_AT;
+
     feeds.forEach((feed, i) => {
       items.push({ type: 'feed', data: feed });
 
-      // Every 5 feeds inject an ad
-      if ((i + 1) % 5 === 0 && adsList.length > 0) {
-        items.push({ type: 'ad', data: adsList[adIdx % adsList.length] });
-        adIdx++;
-      }
-      // Every 10 feeds inject a People You May Know card
-      if ((i + 1) % 10 === 0 && peopleList.length > 0) {
-        items.push({ type: 'peoplecard', data: peopleList });
+      if ((i + 1) === nextInsert && poolIdx < pool.length && poolIdx < MAX_INTERSTITIALS) {
+        items.push(pool[poolIdx++]);
+        nextInsert += STEP;
       }
     });
 
     return items;
-  }, [feeds, feedWidth, contentFilter, adsList, peopleList]);
+  }, [feeds, feedWidth, contentFilter, adsList, peopleList, bizList, communityList]);
 
   const stickyHeaderIndices = [1];
 

@@ -1,104 +1,244 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SvgIcon from '../../../../assl.js/svg/svg';
 import { useAuth } from '../../../../AuthContext';
 import ToggleFeedController from '../../../../controllers/tooglefeedcontroller';
+import ToggleSaveController from '../../../../controllers/tooglesavecontroller';
 import useStore from '../../../../repository/store';
 import { Colors } from '../../../../theme/colors';
+import ReactionPicker, { REACTION_EMOJI_MAP } from '../feedcardproperties/ReactionPicker';
 
-const CommentEngagementBar = ({ feedId, initialLiked, initialLikeCount, commentsCount, 
-    onCommentPress = () => {},
-    onSharePress = () => {},
-    onFavoritePress = () => {}
+/**
+ * CommentEngagementBar — mirrors the main EngagementBar:
+ *   • Tap like = toggle default "like" reaction
+ *   • Long-press like = open ReactionPicker (7 emoji reactions)
+ *   • Save button = calls ToggleSaveController + syncs store
+ *   • Share button = calls parent onOpenShare
+ *   • Reaction emoji displayed when user has a non-"like" reaction
+ */
+const CommentEngagementBar = ({
+  feedId,
+  initialLiked,
+  initialLikeCount,
+  commentsCount,
+  sharesCount = 0,
+  isSaved: initialSaved = false,
+  myReaction: initialMyReaction = null,
+  reactions: initialReactions = null,
+  onCommentPress = () => {},
+  onOpenShare = () => {},
+  onReactionsPress,
 }) => {
-
-
-
   const { token } = useAuth();
-  const updateFeedById_store = useStore(state => state.updateFeedById);
 
-  const [liked, setLiked] = useState(Boolean(initialLiked));
+  // ── Reaction state ────────────────────────────────────────────────────────
+  const [isReacted, setIsReacted] = useState(Boolean(initialLiked));
+  const [myReaction, setMyReaction] = useState(initialMyReaction || (initialLiked ? 'like' : null));
   const [likeCount, setLikeCount] = useState(Number(initialLikeCount) || 0);
+  const [saved, setSaved] = useState(Boolean(initialSaved));
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   useEffect(() => {
-    setLiked(Boolean(initialLiked));
+    setIsReacted(Boolean(initialLiked));
+    setMyReaction(initialMyReaction || (initialLiked ? 'like' : null));
     setLikeCount(Number(initialLikeCount) || 0);
-  }, [initialLiked, initialLikeCount]);
+  }, [feedId, initialLiked, initialLikeCount, initialMyReaction]);
 
+  useEffect(() => {
+    setSaved(Boolean(initialSaved));
+  }, [feedId, initialSaved]);
 
-  
-  const handleLike = async () => {
-    const prevLiked = liked;
+  useEffect(() => {
+    setPickerVisible(false);
+  }, [feedId]);
+
+  // ── Send reaction (same logic as main EngagementBar) ──────────────────────
+  const sendReaction = useCallback(async (reactionType) => {
+    const prevReacted = isReacted;
+    const prevReaction = myReaction;
     const prevCount = likeCount;
-    const newLiked = !prevLiked;
-    const newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
 
-    // Read current feed from store
-    const feedsById = useStore.getState().feeds.feedsById;
-    const currentFeed = feedsById[feedId];
+    const isRemoving = prevReaction === reactionType;
+    const newReacted = !isRemoving;
+    const newReaction = isRemoving ? null : reactionType;
+    const newCount = isRemoving ? Math.max(0, prevCount - 1) : (prevReacted ? prevCount : prevCount + 1);
 
-    // Optimistic local update
-    setLiked(newLiked);
+    // Optimistic update
+    setIsReacted(newReacted);
+    setMyReaction(newReaction);
     setLikeCount(newCount);
+    setPickerVisible(false);
 
-    // Optimistic store update (if feed exists in normalized store)
+    // Update store
+    const { feeds, updateFeedById } = useStore.getState();
+    const currentFeed = feeds.feedsById[feedId];
     if (currentFeed) {
-      const updatedFeed = { ...currentFeed, is_liked: newLiked, likes_count: newCount };
-      updateFeedById_store(feedId, updatedFeed);
+      updateFeedById(feedId, {
+        ...currentFeed,
+        is_liked: newReacted,
+        my_reaction: newReaction,
+        likes_count: newCount,
+      });
     }
 
     try {
-      const response = await ToggleFeedController(feedId, token);
-      if (response.status !== 200) {
-        // Rollback on failure
-        setLiked(prevLiked);
+      const response = await ToggleFeedController(feedId, token, reactionType);
+      if (response.status === 200 && response.data) {
+        const d = response.data;
+        const serverReacted = !!d.is_reacted;
+        const serverReaction = d.my_reaction || null;
+        const serverReactions = d.reactions || null;
+
+        let serverTotal = newCount;
+        if (serverReactions && typeof serverReactions === 'object') {
+          serverTotal = Object.values(serverReactions).reduce((a, b) => a + Number(b || 0), 0);
+        }
+
+        setIsReacted(serverReacted);
+        setMyReaction(serverReaction);
+        setLikeCount(serverTotal);
+
+        if (currentFeed) {
+          const { updateFeedById } = useStore.getState();
+          updateFeedById(feedId, {
+            ...useStore.getState().feeds.feedsById[feedId],
+            is_liked: serverReacted,
+            my_reaction: serverReaction,
+            likes_count: serverTotal,
+            reactions: serverReactions || currentFeed.reactions,
+          });
+        }
+      } else {
+        setIsReacted(prevReacted);
+        setMyReaction(prevReaction);
         setLikeCount(prevCount);
         if (currentFeed) {
-          updateFeedById_store(feedId, currentFeed);
+          const { updateFeedById } = useStore.getState();
+          updateFeedById(feedId, currentFeed);
         }
       }
-    } catch (error) {
-      // Rollback on error
-      setLiked(prevLiked);
+    } catch {
+      setIsReacted(prevReacted);
+      setMyReaction(prevReaction);
       setLikeCount(prevCount);
       if (currentFeed) {
-        updateFeedById_store(feedId, currentFeed);
+        const { updateFeedById } = useStore.getState();
+        updateFeedById(feedId, currentFeed);
       }
     }
-  };
+  }, [isReacted, myReaction, likeCount, feedId, token]);
+
+  const handleTap = useCallback(() => {
+    if (pickerVisible) { setPickerVisible(false); return; }
+    sendReaction(myReaction || 'like');
+  }, [sendReaction, myReaction, pickerVisible]);
+
+  const handleLongPress = useCallback(() => {
+    setPickerVisible(true);
+  }, []);
+
+  const handlePickerSelect = useCallback((reactionType) => {
+    sendReaction(reactionType);
+  }, [sendReaction]);
+
+  // ── Save toggle ───────────────────────────────────────────────────────────
+  const handleSave = useCallback(async () => {
+    const prev = saved;
+    const newSaved = !prev;
+    setSaved(newSaved);
+
+    const { feeds, updateFeedById } = useStore.getState();
+    const currentFeed = feeds.feedsById[feedId];
+    if (currentFeed) {
+      updateFeedById(feedId, { ...currentFeed, is_saved: newSaved });
+    }
+
+    try {
+      const response = await ToggleSaveController(feedId, token);
+      if (response.status === 200 && response.data) {
+        const serverSaved = !!response.data.is_saved;
+        setSaved(serverSaved);
+        if (currentFeed) {
+          const { updateFeedById } = useStore.getState();
+          updateFeedById(feedId, {
+            ...useStore.getState().feeds.feedsById[feedId],
+            is_saved: serverSaved,
+          });
+        }
+      } else {
+        setSaved(prev);
+        if (currentFeed) updateFeedById(feedId, currentFeed);
+      }
+    } catch {
+      setSaved(prev);
+      if (currentFeed) {
+        const { updateFeedById } = useStore.getState();
+        updateFeedById(feedId, currentFeed);
+      }
+    }
+  }, [saved, feedId, token]);
+
+  const reactionEmoji = myReaction ? REACTION_EMOJI_MAP[myReaction] : null;
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.item} onPress={handleLike}>
-        <Ionicons 
-          name={liked ? 'heart' : 'heart-outline'} 
-          size={23} 
-          color={liked ? Colors.like : Colors.neutral700} 
-        />
-        <Text style={styles.count}>{likeCount}</Text>
-      </TouchableOpacity>
+    <View style={styles.wrapper}>
+      <ReactionPicker
+        visible={pickerVisible}
+        currentReaction={myReaction}
+        onSelect={handlePickerSelect}
+        onClose={() => setPickerVisible(false)}
+      />
 
-      <TouchableOpacity style={styles.item} onPress={onCommentPress}>
-        <SvgIcon name="comment" width={20} height={20} color={Colors.neutral700} />
-        <Text style={styles.count}>{commentsCount}</Text>
-      </TouchableOpacity>
+      <View style={styles.container}>
+        {/* Like / React */}
+        <TouchableOpacity
+          style={styles.item}
+          onPress={handleTap}
+          onLongPress={handleLongPress}
+          delayLongPress={350}
+          activeOpacity={0.7}
+        >
+          {reactionEmoji ? (
+            <Text style={styles.reactionEmoji}>{reactionEmoji}</Text>
+          ) : (
+            <Ionicons
+              name={isReacted ? 'heart' : 'heart-outline'}
+              size={22}
+              color={isReacted ? Colors.like ?? '#e74c3c' : Colors.neutral700}
+            />
+          )}
+          <Text style={[styles.count, isReacted && { color: Colors.primary }]}>{likeCount}</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.item} onPress={onSharePress}>
-        <SvgIcon name="share" width={20} height={20} color={Colors.neutral700} />
-      </TouchableOpacity>
+        {/* Comment */}
+        <TouchableOpacity style={styles.item} onPress={onCommentPress}>
+          <SvgIcon name="comment" width={20} height={20} color={Colors.neutral700} />
+          <Text style={styles.count}>{commentsCount}</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.item} onPress={onFavoritePress}>
-        <SvgIcon name="favourite" width={20} height={20} color={Colors.neutral700} />
-      </TouchableOpacity>
+        {/* Share */}
+        <TouchableOpacity style={styles.item} onPress={onOpenShare}>
+          <SvgIcon name="share" width={20} height={20} color={Colors.neutral700} />
+          {sharesCount > 0 && <Text style={styles.count}>{sharesCount}</Text>}
+        </TouchableOpacity>
+
+        {/* Save */}
+        <TouchableOpacity style={styles.item} onPress={handleSave}>
+          <SvgIcon name="favourite" width={20} height={20} color={saved ? Colors.primary : Colors.neutral700} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    position: 'relative',
+  },
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -114,6 +254,9 @@ const styles = StyleSheet.create({
   count: {
     fontSize: 13,
     color: Colors.neutral700,
+  },
+  reactionEmoji: {
+    fontSize: 20,
   },
 });
 

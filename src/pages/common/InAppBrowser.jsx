@@ -31,7 +31,7 @@ export default function InAppBrowser() {
   const navigation = useNavigation();
   const route      = useRoute();
   const { top }    = useSafeAreaInsets();
-  const { token }  = useAuth();
+  const { token, user }  = useAuth();
 
   const { title = 'Hafrik', url = 'https://hafrik.com' } = route.params ?? {};
 
@@ -75,6 +75,20 @@ export default function InAppBrowser() {
     if (token) initSession();
     else setReady(true); // no token — open without auth
   }, [token]);
+
+  // ─── Inject user data before page loads ─────────────────────────────────
+  const injectedBeforeContent = useMemo(() => {
+    if (!user) return 'true;';
+    const payload = JSON.stringify({
+      id:       user.id        ?? null,
+      username: user.username  ?? null,
+      email:    user.email     ?? null,
+      name:     user.name ?? user.full_name ?? user.username ?? null,
+      avatar:   user.avatar ?? user.profile_picture ?? null,
+      token:    token ?? null,
+    });
+    return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;true;`;
+  }, [user, token]);
 
   const injectedScript = useMemo(() => {
     const cookiePart = sessionCreds
@@ -183,6 +197,7 @@ export default function InAppBrowser() {
           ref={webRef}
           source={{ uri: url }}
           style={styles.webview}
+          injectedJavaScriptBeforeContentLoaded={injectedBeforeContent}
           injectedJavaScript={injectedScript}
           onLoadStart={() => { setLoading(true); setError(false); }}
           onLoadEnd={() => setLoading(false)}

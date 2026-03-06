@@ -7,7 +7,11 @@ const GetBannersController = async () => {
 
     const selectedCountry = JSON.parse(await AsyncStorage.getItem('selected_country'));
 
-    const API_URL = selectedCountry && selectedCountry.country_id !== "all" ? `https://hafrik.com//api/v1/home/banners.php?country_id=${selectedCountry.country_id}` : `https://hafrik.com//api/v1/home/banners.php`;
+    // Accept both country_id (normalised) and id (raw API shape)
+    const countryId = selectedCountry?.country_id ?? selectedCountry?.id;
+    const API_URL = (countryId && countryId !== 'all')
+        ? `https://hafrik.com/api/v1/home/banners.php?country_id=${countryId}`
+        : `https://hafrik.com/api/v1/home/banners.php`;
 
     try {
         const response = await axios.get(API_URL);

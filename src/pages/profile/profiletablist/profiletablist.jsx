@@ -1,13 +1,17 @@
 import { FlashList } from "@shopify/flash-list";
 import { useCallback } from "react";
-import { View, Text } from "react-native";
+import { View, Text, ActivityIndicator, StyleSheet as RNStyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import ProfileTabs from "../tabs";
 import { memo } from "react";
 import { FlatList } from "react-native-gesture-handler";
 import FilterHeader from "../filterheader";
 import ProfileTabListCard from "./profiletablistcard";
 import useStore from "../../../repository/store";
+import { Colors } from '../../../theme/colors';
 
+// Lazy-import of MediaFilterChips from photos.jsx would be circular,
+// so we render it via the item's own render function stored on the data object.
 
 
 const MemoizedProfileTabs = memo(ProfileTabs);
@@ -58,6 +62,36 @@ const ProfileTabList = ({ combinedData }) => {
 
             case "filterHeader":
                 return <MemoizedFilterHeader name={item.name} options={item.options} />;
+
+            case "mediaFilter": {
+                // item carries: filter, onSelect, counts, and a renderChips function
+                if (item.renderChips) {
+                    return item.renderChips();
+                }
+                // Fallback: import from photos
+                const { MediaFilterChips } = require('../photos');
+                if (MediaFilterChips) {
+                    return <MediaFilterChips active={item.filter} onSelect={item.onSelect} counts={item.counts} />;
+                }
+                return null;
+            }
+
+            case "loader":
+                return (
+                    <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                );
+
+            case "empty":
+                return (
+                    <View style={{ paddingVertical: 50, alignItems: 'center', gap: 8 }}>
+                        <Ionicons name="images-outline" size={40} color={Colors.mutedBlueGray} />
+                        <Text style={{ fontSize: 14, color: Colors.mutedBlueGray, fontWeight: '500' }}>
+                            No {item.filter === 'all' ? 'media' : item.filter === 'photos' ? 'photos' : 'reels'} yet
+                        </Text>
+                    </View>
+                );
 
             case "list_row":
                 // For business pages, render items as a vertical list (full width)

@@ -7,6 +7,41 @@ import { useAuth } from "../../../AuthContext";
 import { updateProfileController as UpdateProfileController } from "../../../controllers/profilecontroller";
 import { Colors } from '../../../theme/colors';
 
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+
+const withOpacity = (hex, opacity) => {
+    const normalized = (hex || "").replace("#", "");
+    const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+    return `#${normalized}${alpha}`;
+};
+
+// ── Reusable Input Field ─────────────────────────────────────────────────────
+const FormField = ({ label, icon, value, onChangeText, placeholder, multiline, numberOfLines, keyboardType, prefix }) => (
+    <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        <View style={[styles.fieldInputWrapper, multiline && styles.fieldInputWrapperMultiline]}>
+            {icon && (
+                <View style={styles.fieldIconBox}>
+                    <Ionicons name={icon} size={15} color={ACCENT} />
+                </View>
+            )}
+            {prefix && <Text style={styles.fieldPrefix}>{prefix}</Text>}
+            <TextInput
+                style={[styles.fieldInput, multiline && styles.fieldMultiline, !icon && !prefix && { paddingLeft: 12 }]}
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder}
+                placeholderTextColor={Colors.mutedBlueGrayPlaceholder}
+                multiline={multiline}
+                numberOfLines={numberOfLines}
+                textAlignVertical={multiline ? "top" : "center"}
+                keyboardType={keyboardType || "default"}
+            />
+        </View>
+    </View>
+);
+
 const EditModal = ({ visible, onClose, userDetails }) => {
     const {token} = useAuth();
     const [firstName, setFirstName] = useState("");
@@ -19,20 +54,6 @@ const EditModal = ({ visible, onClose, userDetails }) => {
     const [gender, setGender] = useState(0);
     const [aboutMe, setAboutMe] = useState("");
     const [isSaving, setIsSaving] = useState(false);
-    /* Commented out per request: temporarily disable location field
-    const [location, setLocation] = useState("");
-    const [showLocationPicker, setShowLocationPicker] = useState(false);
-    */
-    
-
-    // Date state (temporarily disabled)
-    /* Commented out per request: temporarily disable birthdate fields
-    const [month, setMonth] = useState("");
-    const [day, setDay] = useState("");
-    const [year, setYear] = useState("");
-    */
-
-
 
     useEffect(() => {
         if (userDetails) {
@@ -43,30 +64,10 @@ const EditModal = ({ visible, onClose, userDetails }) => {
             setCountry(userDetails.country || "");
             setCurrentCity(userDetails.current_city || userDetails.city || "");
             setHometown(userDetails.hometown || "");
-            setGender(userDetails.gender || 0); // 1 = Male, 2 = Female
+            setGender(userDetails.gender || 0);
             setAboutMe(userDetails.about_me || "");
-            /* Commented out: temporarily disable location initialization
-            setLocation(userDetails.location || userDetails.country || "");
-            */
-            
-            /* Birthdate initialization temporarily disabled
-            if (userDetails.birth_date) {
-                // Assuming YYYY-MM-DD format
-                const parts = userDetails.birth_date.split("-");
-                if (parts.length === 3) {
-                    setYear(parts[0]);
-                    setMonth(parts[1]);
-                    setDay(parts[2]);
-                }
-            }
-            */
         }
     }, [userDetails, visible]);
-
-    
-    const warningText = "Your account is already verified if you changed your name you will lose the verification badge";
-    const locations = ['China', 'United Arab Emirates', 'Turkey', 'Malaysia', 'United Kingdom', 'Poland', 'Germany'];
-
 
     const handleSaveUpdate = async () => {
         setIsSaving(true);
@@ -81,14 +82,6 @@ const EditModal = ({ visible, onClose, userDetails }) => {
             updateProfileFormData.append('country', country);
             updateProfileFormData.append('current_city', currentCity);
             updateProfileFormData.append('hometown', hometown);
-            // location intentionally omitted (commented out)
-
-            // Birthdate omitted temporarily
-            /*
-            if (year && month && day) {
-                updateProfileFormData.append('birth_date', `${year}-${month}-${day}`);
-            }
-            */
 
             const response = await UpdateProfileController(token, updateProfileFormData);
 
@@ -103,395 +96,407 @@ const EditModal = ({ visible, onClose, userDetails }) => {
         } finally {
             setIsSaving(false);
         }
-    }
-    
+    };
+
+    const genderOptions = [
+        { value: 1, label: 'Male', icon: 'male' },
+        { value: 2, label: 'Female', icon: 'female' },
+        { value: 3, label: 'Other', icon: 'transgender' },
+    ];
     
     return (
         <Modal
             visible={visible}
             animationType="slide"
-            presentationStyle="fullScreen"
+            presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
-
-
-
-            <View style={styles.statusBarBackground}>
-                <StatusBar barStyle="light-content"/>
-            </View>
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+                <StatusBar barStyle="dark-content"/>
+                {/* ── Header ── */}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={onClose} style={styles.backButton} activeOpacity={1}>
-                        <Ionicons name="arrow-back" size={24} color={Colors.black} />
+                    <TouchableOpacity onPress={onClose} style={styles.headerBackBtn} activeOpacity={0.7} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                        <Ionicons name="close" size={22} color={Colors.textBodyIndigo} />
                     </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Edit Profile</Text>
                     <TouchableOpacity
-                        style={[styles.saveButton, isSaving && { opacity: 0.7 }]}
-                        activeOpacity={1}
+                        style={[styles.headerSaveBtn, isSaving && { opacity: 0.6 }]}
+                        activeOpacity={0.8}
                         onPress={handleSaveUpdate}
                         disabled={isSaving}
                     >
-                        
-                        {!isSaving && <Text style={styles.saveButtonText}>Save Changes</Text>}
-                        {isSaving && <ActivityIndicator size="small" color={Colors.white} style={{ marginLeft: 8 }} />}
+                        {isSaving ? (
+                            <ActivityIndicator size="small" color={Colors.white} />
+                        ) : (
+                            <Text style={styles.headerSaveText}>Save</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
 
+                <KeyboardAvoidingView 
+                    style={{ flex: 1 }} 
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <ScrollView 
+                        style={styles.scrollContent}
+                        contentContainerStyle={styles.scrollInner}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {/* ── Warning banner ── */}
+                        {userDetails?.verified ? (
+                            <View style={styles.warningBanner}>
+                                <Ionicons name="shield-checkmark" size={16} color={Colors.warm} />
+                                <Text style={styles.warningBannerText}>
+                                    Changing your name will remove your verification badge.
+                                </Text>
+                            </View>
+                        ) : null}
 
-                <ScrollView style={styles.scrollContent}>
-                    
+                        {/* ── Section: Personal Info ── */}
+                        <View style={styles.sectionCard}>
+                            <View style={styles.sectionHeader}>
+                                <Ionicons name="person-outline" size={15} color={ACCENT} />
+                                <Text style={styles.sectionTitle}>Personal Info</Text>
+                            </View>
 
-                    {/**Info Section */}
-                    <View >
-                        <TouchableOpacity style={styles.moreSettingsButton} activeOpacity={1}>
-                            <Ionicons name="arrow-back" size={20} color={Colors.black} />
-                            <Text style={styles.moreSettingTitle}>More Settings</Text>
-                        </TouchableOpacity>
+                            {/* Name row (side by side) */}
+                            <View style={styles.fieldRow}>
+                                <View style={styles.fieldHalf}>
+                                    <FormField 
+                                        label="First Name" 
+                                        value={firstName} 
+                                        onChangeText={setFirstName} 
+                                        placeholder="First name" 
+                                    />
+                                </View>
+                                <View style={styles.fieldHalf}>
+                                    <FormField 
+                                        label="Last Name" 
+                                        value={lastName} 
+                                        onChangeText={setLastName} 
+                                        placeholder="Last name" 
+                                    />
+                                </View>
+                            </View>
 
-                        <View style={styles.sectionTitleContainer}>
-                            <Text style={styles.sectionTitle}>Basic Settings</Text>
+                            <FormField 
+                                label="Username" 
+                                icon="at" 
+                                value={username} 
+                                onChangeText={setUsername} 
+                                placeholder="username" 
+                            />
+
+                            {/* Gender selector */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Gender</Text>
+                                <View style={styles.genderRow}>
+                                    {genderOptions.map((opt) => {
+                                        const isSelected = gender === opt.value;
+                                        return (
+                                            <TouchableOpacity
+                                                key={opt.value}
+                                                style={[styles.genderPill, isSelected && styles.genderPillActive]}
+                                                onPress={() => setGender(opt.value)}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Ionicons 
+                                                    name={opt.icon} 
+                                                    size={16} 
+                                                    color={isSelected ? Colors.white : Colors.mutedBlueGray} 
+                                                />
+                                                <Text style={[styles.genderPillText, isSelected && styles.genderPillTextActive]}>
+                                                    {opt.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
                         </View>
 
-                        <View style={styles.warningContainer}>
-                            <Text style={styles.warningHeader}>Attention</Text>
-                            <Text style={styles.warningText}>{warningText}</Text>
+                        {/* ── Section: Contact ── */}
+                        <View style={styles.sectionCard}>
+                            <View style={styles.sectionHeader}>
+                                <Ionicons name="call-outline" size={15} color={ACCENT} />
+                                <Text style={styles.sectionTitle}>Contact</Text>
+                            </View>
+                            <FormField 
+                                label="Phone" 
+                                icon="call-outline" 
+                                value={phone} 
+                                onChangeText={setPhone} 
+                                placeholder="Phone number" 
+                                keyboardType="phone-pad" 
+                            />
                         </View>
 
-                    </View>
-
-
-                    {/**Form Section */}
-                    <View style={styles.formContainer}>
-                           <View style={styles.inputGroup}>
-                        <Text style={styles.label}>First Name</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={firstName}
-                            onChangeText={setFirstName}
-                            placeholder="Enter first name"
-                            placeholderTextColor={Colors.neutral350}
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Last Name</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={lastName}
-                            onChangeText={setLastName}
-                            placeholder="Enter last name"
-                            placeholderTextColor={Colors.neutral350}
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Username</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={username}
-                            onChangeText={setUsername}
-                            placeholder="Enter username"
-                            placeholderTextColor={Colors.neutral350}
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Phone</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={phone}
-                            onChangeText={setPhone}
-                            placeholder="Enter phone number"
-                            placeholderTextColor={Colors.neutral350}
-                            keyboardType="phone-pad"
-                        />
-                    </View>
-                    
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Country</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={country}
-                            onChangeText={setCountry}
-                            placeholder="Country"
-                            placeholderTextColor={Colors.neutral350}
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Current City</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={currentCity}
-                            onChangeText={setCurrentCity}
-                            placeholder="Current city"
-                            placeholderTextColor={Colors.neutral350}
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Hometown</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={hometown}
-                            onChangeText={setHometown}
-                            placeholder="Hometown"
-                            placeholderTextColor={Colors.neutral350}
-                        />
-                    </View>
-
-                    
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Gender</Text>
-                        <View style={styles.genderContainer}>
-                            <TouchableOpacity 
-                                style={[styles.genderOption, gender === 1 && styles.genderOptionSelected]}
-                                onPress={() => setGender(1)}
-                            >
-                                <Ionicons name="male" size={18} color={gender === 1 ? Colors.white : Colors.neutral500} />
-                                <Text style={[styles.genderText, gender === 1 && styles.genderTextSelected]}>Male</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={[styles.genderOption, gender === 2 && styles.genderOptionSelected]}
-                                onPress={() => setGender(2)}
-                            >
-                                <Ionicons name="female" size={18} color={gender === 2 ? Colors.white : Colors.neutral500} />
-                                <Text style={[styles.genderText, gender === 2 && styles.genderTextSelected]}>Female</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={[styles.genderOption, gender === 3 && styles.genderOptionSelected]}
-                                onPress={() => setGender(3)}
-                            >
-                                <Ionicons name="transgender" size={18} color={gender === 3 ? Colors.white : Colors.neutral500} />
-                                <Text style={[styles.genderText, gender === 3 && styles.genderTextSelected]}>Other</Text>
-                            </TouchableOpacity>
+                        {/* ── Section: Location ── */}
+                        <View style={styles.sectionCard}>
+                            <View style={styles.sectionHeader}>
+                                <Ionicons name="location-outline" size={15} color={ACCENT} />
+                                <Text style={styles.sectionTitle}>Location</Text>
+                            </View>
+                            <FormField 
+                                label="Country" 
+                                icon="globe-outline" 
+                                value={country} 
+                                onChangeText={setCountry} 
+                                placeholder="Country" 
+                            />
+                            <View style={styles.fieldRow}>
+                                <View style={styles.fieldHalf}>
+                                    <FormField 
+                                        label="Current City" 
+                                        value={currentCity} 
+                                        onChangeText={setCurrentCity} 
+                                        placeholder="City" 
+                                    />
+                                </View>
+                                <View style={styles.fieldHalf}>
+                                    <FormField 
+                                        label="Hometown" 
+                                        value={hometown} 
+                                        onChangeText={setHometown} 
+                                        placeholder="Hometown" 
+                                    />
+                                </View>
+                            </View>
                         </View>
-                    </View>
 
+                        {/* ── Section: About ── */}
+                        <View style={styles.sectionCard}>
+                            <View style={styles.sectionHeader}>
+                                <Ionicons name="document-text-outline" size={15} color={ACCENT} />
+                                <Text style={styles.sectionTitle}>About Me</Text>
+                            </View>
+                            <FormField 
+                                label="Bio"  
+                                value={aboutMe} 
+                                onChangeText={setAboutMe} 
+                                placeholder="Tell people about yourself..." 
+                                multiline 
+                                numberOfLines={4} 
+                            />
+                        </View>
 
-
-                    {/* Location selector temporarily commented out per request */}
-
-
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>About Me</Text>
-                        <TextInput
-                            style={[styles.input, styles.textArea]}
-                            value={aboutMe}
-                            onChangeText={setAboutMe}
-                            placeholder="Write something about yourself..."
-                            placeholderTextColor={Colors.neutral350}
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                        />
-                    </View>
-
-
-                    {/* Birthdate fields temporarily commented out per request */}
-                    </View>
-
-                </ScrollView>
-
+                        {/* Bottom spacer */}
+                        <View style={{ height: 40 }} />
+                    </ScrollView>
+                </KeyboardAvoidingView>
             </SafeAreaView>
         </Modal>
     );
 };
 
 
-
-
 const styles = StyleSheet.create({
-
     statusBarBackground: {
-        backgroundColor: AppDetails.primaryColor,
+        backgroundColor: Colors.surfaceBase,
         height: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     container: {
         flex: 1,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.surfaceBase,
     },
+
+    // ── Header ────────────────────────────────────────────────────
     header: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingHorizontal: 15,
-        paddingVertical: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.neutral180,
-    },
-    backButton: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    saveButton: {
-        backgroundColor: AppDetails.primaryColor,
+        paddingHorizontal: 14,
         paddingVertical: 8,
-        paddingHorizontal: 15,
-        borderRadius: 50,
-    },
-    saveButtonText: {
-        fontSize: 16,
-        color: Colors.white,
-       fontFamily:AppDetails.fontFamily.outfit.semiBold,
-    },
-    scrollContent: {
-        padding: 15 ,
-    },
-    
-    moreSettingsButton: {
-        backgroundColor:Colors.neutral180, padding:10, borderRadius:50, flexDirection:"row", alignItems:"center", gap:5, justifyContent:"center",
-    },
- 
- 
-    moreSettingTitle: {
-        fontSize: 15,
-        color: Colors.black,
-        fontFamily: AppDetails.fontFamily.outfit.medium,
-    },
-
-
-    sectionTitleContainer:{
-        marginVertical:15,
-
-    },
-
-    sectionTitle: {
-        fontSize: 17,
-        fontFamily: AppDetails.fontFamily.outfit.semiBold,
-        marginBottom: 5,
-        color: Colors.black,
-    },
-
-    warningContainer: { minHeight:100, width:"100%", backgroundColor:AppDetails.warningColor, borderRadius:15, marginBottom:15, paddingVertical:10, paddingHorizontal:20 },
-
-    warningHeader:{ fontSize:15, color:Colors.white, fontFamily:AppDetails.fontFamily.inter.bold},
-
-    warningText:{ fontSize:13, color:Colors.white, fontFamily:AppDetails.fontFamily.body, marginTop:5, letterSpacing:0.5, lineHeight:23},
-
-    formContainer: {
-        paddingVertical: 10,
-    },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    label: {
-        fontSize: 14,
-        fontFamily: AppDetails.fontFamily.inter.bold,
-        color: Colors.neutral700,
-        marginBottom: 8,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: AppDetails.borderLineColor,
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 16,
-        color: Colors.black,
-        backgroundColor: Colors.neutral100,
-    },
-    textArea: {
-        minHeight: 100,
-    },
-    locationSelector: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderWidth: 1,
-        borderColor: AppDetails.borderLineColor,
-        borderRadius: 8,
-        padding: 12,
-        backgroundColor: Colors.neutral100,
-    },
-    locationText: {
-        fontSize: 16,
-        color: Colors.black,
-    },
-    placeholderText: {
-        fontSize: 16,
-        color: Colors.neutral350,
-    },
-    locationPickerContainer: {
-        marginTop: 10,
         backgroundColor: Colors.white,
-        borderWidth: 1,
-        borderColor: Colors.neutral180,
-        borderRadius: 8,
-        padding: 5,
-    },
-    locationOption: {
-        paddingVertical: 12,
-        paddingHorizontal: 15,
         borderBottomWidth: 1,
-        borderBottomColor: Colors.neutral130,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        borderBottomColor: Colors.borderLight,
+    },
+    headerBackBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: Colors.surfaceCool,
         alignItems: 'center',
+        justifyContent: 'center',
     },
-    locationOptionText: {
-        fontSize: 15,
-        color: Colors.neutral700,
+    headerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.textBodyIndigo,
+        fontFamily: AppDetails.fontFamily?.inter?.bold,
+        letterSpacing: -0.2,
     },
-    activeLocationOptionText: {
-        color: AppDetails.primaryColor,
-        fontWeight: '600',
+    headerSaveBtn: {
+        backgroundColor: ACCENT,
+        paddingVertical: 7,
+        paddingHorizontal: 16,
+        borderRadius: 18,
+        minWidth: 60,
+        alignItems: 'center',
+        shadowColor: ACCENT,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    genderContainer: {
-        flexDirection: "row",
-        gap: 15,
-    },
-    genderOption: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 25,
-        borderWidth: 1,
-        borderColor: Colors.neutral220,
-        backgroundColor: Colors.neutral110,
-    },
-    genderOptionSelected: {
-        backgroundColor: AppDetails.primaryColor,
-        borderColor: AppDetails.primaryColor,
-    },
-    genderText: {
-        marginLeft: 8,
-        fontSize: 15,
-        color: Colors.neutral500,
-    },
-    genderTextSelected: {
+    headerSaveText: {
+        fontSize: 13,
         color: Colors.white,
-        fontWeight: "600",
+        fontWeight: '700',
+        fontFamily: AppDetails.fontFamily?.outfit?.semiBold,
     },
-    dateContainer: {
-        flexDirection: "row",
-        gap: 10,
-    },
-    dateField: {
+
+    // ── Scroll ────────────────────────────────────────────────────
+    scrollContent: {
         flex: 1,
     },
-    dateLabel: {
-        fontSize: 12,
-        color: Colors.neutral500,
-        marginBottom: 4,
-    },
-    dateInput: {
-        borderWidth: 1,
-        borderColor: Colors.neutral250,
-        borderRadius: 8,
+    scrollInner: {
         padding: 12,
-        fontSize: 16,
-        textAlign: "center",
-        color: Colors.black,
-        backgroundColor: Colors.neutral100,
     },
-    helperText: {
+
+    // ── Warning banner ────────────────────────────────────────────
+    warningBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: withOpacity(Colors.warm, 0.12),
+        borderWidth: 1,
+        borderColor: withOpacity(Colors.warm, 0.25),
+        borderRadius: 10,
+        padding: 10,
+        marginBottom: 12,
+        gap: 8,
+    },
+    warningBannerText: {
+        flex: 1,
         fontSize: 12,
-        color: Colors.neutral350,
-        marginTop: 5,
-        fontStyle: "italic",
-    }
+        lineHeight: 17,
+        color: Colors.textBodyMuted,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+
+    // ── Section Cards ─────────────────────────────────────────────
+    sectionCard: {
+        backgroundColor: Colors.white,
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: Colors.borderLight,
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 3,
+        elevation: 1,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+        gap: 6,
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: Colors.textBodyIndigo,
+        fontFamily: AppDetails.fontFamily?.inter?.bold,
+        letterSpacing: -0.1,
+    },
+
+    // ── Field ─────────────────────────────────────────────────────
+    fieldContainer: {
+        marginBottom: 10,
+    },
+    fieldLabel: {
+        fontSize: 11.5,
+        fontWeight: '600',
+        color: Colors.mutedBlueGray,
+        marginBottom: 4,
+        fontFamily: AppDetails.fontFamily?.body,
+        letterSpacing: 0.15,
+    },
+    fieldInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.surfaceCool,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: Colors.borderSoft,
+        overflow: 'hidden',
+    },
+    fieldInputWrapperMultiline: {
+        alignItems: 'flex-start',
+    },
+    fieldIconBox: {
+        width: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 9,
+    },
+    fieldPrefix: {
+        paddingLeft: 10,
+        fontSize: 13,
+        color: Colors.mutedBlueGray,
+        fontWeight: '600',
+    },
+    fieldInput: {
+        flex: 1,
+        fontSize: 13.5,
+        color: Colors.textBodyIndigo,
+        paddingVertical: 9,
+        paddingRight: 10,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+    fieldMultiline: {
+        minHeight: 76,
+        paddingTop: 10,
+        paddingLeft: 12,
+    },
+
+    // ── Field rows ────────────────────────────────────────────────
+    fieldRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    fieldHalf: {
+        flex: 1,
+    },
+
+    // ── Gender pills ──────────────────────────────────────────────
+    genderRow: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    genderPill: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        borderRadius: 10,
+        backgroundColor: Colors.surfaceCool,
+        borderWidth: 1,
+        borderColor: Colors.borderSoft,
+        gap: 5,
+    },
+    genderPillActive: {
+        backgroundColor: ACCENT,
+        borderColor: ACCENT,
+        shadowColor: ACCENT,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    genderPillText: {
+        fontSize: 12.5,
+        fontWeight: '600',
+        color: Colors.mutedBlueGray,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+    genderPillTextActive: {
+        color: Colors.white,
+    },
 });
 
 export default EditModal;

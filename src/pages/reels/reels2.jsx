@@ -1,208 +1,217 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, FlatList, InteractionManager, StyleSheet, View } from "react-native";
-import { useAuth } from "../../AuthContext";
-import ReelHeader from "./reelheader";
-import ReelCard from "./reelcard";
-import useStore from "../../repository/store";
-import ReelsManager from "../../helpers/reelsmanager";
-import SkeletonReelCard from "./skelentonreelcard";
-import { useIsFocused, useNavigation, useRoute } from "@react-navigation/native";
-import VideoPreloader from "../../helpers/VideoPreloader";
-import { fetchReels } from "./reelsApi";
-import AppDetails from "../../helpers/appdetails";
+/**
+ * Reels2 – TikTok-style vertical reels feed.
+ *
+ * Key design decisions:
+ *  - Active reel is tracked via Zustand (`currentReel.reelId`) so ReelCard
+ *    components can subscribe individually — no full-list re-render on scroll.
+ *  - `pagingEnabled` gives perfect snap without snapToInterval drift.
+ *  - VideoPreloader / ReelsManager removed; ReelMedia handles playback itself.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Dimensions, FlatList, StyleSheet, View } from 'react-native';
+import { useAuth } from '../../AuthContext';
+import ReelHeader from './reelheader';
+import ReelCard from './reelcard';
+import SkeletonReelCard from './skelentonreelcard';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
+import { fetchReels } from './reelsApi';
+import useStore from '../../repository/store';
 import { Colors } from '../../theme/colors';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-// Estimate full-screen height minus tab bar; corrected by onLayout.
-const ESTIMATED_HEIGHT = SCREEN_HEIGHT - AppDetails.mainTabNavigatorHeight;
-const SKELETON_ID = "__skeleton_end__";
+const { height: SCREEN_H } = Dimensions.get('window');
+const SKELETON_ID = '__skeleton_end__';
 
 const Reels2 = () => {
-  const { token } = useAuth();
-  const navigation = useNavigation();
-  const route = useRoute();
+  const { token }     = useAuth();
+  const navigation    = useNavigation();
+  const route         = useRoute();
+  const initialMode   = route.params?.mode ?? 'for_you';
   const initialReelId = route.params?.initialReelId ?? null;
-  const initialMode   = route.params?.mode ?? "for_you";
+  const initialReels  = route.params?.initialReels ?? null;
+  const startIndex    = route.params?.startIndex ?? 0;
 
-  const [reels, setReels]             = useState([]);
-  const [mode, setMode]               = useState(initialMode);
-  const [delayedFocus, setDelayedFocus] = useState(false);
-  const [itemHeight, setItemHeight]   = useState(ESTIMATED_HEIGHT);
-  const itemHeightRef = useRef(ESTIMATED_HEIGHT);
+  const isFocused       = useIsFocused();
+  const setCurrentReel  = useStore((s) => s.setCurrentReel);
 
-  // Measure actual container height so every card fills it exactly
-  const handleContainerLayout = useCallback((e) => {
+  const [reels,     setReels]     = useState([]);
+  const [mode,      setMode]      = useState(initialMode);
+  const [itemHeight, setItemHeight] = useState(SCREEN_H);
+  const hasSeededRef = useRef(false);
+
+  const flatListRef        = useRef(null);
+  const pageRef            = useRef(1);
+  const seedRef            = useRef(Math.floor(Math.random() * 2_147_483_647));
+  const modeRef            = useRef(mode);
+  const reelsRef           = useRef([]);
+  const isLoadingMoreRef   = useRef(false);
+  const didScrollInitial   = useRef(false);
+  const activeIndexRef     = useRef(0);
+  const hasAutoplayedRef   = useRef(false);
+
+  useEffect(() => { modeRef.current  = mode;  }, [mode]);
+  useEffect(() => { reelsRef.current = reels; }, [reels]);
+
+  // ── Container height measurement ──────────────────────────────────────────
+  const handleLayout = useCallback((e) => {
     const h = Math.floor(e.nativeEvent.layout.height);
-    if (h > 0 && h !== itemHeightRef.current) {
-      itemHeightRef.current = h;
-      setItemHeight(h);
-    }
+    if (h > 0) setItemHeight(h);
   }, []);
 
-  const isLoadingMore     = useRef(false);
-  const pageRef           = useRef(1);
-  const reelsRef          = useRef([]);
-  const reelSeedRef       = useRef(null);
-  const modeRef           = useRef(mode);
-  const hasInitializedRef = useRef(false);
-  const flatListRef       = useRef(null);
-  const didScrollToInitial = useRef(false);
+  // ── Fast item layout (required for scrollToIndex) ─────────────────────────
+  const getItemLayout = useCallback(
+    (_, index) => ({ length: itemHeight, offset: itemHeight * index, index }),
+    [itemHeight],
+  );
 
-  const reelsFromStore   = useStore((s) => s.reels);
-  const setReelsToStore  = useStore((s) => s.setReels);
-  const isFocused        = useIsFocused();
-  const isAppActive_store = useStore((s) => s.isAppActive);
-  const setCurrentReel_store = useStore((s) => s.setCurrentReel);
-
-  useEffect(() => { reelsRef.current = reels; }, [reels]);
-  useEffect(() => { modeRef.current  = mode;  }, [mode]);
-
-  // ── Fetch reels whenever mode changes ────────────────────────────────────
+  // ── Pause all when leaving screen ─────────────────────────────────────────
   useEffect(() => {
-    const seed = Math.floor(Math.random() * 2147483647);
-    reelSeedRef.current = seed;
-    pageRef.current = 1;
-    hasInitializedRef.current = false;
+    if (!isFocused) {
+      setCurrentReel({ shouldPlay: false, reelId: null });
+    }
+  }, [isFocused, setCurrentReel]);
 
-    const load = async () => {
+  // ── Fetch helpers ─────────────────────────────────────────────────────────
+  const applyReels = useCallback((data, append) => {
+    setReels((prev) => {
+      const base = append ? prev.filter((r) => r?.type !== 'skeleton') : [];
+      const existing = new Set(base.map((r) => String(r.id)));
+      const fresh = data.filter((r) => r && !existing.has(String(r.id)));
+      return [...base, ...fresh, { id: SKELETON_ID, type: 'skeleton' }];
+    });
+  }, []);
+
+  const doFetch = useCallback(
+    async (m, seed, page, append = false) => {
       try {
-        const data = await fetchReels({ page: 1, limit: 10, mode, seed }, token);
+        const data = await fetchReels({ page, limit: 10, mode: m, seed }, token);
         if (Array.isArray(data) && data.length > 0) {
-          setReelsToStore(data);
-          InteractionManager.runAfterInteractions(() => {
-            VideoPreloader.preloadFromReels(data);
-          });
-        } else {
-          setReelsToStore([]);
+          applyReels(data, append);
+          if (append) pageRef.current = page;
+        } else if (!append) {
+          setReels([]);
         }
       } catch (e) {
-        console.log("[Reels2] fetch error:", e?.message || e);
-        setReelsToStore([]);
+        console.log('[Reels2] fetch error:', e?.message ?? e);
+        if (!append) setReels([]);
       }
-    };
-    load();
-  }, [mode, token, setReelsToStore]);
+    },
+    [token, applyReels],
+  );
 
-  // ── Stable item layout for snapping ──────────────────────────────────────
-  const getItemLayout = useCallback((_, index) => {
-    const h = itemHeightRef.current;
-    return { length: h, offset: h * index, index };
-  }, []);
-
-  // ── Focus / blur ──────────────────────────────────────────────────────────
+  // ── Initial load / mode change ────────────────────────────────────────────
   useEffect(() => {
-    if (isFocused && isAppActive_store) {
-      const timer = setTimeout(() => setDelayedFocus(true), 150);
-      return () => clearTimeout(timer);
-    } else {
-      setDelayedFocus(false);
-      ReelsManager.clearAll();
-      setCurrentReel_store({ shouldPlay: false, reelId: null });
+    const seed = Math.floor(Math.random() * 2_147_483_647);
+    seedRef.current = seed;
+    pageRef.current = 1;
+    activeIndexRef.current = 0;
+    didScrollInitial.current = false;
+    hasAutoplayedRef.current = false;
+
+    // If we were given pre-loaded reels from the grid, seed the list with them
+    if (initialReels?.length > 0 && !hasSeededRef.current) {
+      hasSeededRef.current = true;
+      // Normalize feed-format items: media may be an array (feed API)
+      // but ReelCard expects media as an object (reels API).
+      const validReels = initialReels.filter(r => r && r.id).map(r => ({
+        ...r,
+        media: Array.isArray(r.media) ? (r.media[0] ?? null) : r.media,
+      }));
+      if (validReels.length > 0) {
+        setReels([...validReels, { id: SKELETON_ID, type: 'skeleton' }]);
+        // Autoplay the tapped reel immediately
+        const targetReel = validReels[startIndex] ?? validReels[0];
+        if (targetReel) {
+          activeIndexRef.current = startIndex;
+          setCurrentReel({ shouldPlay: true, reelId: targetReel.id });
+          hasAutoplayedRef.current = true;
+          // Scroll to the tapped index after layout
+          didScrollInitial.current = true;
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({ index: startIndex, animated: false });
+          }, 150);
+        }
+        // Also fetch fresh reels in the background to append more
+        doFetch(mode, seed, 1, true);
+        return;
+      }
     }
-  }, [isFocused, isAppActive_store, setCurrentReel_store]);
 
-  // ── Render item ───────────────────────────────────────────────────────────
-  const renderReels = useCallback(({ item, index }) => {
-    if (item?.type === "skeleton") return <SkeletonReelCard height={itemHeight} />;
-    return <ReelCard reel={item} index={index} height={itemHeight} />;
-  }, [itemHeight]);
+    setReels([]);
+    setCurrentReel({ shouldPlay: false, reelId: null });
+    doFetch(mode, seed, 1, false);
+  }, [mode, token]);   // intentionally omitting doFetch / setCurrentReel (stable refs)
 
-  // ── Always keep skeleton at end ───────────────────────────────────────────
+  // ── Autoplay first reel once data arrives ─────────────────────────────────
   useEffect(() => {
-    const raw = Array.isArray(reelsFromStore) ? [...reelsFromStore] : [];
-    const cleaned = raw.filter(
-      (r) => r && r.type !== "skeleton" && String(r.id) !== SKELETON_ID
-    );
-    setReels([...cleaned, { id: SKELETON_ID, type: "skeleton" }]);
-  }, [reelsFromStore]);
-
-  // ── Autoplay first reel ───────────────────────────────────────────────────
-  useEffect(() => {
-    if (!delayedFocus) return;
-    if (hasInitializedRef.current) return;
-    const firstReal = reels.find((r) => r && r.type !== "skeleton" && r.id);
-    if (!firstReal) return;
-    hasInitializedRef.current = true;
-    setCurrentReel_store({ shouldPlay: true, reelId: firstReal.id });
-  }, [reels, delayedFocus, setCurrentReel_store]);
+    if (!isFocused || hasAutoplayedRef.current) return;
+    const first = reels.find((r) => r?.type !== 'skeleton' && r?.id);
+    if (!first) return;
+    hasAutoplayedRef.current = true;
+    setCurrentReel({ shouldPlay: true, reelId: first.id });
+  }, [reels, isFocused]);
 
   // ── Scroll to initialReelId ───────────────────────────────────────────────
   useEffect(() => {
-    if (!initialReelId || didScrollToInitial.current) return;
-    const realReels = reels.filter((r) => r && r.type !== "skeleton");
+    if (!initialReelId || didScrollInitial.current) return;
+    const realReels = reels.filter((r) => r?.type !== 'skeleton');
     if (!realReels.length) return;
     const idx = realReels.findIndex((r) => String(r.id) === String(initialReelId));
     if (idx < 0) return;
-    didScrollToInitial.current = true;
+    didScrollInitial.current = true;
     setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index: idx, animated: false });
-      setCurrentReel_store({ shouldPlay: true, reelId: initialReelId });
+      setCurrentReel({ shouldPlay: true, reelId: initialReelId });
     }, 300);
-  }, [reels, initialReelId, setCurrentReel_store]);
+  }, [reels, initialReelId]);
 
   // ── Load more ─────────────────────────────────────────────────────────────
-  const handleLoadMoreReels = useCallback(async () => {
-    if (isLoadingMore.current) return;
-    isLoadingMore.current = true;
-    const nextPage = pageRef.current + 1;
-    try {
-      const data = await fetchReels(
-        { page: nextPage, limit: 10, mode: modeRef.current, seed: reelSeedRef.current },
-        token
-      );
-      if (Array.isArray(data) && data.length > 0) {
-        const base = (reelsRef.current || []).filter(
-          (r) => r && r.type !== "skeleton" && String(r.id) !== SKELETON_ID
-        );
-        const existing = new Set(base.map((r) => String(r.id)));
-        const newItems = data.filter((i) => i && !existing.has(String(i.id)));
-        if (newItems.length > 0) {
-          setReelsToStore([...base, ...newItems]);
-          pageRef.current = nextPage;
-          InteractionManager.runAfterInteractions(() => {
-            VideoPreloader.preloadFromReels(newItems);
-          });
-        }
-      }
-    } catch (e) {
-      console.log("[Reels2] loadMore error:", e?.message || e);
-    }
-    isLoadingMore.current = false;
-  }, [token, setReelsToStore]);
+  const handleLoadMore = useCallback(() => {
+    if (isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    doFetch(modeRef.current, seedRef.current, pageRef.current + 1, true).finally(() => {
+      isLoadingMoreRef.current = false;
+    });
+  }, [doFetch]);
 
-  // ── Mode change ───────────────────────────────────────────────────────────
-  const handleModeChange = useCallback((newMode) => {
-    if (newMode === modeRef.current) return;
-    ReelsManager.clearAll();
-    setCurrentReel_store({ shouldPlay: false, reelId: null });
-    setReelsToStore([]);
-    setMode(newMode);
-  }, [setReelsToStore, setCurrentReel_store]);
-
-  // ── Viewability → autoplay / load-more trigger ────────────────────────────
+  // ── Viewability → autoplay ────────────────────────────────────────────────
+  // useRef keeps the callback identity stable — required by FlatList
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    const primary = viewableItems.find((v) => v.isViewable);
-    const item = primary?.item;
-    if (!item || item.type === "skeleton") {
-      setCurrentReel_store({ shouldPlay: false, reelId: null });
+    const primary = viewableItems.find((v) => v.isViewable && v.item?.type !== 'skeleton');
+    if (!primary) {
+      setCurrentReel({ shouldPlay: false, reelId: null });
       return;
     }
-    ReelsManager.singlePause();
-    setCurrentReel_store({ shouldPlay: true, reelId: item.id });
-    const idx = primary?.index ?? -1;
-    const lastRealIndex = reelsRef.current.length - 2;
-    if (idx >= lastRealIndex - 1) handleLoadMoreReels();
+    activeIndexRef.current = primary.index ?? 0;
+    setCurrentReel({ shouldPlay: true, reelId: primary.item.id });
+
+    // Trigger load-more when nearing the end
+    const totalReal = reelsRef.current.filter((r) => r?.type !== 'skeleton').length;
+    if ((primary.index ?? 0) >= totalReal - 3) handleLoadMore();
   }).current;
 
   const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 60,
-    minimumViewTime: 60,
+    itemVisiblePercentThreshold: 70,
+    minimumViewTime: 80,
     waitForInteraction: false,
   }).current;
 
+  // ── Mode switch ───────────────────────────────────────────────────────────
+  const handleModeChange = useCallback((newMode) => {
+    if (newMode === modeRef.current) return;
+    setCurrentReel({ shouldPlay: false, reelId: null });
+    setMode(newMode);
+  }, [setCurrentReel]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  const renderItem = useCallback(({ item }) => {
+    if (item?.type === 'skeleton') return <SkeletonReelCard height={itemHeight} />;
+    return <ReelCard reel={item} height={itemHeight} />;
+  }, [itemHeight]);
+
   return (
-    <View style={styles.container} onLayout={handleContainerLayout}>
-      {/* Overlay header (Following / For You + Search) */}
+    <View style={styles.container} onLayout={handleLayout}>
+
+      {/* Overlay header — Following / For You + Search */}
       <ReelHeader
         mode={mode}
         onModeChange={handleModeChange}
@@ -213,19 +222,25 @@ const Reels2 = () => {
         ref={flatListRef}
         data={reels}
         keyExtractor={(item) => String(item.id)}
-        renderItem={renderReels}
-        decelerationRate="fast"
-        getItemLayout={getItemLayout}
+        renderItem={renderItem}
+        // pagingEnabled gives perfect 1-reel snap, no snapToInterval drift
+        pagingEnabled
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        snapToInterval={itemHeight}
-        snapToAlignment="start"
-        disableIntervalMomentum
+        getItemLayout={getItemLayout}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
         removeClippedSubviews
-        initialNumToRender={2}
+        initialNumToRender={Math.min(startIndex + 2, 4)}
         maxToRenderPerBatch={2}
         windowSize={5}
+        initialScrollIndex={initialReels?.length > 0 ? startIndex : undefined}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({ index: info.index, animated: false });
+          }, 200);
+        }}
       />
     </View>
   );

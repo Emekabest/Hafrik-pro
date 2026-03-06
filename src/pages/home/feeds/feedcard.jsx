@@ -14,11 +14,16 @@ import CleanText from "../../../helpers/cleantext.js";
 import UserDetails from "./feedcardproperties/userdetails.jsx";
 import { parseLinkFromText } from "../../../helpers/linkparser.js";
 import ShareModal from "./share.jsx";
+import ReactionsModal from "./feedcardproperties/ReactionsModal.jsx";
 import { useNavigation } from "@react-navigation/native";
+import { useAuth } from '../../../AuthContext';
 import { Colors } from '../../../theme/colors';
+import LinkPreview from '../../../components/LinkPreview';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const ACCENT      = Colors.primary;
+const BRAND       = Colors.primaryDark;
 const TEXT_BODY   = Colors.textBodyIndigo;
 const TEXT_MUTED  = Colors.mutedBlueGrayAlt;
 const BG_CARD     = Colors.white;
@@ -27,6 +32,21 @@ const AVATAR_RING = Colors.infoSurfaceSoft;
 
 const MAX_FEED_TEXT_LENGTH = 200;
 const DEFAULT_AVATAR = "https://img.freepik.com/free-vector/modern-question-mark-template-idea-message-vector_1017-47932.jpg";
+const ANONYMOUS_AVATAR = "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
+
+// ─── Privacy icon mapping ─────────────────────────────────────────────────────
+const PRIVACY_ICONS = {
+  public:   'globe-outline',
+  friends:  'people-outline',
+  only_me:  'lock-closed-outline',
+  custom:   'lock-closed-outline',
+};
+
+// ─── Reaction emoji mapping ───────────────────────────────────────────────────
+const REACTION_EMOJIS = {
+  like:  '👍', love: '❤️', haha: '😂', yay: '🎉',
+  wow:   '😮', sad:  '😢', angry: '😡',
+};
 
 /**
  * ✅ NEW RULE:
@@ -54,10 +74,27 @@ const getOwnerRoute = (feedUser) => {
 // ─── FeedCard ─────────────────────────────────────────────────────────────────
 const FeedCard = ({ feed, isVisible, onPostPress }) => {
   const navigation       = useNavigation();
+  const { token }        = useAuth();
   const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [reactionsModalVisible, setReactionsModalVisible] = useState(false);
+  const [adultRevealed, setAdultRevealed] = useState(false);
+
+  // ── Anonymous check ───────────────────────────────────────────────────────
+  const isAnonymous = !!feed?.is_anonymous;
 
   // ── User ──────────────────────────────────────────────────────────────────
   const user = useMemo(() => {
+    if (isAnonymous) {
+      return {
+        id: 0,
+        avatar: ANONYMOUS_AVATAR,
+        username: 'anonymous',
+        full_name: 'Anonymous',
+        verified: false,
+        entity: 'user',
+      };
+    }
+
     const fUser = feed?.user;
 
     if (!fUser) {
@@ -75,11 +112,11 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       ...fUser,
       entity: (fUser.entity || "user").toLowerCase(),
       avatar: fUser.avatar?.length > 0 ? fUser.avatar : DEFAULT_AVATAR,
-      full_name: fUser.full_name || fUser.username || "Unknown",
+      full_name: fUser.full_name || [fUser.first_name, fUser.last_name].filter(Boolean).join(' ') || fUser.username || "Unknown",
       username: fUser.username || "Unknown",
       verified: !!fUser.verified,
     };
-  }, [feed?.user]);
+  }, [feed?.user, isAnonymous]);
 
   const postContext = useMemo(() => {
     const page = feed?.page;
@@ -116,16 +153,16 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id]);
 
   // ── Text + hashtag extraction ──────────────────────────────────────────────
-  const { displayText, showSeeMore, allTags } = useMemo(() => {
+  const { displayText, showSeeMore, allTags, extractedUrl } = useMemo(() => {
     const apiTags = feed?.hashtags || [];
+    let extractedUrl = null;
 
-    if (!feed?.text) return { displayText: "", showSeeMore: false, allTags: apiTags };
+    if (!feed?.text) return { displayText: "", showSeeMore: false, allTags: apiTags, extractedUrl: null };
 
-    let text = feed.text;
-    if (feed.type === "media" || feed.type === "link") {
-      const parsed = parseLinkFromText(feed.text);
-      text = parsed.text;
-    }
+    // Always parse and strip URL from text so the LinkPreview card replaces it
+    const parsed = parseLinkFromText(feed.text);
+    let text = parsed.text;
+    extractedUrl = parsed.url;
 
     // Pull out #hashtag tokens from the raw text
     const extracted = (text.match(/#\w+/g) || []).map(t => t.slice(1));
@@ -148,9 +185,10 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
         displayText: `${cleaned.substring(0, MAX_FEED_TEXT_LENGTH)}...`,
         showSeeMore: true,
         allTags,
+        extractedUrl,
       };
     }
-    return { displayText: cleaned, showSeeMore: false, allTags };
+    return { displayText: cleaned, showSeeMore: false, allTags, extractedUrl };
   }, [feed?.text, feed?.type, feed?.hashtags]);
 
   // ── Has media? ────────────────────────────────────────────────────────────
@@ -175,7 +213,23 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   }, [feed?.type, hasMedia]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  const isReel = feed?.type === 'reel' || (
+    feed?.media?.length === 1 &&
+    feed.media[0]?.video_url &&
+    !feed.media[0]?.url &&
+    feed?.type === 'video'
+  );
+
   const handleMoveToCommentScreen = useCallback(() => {
+    // Reels ALWAYS open the full-screen Reels2 viewer, regardless of onPostPress
+    if (isReel) {
+      navigation.navigate('Reels2', {
+        initialReels: [feed],
+        startIndex: 0,
+        initialReelId: feed?.id,
+      });
+      return;
+    }
     if (onPostPress) {
       onPostPress(feed?.id);
       return;
@@ -185,7 +239,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       return;
     }
     navigation.navigate('PostDetail', { postId: feed?.id });
-  }, [feed?.id, feed?.type, feed?.payload?.title, navigation, onPostPress]);
+  }, [feed?.id, feed?.type, feed?.payload?.title, navigation, onPostPress, isReel, feed]);
 
   const handleOwnerPress = useCallback(() => {
     const route = getOwnerRoute(user);
@@ -204,19 +258,73 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     }
   }, [navigation, postContext]);
 
+  // For page posts: show page identity instead of personal author
+  const isPagePost = postContext?.type === 'page';
+  const displayAvatar = isPagePost && postContext.avatar ? postContext.avatar : user?.avatar;
+  const avatarTapHandler = isPagePost ? handlePostContextPress : handleOwnerPress;
+
+  // Build the user object passed to UserDetails — swap name for page posts
+  const displayUser = useMemo(() => {
+    if (isPagePost) {
+      return {
+        ...user,
+        full_name: postContext.title || user.full_name,
+        avatar: postContext.avatar || user.avatar,
+        // Keep verified only if the page entity is verified; hide personal badge
+        verified: false,
+      };
+    }
+    return user;
+  }, [user, isPagePost, postContext?.title, postContext?.avatar]);
+
+  // ── Colored pattern post ──────────────────────────────────────────────────
+  const coloredPattern = feed?.colored_pattern;
+  const isColoredPost = !!coloredPattern && isTextOnly;
+
+  // ── Feeling / Action text ─────────────────────────────────────────────────
+  const feelingText = useMemo(() => {
+    if (!feed?.feeling_action || !feed?.feeling_value) return null;
+    return `is ${feed.feeling_action} ${feed.feeling_value}`;
+  }, [feed?.feeling_action, feed?.feeling_value]);
+
+  // ── Boosted / Sponsored ───────────────────────────────────────────────────
+  const isBoosted = !!feed?.boosted;
+
+  // ── Adult content ─────────────────────────────────────────────────────────
+  const isAdult = !!feed?.for_adult && !adultRevealed;
+
+  // ── Reactions summary (top 3 emojis + total) ──────────────────────────────
+  const reactionsSummary = useMemo(() => {
+    const reactions = feed?.reactions;
+    if (!reactions || typeof reactions !== 'object') return null;
+    const entries = Object.entries(reactions)
+      .filter(([, count]) => Number(count) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]));
+    if (entries.length === 0) return null;
+    const top3 = entries.slice(0, 3).map(([type]) => REACTION_EMOJIS[type] || '👍');
+    const total = entries.reduce((sum, [, c]) => sum + Number(c), 0);
+    return { emojis: top3, total };
+  }, [feed?.reactions]);
+
+  // ── Privacy icon ──────────────────────────────────────────────────────────
+  const privacyIcon = PRIVACY_ICONS[feed?.privacy] || PRIVACY_ICONS.public;
+
+  // ── Comments disabled ─────────────────────────────────────────────────────
+  const commentsDisabled = !!feed?.comments_disabled;
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       {/* Left column: avatar + thread line */}
       <View style={styles.leftCol}>
         <TouchableOpacity
-          onPress={handleOwnerPress}
-          activeOpacity={0.75}
+          onPress={isAnonymous ? undefined : avatarTapHandler}
+          activeOpacity={isAnonymous ? 1 : 0.75}
           style={styles.avatarWrapper}
         >
           <View style={styles.avatarRing} />
           <ExpoImage
-            source={{ uri: user?.avatar }}
+            source={{ uri: displayAvatar }}
             style={styles.avatarImage}
             contentFit="cover"
             cachePolicy="memory-disk"
@@ -228,49 +336,104 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
 
       {/* Right column */}
       <View style={styles.rightCol}>
+        {/* ── Boosted / Sponsored label ── */}
+        {isBoosted && (
+          <View style={styles.boostedBadge}>
+            <Ionicons name="megaphone-outline" size={11} color={ACCENT} />
+            <Text style={styles.boostedText}>Sponsored</Text>
+          </View>
+        )}
+
         {/* ✅ Tap author area = open correct screen (user/page/group) */}
         <UserDetails
-          feed={{ ...feed, user }}
+          feed={{ ...feed, user: displayUser }}
           source="feedcard"
-          onOwnerPress={handleOwnerPress}
+          onOwnerPress={isAnonymous ? undefined : (isPagePost ? handlePostContextPress : handleOwnerPress)}
           postContext={postContext}
           onPostContextPress={handlePostContextPress}
+          feelingText={feelingText}
+          privacyIcon={privacyIcon}
+          isBoosted={isBoosted}
         />
 
-        {/* ── Caption ── */}
-        {displayText ? (
+        {/* ── Adult content blur overlay ── */}
+        {isAdult ? (
           <TouchableOpacity
-            onPress={handleMoveToCommentScreen}
+            style={styles.adultOverlay}
             activeOpacity={0.85}
-            style={styles.textSection}
+            onPress={() => setAdultRevealed(true)}
           >
-            <Text style={[styles.postText, isTextOnly && styles.postTextLarge]}>
-              {displayText}
-              {showSeeMore ? <Text style={styles.seeMore}> see more</Text> : null}
-            </Text>
+            <Ionicons name="eye-off-outline" size={24} color={Colors.white} />
+            <Text style={styles.adultText}>Sensitive content</Text>
+            <Text style={styles.adultSubText}>Tap to reveal</Text>
           </TouchableOpacity>
-        ) : null}
+        ) : (
+          <>
+            {/* ── Colored pattern text post ── */}
+            {isColoredPost ? (
+              <TouchableOpacity
+                onPress={handleMoveToCommentScreen}
+                activeOpacity={0.85}
+                style={styles.coloredPostWrapper}
+              >
+                <LinearGradient
+                  colors={
+                    Array.isArray(coloredPattern?.colors) && coloredPattern.colors.length >= 2
+                      ? coloredPattern.colors
+                      : [BRAND, ACCENT]
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.coloredPostGradient}
+                >
+                  <Text style={styles.coloredPostText}>{displayText}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <>
+                {/* ── Caption ── */}
+                {displayText ? (
+                  <TouchableOpacity
+                    onPress={handleMoveToCommentScreen}
+                    activeOpacity={0.85}
+                    style={styles.textSection}
+                  >
+                    <Text style={[styles.postText, isTextOnly && styles.postTextLarge]}>
+                      {displayText}
+                      {showSeeMore ? <Text style={styles.seeMore}> see more</Text> : null}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </>
+            )}
 
-        {/* ── Media ── */}
-        {hasMedia ? (
-          feed?.type === 'reel' ? (
-            // Reel: plain View so tapping the video (play/pause/mute) never opens the post.
-            // User can still open the post by tapping the caption, username or engagement bar.
-            <View style={styles.reelMediaWrapper}>
-              <FeedMediaRenderer feed={feed} isVisible={isVisible} />
-            </View>
-          ) : (
-            // Other media: tap anywhere (outside the control buttons) opens the post.
-            // Inner control buttons intercept their own touches and don't bubble up.
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={handleMoveToCommentScreen}
-              style={styles.mediaWrapper}
-            >
-              <FeedMediaRenderer feed={feed} isVisible={isVisible} />
-            </TouchableOpacity>
-          )
-        ) : null}
+            {/* ── Link Preview (YouTube / Spotify / generic OG card) ── */}
+            {extractedUrl && !hasMedia ? (
+              <LinkPreview url={extractedUrl} />
+            ) : null}
+
+            {/* ── Media ── */}
+            {hasMedia ? (
+              feed?.type === 'reel' ? (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={handleMoveToCommentScreen}
+                  style={styles.reelMediaWrapper}
+                >
+                  <FeedMediaRenderer feed={feed} isVisible={isVisible} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={handleMoveToCommentScreen}
+                  style={styles.mediaWrapper}
+                >
+                  <FeedMediaRenderer feed={feed} isVisible={isVisible} />
+                </TouchableOpacity>
+              )
+            ) : null}
+          </>
+        )}
 
         {/* ── Hashtags ── */}
         {allTags.length > 0 ? (
@@ -279,7 +442,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
               <TouchableOpacity
                 key={`${tag}-${idx}`}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('SearchScreen', { initialTab: 'posts', initialQuery: tag })}
+                onPress={() => navigation.navigate('SearchScreen', { initialTab: 'all', initialQuery: tag })}
               >
                 <Text style={styles.hashtag}>#{tag}</Text>
               </TouchableOpacity>
@@ -287,10 +450,29 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           </View>
         ) : null}
 
-        {/* Views */}
+        {/* ── Reactions summary (tap to open reactions modal) ── */}
+        {reactionsSummary && (
+          <TouchableOpacity
+            style={styles.reactionsRow}
+            onPress={() => setReactionsModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.reactionsEmojis}>
+              {reactionsSummary.emojis.map((emoji, i) => (
+                <Text key={i} style={styles.reactionEmoji}>{emoji}</Text>
+              ))}
+            </View>
+            <Text style={styles.reactionsCount}>
+              {reactionsSummary.total.toLocaleString()}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Views + privacy */}
         <View style={styles.metaRow}>
           <Ionicons name="eye-outline" size={13} color={TEXT_MUTED} />
           <Text style={styles.metaText}>{feed?.views ?? 0}</Text>
+          <Ionicons name={privacyIcon} size={11} color={TEXT_MUTED} style={{ marginLeft: 10 }} />
         </View>
 
         {/* Engagement */}
@@ -299,8 +481,14 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           initialLiked={!!feed?.is_liked}
           initialLikeCount={feed?.likes_count ?? 0}
           commentsCount={feed?.comments_count ?? 0}
+          sharesCount={feed?.shares_count ?? 0}
+          myReaction={feed?.my_reaction}
+          reactions={feed?.reactions}
+          isSaved={!!feed?.is_saved}
+          commentsDisabled={commentsDisabled}
           onOpenShare={() => setShareModalVisible(true)}
-          onCommentPress={handleMoveToCommentScreen}
+          onCommentPress={commentsDisabled ? undefined : handleMoveToCommentScreen}
+          onReactionsPress={() => setReactionsModalVisible(true)}
         />
       </View>
 
@@ -309,6 +497,15 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
         visible={shareModalVisible}
         onClose={() => setShareModalVisible(false)}
         feed={feed}
+      />
+
+      {/* Reactions Modal */}
+      <ReactionsModal
+        visible={reactionsModalVisible}
+        postId={feed?.id}
+        token={token}
+        reactions={feed?.reactions}
+        onClose={() => setReactionsModalVisible(false)}
       />
 
     </View>
@@ -429,6 +626,83 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.2,
   },
+
+  // ── Boosted / Sponsored ────────────────────────────────────────────────────
+  boostedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  boostedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: ACCENT,
+    letterSpacing: 0.2,
+  },
+
+  // ── Colored pattern post ───────────────────────────────────────────────────
+  coloredPostWrapper: {
+    marginTop: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  coloredPostGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 32,
+    minHeight: 160,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coloredPostText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.white,
+    textAlign: 'center',
+    lineHeight: 30,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+
+  // ── Adult content overlay ──────────────────────────────────────────────────
+  adultOverlay: {
+    marginTop: 8,
+    backgroundColor: Colors.neutral900 ?? '#1a1a1a',
+    borderRadius: 14,
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 6,
+  },
+  adultText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  adultSubText: {
+    fontSize: 12,
+    color: Colors.white + '80',
+  },
+
+  // ── Reactions summary ──────────────────────────────────────────────────────
+  reactionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  reactionsEmojis: {
+    flexDirection: 'row',
+    gap: 1,
+  },
+  reactionEmoji: {
+    fontSize: 14,
+  },
+  reactionsCount: {
+    fontSize: 12,
+    color: TEXT_MUTED,
+    fontWeight: '600',
+  },
 });
 
 // ✅ memo includes entity so routing label changes still update card
@@ -438,6 +712,11 @@ export default memo(FeedCard, (prev, next) => {
     prev.feed.likes_count        === next.feed.likes_count        &&
     prev.feed.comments_count     === next.feed.comments_count     &&
     prev.feed.is_liked           === next.feed.is_liked           &&
+    prev.feed.is_saved           === next.feed.is_saved           &&
+    prev.feed.my_reaction        === next.feed.my_reaction        &&
+    prev.feed.is_anonymous       === next.feed.is_anonymous       &&
+    prev.feed.for_adult          === next.feed.for_adult          &&
+    prev.feed.boosted            === next.feed.boosted            &&
     prev.feed.user?.entity       === next.feed.user?.entity       &&
     prev.feed.user?.id           === next.feed.user?.id           &&
     prev.feed.group_id           === next.feed.group_id           &&

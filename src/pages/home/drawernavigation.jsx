@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import axios from "axios";
 
@@ -35,8 +36,13 @@ const MUTED  = Colors.secondaryText;
 const WHITE  = Colors.white;
 const DANGER = Colors.destructive;
 const BLACK  = Colors.black;
+const GREEN  = Colors.success ?? "#22c55e";
 
-const DRAWER_W = Math.min(SCREEN_W * 0.78, 320);
+const FONT_B = AppDetails?.fontFamily?.redex?.bold ?? "System";
+const FONT_R = AppDetails?.fontFamily?.inter?.regular ?? "System";
+const FONT_M = AppDetails?.fontFamily?.inter?.medium ?? "System";
+
+const DRAWER_W = Math.min(SCREEN_W * 0.82, 340);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const safeTitle = (s = "") => String(s || "").trim();
@@ -51,31 +57,44 @@ const initials = (name = "") => {
   return (a + b).toUpperCase() || "🙂";
 };
 
+const fmtBalance = (amount, currency = "NGN") => {
+  const sym = currency === "NGN" ? "₦" : currency === "USD" ? "$" : currency === "GHS" ? "₵" : currency + " ";
+  return `${sym}${Number(amount ?? 0).toLocaleString()}`;
+};
+
 // ─── Drawer Item ──────────────────────────────────────────────────────────────
-const DrawerItem = ({ icon, title, subtitle, right, onPress, iconColor, iconBg }) => (
-  <TouchableOpacity activeOpacity={0.88} onPress={onPress} style={styles.item}>
-    <View style={styles.itemLeft}>
-      <View style={[styles.itemIconWrap, iconBg && { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={18} color={iconColor || BRAND} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.itemTitle} numberOfLines={1}>{title}</Text>
-        {!!subtitle && (
-          <Text style={styles.itemSub} numberOfLines={1}>{subtitle}</Text>
-        )}
-      </View>
+const DrawerItem = ({ icon, title, subtitle, onPress, iconColor, iconBg, badge }) => (
+  <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={styles.item}>
+    <View style={[styles.itemIconWrap, iconBg && { backgroundColor: iconBg }]}>
+      <Ionicons name={icon} size={17} color={iconColor || ACCENT} />
     </View>
-    <View style={styles.itemRight}>
-      {right ?? <Ionicons name="chevron-forward" size={18} color={BLACK + '59'} />}
+    <View style={styles.itemTextWrap}>
+      <Text style={styles.itemTitle} numberOfLines={1}>{title}</Text>
+      {!!subtitle && <Text style={styles.itemSub} numberOfLines={1}>{subtitle}</Text>}
     </View>
+    {badge ? (
+      <View style={styles.badgeWrap}>
+        <Text style={styles.badgeText}>{badge}</Text>
+      </View>
+    ) : (
+      <Ionicons name="chevron-forward" size={15} color={BLACK + "33"} />
+    )}
+  </TouchableOpacity>
+);
+
+// ─── Grid shortcut button ─────────────────────────────────────────────────────
+const GridBtn = ({ icon, label, onPress, gradient }) => (
+  <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={styles.gridBtn}>
+    <LinearGradient colors={gradient} style={styles.gridIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <Ionicons name={icon} size={17} color={WHITE} />
+    </LinearGradient>
+    <Text style={styles.gridLabel} numberOfLines={1}>{label}</Text>
   </TouchableOpacity>
 );
 
 // ─── Section Header ───────────────────────────────────────────────────────────
 const SectionTitle = ({ children }) => (
-  <View style={styles.sectionTitleWrap}>
-    <Text style={styles.sectionTitle}>{children}</Text>
-  </View>
+  <Text style={styles.sectionTitle}>{children}</Text>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,15 +107,15 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   const [showModal, setShowModal] = useState(false);
 
   // ── Balance state ───────────────────────────────────────────────────────────
-  const [wallet, setWallet] = useState(null); // { available, currency }
-  const [points, setPoints] = useState(null); // { available }
+  const [wallet, setWallet] = useState(null);
+  const [points, setPoints] = useState(null);
 
   const fetchBalance = useCallback(async () => {
     try {
-      const res = await axios.get('https://hafrik.com/api/v1/balance/balance.php', {
+      const res = await axios.get("https://hafrik.com/api/v1/balance/balance.php", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.data?.status === 'success') {
+      if (res.data?.status === "success") {
         setWallet(res.data.data.wallet);
         setPoints(res.data.data.points);
       }
@@ -106,12 +125,16 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   const translateX     = useRef(new Animated.Value(-DRAWER_W)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
-  const username = useMemo(() => {
-    const u = user?.username || user?.user_name || "";
-    return capName(u);
+  const fullName = useMemo(() => {
+    const fn = user?.full_name || [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "";
+    return fn || capName(user?.username || user?.user_name || "");
   }, [user]);
 
-  const email     = useMemo(() => user?.email || user?.user_email || "", [user]);
+  const username = useMemo(() => {
+    const u = user?.username || user?.user_name || "";
+    return u ? `@${u}` : "";
+  }, [user]);
+
   const avatarUrl = useMemo(
     () => userAvatar || user?.avatar || user?.user_picture,
     [userAvatar, user]
@@ -120,8 +143,8 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   // ── Animation helpers ───────────────────────────────────────────────────────
   const close = useCallback(() => {
     Animated.parallel([
-      Animated.timing(translateX,     { toValue: -DRAWER_W, duration: 160, useNativeDriver: true }),
-      Animated.timing(overlayOpacity, { toValue: 0,         duration: 160, useNativeDriver: true }),
+      Animated.timing(translateX,     { toValue: -DRAWER_W, duration: 200, useNativeDriver: true }),
+      Animated.timing(overlayOpacity, { toValue: 0,         duration: 200, useNativeDriver: true }),
     ]).start(() => {
       setShowModal(false);
       onClose?.();
@@ -131,8 +154,8 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   const open = useCallback(() => {
     setShowModal(true);
     Animated.parallel([
-      Animated.timing(translateX,     { toValue: 0, duration: 160, useNativeDriver: true }),
-      Animated.timing(overlayOpacity, { toValue: 1, duration: 160, useNativeDriver: true }),
+      Animated.timing(translateX,     { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(overlayOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
   }, [overlayOpacity, translateX]);
 
@@ -150,12 +173,11 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   const handleNavigate = useCallback(
     (screen, params) => {
       close();
-      setTimeout(() => navigation.navigate(screen, params), 160);
+      setTimeout(() => navigation.navigate(screen, params), 180);
     },
     [close, navigation]
   );
 
-  /** Open any URL in the device's default external browser. */
   const openWeb = useCallback(
     (_title, url) => {
       close();
@@ -163,90 +185,6 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
     },
     [close]
   );
-
-  // ── Menu data ───────────────────────────────────────────────────────────────
-
-  /** Social/community screens */
-  const mainMenu = [
-    {
-      key: "profile",
-      icon: "person-outline",
-      title: "My Profile",
-      subtitle: "View and edit your profile",
-      onPress: () => handleNavigate("Profile"),
-    },
-    {
-      key: "pages",
-      icon: "business-outline",
-      title: "My Pages",
-      subtitle: "Manage your business pages",
-      onPress: () => handleNavigate("InAppBrowser", { url: "https://hafrik.com/pages/manage", title: "My Pages" }),
-    },
-    {
-      key: "groups",
-      icon: "people-outline",
-      title: "My Communities",
-      subtitle: "Groups & communities you manage",
-      onPress: () => handleNavigate("InAppBrowser", { url: "https://hafrik.com/groups/manage", title: "My Communities" }),
-    },
-  ];
-
-  /** Hafrik product tools — all external browser except Exchange (search) */
-  const tools = [
-    {
-      key: "tv",
-      icon: "tv-outline",
-      title: "HafrikTV",
-      subtitle: "Watch stories, interviews & original African content",
-      onPress: () => openWeb("HafrikTV", "https://tv.hafrik.com"),
-    },
-    {
-      key: "play",
-      icon: "musical-notes-outline",
-      title: "HafrikPlay",
-      subtitle: "Stream music, podcasts & audio experiences",
-      onPress: () => openWeb("HafrikPlay", "https://hafrikplay.com/myapp.php"),
-    },
-    {
-      key: "drive",
-      icon: "cloud-outline",
-      title: "HafrikDrive",
-      subtitle: "Secure cloud storage for your files",
-      onPress: () => openWeb("HafrikDrive", "https://drive.hafrik.com"),
-    },
-    {
-      key: "food",
-      icon: "restaurant-outline",
-      title: "HafrikFood",
-      subtitle: "Order African meals wherever you are",
-      onPress: () => openWeb("HafrikFood", "https://food.hafrik.com"),
-    },
-    {
-      key: "exchange",
-      icon: "swap-horizontal-outline",
-      title: "HafrikExchange",
-      subtitle: "Buy, sell & exchange currencies globally",
-      onPress: () => handleNavigate("SearchScreen", { initialQuery: "HafrikExchange", initialTab: "pages" }),
-    },
-  ];
-
-  /** Account items */
-  const accountItems = [
-    {
-      key: "settings",
-      icon: "settings-outline",
-      title: "Settings",
-      subtitle: "Account, privacy & preferences",
-      onPress: () => handleNavigate("Settings"),
-    },
-    {
-      key: "help",
-      icon: "help-circle-outline",
-      title: "Help & Support",
-      subtitle: "FAQs, contact & support center",
-      onPress: () => handleNavigate("InAppBrowser", { url: "https://hafrik.com/hafrikhelpcenter.html", title: "Help & Support" }),
-    },
-  ];
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleLogout = useCallback(() => {
@@ -287,23 +225,24 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
 
         {/* Drawer panel */}
         <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
-          {/* ── Header — padded for safe area / notch ── */}
-          <View style={[styles.drawerHeader, { paddingTop: insets.top + 14 }]}>
+          {/* ── Header ── */}
+          <LinearGradient colors={[BRAND, ACCENT + "DD"]} style={[styles.drawerHeader, { paddingTop: insets.top + 12 }]}>
+            {/* Top row */}
             <View style={styles.headerTopRow}>
               <View style={styles.brandPill}>
                 <View style={styles.brandDot} />
                 <Text style={styles.brandPillText}>HAFRIK</Text>
               </View>
-              <TouchableOpacity onPress={close} activeOpacity={0.85} style={styles.closeBtn}>
-                <Ionicons name="close" size={20} color={DARK} />
+              <TouchableOpacity onPress={close} activeOpacity={0.8} style={styles.closeBtn}>
+                <Ionicons name="close" size={18} color={WHITE} />
               </TouchableOpacity>
             </View>
 
-            {/* Profile row */}
+            {/* Profile area */}
             <TouchableOpacity
-              activeOpacity={0.9}
+              activeOpacity={0.85}
               onPress={() => handleNavigate("Profile")}
-              style={styles.profileRow}
+              style={styles.profileArea}
             >
               {avatarUrl ? (
                 <ExpoImage
@@ -314,126 +253,87 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                 />
               ) : (
                 <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarInitials}>{initials(username)}</Text>
+                  <Text style={styles.avatarInitials}>{initials(fullName)}</Text>
                 </View>
               )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name} numberOfLines={1}>{safeTitle(username)}</Text>
-                <Text style={styles.email} numberOfLines={1}>{safeTitle(email)}</Text>
-                <View style={styles.viewProfileRow}>
-                  <Text style={styles.viewProfileText}>View profile</Text>
-                  <Ionicons name="arrow-forward" size={14} color={ACCENT} />
-                </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.name} numberOfLines={1}>{safeTitle(fullName)}</Text>
+                {!!username && <Text style={styles.handle} numberOfLines={1}>{username}</Text>}
+              </View>
+              <View style={styles.profileArrow}>
+                <Ionicons name="chevron-forward" size={16} color={WHITE + "88"} />
               </View>
             </TouchableOpacity>
 
-            {/* Quick actions */}
-            <View style={styles.quickActions}>
-              {/* Wallet */}
-              <TouchableOpacity
-                style={styles.quickBtn}
-                activeOpacity={0.88}
-                onPress={() => handleNavigate("InAppBrowser", { url: "https://hafrik.com/wallet", title: "Wallet" })}
-              >
-                <Ionicons name="wallet-outline" size={18} color={WHITE} />
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={styles.quickBtnText}>Wallet</Text>
-                  {wallet && (
-                    <Text style={styles.quickBtnBalance}>
-                      {wallet.currency} {wallet.available.toLocaleString()}
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-
-              {/* Points */}
-              <TouchableOpacity
-                style={[styles.quickBtn, styles.quickBtnAlt]}
-                activeOpacity={0.88}
-                onPress={() => handleNavigate("InAppBrowser", { url: "https://hafrik.com/settings/points", title: "Points" })}
-              >
-                <Ionicons name="star-outline" size={18} color={WHITE} />
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={styles.quickBtnText}>Points</Text>
-                  {points && (
-                    <Text style={styles.quickBtnBalance}>
-                      {points.available.toLocaleString()} pts
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
+            {/* ── Finance strip — taps go to Earnings ── */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => handleNavigate("Earnings")}
+              style={styles.financeStrip}
+            >
+              <View style={styles.financeItem}>
+                <Ionicons name="wallet" size={15} color={WHITE} />
+                <Text style={styles.financeValue}>
+                  {wallet ? fmtBalance(wallet.available, wallet.currency) : "₦0"}
+                </Text>
+                <Text style={styles.financeLabel}>Wallet</Text>
+              </View>
+              <View style={styles.financeDivider} />
+              <View style={styles.financeItem}>
+                <Ionicons name="star" size={15} color={Colors.star ?? "#ffd700"} />
+                <Text style={styles.financeValue}>
+                  {points ? Number(points.available).toLocaleString() : "0"}
+                </Text>
+                <Text style={styles.financeLabel}>Points</Text>
+              </View>
+              <View style={styles.financeArrow}>
+                <Ionicons name="arrow-forward" size={14} color={ACCENT} />
+              </View>
+            </TouchableOpacity>
+          </LinearGradient>
 
           {/* ── Scrollable content ── */}
           <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: insets.bottom + 26 }}
+            style={styles.scrollBody}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}
             showsVerticalScrollIndicator={false}
           >
-            {/* ── Menu ── */}
-            <SectionTitle>Menu</SectionTitle>
-            <View style={styles.card}>
-              {mainMenu.map((m) => (
-                <DrawerItem
-                  key={m.key}
-                  icon={m.icon}
-                  title={m.title}
-                  subtitle={m.subtitle}
-                  onPress={m.onPress}
-                />
-              ))}
+            {/* ── Product grid ── */}
+            <SectionTitle>Hafrik Products</SectionTitle>
+            <View style={styles.gridRow}>
+              <GridBtn icon="tv" label="HafrikTV" gradient={[ACCENT, BRAND]} onPress={() => openWeb("TV", "https://tv.hafrik.com")} />
+              <GridBtn icon="musical-notes" label="Play" gradient={[Colors.purple ?? "#9c27b0", Colors.violetDeep ?? "#6d28d9"]} onPress={() => openWeb("Play", "https://hafrikplay.com/myapp.php")} />
+              <GridBtn icon="cloud" label="Drive" gradient={[Colors.blueAccent ?? "#3b82f6", Colors.blueDeep ?? "#1d4ed8"]} onPress={() => openWeb("Drive", "https://drive.hafrik.com")} />
+              <GridBtn icon="restaurant" label="Food" gradient={[Colors.orangeStrong ?? "#f97316", Colors.orangeDeep ?? "#ea580c"]} onPress={() => openWeb("Food", "https://food.hafrik.com")} />
             </View>
 
-            {/* ── Hafrik Tools ── */}
-            <SectionTitle>More from Hafrik
-            </SectionTitle>
+            {/* ── Main Menu ── */}
+            <SectionTitle>Menu</SectionTitle>
             <View style={styles.card}>
-              {tools.map((t) => (
-                <DrawerItem
-                  key={t.key}
-                  icon={t.icon}
-                  title={t.title}
-                  subtitle={t.subtitle}
-                  onPress={t.onPress}
-                />
-              ))}
+              <DrawerItem icon="person-outline" title="My Profile" subtitle="View & edit your profile" onPress={() => handleNavigate("Profile")} />
+              <DrawerItem icon="business-outline" title="My Pages" subtitle="Manage business pages" onPress={() => handleNavigate("BusinessPages")} />
+              <DrawerItem icon="people-outline" title="My Communities" subtitle="Groups you belong to" onPress={() => handleNavigate("InAppBrowser", { url: "https://hafrik.com/groups/manage", title: "My Communities" })} />
+              <DrawerItem icon="swap-horizontal-outline" title="Exchange" subtitle="Buy, sell & exchange currencies" iconColor={GREEN} iconBg={GREEN + "18"} onPress={() => handleNavigate("ExchangeHome")} />
+              <DrawerItem icon="wallet-outline" title="Earnings" subtitle="Wallet, points & transactions" iconColor={ACCENT} onPress={() => handleNavigate("Earnings")} />
             </View>
 
             {/* ── Account ── */}
             <SectionTitle>Account</SectionTitle>
             <View style={styles.card}>
-              {accountItems.map((a) => (
-                <DrawerItem
-                  key={a.key}
-                  icon={a.icon}
-                  title={a.title}
-                  subtitle={a.subtitle}
-                  onPress={a.onPress}
-                />
-              ))}
+              <DrawerItem icon="settings-outline" title="Settings" subtitle="Privacy & preferences" onPress={() => handleNavigate("Settings")} />
+              <DrawerItem icon="help-circle-outline" title="Help & Support" subtitle="FAQs & support center" onPress={() => handleNavigate("InAppBrowser", { url: "https://hafrik.com/hafrikhelpcenter.html", title: "Help & Support" })} />
             </View>
 
-            {/* Footer */}
+            {/* ── Footer ── */}
             <View style={styles.footerMeta}>
               <Text style={styles.footerText}>Hafrik Media & Technology</Text>
-              <Text style={styles.footerSub}>Built for Africans everywhere</Text>
+              <Text style={styles.footerSub}>Built for Africans, everywhere.</Text>
             </View>
 
             {/* Sign out */}
-            <TouchableOpacity
-              style={styles.logoutBtn}
-              activeOpacity={0.85}
-              onPress={handleLogout}
-            >
-              <View style={styles.logoutIconWrap}>
-                <Ionicons name="log-out-outline" size={18} color={DANGER} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.logoutText}>Sign Out</Text>
-                <Text style={styles.logoutSub}>Log out of your account</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={DANGER + '66'} />
+            <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.8} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={17} color={DANGER} />
+              <Text style={styles.logoutText}>Sign Out</Text>
             </TouchableOpacity>
           </ScrollView>
         </Animated.View>
@@ -444,14 +344,11 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  modalRoot: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
+  modalRoot: { flex: 1, backgroundColor: "transparent" },
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: BLACK + "8C",
+    backgroundColor: BLACK + "70",
   },
 
   drawer: {
@@ -461,272 +358,294 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: DRAWER_W,
     backgroundColor: CREAM,
-    borderTopRightRadius: 22,
-    borderBottomRightRadius: 22,
+    borderTopRightRadius: 28,
+    borderBottomRightRadius: 28,
     overflow: "hidden",
-    shadowColor: Colors.black,
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 18,
-    elevation: 12,
+    shadowColor: BLACK,
+    shadowOffset: { width: 6, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 16,
   },
 
+  // ── Header ──
   drawerHeader: {
-    backgroundColor: BRAND,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 18,
+    paddingBottom: 18,
   },
 
   headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
+    marginBottom: 18,
   },
-
   brandPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    gap: 7,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: WHITE + "1F",
+    backgroundColor: WHITE + "18",
     borderWidth: 1,
-    borderColor: WHITE + "29",
+    borderColor: WHITE + "22",
   },
-  brandDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: ACCENT,
-  },
+  brandDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT },
   brandPillText: {
     color: WHITE,
-    fontSize: 11,
-    letterSpacing: 1.2,
+    fontSize: 10,
+    letterSpacing: 1.4,
     fontWeight: "900",
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
+    fontFamily: FONT_B,
   },
-
   closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: WHITE,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: WHITE + "20",
     alignItems: "center",
     justifyContent: "center",
   },
 
-  profileRow: {
+  // ── Profile ──
+  profileArea: {
     flexDirection: "row",
-    gap: 12,
-    backgroundColor: WHITE + "1F",
-    borderWidth: 1,
-    borderColor: WHITE + "29",
-    borderRadius: 18,
-    padding: 12,
     alignItems: "center",
+    gap: 12,
+    marginBottom: 14,
   },
-
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: WHITE + "33",
-    borderWidth: 2,
-    borderColor: ACCENT + "E6",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: WHITE + "30",
+    borderWidth: 2.5,
+    borderColor: WHITE + "44",
   },
   avatarFallback: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: WHITE + "2E",
-    borderWidth: 2,
-    borderColor: ACCENT + "E6",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: WHITE + "20",
+    borderWidth: 2.5,
+    borderColor: WHITE + "44",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitials: {
     color: WHITE,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "900",
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
+    fontFamily: FONT_B,
   },
-
+  profileInfo: { flex: 1 },
   name: {
     color: WHITE,
     fontSize: 16,
     fontWeight: "900",
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
+    fontFamily: FONT_B,
+    letterSpacing: -0.2,
   },
-  email: {
-    color: WHITE + "B8",
+  handle: {
+    color: WHITE + "99",
     fontSize: 12,
+    fontFamily: FONT_R,
     marginTop: 2,
-    fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
   },
-  viewProfileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 6,
-  },
-  viewProfileText: {
-    color: ACCENT,
-    fontSize: 12,
-    fontWeight: "800",
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
-  },
-
-  quickActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
-  },
-  quickBtn: {
-    flex: 1,
-    flexDirection: "row",
+  profileArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: WHITE + "14",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: ACCENT,
+  },
+
+  // ── Finance strip ──
+  financeStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: WHITE + "14",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: WHITE + "2E",
-  },
-  quickBtnAlt: {
-    backgroundColor: WHITE + "24",
-  },
-  quickBtnText: {
-    color: WHITE,
-    fontSize: 12,
-    fontWeight: "900",
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
-  },
-  quickBtnBalance: {
-    color: WHITE + "BF",
-    fontSize: 10,
-    fontWeight: "700",
-    marginTop: 1,
-    fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
-  },
-
-  sectionTitleWrap: {
+    borderColor: WHITE + "18",
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 10,
   },
-  sectionTitle: {
-    color: MUTED,
-    fontSize: 12,
-    letterSpacing: 1.2,
+  financeItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  financeValue: {
+    fontSize: 15,
     fontWeight: "900",
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
+    color: WHITE,
+    fontFamily: FONT_B,
+    marginTop: 3,
+  },
+  financeLabel: {
+    fontSize: 10,
+    color: WHITE + "88",
+    fontWeight: "600",
+    fontFamily: FONT_R,
     textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  financeDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: WHITE + "22",
+    marginHorizontal: 12,
+  },
+  financeArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: WHITE + "20",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 6,
   },
 
+  // ── Scroll body ──
+  scrollBody: {
+    flex: 1,
+    backgroundColor: CREAM,
+  },
+
+  // ── Section title ──
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: MUTED,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+    fontFamily: FONT_B,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 8,
+  },
+
+  // ── Product grid ──
+  gridRow: {
+    flexDirection: "row",
+    paddingHorizontal: 14,
+    gap: 8,
+    marginBottom: 4,
+  },
+  gridBtn: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 10,
+  },
+  gridIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gridLabel: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: DARK,
+    fontFamily: FONT_M,
+    textAlign: "center",
+  },
+
+  // ── Card ──
   card: {
     backgroundColor: WHITE,
-    marginHorizontal: 12,
-    borderRadius: 18,
+    marginHorizontal: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: BRAND + "14",
+    borderColor: Colors.borderSoft ?? Colors.border,
     overflow: "hidden",
   },
 
+  // ── Item ──
   item: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND + "0F",
-  },
-  itemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flex: 1,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.borderSoft ?? Colors.border,
   },
   itemIconWrap: {
     width: 34,
     height: 34,
-    borderRadius: 12,
-    backgroundColor: ACCENT + "24",
+    borderRadius: 11,
+    backgroundColor: ACCENT + "14",
     alignItems: "center",
     justifyContent: "center",
   },
+  itemTextWrap: { flex: 1 },
   itemTitle: {
-    fontSize: 14,
-    fontWeight: "900",
+    fontSize: 13.5,
+    fontWeight: "800",
     color: DARK,
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
+    fontFamily: FONT_B,
   },
   itemSub: {
-    marginTop: 2,
-    fontSize: 11.5,
-    color: BLACK + "73",
-    fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
+    fontSize: 11,
+    color: MUTED,
+    marginTop: 1,
+    fontFamily: FONT_R,
   },
-  itemRight: {
-    marginLeft: 10,
+  badgeWrap: {
+    backgroundColor: DANGER,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 6,
   },
+  badgeText: { fontSize: 10, fontWeight: "900", color: WHITE, fontFamily: FONT_B },
 
+  // ── Footer ──
   footerMeta: {
-    marginTop: 16,
-    paddingHorizontal: 16,
     alignItems: "center",
+    paddingTop: 24,
+    paddingBottom: 4,
   },
   footerText: {
     color: DARK,
-    fontSize: 12,
-    fontWeight: "900",
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
+    fontSize: 11.5,
+    fontWeight: "800",
+    fontFamily: FONT_B,
   },
   footerSub: {
-    marginTop: 3,
-    color: BLACK + "73",
-    fontSize: 11,
-    fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
+    color: MUTED,
+    fontSize: 10.5,
+    marginTop: 2,
+    fontFamily: FONT_R,
   },
 
+  // ── Logout ──
   logoutBtn: {
-    marginTop: 14,
-    marginHorizontal: 12,
-    backgroundColor: WHITE,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: DANGER + "2E",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  logoutIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: DANGER + "14",
-    alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    marginHorizontal: 14,
+    marginTop: 14,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: DANGER + "0C",
+    borderWidth: 1,
+    borderColor: DANGER + "22",
   },
   logoutText: {
     color: DANGER,
-    fontSize: 14,
-    fontWeight: "900",
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? "System",
-  },
-  logoutSub: {
-    marginTop: 2,
-    color: DANGER + '8C',
-    fontSize: 11,
-    fontFamily: AppDetails?.fontFamily?.inter?.regular ?? "System",
+    fontSize: 13.5,
+    fontWeight: "800",
+    fontFamily: FONT_B,
   },
 });
 

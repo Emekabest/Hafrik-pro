@@ -1,10 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, TextInput, View } from "react-native";
-import PostFeed from "../../home/postfeed";
-import FeedsHeader from "../../home/feedsheader";
+import { StyleSheet, TextInput, View } from "react-native";
 import FilterHeader from "../filterheader";
 import AppDetails from "../../../helpers/appdetails";
-import ProfileCompletionContainer from "./profilecompletioncontainer";
 import { Colors } from '../../../theme/colors';
 
 
@@ -40,15 +37,6 @@ const TimelineComponents = ({isOwner, getFeeds})=>{
                         placeholderTextColor={Colors.neutral520}
                     />
             </View>
-
-            {isOwner && (
-                <>
-                    <ProfileCompletionContainer />
-
-                    <PostFeed />
-                </>
-            )}
-                
 
             <FilterHeader name="Recent Updates" options={filterOptions} />
         </View>

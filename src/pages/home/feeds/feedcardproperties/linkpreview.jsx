@@ -16,14 +16,27 @@ const LinkPreview = ({ url }) => {
       const response = await fetch(
         `https://api.microlink.io?url=${encodeURIComponent(link)}`
       );
-      
+
+      if (!response.ok) {
+        // Server returned an error (e.g. 429 rate-limit, 500, etc.)
+        setLoading(false);
+        return;
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        // Response is not JSON (likely HTML error page)
+        setLoading(false);
+        return;
+      }
+
       const data = await response.json();
-      
+
       // Get image from Open Graph or screenshot
-      const image = data.data.image?.url || data.data.logo?.url;
+      const image = data?.data?.image?.url || data?.data?.logo?.url || null;
       setThumbnail(image);
     } catch (error) {
-      console.error('Error fetching thumbnail:', error);
+      // silently ignore – link preview is non-critical
     } finally {
       setLoading(false);
     }

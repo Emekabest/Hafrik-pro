@@ -1,0 +1,588 @@
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+  Linking,
+  Platform,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useNavigation } from "@react-navigation/native";
+import { Image as ExpoImage } from "expo-image";
+import { useAuth } from "../../AuthContext";
+import useStore from "../../repository/store";
+import { getBusinessDetails, getBusinessFeed, toggleFollowBusiness } from "./Businessapi";
+import FeedCard from "../home/feeds/feedcard.jsx";
+import { Colors } from "../../theme";
+
+const BRAND      = Colors.primaryDark;
+const ACCENT     = Colors.primary;
+const LIME       = Colors.warning;
+const BG         = Colors.surfaceTint;
+const CARD       = Colors.white;
+const BORDER     = Colors.border;
+const TEXT_HEAD  = Colors.black;
+const TEXT_BODY  = Colors.black;
+const TEXT_MUTED = Colors.secondaryText;
+const WHITE      = Colors.white;
+const BLACK      = Colors.black;
+const GREEN      = "#22c55e";
+
+const { width: SCREEN_W } = Dimensions.get("window");
+const COVER_HEIGHT = 230;
+const AVATAR_SIZE  = 82;
+
+const defaultAvatar = "https://hafrik.com/default-avatar.png";
+
+// Decode PHP HTML-encoded entities
+const decodeHtml = (str) => {
+  if (!str) return str;
+  return str
+    .replace(/&#039;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+};
+
+// Strip HTML tags and decode entities
+const cleanText = (str) => {
+  if (!str) return str;
+  return decodeHtml(str.replace(/<\/?[^>]+(>|$)/g, "").trim());
+};
+
+export default function BusinessDetails({ route }) {
+  const { pageId } = route.params || {};
+  const navigation    = useNavigation();
+  const { token, user } = useAuth();
+  const openComposer  = useStore((s) => s.openComposer);
+  const refreshSignal = useStore((s) => s.refreshSignal);
+
+  const [page,          setPageData]     = useState(null);
+  const [posts,         setPosts]        = useState([]);
+  const [loadingPage,   setLoadingPage]  = useState(true);
+  const [loadingFeed,   setLoadingFeed]  = useState(true);
+  const [loadingMore,   setLoadingMore]  = useState(false);
+  const [pageNum,       setPageNum]      = useState(1);
+  const [hasMore,       setHasMore]      = useState(true);
+  const [following,     setFollowing]    = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [aboutExpanded, setAboutExpanded] = useState(false);
+
+  const followRef = useRef({ following: false, followLoading: false });
+  followRef.current = { following, followLoading };
+
+  const scrollY      = useRef(new Animated.Value(0)).current;
+  const coverScale   = scrollY.interpolate({ inputRange: [-80, 0], outputRange: [1.25, 1], extrapolate: "clamp" });
+  const coverOpacity = scrollY.interpolate({ inputRange: [0, COVER_HEIGHT * 0.5], outputRange: [1, 0.4], extrapolate: "clamp" });
+
+  const isOwner = !!page && (
+    page.is_owner === true || page.is_owner === 1 ||
+    (user?.id && String(page.user_id) === String(user.id))
+  );
+
+  const openPageComposer = useCallback(() => {
+    openComposer({ _type: "page", id: pageId, title: page?.title, avatar: page?.avatar, locked: true });
+  }, [openComposer, pageId, page?.title, page?.avatar]);
+
+  const prevRefreshSignal = useRef(0);
+  useEffect(() => {
+    if (refreshSignal > 0 && refreshSignal !== prevRefreshSignal.current) {
+      prevRefreshSignal.current = refreshSignal;
+      loadFeed(1);
+    }
+  }, [refreshSignal]);
+
+  useEffect(() => {
+    if (pageId) {
+      loadPage();
+      loadFeed(1);
+    }
+  }, [pageId]);
+
+  const loadPage = async () => {
+    try {
+      const payload = await getBusinessDetails(pageId, token);
+      if (payload?.status === "success") {
+        setPageData(payload.data);
+        setFollowing(!!(payload.data.is_following));
+      }
+    } catch (e) { console.log("loadPage error:", e); }
+    setLoadingPage(false);
+  };
+
+  const loadFeed = async (pNum) => {
+    if (pNum === 1) setLoadingFeed(true);
+    else setLoadingMore(true);
+    try {
+      const payload = await getBusinessFeed(pageId, pNum, 10, token);
+      if (payload?.status === "success") {
+        const feedPosts = Array.isArray(payload.data?.data)
+          ? payload.data.data
+          : Array.isArray(payload.data)
+          ? payload.data
+          : [];
+        setPosts(prev => pNum === 1 ? feedPosts : [...prev, ...feedPosts]);
+        if (pNum === 1 && payload.data?.is_following != null)
+          setFollowing(!!(payload.data.is_following));
+        const total_pages = payload.data?.total_pages ?? null;
+        if (total_pages != null) setHasMore(pNum < total_pages);
+        else if (feedPosts.length < 10) setHasMore(false);
+      }
+    } catch (e) { console.log("loadFeed error:", e); }
+    setLoadingFeed(false);
+    setLoadingMore(false);
+  };
+
+  const handleLoadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    const next = pageNum + 1;
+    setPageNum(next);
+    loadFeed(next);
+  }, [pageNum, loadingMore, hasMore]);
+
+  const feedKeyExtractor = useCallback((item) => item.id?.toString(), []);
+
+  const handleFollow = useCallback(async () => {
+    const { followLoading: curLoad, following: curFollowing } = followRef.current;
+    if (curLoad) return;
+    setFollowLoading(true);
+    setFollowing(!curFollowing);
+    try {
+      const res = await toggleFollowBusiness(pageId, token);
+      if (res?.data?.is_following != null) setFollowing(!!(res.data.is_following));
+    } catch (e) {
+      console.log("follow error:", e);
+      setFollowing(curFollowing);
+    }
+    setFollowLoading(false);
+  }, [pageId, token]);
+
+  const handleCall = useCallback(() => {
+    const phone = page?.phone || page?.phone_number || page?.contact_phone || page?.mobile;
+    if (phone) Linking.openURL(`tel:${phone.replace(/\s+/g, "")}`);
+  }, [page?.phone, page?.phone_number, page?.contact_phone, page?.mobile]);
+
+  const handleWebsite = useCallback(() => {
+    let url = page?.website || page?.url || page?.web;
+    if (!url) return;
+    if (!url.startsWith("http")) url = "https://" + url;
+    navigation.navigate("WebView", { url, title: cleanText(page?.title) });
+  }, [page?.website, page?.url, page?.web, page?.title, navigation]);
+
+  const listHeader = useMemo(() => {
+    if (loadingPage) {
+      return (
+        <View style={styles.pageLoader}>
+          <ActivityIndicator size="large" color={ACCENT} />
+          <Text style={styles.loaderText}>Loading…</Text>
+        </View>
+      );
+    }
+    if (!page) return null;
+
+    const title    = cleanText(page.title) || "";
+    const handle   = cleanText(page.name)  || "";
+    const about    = cleanText(page.about) || "";
+    const category = cleanText(page.category || page.page_category || page.type) || "";
+    const address  = cleanText(page.address || page.full_address || page.location) || "";
+    const phone    = cleanText(page.phone || page.phone_number || page.contact_phone || page.mobile) || "";
+    const website  = page.website || page.url || page.web || "";
+    const postsCount = page.posts_count ?? 0;
+    const isVerified = page.verified === true || page.verified === 1 || page.verified_value === 1;
+
+    const hasContact = !!(address || phone || website);
+
+    return (
+      <View style={styles.headerBlock}>
+
+        {/* ── Cover ── */}
+        <Animated.View style={[styles.coverWrapper, { transform: [{ scale: coverScale }], opacity: coverOpacity }]}>
+          {page.cover ? (
+            <ExpoImage source={{ uri: page.cover }} style={styles.cover} contentFit="cover" />
+          ) : (
+            <LinearGradient colors={[BRAND, ACCENT + "DD"]} style={styles.cover} />
+          )}
+          <LinearGradient
+            colors={["transparent", BRAND + "99"]}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </Animated.View>
+
+        {/* ── Info card ── */}
+        <View style={styles.infoCard}>
+
+          {/* Avatar row */}
+          <View style={styles.avatarRow}>
+            <View style={styles.avatarWrap}>
+              <ExpoImage
+                source={{ uri: page.avatar || defaultAvatar }}
+                style={styles.pageAvatar}
+                contentFit="cover"
+              />
+              {isVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={20} color={ACCENT} />
+                </View>
+              )}
+            </View>
+
+            {isOwner && (
+              <View style={styles.ownerPill}>
+                <Ionicons name="shield-checkmark" size={11} color={ACCENT} />
+                <Text style={styles.ownerPillTxt}>Your Page</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Name + verified */}
+          <View style={styles.nameRow}>
+            <Text style={styles.pageTitle} numberOfLines={2}>{title}</Text>
+            {isVerified && (
+              <Ionicons name="checkmark-circle" size={17} color={ACCENT} style={styles.nameBadge} />
+            )}
+          </View>
+
+          {/* Handle + category */}
+          <View style={styles.metaRow}>
+            {!!handle && (
+              <Text style={styles.handleTxt}>@{handle}</Text>
+            )}
+            {!!category && (
+              <View style={styles.categoryPill}>
+                <Text style={styles.categoryTxt}>{category}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Posts count */}
+          <View style={styles.postsCountRow}>
+            <Ionicons name="grid-outline" size={12} color={TEXT_MUTED} />
+            <Text style={styles.postsCountTxt}>{postsCount} {postsCount === 1 ? "post" : "posts"}</Text>
+          </View>
+
+          {/* About */}
+          {!!about && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setAboutExpanded(v => !v)}
+              style={styles.aboutWrap}
+            >
+              <Text
+                style={styles.pageAbout}
+                numberOfLines={aboutExpanded ? undefined : 3}
+              >
+                {about}
+              </Text>
+              {about.length > 120 && (
+                <Text style={styles.seeMore}>{aboutExpanded ? "See less" : "See more"}</Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* ── Contact section ── */}
+          {hasContact && (
+            <View style={styles.contactCard}>
+              {!!address && (
+                <View style={styles.contactRow}>
+                  <View style={styles.contactIcon}>
+                    <Ionicons name="location-outline" size={14} color={ACCENT} />
+                  </View>
+                  <Text style={styles.contactTxt} numberOfLines={2}>{address}</Text>
+                </View>
+              )}
+              {!!phone && (
+                <TouchableOpacity style={styles.contactRow} onPress={handleCall} activeOpacity={0.7}>
+                  <View style={styles.contactIcon}>
+                    <Ionicons name="call-outline" size={14} color={ACCENT} />
+                  </View>
+                  <Text style={[styles.contactTxt, styles.contactLink]}>{phone}</Text>
+                </TouchableOpacity>
+              )}
+              {!!website && (
+                <TouchableOpacity style={styles.contactRow} onPress={handleWebsite} activeOpacity={0.7}>
+                  <View style={styles.contactIcon}>
+                    <Ionicons name="globe-outline" size={14} color={ACCENT} />
+                  </View>
+                  <Text style={[styles.contactTxt, styles.contactLink]} numberOfLines={1}>{website}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* ── Action buttons ── */}
+          <View style={styles.actionsRow}>
+            {!!phone && (
+              <TouchableOpacity style={styles.callBtn} onPress={handleCall} activeOpacity={0.85}>
+                <Ionicons name="call" size={14} color={WHITE} />
+                <Text style={styles.callBtnTxt}>Call Now</Text>
+              </TouchableOpacity>
+            )}
+
+            {isOwner ? (
+              <TouchableOpacity style={[styles.postBtn, !phone && { flex: 1 }]} onPress={openPageComposer} activeOpacity={0.85}>
+                <LinearGradient
+                  colors={[ACCENT, LIME]}
+                  style={styles.actionGradient}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name="create-outline" size={15} color={BRAND} />
+                  <Text style={styles.postBtnTxt}>Write Post</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.followBtn, following && styles.followingBtn, !phone && { flex: 1 }]}
+                onPress={handleFollow}
+                activeOpacity={0.85}
+                disabled={followLoading}
+              >
+                {followLoading ? (
+                  <ActivityIndicator size="small" color={following ? TEXT_MUTED : BRAND} style={{ paddingVertical: 13 }} />
+                ) : following ? (
+                  <View style={styles.actionInner}>
+                    <Ionicons name="checkmark" size={15} color={TEXT_MUTED} />
+                    <Text style={[styles.followBtnTxt, { color: TEXT_MUTED }]}>Following</Text>
+                  </View>
+                ) : (
+                  <LinearGradient
+                    colors={[ACCENT, LIME]}
+                    style={styles.actionGradient}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  >
+                    <Ionicons name="add" size={16} color={BRAND} />
+                    <Text style={styles.followBtnTxt}>Follow Page</Text>
+                  </LinearGradient>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* ── Feed label ── */}
+        <View style={styles.feedLabel}>
+          <View style={styles.sectionDot} />
+          <Text style={styles.feedLabelText}>PAGE FEED</Text>
+          {loadingFeed && <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 8 }} />}
+        </View>
+
+        {/* ── Owner compose bar ── */}
+        {isOwner && (
+          <TouchableOpacity style={styles.composeBar} onPress={openPageComposer} activeOpacity={0.85}>
+            <View style={styles.composeAvatar}>
+              <Ionicons name="storefront-outline" size={16} color={BRAND} />
+            </View>
+            <View style={styles.composeInput}>
+              <Text style={styles.composePlaceholder}>Write something for your page…</Text>
+            </View>
+            <Ionicons name="send" size={16} color={ACCENT} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }, [loadingPage, page, following, followLoading, aboutExpanded, loadingFeed, isOwner,
+      coverScale, coverOpacity, openPageComposer, handleCall, handleFollow]);
+
+  const renderFeedItem = useCallback(({ item }) => (
+    <FeedCard feed={item} />
+  ), []);
+
+  return (
+    <View style={styles.container}>
+
+      {/* Floating back */}
+      <TouchableOpacity style={styles.backCircle} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+        <Ionicons name="arrow-back" size={18} color={BRAND} />
+      </TouchableOpacity>
+
+      <FlatList
+        data={posts}
+        keyExtractor={feedKeyExtractor}
+        renderItem={renderFeedItem}
+        ListHeaderComponent={listHeader}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+        ListFooterComponent={
+          loadingMore
+            ? <ActivityIndicator size="small" color={ACCENT} style={{ paddingVertical: 20 }} />
+            : null
+        }
+        ListEmptyComponent={
+          !loadingFeed ? (
+            <View style={styles.emptyFeed}>
+              <Ionicons name="newspaper-outline" size={44} color={BORDER} />
+              <Text style={styles.emptyText}>No posts yet</Text>
+            </View>
+          ) : null
+        }
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container:   { flex: 1, backgroundColor: BG },
+  listContent: { paddingBottom: 100 },
+
+  pageLoader: { justifyContent: "center", alignItems: "center", paddingVertical: 80, rowGap: 12 },
+  loaderText: { color: TEXT_MUTED, fontSize: 14, fontWeight: "500" },
+
+  backCircle: {
+    position: "absolute", top: 52, left: 16, zIndex: 99,
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: WHITE + "EE",
+    justifyContent: "center", alignItems: "center",
+    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+  },
+
+  headerBlock:  { marginBottom: 4 },
+  coverWrapper: { width: SCREEN_W, height: COVER_HEIGHT, overflow: "hidden" },
+  cover:        { width: "100%", height: "100%" },
+
+  // ── Info card ──
+  infoCard: {
+    backgroundColor: CARD,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginTop: -(AVATAR_SIZE / 2),
+    marginBottom: 12,
+  },
+  avatarWrap: { position: "relative", width: AVATAR_SIZE + 4 },
+  pageAvatar: {
+    width: AVATAR_SIZE, height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 3, borderColor: CARD,
+  },
+  verifiedBadge: {
+    position: "absolute", bottom: 0, right: 0,
+    backgroundColor: CARD, borderRadius: 12, padding: 0,
+  },
+  ownerPill: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: ACCENT + "18",
+    borderRadius: 100, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: ACCENT + "33",
+    marginBottom: 4,
+  },
+  ownerPillTxt: { fontSize: 11, fontWeight: "700", color: ACCENT },
+
+  nameRow: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+  pageTitle: { fontSize: 22, fontWeight: "800", color: TEXT_HEAD, letterSpacing: -0.4, flex: 1 },
+  nameBadge: { marginLeft: 6 },
+
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  handleTxt: { fontSize: 13, color: TEXT_MUTED, fontWeight: "500" },
+  categoryPill: {
+    backgroundColor: BG,
+    borderRadius: 100, paddingHorizontal: 9, paddingVertical: 3,
+    borderWidth: 1, borderColor: BORDER,
+  },
+  categoryTxt: { fontSize: 11, color: TEXT_MUTED, fontWeight: "600" },
+
+  postsCountRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 10 },
+  postsCountTxt: { fontSize: 12, color: TEXT_MUTED, fontWeight: "500" },
+
+  aboutWrap: { marginBottom: 14 },
+  pageAbout: { fontSize: 14, color: TEXT_BODY, lineHeight: 22 },
+  seeMore:   { fontSize: 13, color: ACCENT, fontWeight: "600", marginTop: 4 },
+
+  // ── Contact card ──
+  contactCard: {
+    backgroundColor: BG,
+    borderRadius: 14,
+    borderWidth: 1, borderColor: BORDER,
+    paddingVertical: 6,
+    marginBottom: 16,
+  },
+  contactRow: {
+    flexDirection: "row", alignItems: "flex-start",
+    paddingHorizontal: 14, paddingVertical: 9, gap: 10,
+  },
+  contactIcon: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: ACCENT + "14",
+    alignItems: "center", justifyContent: "center",
+    marginTop: 1,
+  },
+  contactTxt:  { flex: 1, fontSize: 13, color: TEXT_BODY, lineHeight: 20, fontWeight: "500" },
+  contactLink: { color: ACCENT, fontWeight: "600" },
+
+  // ── Action buttons ──
+  actionsRow: { flexDirection: "row", gap: 10 },
+
+  callBtn: {
+    flex: 1,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6,
+    backgroundColor: GREEN,
+    borderRadius: 30, paddingVertical: 13,
+  },
+  callBtnTxt: { fontSize: 14, fontWeight: "800", color: WHITE, letterSpacing: 0.2 },
+
+  postBtn:    { flex: 1, borderRadius: 30, overflow: "hidden" },
+  followBtn:  { flex: 1, borderRadius: 30, overflow: "hidden", borderWidth: 1, borderColor: "transparent" },
+  followingBtn: { backgroundColor: BG, borderColor: BORDER },
+  actionGradient: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 13, gap: 6,
+  },
+  actionInner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 13, gap: 6,
+  },
+  followBtnTxt: { fontSize: 14, fontWeight: "800", color: BRAND, letterSpacing: 0.2 },
+  postBtnTxt:   { fontSize: 14, fontWeight: "800", color: BRAND, letterSpacing: 0.2 },
+
+  // ── Feed section ──
+  feedLabel: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 20, paddingTop: 18, paddingBottom: 10,
+    backgroundColor: BG,
+  },
+  sectionDot:    { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT, marginRight: 8 },
+  feedLabelText: { fontSize: 11, fontWeight: "700", color: TEXT_MUTED, letterSpacing: 2 },
+
+  emptyFeed: { alignItems: "center", paddingVertical: 60, rowGap: 10 },
+  emptyText: { fontSize: 14, color: TEXT_MUTED, fontWeight: "500" },
+
+  composeBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: CARD, paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  composeAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: BG, borderWidth: 1, borderColor: BORDER,
+    alignItems: "center", justifyContent: "center",
+  },
+  composeInput: {
+    flex: 1, height: 38, backgroundColor: BG, borderRadius: 19,
+    paddingHorizontal: 14, justifyContent: "center",
+    borderWidth: 1, borderColor: BORDER,
+  },
+  composePlaceholder: { fontSize: 13, color: TEXT_MUTED },
+});

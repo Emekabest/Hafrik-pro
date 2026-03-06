@@ -1,3 +1,10 @@
+/**
+ * ReelCard – full-screen TikTok-style reel card.
+ *
+ * Props:
+ *   reel      {object}  – reel data from API
+ *   height    {number}  – exact height of the card (== FlatList container height)
+ */
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -25,11 +32,12 @@ import { recordWatch } from './reelsApi';
 import { Colors } from '../../theme/colors';
 
 const withOpacity = (hex, opacity) => {
-  const normalized = (hex || "").replace("#", "");
-  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  const normalized = (hex || '').replace('#', '');
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
+    .toString(16)
+    .padStart(2, '0');
   return `#${normalized}${alpha}`;
 };
-
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -37,6 +45,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
   const { token } = useAuth();
   const { top: safeTop } = useSafeAreaInsets();
 
+  // ── Active state (Zustand – only this card re-renders on change) ──────────
   const currentReelId = useStore((s) => s.currentReel?.reelId);
   const isActive = currentReelId === reel.id;
 
@@ -53,7 +62,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
   const indicatorOpacity = useRef(new Animated.Value(0)).current;
   const indicatorScale   = useRef(new Animated.Value(0.6)).current;
 
-  // ── Reset pause state when this reel becomes active ─────────────────────
+  // Reset pause state when this reel becomes active
   const prevIsActiveRef = useRef(false);
   useEffect(() => {
     if (isActive && !prevIsActiveRef.current) setIsPaused(false);
@@ -109,7 +118,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
 
   // ── Single-tap → toggle pause / play ─────────────────────────────────────
   const handleSingleTap = useCallback(() => {
-    setIsPaused(prev => {
+    setIsPaused((prev) => {
       const next = !prev;
       showIndicator(next ? 'pause-circle' : 'play-circle');
       return next;
@@ -120,9 +129,9 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
   const handleMuteToggle = useCallback(() => {
     Animated.sequence([
       Animated.timing(muteScale, { toValue: 0.72, duration: 75, useNativeDriver: true }),
-      Animated.spring(muteScale,  { toValue: 1,    tension: 200, friction: 6, useNativeDriver: true }),
+      Animated.spring(muteScale, { toValue: 1, tension: 200, friction: 6, useNativeDriver: true }),
     ]).start();
-    setIsMuted(prev => !prev);
+    setIsMuted((prev) => !prev);
   }, [muteScale]);
 
   // ── Progress bar callback ─────────────────────────────────────────────────
@@ -136,7 +145,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
     interactionRef.current?.triggerLike();
   }, []);
 
-  // Position mute button just below the overlay header (header ends ~safeTop + 55px)
+  // Mute button sits just below the overlay header
   const muteBtnTop = safeTop + 58;
 
   return (
@@ -146,8 +155,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
 
           {/* ── Video ─────────────────────────────────────────────────────── */}
           <ReelMedia
-            reelId={reel.id}
-            media={reel.media}
+            videoUrl={reel.media?.video_url}
             isActive={isActive}
             isPaused={isPaused}
             isMuted={isMuted}
@@ -156,12 +164,16 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
 
           {/* ── Bottom gradient (text legibility) ────────────────────────── */}
           <LinearGradient
-            colors={['transparent', withOpacity(Colors.black, 0.22), withOpacity(Colors.black, 0.8)]}
+            colors={[
+              'transparent',
+              withOpacity(Colors.black, 0.15),
+              withOpacity(Colors.black, 0.72),
+            ]}
             style={styles.gradient}
             pointerEvents="none"
           />
 
-          {/* ── Thin progress bar at the very top ────────────────────────── */}
+          {/* ── Progress bar — bottom of screen, TikTok-style ────────────── */}
           <View style={styles.progressWrap}>
             <ReelProgressBar progress={progress} />
           </View>
@@ -178,7 +190,9 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
           </Animated.View>
 
           {/* ── Mute button — top-right, below header ────────────────────── */}
-          <Animated.View style={[styles.muteWrap, { top: muteBtnTop, transform: [{ scale: muteScale }] }]}>
+          <Animated.View
+            style={[styles.muteWrap, { top: muteBtnTop, transform: [{ scale: muteScale }] }]}
+          >
             <TouchableOpacity
               onPress={handleMuteToggle}
               activeOpacity={0.8}
@@ -196,10 +210,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
           <HeartBurst visibleKey={heartKey} />
 
           {/* ── Right-side engagement + left-side caption ────────────────── */}
-          <ReelInteractionContainer
-            ref={interactionRef}
-            reel={reel}
-          />
+          <ReelInteractionContainer ref={interactionRef} reel={reel} />
 
         </View>
       </TouchableWithoutFeedback>
@@ -218,12 +229,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '62%',
+    height: '65%',
     zIndex: 2,
   },
+  // Progress bar — TikTok puts it at the very bottom
   progressWrap: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
     zIndex: 5,
@@ -242,7 +254,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 20,
   },
-  // Mute button — top-right, Instagram-style
+  // Mute button — top-right
   muteWrap: {
     position: 'absolute',
     right: 14,
@@ -260,5 +272,5 @@ const styles = StyleSheet.create({
   },
 });
 
-// Only re-render when the reel id changes; store subscription handles isActive internally
-export default memo(ReelCard, (prev, next) => prev.reel.id === next.reel.id);
+// Only re-render when reel id changes; isActive is managed via Zustand subscription
+export default memo(ReelCard, (prev, next) => prev.reel.id === next.reel.id && prev.height === next.height);

@@ -18,7 +18,7 @@ const withOpacity = (hex, opacity) => {
 
 
 
-const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress }) => {
+const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress, feelingText, privacyIcon }) => {
     const navigation = useNavigation();
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
 
@@ -61,6 +61,10 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
                         {!!actionText && (
                             <Text style={styles.actionText}>{actionText}</Text>
                         )}
+
+                        {!!feelingText && (
+                            <Text style={styles.actionText}>{feelingText}</Text>
+                        )}
                     </View>
 
                     {/* ── Old context (group / event from feed.context) ──── */}
@@ -77,7 +81,9 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
                 </TouchableOpacity>
 
                 {/* ── Modern "Posted in / Posted via" pill ─────────────── */}
-                {!!postContext && (
+                {/* For page posts the page name is already shown as the primary name,
+                    so we skip the redundant "Posted via" pill. Groups still show it. */}
+                {!!postContext && postContext.type !== 'page' && (
                     <TouchableOpacity
                         style={styles.postedInRow}
                         activeOpacity={0.75}
@@ -106,7 +112,12 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
                     </TouchableOpacity>
                 )}
 
-                <Text style={styles.elapsedTime}>{elapsedTime}</Text>
+                <View style={styles.elapsedRow}>
+                    <Text style={styles.elapsedTime}>{elapsedTime}</Text>
+                    {!!privacyIcon && (
+                        <Ionicons name={privacyIcon} size={11} color={withOpacity(Colors.neutral430, 1.0)} style={{ marginLeft: 6 }} />
+                    )}
+                </View>
             </View>
 
             {source === "feedcard" && (
@@ -226,11 +237,16 @@ const styles = StyleSheet.create({
         flexShrink: 1,
     },
 
+    elapsedRow: {
+        flexDirection: 'row',
+        alignItems:    'center',
+        marginTop:     3,
+    },
+
     elapsedTime: {
         color:      withOpacity(Colors.neutral430, 1.0),
         fontSize:   12,
         fontFamily: AppDetails.fontFamily.body,
-        marginTop:  3,
     },
 
     options: {
@@ -250,6 +266,8 @@ export default memo(UserDetails, (prev, next) => {
         prev.postContext?.title      === next.postContext?.title      &&
         prev.postContext?.avatar     === next.postContext?.avatar     &&
         prev.onOwnerPress            === next.onOwnerPress            &&
-        prev.onPostContextPress      === next.onPostContextPress
+        prev.onPostContextPress      === next.onPostContextPress      &&
+        prev.feelingText             === next.feelingText             &&
+        prev.privacyIcon             === next.privacyIcon
     );
 });

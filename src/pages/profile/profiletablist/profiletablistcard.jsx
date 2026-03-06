@@ -1,6 +1,7 @@
 import { Text, View, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from 'expo-image';
+import { useNavigation } from "@react-navigation/native";
 import useStore from "../../../repository/store";
 import AppDetails from "../../../helpers/appdetails";
 import SkeletonBusinessPageCard from "../../profile/businesspages/skeletonbusinesspagecard";
@@ -16,6 +17,7 @@ const withOpacity = (hex, opacity) => {
 const ProfileTabListCard = ({ item }) => {
 
     const profileTabMode = useStore(state => state.profileTabMode);
+    const navigation = useNavigation();
 
     const data = item.data || item || {};
 
@@ -111,8 +113,23 @@ const ProfileTabListCard = ({ item }) => {
         );
     }
 
+    const handleMediaPress = () => {
+        const postId = data.id;
+        if (!postId) return;
+        // If it's a reel/video, open in reel player; otherwise open post detail
+        if (type === 'video' || type === 'reel') {
+            navigation.navigate('Reels2', {
+              initialReels: [data],
+              startIndex: 0,
+              initialReelId: postId,
+            });
+        } else {
+            navigation.navigate('PostDetail', { postId });
+        }
+    };
+
     return(
-        <TouchableOpacity activeOpacity={0.8} style={styles.cardContainer}>
+        <TouchableOpacity activeOpacity={0.8} style={styles.cardContainer} onPress={handleMediaPress}>
             {renderMainPost()}
         </TouchableOpacity>
     )

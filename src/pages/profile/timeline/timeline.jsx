@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet } from "react-native";
 import Feeds from '../../home/feeds/feeds';
 import { useAuth } from '../../../AuthContext';
@@ -6,7 +6,7 @@ import { ProfileTimelineController } from '../../../controllers/profilecontrolle
 import AppDetails from '../../../helpers/appdetails';
 import useStore from '../../../repository/store';
 
-const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId }) => {
+const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId, refreshing = false, onRefresh }) => {
 
     const feedsName = "profileTimelineFeeds";
 
@@ -31,24 +31,24 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId }) => 
 
     const API_URL = `${AppDetails.apis.profileTimeline}?user_id=${userId}`
 
-      
-    const getFeeds = async () => {
-
-        
+    const getFeeds = useCallback(async () => {
         const response = await ProfileTimelineController(API_URL, token, 1);
-
         if (response.status === 200){
-            // Handle various API response structures
-            const data = response.data.data;
+            const data = Array.isArray(response.data)
+                ? response.data
+                : Array.isArray(response.data?.data)
+                    ? response.data.data
+                    : [];
             addFeedsToList_store(feedsName, data);
-           
         }
-        else{
-            Alert.alert("Error", "Failed to fetch Feeds.");
+    }, [API_URL, token]);
 
-        }
-
-    }
+    // Pull-to-refresh handler: reload feeds + call parent refresh
+    const handleRefresh = useCallback(async () => {
+        if (onRefresh) onRefresh();
+        clearFeedsList_store(feedsName);
+        await getFeeds();
+    }, [onRefresh, getFeeds]);
 
 
     useEffect(()=>{
@@ -71,9 +71,8 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId }) => 
     // Transform profile posts to match FeedCard expected structure
         const transformedPosts = useMemo(() => {
             return posts.map(post => ({
-                id: post.id,
+                ...post,
                 type: post.type || 'text',
-                text: post.text,
                 media: post.media || [],
                 payload: post.payload || null,
                 shared_post: post.shared_post || null,
@@ -86,11 +85,14 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId }) => 
             }));
     }, [posts]);
     
+    // Keep header in a ref so it doesn't bust the combinedData memo on every render
+    const headerRef = useRef(header);
+    headerRef.current = header;
+
     const combinedData = useMemo(() => {
-        const profileHeader = { type: 'profileHeader', component: header };
+        const profileHeader = { type: 'profileHeader', get component() { return headerRef.current; } };
         const profileTabs = { type: 'profileTabs', tabs, activeTab, onTabChange };
         const timelineComponents = { type: 'profileTimelineComponents', isOwner, getFeeds };
-        
         
         const data = [
             profileHeader,
@@ -101,7 +103,7 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId }) => 
             }),
         ];
         return data;
-    }, [header, transformedPosts, tabs, activeTab, onTabChange, isOwner, getFeeds]);
+    }, [transformedPosts, tabs, activeTab, onTabChange, isOwner, getFeeds]);
 
     // Sticky header indices - tabs at index 1
     const stickyHeaderIndices = useMemo(() => [1], []);
@@ -116,6 +118,8 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId }) => 
                 API_URL={API_URL}
                 feedsController={ProfileTimelineController}
                 stickyHeaderIndices={stickyHeaderIndices}
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
             />
         </View>
     )

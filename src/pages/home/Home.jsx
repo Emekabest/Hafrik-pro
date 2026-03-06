@@ -11,10 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import DrawerNavigation from './drawernavigation.jsx';
 import AppHeader from '../../pages/AppHeader.jsx';
-import QuickActions from './quickactions.jsx';
-import RecentUpdatesScreen from './recentupdatescreen.jsx';
-import WhatsNearbyScreen from './whatsnearbyscreen.jsx';
-import TrendingOnHafrikScreen from './trendingonhafrikscreen.jsx';
+import FeedTabBar, { ContentFilterBar, FEED_TABS } from './FeedTabBar.jsx';
+import UnifiedFeedScreen from './UnifiedFeedScreen.jsx';
 import SearchModal from '../search/searchmodal.jsx';
 import useStore from '../../repository/store.js';
 import SearchScreen from '../search/searchscreen.jsx';
@@ -38,7 +36,8 @@ const HomePage = () => {
   const homeViewHeight = height - (AppDetails.headerHeight + AppDetails.mainTabNavigatorHeight + (tabletMode ? StatusBar.currentHeight : 0));
 
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState(2);
+  const [activeTab, setActiveTab]             = useState(0); // 0 = For You
+  const [contentFilter, setContentFilter]     = useState('');
 
   const isSearchVisible        = useStore((state) => state.isSearchVisible);
   const isSearchResultsVisible = useStore((state) => state.isSearchResultsVisible);
@@ -63,8 +62,15 @@ const HomePage = () => {
   const openDrawer  = useCallback(() => setIsDrawerVisible(true),  []);
   const closeDrawer = useCallback(() => setIsDrawerVisible(false), []);
 
+  // Reset content filter when switching primary tabs
+  const handleTabChange = useCallback((index) => {
+    setActiveTab(index);
+    setContentFilter('');
+  }, []);
+
   // ── Swipe-to-switch tabs ───────────────────────────────────────────────────
   const swipeX = useRef(new Animated.Value(0)).current;
+  const maxTabIndex = FEED_TABS.length - 1;
 
   const handleScreenSwipe = Animated.event(
     [{ nativeEvent: { translationX: swipeX } }],
@@ -75,10 +81,10 @@ const HomePage = () => {
     const { translationX, velocityX, state } = event.nativeEvent;
     if (state === State.END || state === State.FAILED || state === State.CANCELLED) {
       const swipe = translationX + velocityX * 0.1;
-      if (swipe < -60 && activeTab < 2) {
-        setActiveTab(prev => prev + 1);
+      if (swipe < -60 && activeTab < maxTabIndex) {
+        handleTabChange(activeTab + 1);
       } else if (swipe > 60 && activeTab > 0) {
-        setActiveTab(prev => prev - 1);
+        handleTabChange(activeTab - 1);
       }
       Animated.spring(swipeX, {
         toValue: 0,
@@ -87,7 +93,7 @@ const HomePage = () => {
         friction: 20,
       }).start();
     }
-  }, [activeTab, swipeX]); // eslint-disable-line);
+  }, [activeTab, swipeX, maxTabIndex, handleTabChange]);
 
   const handleFeedLayout = useCallback((e) => {
     const w = e.nativeEvent.layout.width;
@@ -97,13 +103,29 @@ const HomePage = () => {
     }
   }, [setFeedWidth]);
 
+  const currentTabConfig = FEED_TABS[activeTab];
+
+  // Hide content filter pills for Reels tab (renders full-screen vertical)
+  const showContentFilter = currentTabConfig.key !== 'reels';
+
   const homeItem = () => (
     <>
       {isSearchResultsVisible ? (
         <SearchScreen />
       ) : (
         <>
-          <QuickActions activeTab={activeTab} onTabChange={setActiveTab} />
+          {/* ── Primary Tab Bar ── */}
+          <FeedTabBar activeIndex={activeTab} onTabChange={handleTabChange} />
+
+          {/* ── Secondary Content Filter Pills ── */}
+          {showContentFilter && (
+            <ContentFilterBar
+              activeFilter={contentFilter}
+              onFilterChange={setContentFilter}
+            />
+          )}
+
+          {/* ── Feed Content ── */}
           <PanGestureHandler
             onGestureEvent={handleScreenSwipe}
             onHandlerStateChange={handleScreenSwipeEnd}
@@ -116,9 +138,12 @@ const HomePage = () => {
                 { transform: [{ translateX: swipeX }] },
               ]}
             >
-              {activeTab === 0 && <WhatsNearbyScreen />}
-              {activeTab === 1 && <TrendingOnHafrikScreen />}
-              {activeTab === 2 && <RecentUpdatesScreen feedWidth={feedWidthRef.current} />}
+              <UnifiedFeedScreen
+                key={currentTabConfig.key}
+                tabConfig={currentTabConfig}
+                contentFilter={contentFilter}
+                feedWidth={feedWidthRef.current}
+              />
             </Animated.View>
           </PanGestureHandler>
         </>
@@ -129,7 +154,6 @@ const HomePage = () => {
   );
 
   return (
-    // View (not SafeAreaView) — Header handles top inset via useSafeAreaInsets internally
     <View style={styles.container}>
       <AppHeader onOpenDrawer={openDrawer} />
 

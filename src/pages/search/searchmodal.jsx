@@ -538,9 +538,18 @@ const SearchModal = () => {
     setTimeout(() => navigation.navigate("Profile", { userId: p.id }), 80);
   }, [close, navigation]);
 
-  const handlePostPress = useCallback((id) => {
+  const handlePostPress = useCallback((item) => {
     close();
-    setTimeout(() => navigation.navigate("CommentScreen", { feedId: id }), 80);
+    const t = String(item?.type || '').toLowerCase();
+    if (t === 'reel' || t === 'video') {
+      setTimeout(() => navigation.navigate('Reels2', {
+        initialReels: [item],
+        startIndex: 0,
+        initialReelId: item?.id,
+      }), 80);
+    } else {
+      setTimeout(() => navigation.navigate('CommentScreen', { feedId: item?.id ?? item }), 80);
+    }
   }, [close, navigation]);
 
   const handleTopicPress = useCallback((tag) => {
@@ -686,7 +695,7 @@ const SearchModal = () => {
                           key={item.id}
                           style={[styles.topicPill, { backgroundColor: SURFACE }]}
                           activeOpacity={0.75}
-                          onPress={() => handlePostPress(item.id)}
+                          onPress={() => handlePostPress(item)}
                         >
                           <Ionicons name="document-text-outline" size={12} color={PRIMARY} style={{ marginRight: 5 }} />
                           <Text style={[styles.topicText, { color: PRIMARY }]} numberOfLines={1}>

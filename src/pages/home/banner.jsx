@@ -21,6 +21,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import GetBannersController from '../../controllers/getbannerscontroller';
+import useStore from '../../repository/store';
 import { Colors } from '../../theme/colors';
 
 const withOpacity = (hex, opacity) => {
@@ -153,6 +154,7 @@ const Banner = () => {
   const navigation             = useNavigation();
   const { token, user }        = useAuth();
   const { width: screenWidth } = useWindowDimensions();
+  const refreshSignal          = useStore(s => s.refreshSignal);
 
   // Responsive sizing — fills phone, capped at 600 on tablets
   const H_PAD       = screenWidth > 600 ? 24 : 16;
@@ -186,7 +188,16 @@ const Banner = () => {
     setLoading(false);
   }, []);
 
+  // Initial load
   useEffect(() => { loadBanners(); }, [loadBanners]);
+
+  // Reload when country filter changes (refreshSignal is bumped by FeedsHeader)
+  const prevSignal = useRef(refreshSignal);
+  useEffect(() => {
+    if (refreshSignal === prevSignal.current) return;
+    prevSignal.current = refreshSignal;
+    loadBanners();
+  }, [refreshSignal, loadBanners]);
 
   // ── Auto-scroll (resets when user swipes manually) ───────────────────────
   const startTimer = useCallback(() => {

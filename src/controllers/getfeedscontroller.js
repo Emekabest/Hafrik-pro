@@ -9,13 +9,13 @@ const GetFeedsController = async (url, token, page = 1) => {
   const parsedUrl = new URL(url);
   parsedUrl.searchParams.set('page', page);
 
-  if (selectedCountry?.country_id && selectedCountry.country_id !== 'all') {
-    parsedUrl.searchParams.set('country_id', selectedCountry.country_id);
+  // Accept both country_id (normalised) and id (raw API shape)
+  const countryId = selectedCountry?.country_id ?? selectedCountry?.id;
+  if (countryId && countryId !== 'all') {
+    parsedUrl.searchParams.set('country_id', countryId);
   }
 
   const API_URL = parsedUrl.toString();
-
-  // (debug log removed)
 
   try {
     const response = await axios.get(API_URL, {
@@ -25,21 +25,33 @@ const GetFeedsController = async (url, token, page = 1) => {
       },
     });
     
-    // NOTE: Avoid logging full payload here (can be extremely large)
-    
-    // API returns { status: "success", data: { page, limit, content, data: [...] } }
-    // The actual feeds array is at response.data.data.data
     const json = response.data;
     let feedsArray = [];
+    let meta = null;
     
     if (json?.status === "success") {
+      const envelope = json?.data;
+
+      // Extract pagination metadata from the unified API envelope
+      if (envelope && typeof envelope === 'object' && !Array.isArray(envelope)) {
+        meta = {
+          page:       Number(envelope.page)        || page,
+          totalPages: Number(envelope.total_pages)  || 1,
+          total:      Number(envelope.total)         || 0,
+          newestId:   envelope.newest_id             ?? null,
+          newCount:   Number(envelope.new_count)     || 0,
+          limit:      Number(envelope.limit)         || 10,
+          get:        envelope.get                   ?? null,
+        };
+      }
+
       // Nested structure: json.data.data contains the feeds array
-      if (Array.isArray(json?.data?.data)) {
-        feedsArray = json.data.data;
+      if (Array.isArray(envelope?.data)) {
+        feedsArray = envelope.data;
       }
       // Flat structure: json.data is the feeds array directly
-      else if (Array.isArray(json?.data)) {
-        feedsArray = json.data;
+      else if (Array.isArray(envelope)) {
+        feedsArray = envelope;
       }
     } else if (Array.isArray(json?.data?.data)) {
       feedsArray = json.data.data;
@@ -49,13 +61,11 @@ const GetFeedsController = async (url, token, page = 1) => {
       feedsArray = json;
     }
     
-    // (debug log removed)
-    
-    return { status: response.status, data: feedsArray };
+    return { status: response.status, data: feedsArray, meta };
   } catch (error) {
     console.log("❌ REQUEST FAILED:", error?.response?.status, error?.message);
     console.log("❌ ERROR DETAILS:", error?.response?.data);
-    return { status: error?.response?.status ?? 500, data: [] };
+    return { status: error?.response?.status ?? 500, data: [], meta: null };
   }
 
 };

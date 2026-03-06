@@ -1,34 +1,34 @@
 import axios from "axios";
 
-const ENDPOINTS = {
-    profile: 'https://hafrik.com/api/v1/posts/create_post.php',
-    group:   'https://hafrik.com/api/v1/communities/create_group_post.php',
-    page:    'https://hafrik.com/api/v1/business/create_page_post.php',
-};
+// ─── Single unified endpoint for all post types and targets ───────────────────
+const API_URL = 'https://hafrik.com/api/v1/posts/create.php';
 
 const PostFeedController = async (postData, token) => {
-    const targetType = postData?.target_type || 'profile';
-    const API_URL    = ENDPOINTS[targetType] || ENDPOINTS.profile;
 
     const headers = {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        'Content-Type':  'application/json',
     };
 
+    // Normalize type: frontend uses 'text', backend expects 'post'
     const normalizedType = postData?.type === 'text' ? 'post' : postData?.type;
 
-    // Strip generic routing fields and remap target_id to the endpoint-specific key
-    const { target_type, target_id, ...rest } = postData || {};
+    // Build body — ensure page_id / group_id are present for backend compatibility
     const body = {
-        ...rest,
-        ...(normalizedType ? { type: normalizedType } : {}),
-        ...(targetType === 'group' && target_id ? { group_id: target_id } : {}),
-        ...(targetType === 'page'  && target_id ? { page_id:  target_id } : {}),
+        ...postData,
+        type: normalizedType,
     };
+
+    // Backend expects page_id for page posts and group_id for group posts
+    if (body.target_type === 'page' && body.target_id && !body.page_id) {
+        body.page_id = body.target_id;
+    }
+    if (body.target_type === 'group' && body.target_id && !body.group_id) {
+        body.group_id = body.target_id;
+    }
 
     console.log('=== CREATE POST DEBUG ===');
     console.log('URL:', API_URL);
-    console.log('TARGET TYPE:', targetType);
     console.log('BODY:', JSON.stringify(body));
     console.log('=========================');
 
@@ -38,11 +38,16 @@ const PostFeedController = async (postData, token) => {
         console.log('CREATE POST RESPONSE status:', response.status);
         console.log('CREATE POST RESPONSE data:', JSON.stringify(response.data));
 
-        return { httpStatus: response.status, status: response.data?.status, data: response.data };
+        return {
+            httpStatus: response.status,
+            status:     response.data?.status,
+            message:    response.data?.data?.message ?? response.data?.message ?? '',
+            data:       response.data?.data ?? response.data,
+        };
 
     } catch (error) {
         const httpStatus = error?.response?.status ?? 0;
-        const serverData = error?.response?.data ?? null;
+        const serverData = error?.response?.data    ?? null;
 
         console.log('CREATE POST ERROR httpStatus:', httpStatus);
         console.log('CREATE POST ERROR data:', JSON.stringify(serverData));
@@ -51,8 +56,8 @@ const PostFeedController = async (postData, token) => {
         return {
             httpStatus,
             status:  serverData?.status  ?? 'error',
-            data:    serverData,
             message: serverData?.message ?? error?.message ?? 'Unknown error',
+            data:    serverData,
         };
     }
 };

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, TextInput, StyleSheet, ActivityIndicator, Share, Alert } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from "@expo/vector-icons";
 import AppDetails from "../../../helpers/appdetails";
 import RepostController from '../../../controllers/repostcontroller';
@@ -17,41 +18,71 @@ const withOpacity = (hex, opacity) => {
 const ShareModal = ({ visible, onClose, feed }) => {
     const [selectedShareTarget, setSelectedShareTarget] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [caption, setCaption] = useState('');
     const { token } = useAuth();
 
 
     const handleShare = async () => {
+        if (!selectedShareTarget) return;
         setLoading(true);
-        let postData;
 
-        if (selectedShareTarget === "timeline"){
-            postData = {post_id:feed.id}
+        const postData = {
+            post_id: feed.id,
+            text: caption.trim(),
+            privacy: 'public',
+        };
+
+        // For group/event shares, add target info
+        if (selectedShareTarget === 'group') {
+            postData.target = 'group';
+        } else if (selectedShareTarget === 'event') {
+            postData.target = 'event';
         }
-        else if (selectedShareTarget === "group"){
-            postData ={
-                post_id: 18019,
-                message: "Sharing to event",
-                target: "group",
-                target_id: 40
-            }
-        }
-
-
 
         try {
             const response = await RepostController(postData, token);
             if (response.status === 200) {
+                // Update share count in store
+                const useStore = require('../../../repository/store').default;
+                const { feeds, updateFeedById } = useStore.getState();
+                const currentFeed = feeds.feedsById[feed.id];
+                if (currentFeed) {
+                    const newShareCount = response.data?.shares_count_new
+                      ?? (Number(currentFeed.shares_count ?? currentFeed.shares ?? 0) + 1);
+                    updateFeedById(feed.id, {
+                        ...currentFeed,
+                        shares_count: newShareCount,
+                        shares: newShareCount,
+                    });
+                }
+                setCaption('');
+                setSelectedShareTarget(null);
                 onClose();
-            } else {
-                console.error("Error sharing post:", response.data);
             }
         } catch (error) {
-            console.error("Error sharing post:", error);
-            // Handle error, e.g., show a toast message
+            console.warn("Share error:", error?.message);
         } finally {
             setLoading(false);
         }
     }
+
+    const postUrl = `https://hafrik.com/post/${feed?.id}`;
+
+    const handleCopyLink = useCallback(async () => {
+        try {
+            await Clipboard.setStringAsync(postUrl);
+            Alert.alert('Copied', 'Link copied to clipboard');
+        } catch {}
+    }, [postUrl]);
+
+    const handleNativeShare = useCallback(async () => {
+        try {
+            await Share.share({
+                message: `Check this out on Hafrik! ${postUrl}`,
+                url: postUrl,
+            });
+        } catch {}
+    }, [postUrl]);
 
     
 
@@ -72,19 +103,19 @@ const ShareModal = ({ visible, onClose, feed }) => {
                             <Text style={styles.bottomSheetTitle}>Share</Text>
                             
                             <View style={styles.copyLinkContainer}>
-                                <Text style={styles.linkText} numberOfLines={1}>https://hafrik.com/post/{feed.id}</Text>
-                                <TouchableOpacity>
+                                <Text style={styles.linkText} numberOfLines={1}>{postUrl}</Text>
+                                <TouchableOpacity onPress={handleCopyLink}>
                                     <Ionicons name="clipboard-outline" size={20} color={Colors.neutral500} />
                                 </TouchableOpacity>
                             </View>
 
                             <View style={styles.socialRow}>
-                                <TouchableOpacity><Ionicons name="logo-facebook" size={28} color="#1877F2" /></TouchableOpacity>
-                                <TouchableOpacity><Ionicons name="logo-twitter" size={28} color="#1DA1F2" /></TouchableOpacity>
-                                <TouchableOpacity><Ionicons name="logo-linkedin" size={28} color="#0A66C2" /></TouchableOpacity>
-                                <TouchableOpacity><Ionicons name="logo-whatsapp" size={28} color="#25D366" /></TouchableOpacity>
-                                <TouchableOpacity><Ionicons name="logo-reddit" size={28} color="#FF4500" /></TouchableOpacity>
-                                <TouchableOpacity><Ionicons name="logo-pinterest" size={28} color="#E60023" /></TouchableOpacity>
+                                <TouchableOpacity onPress={handleNativeShare}><Ionicons name="logo-facebook" size={28} color="#1877F2" /></TouchableOpacity>
+                                <TouchableOpacity onPress={handleNativeShare}><Ionicons name="logo-twitter" size={28} color="#1DA1F2" /></TouchableOpacity>
+                                <TouchableOpacity onPress={handleNativeShare}><Ionicons name="logo-linkedin" size={28} color="#0A66C2" /></TouchableOpacity>
+                                <TouchableOpacity onPress={handleNativeShare}><Ionicons name="logo-whatsapp" size={28} color="#25D366" /></TouchableOpacity>
+                                <TouchableOpacity onPress={handleNativeShare}><Ionicons name="logo-reddit" size={28} color="#FF4500" /></TouchableOpacity>
+                                <TouchableOpacity onPress={handleNativeShare}><Ionicons name="logo-pinterest" size={28} color="#E60023" /></TouchableOpacity>
                             </View>
 
                             <View style={styles.shareTargetsContainer}>
@@ -128,6 +159,8 @@ const ShareModal = ({ visible, onClose, feed }) => {
                                 style={styles.shareInput}
                                 placeholder="Say something about this..."
                                 placeholderTextColor={Colors.neutral350}
+                                value={caption}
+                                onChangeText={setCaption}
                                 multiline
                             />
 

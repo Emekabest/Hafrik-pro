@@ -32,7 +32,11 @@ export const getBusinessDetails = async (pageId, token) => {
 
 export const getBusinessFeed = async (pageId, page = 1, limit = 10, token) => {
   try {
-    const response = await api.get("/business/pages_feed.php", { params: { page_id: pageId, page, limit }, ...authHeaders(token) });
+    // Use the unified feed endpoint with ?get=posts_page&id=PAGE_ID
+    const response = await api.get("/feed/list.php", {
+      params: { get: 'posts_page', id: pageId, page, limit },
+      ...authHeaders(token),
+    });
     return response.data;
   } catch (error) {
     console.log("BUSINESS API ERROR (getBusinessFeed):", error?.response?.data || error);
@@ -79,7 +83,7 @@ export const getBusinessCategories = async (token) => {
 // Create a post on a business page (page-owner only).
 export const createPagePost = async (payload, token) => {
   try {
-    const response = await api.post("/business/create_page_post.php", payload, authHeaders(token));
+    const response = await api.post("/feed/create.php", payload, authHeaders(token));
     return response.data;
   } catch (error) {
     console.log("BUSINESS API ERROR (createPagePost):", error?.response?.data || error);
