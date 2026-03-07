@@ -38,16 +38,6 @@ const ProfileScreen = () => {
     // Live notification + message counts (polls every 20 s while focused)
     useLiveCounts();
 
-    // const tabs = useRef([
-    //     "Timeline", 
-    //     "Followers", 
-    //     "Photos", 
-    //     "Videos", 
-    //     "Product", 
-    //     "Business Pages", 
-    //     "Communities", 
-    //     "Events" 
-    // ])
 
     const tabs = useRef([
         {label: "Timeline", value: "timeline", icon: "home-outline"},

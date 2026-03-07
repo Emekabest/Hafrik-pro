@@ -52,8 +52,9 @@ const UpdateProfileController = async(token, newProfileData) => {
             },
         });
 
-        return {status: response.status, data: response.data.data};
+        console.log("Profile update response:", response.data);
 
+        return {status: response.status, data: response.data.data};
     }
     catch(error){
 

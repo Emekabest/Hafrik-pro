@@ -91,7 +91,6 @@ const EditModal = ({ visible, onClose, userDetails }) => {
                 Alert.alert("Update Failed", "Something went wrong. Please try again later.");
             }
         } catch (err) {
-            console.error('Failed to update profile', err?.data || err);
             Alert.alert("Update Failed", "An error occurred. Please try again later.");
         } finally {
             setIsSaving(false);
