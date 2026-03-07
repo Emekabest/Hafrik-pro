@@ -7,7 +7,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import Login from './src/pages/Login';
 import MainTabNavigator from './src/csslx.js/MainTabNavigator';
 import { AuthProvider, useAuth } from './src/AuthContext';
-import WebViewScreen from './src/pages/WebViewScreen';
+import UniversalWebView from './src/pages/common/UniversalWebView';
 import CategoriesScreen from './src/pages/CategoriesScreen';
 import EventsScreen from './src/pages/EventsScreen';
 import GroupsScreen from './src/pages/GroupsScreen';
@@ -20,6 +20,7 @@ import useSharedStore from './src/repository/store';
 import { useFonts } from 'expo-font';
 import { WorkSans_300Light, WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold, WorkSans_700Bold, WorkSans_800ExtraBold} from '@expo-google-fonts/work-sans';
 import { ReadexPro_200ExtraLight,  ReadexPro_300Light, ReadexPro_400Regular, ReadexPro_500Medium, ReadexPro_600SemiBold, ReadexPro_700Bold, } from "@expo-google-fonts/readex-pro"
+import { ShadowsIntoLight_400Regular } from '@expo-google-fonts/shadows-into-light';
 import { Inter_300Light, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_400Regular_Italic, Inter_500Medium_Italic, Inter_600SemiBold_Italic } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold  } from "@expo-google-fonts/outfit";
 import GroupDetails from "./src/pages/groups/GroupDetails";
@@ -28,7 +29,7 @@ import JobsScreen from './src/pages/JobsScreen';
 import MarketplaceScreen from './src/pages/marketplace/index';
 import ProductDetailScreen from './src/pages/marketplace/ProductDetailScreen';
 import CreateListingScreen from './src/pages/marketplace/CreateListingScreen';
-import MarketplaceWebviewScreen from './src/pages/marketplace/MarketplaceWebviewScreen';
+// MarketplaceWebviewScreen replaced by UniversalWebView
 import MyListingsScreen from './src/pages/marketplace/MyListingsScreen';
 import ArticlesScreen from './src/pages/blogs/ArticlesScreen';
 import ArticleDetailsScreen from './src/pages/blogs/ArticleDetailsScreen';
@@ -37,22 +38,26 @@ import EventDetailScreen from './src/pages/events/EventDetailScreen';
 import VideoManager from './src/helpers/videomanager';
 import ReelsManager from './src/helpers/reelsmanager';
 import VideoPreloader from './src/helpers/VideoPreloader';
+import GlobalUploadBanner from './src/components/GlobalUploadBanner';
 import GroupScreen from './src/pages/groups/groupscreen';
 import { GlobalVideoPlayerProvider } from './src/helpers/GlobalVideoPlayerContext';
 import ProfileScreen from './src/pages/profile/profilescreen';
 import PagesScreen from './src/pages/pages_/pagesscreen';
 import BusinessDetails from "./src/pages/pages_/BusinessDetails";
+import BusinessList from './src/pages/pages_/BusinessList';
 import Reels2 from './src/pages/reels/reels2';
+import CreateReels from './src/pages/createreels/createreelscreen';
 import UserProfileScreen from './src/pages/users/UserProfileScreen';
 import NotificationsScreen from './src/pages/notifications/NotificationsScreen';
 import InboxScreen from './src/pages/messages/InboxScreen';
 import ThreadScreen from './src/pages/messages/ThreadScreen';
-import InAppBrowser from './src/pages/common/InAppBrowser';
+// InAppBrowser replaced by UniversalWebView
 import SplashScreen from './src/pages/common/SplashScreen';
 import PostDetailScreen from './src/pages/home/feeds/PostDetailScreen';
 import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen from './src/pages/settings/SettingsScreen';
 import SearchScreen from './src/pages/search/searchscreen';
+import EarningsScreen        from './src/pages/earnings/EarningsScreen';
 import ExchangeHomeScreen    from './src/pages/exchange/ExchangeHomeScreen';
 import ExchangeConfirmScreen from './src/pages/exchange/ExchangeConfirmScreen';
 import ExchangeHistoryScreen from './src/pages/exchange/ExchangeHistoryScreen';
@@ -134,8 +139,6 @@ function AppNavigator() {
 
 
 
-  /**Pause or any video playing in the feed */
-  const isNextVideo = useSharedStore(state => state.isNextVideo);
   
   // IMPORTANT: Use the store value (isAppActive_store) as dependency, NOT isAppActiveRef.current
   // Refs don't reliably trigger useEffect - using the store value ensures this fires every time
@@ -163,12 +166,12 @@ function AppNavigator() {
 
 
 
-    const [fontsLoaded] = useFonts({
-  
+        const [fontsLoaded] = useFonts({
+          // Legacy keys (keep for existing screens)
           WorkSans_300Light,
           WorkSans_400Regular,
           WorkSans_500Medium,
-          WorkSans_600SemiBold, 
+          WorkSans_600SemiBold,
           WorkSans_700Bold,
 
           ReadexPro_300Light,
@@ -186,11 +189,22 @@ function AppNavigator() {
           Inter_500Medium_Italic,
           Inter_600SemiBold_Italic,
 
-
           Outfit_400Regular,
           Outfit_500Medium,
           Outfit_600SemiBold,
-    })
+
+          // Design-system aliases
+          'ReadexPro-Regular': ReadexPro_400Regular,
+          'ReadexPro-Medium': ReadexPro_500Medium,
+          'ReadexPro-SemiBold': ReadexPro_600SemiBold,
+          'ReadexPro-Bold': ReadexPro_700Bold,
+
+          'WorkSans-Regular': WorkSans_400Regular,
+          'WorkSans-Medium': WorkSans_500Medium,
+          'WorkSans-Bold': WorkSans_700Bold,
+
+          'ShadowsIntoLight-Regular': ShadowsIntoLight_400Regular,
+        })
   
   
 
@@ -253,10 +267,10 @@ function AppNavigator() {
               <Stack.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
               <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
               <Stack.Screen name="CreateListing" component={CreateListingScreen} />
-              <Stack.Screen name="MarketplaceWebview" component={MarketplaceWebviewScreen} />
+              <Stack.Screen name="MarketplaceWebview" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="MyListings" component={MyListingsScreen} />
               <Stack.Screen name="Groups" component={GroupsScreen} />
-              <Stack.Screen name="WebView" component={WebViewScreen} />
+              <Stack.Screen name="WebView" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="WhatsNearby" component={WhatsNearbyScreen} />
               <Stack.Screen 
                 name="CommentScreen" 
@@ -269,7 +283,9 @@ function AppNavigator() {
               <Stack.Screen name="GroupScreen" component={GroupScreen} />
               <Stack.Screen name="PagesScreen" component={PagesScreen} />
               <Stack.Screen name="BusinessDetails" component={BusinessDetails} />
+              <Stack.Screen name="BusinessPages" component={BusinessList} />
         <Stack.Screen name="Reels2" component={Reels2} />
+        <Stack.Screen name="CreateReel" component={CreateReels} options={{ headerShown: false }} />
 <Stack.Screen
   name="GroupDetails"
   component={GroupDetails}
@@ -281,11 +297,12 @@ function AppNavigator() {
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="Inbox" component={InboxScreen} />
               <Stack.Screen name="Thread" component={ThreadScreen} />
-              <Stack.Screen name="InAppBrowser" component={InAppBrowser} options={{ headerShown: false }} />
+              <Stack.Screen name="InAppBrowser" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="Settings" component={SettingsScreen} />
               <Stack.Screen name="SearchScreen" component={SearchScreen} />
               <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ cardStyle: { backgroundColor: '#fff' } }} />
               <Stack.Screen name="TrendingOnHafrik" component={TrendingOnHafrikScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Earnings"       component={EarningsScreen}        options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeHome"    component={ExchangeHomeScreen}    options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeConfirm" component={ExchangeConfirmScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} options={{ headerShown: false }} />
@@ -295,6 +312,7 @@ function AppNavigator() {
 
 
     </NavigationContainer>
+      <GlobalUploadBanner />
       {!splashDone && <SplashScreen fadeAnim={splashOpacity} />}
     </View>
   );

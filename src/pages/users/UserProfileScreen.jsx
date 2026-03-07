@@ -241,10 +241,12 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
     }));
 
     try {
-      const res = await fetch(BASE_URL + '/api/v1/users/follow.php', {
+      const form = new FormData();
+      form.append('user_id', String(targetId));
+      const res = await fetch(BASE_URL + '/api/v1/people/follow_toggle.php', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: Number(targetId), action: wasFollowing ? 'unfollow' : 'follow' }),
+        headers: { Authorization: 'Bearer ' + token },
+        body: form,
       });
       const json = await res.json();
       const ok = json?.status === 'success' || json?.status === 200 || json?.status === '200';
@@ -396,21 +398,22 @@ export default function UserProfileScreen({ navigation, route }) {
   const toggleFollow = useCallback(async () => {
     const { isFollowing: curFollowing, followLoad: curLoad } = followStateRef.current;
     if (!userId || curLoad) return;
-    const action = curFollowing ? 'unfollow' : 'follow';
     setFollowLoad(true);
     setIsFollowing(!curFollowing);
     try {
-      const res  = await fetch(BASE_URL + '/api/v1/users/follow.php', {
+      const form = new FormData();
+      form.append('user_id', String(userId));
+      const res  = await fetch(BASE_URL + '/api/v1/people/follow_toggle.php', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: Number(userId), action }),
+        headers: { Authorization: 'Bearer ' + token },
+        body: form,
       });
       const json = await res.json();
       const ok   = json?.status === 'success' || json?.status === 200 || json?.status === '200';
       if (!ok) {
         setIsFollowing(curFollowing);
       } else {
-        const delta = action === 'follow' ? 1 : -1;
+        const delta = curFollowing ? -1 : 1;
         setProfile(p => p ? { ...p, followers_count: Math.max(0, Number(p.followers_count ?? 0) + delta) } : p);
       }
     } catch { setIsFollowing(curFollowing); }
@@ -452,10 +455,12 @@ export default function UserProfileScreen({ navigation, route }) {
       (it.id || it.user_id) === targetId ? { ...it, _isFollowing: !it._isFollowing, _followLoading: true } : it
     ));
     try {
-      const res = await fetch(BASE_URL + '/api/v1/users/follow.php', {
+      const form = new FormData();
+      form.append('user_id', String(targetId));
+      const res = await fetch(BASE_URL + '/api/v1/people/follow_toggle.php', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: Number(targetId), action: wasFollowing ? 'unfollow' : 'follow' }),
+        headers: { Authorization: 'Bearer ' + token },
+        body: form,
       });
       const json = await res.json();
       const ok = json?.status === 'success' || json?.status === 200 || json?.status === '200';

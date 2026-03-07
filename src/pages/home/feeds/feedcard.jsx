@@ -119,6 +119,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   }, [feed?.user, isAnonymous]);
 
   const postContext = useMemo(() => {
+    // 1️⃣ Dedicated page object
     const page = feed?.page;
     if (page) {
       const pageId = Number(page?.id ?? page?.page_id ?? feed?.page_id ?? 0);
@@ -130,6 +131,33 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           id: pageId,
           title: pageTitle,
           avatar: page?.avatar || page?.logo || page?.image || null,
+        };
+      }
+    }
+
+    // 2️⃣ Fallback: user.entity === "page" means the poster IS the page
+    const fUser = feed?.user;
+    if (fUser && (fUser.entity || '').toLowerCase() === 'page') {
+      const pageId    = Number(fUser.id ?? feed?.page_id ?? 0);
+      const pageTitle = fUser.page_title || fUser.page_name || fUser.name || fUser.title
+                      || fUser.full_name || fUser.username || null;
+      if (pageId > 0 && pageTitle && !/deleted/i.test(pageTitle)) {
+        return {
+          type: 'page',
+          label: 'Posted via',
+          id: pageId,
+          title: pageTitle,
+          avatar: fUser.avatar || fUser.logo || fUser.image || null,
+        };
+      }
+      const fallbackId = Number(feed?.page_id ?? fUser.id ?? 0);
+      if (fallbackId > 0) {
+        return {
+          type: 'page',
+          label: 'Posted via',
+          id: fallbackId,
+          title: pageTitle || 'Page',
+          avatar: fUser.avatar || fUser.logo || fUser.image || null,
         };
       }
     }
@@ -150,7 +178,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     }
 
     return null;
-  }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id]);
+  }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id, feed?.user]);
 
   // ── Text + hashtag extraction ──────────────────────────────────────────────
   const { displayText, showSeeMore, allTags, extractedUrl } = useMemo(() => {

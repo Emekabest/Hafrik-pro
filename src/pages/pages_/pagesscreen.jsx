@@ -1673,7 +1673,7 @@ export default function DiscoveryScreen() {
   const hotCommunities  = useMemo(() => shuffle(suggestedGroups).slice(0, 3), [suggestedGroups, shuffleKey]);
   const hotEvents       = useMemo(() => shuffle(events).slice(0, 8),           [events,          shuffleKey]);
   const ads             = useMemo(() => shuffle(rawAds),                        [rawAds,          shuffleKey]);
-  const displayTrending = useMemo(() => shuffle(trendingPosts).slice(0, 5),    [trendingPosts,   trendingDisplayKey]); // eslint-disable-line
+  const displayTrending = useMemo(() => trendingPosts.slice(0, 5),             [trendingPosts]); // eslint-disable-line
 
   const businessesInChina = useMemo(() => {
     const arr   = shuffle(suggestedPages);
@@ -1857,9 +1857,6 @@ export default function DiscoveryScreen() {
                     <Text style={ss.trendingBadgeTxt}>LIVE</Text>
                   </View>
                 </View>
-                <TouchableOpacity activeOpacity={0.8} onPress={() => setTrendingDisplayKey((k) => k + 1)} style={ss.shuffleBtn}>
-                  <Ionicons name="shuffle" size={18} color={BRAND} />
-                </TouchableOpacity>
               </View>
               <Text style={ss.sectionSubtitle}>What the community is talking about</Text>
 
@@ -1939,9 +1936,6 @@ export default function DiscoveryScreen() {
                 <Text style={ss.hotTitle}>🔥 Hot Topics</Text>
                 <View style={ss.hotBadge}><Text style={ss.hotBadgeTxt}>{hotTopics.length}</Text></View>
               </View>
-              <TouchableOpacity activeOpacity={0.8} onPress={shuffleExplore} style={ss.shuffleBtn}>
-                <Ionicons name="shuffle" size={18} color={BRAND} />
-              </TouchableOpacity>
             </View>
             <Text style={ss.hotSub}>Tap any tag to dive into trending conversations</Text>
             <View style={ss.hotTopicsWrap}>

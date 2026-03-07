@@ -20,6 +20,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import * as Crypto from 'expo-crypto';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import AppDetails from '../helpers/appdetails';
@@ -37,6 +41,10 @@ const ERROR  = Colors.destructive;
 const WHITE  = Colors.white;
 
 const API_BASE = 'https://hafrik.com/api/v1/auth';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_CLIENT_ID = '82e6f4a6-dc87-4421-aff0-ae035aae8be2.apps.googleusercontent.com';
 
 // ─── Countries ────────────────────────────────────────────────────────────────
 const COUNTRIES = [
@@ -448,6 +456,7 @@ const AuthScreen = () => {
   const [errors, setErrors]       = useState({});
   const [focused, setFocused]     = useState({});
   const isSubmitting              = useRef(false);
+  const [socialLoading, setSocialLoading] = useState(null); // 'apple' | 'google' | null
 
   const [form, setForm] = useState({
     fullName: '', username: '', email: '',
@@ -537,6 +546,95 @@ const AuthScreen = () => {
     } finally {
       setLoading(false);
       setTimeout(() => { isSubmitting.current = false; }, 1000);
+    }
+  };
+
+  // ── Social sign-in: send identity token to backend, get hafrik token back ──
+  const handleSocialLogin = async (provider, idToken, userData = {}) => {
+    if (socialLoading) return;
+    setSocialLoading(provider);
+    try {
+      const res = await axios.post(`${API_BASE}/social_login.php`, {
+        provider,
+        id_token: idToken,
+        ...userData,
+      }, {
+        timeout: 12000,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      });
+      if (res.data.status === 'success') {
+        const authToken = res.data.data?.token;
+        let user = res.data.data?.user;
+        if (Array.isArray(user)) user = user[0];
+        if (!authToken || !user) throw new Error('Invalid server response');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await login(user, authToken);
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert('Login Failed', res.data.message || 'Could not sign in. Please try again.');
+      }
+    } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      let msg = 'Something went wrong. Please try again.';
+      if (err.response?.data?.message) msg = err.response.data.message;
+      else if (err.message.includes('timeout')) msg = 'Request timed out.';
+      else if (err.message.includes('Network')) msg = 'No internet connection.';
+      Alert.alert('Error', msg);
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  // ── Apple Sign In ─────────────────────────────────────────────────────────
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) {
+        Alert.alert('Error', 'Apple Sign In failed. No identity token received.');
+        return;
+      }
+      await handleSocialLogin('apple', credential.identityToken, {
+        email: credential.email || undefined,
+        full_name: [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ') || undefined,
+        apple_user_id: credential.user,
+      });
+    } catch (e) {
+      if (e.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Error', 'Apple Sign In was cancelled or failed.');
+      }
+    }
+  };
+
+  // ── Google Sign In ────────────────────────────────────────────────────────
+  const handleGoogleSignIn = async () => {
+    try {
+      const nonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        String(Date.now()) + Math.random(),
+      );
+      const redirectUri = AuthSession.makeRedirectUri({ preferLocalhost: false });
+      const discovery = await AuthSession.fetchDiscoveryAsync('https://accounts.google.com');
+      const authRequest = new AuthSession.AuthRequest({
+        clientId: GOOGLE_CLIENT_ID,
+        redirectUri,
+        scopes: ['openid', 'profile', 'email'],
+        responseType: AuthSession.ResponseType.IdToken,
+        extraParams: { nonce },
+      });
+      const result = await authRequest.promptAsync(discovery);
+      if (result.type === 'success' && result.params?.id_token) {
+        await handleSocialLogin('google', result.params.id_token);
+      } else if (result.type !== 'dismiss') {
+        Alert.alert('Error', 'Google Sign In failed. Please try again.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Google Sign In failed. Please try again.');
     }
   };
 
@@ -797,14 +895,28 @@ const AuthScreen = () => {
 
           {/* Social buttons */}
           <View style={styles.socialRow}>
-            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8}>
-              <Ionicons name="logo-google" size={18} color={Colors.google} />
-              <Text style={styles.socialBtnText}>Google</Text>
+            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={handleGoogleSignIn} disabled={!!socialLoading}>
+              {socialLoading === 'google' ? (
+                <ActivityIndicator size="small" color={Colors.google} />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={18} color={Colors.google} />
+                  <Text style={styles.socialBtnText}>Google</Text>
+                </>
+              )}
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8}>
-              <Ionicons name="logo-apple" size={18} color={WHITE} />
-              <Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text>
-            </TouchableOpacity>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8} onPress={handleAppleSignIn} disabled={!!socialLoading}>
+                {socialLoading === 'apple' ? (
+                  <ActivityIndicator size="small" color={WHITE} />
+                ) : (
+                  <>
+                    <Ionicons name="logo-apple" size={18} color={WHITE} />
+                    <Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Switch mode */}
