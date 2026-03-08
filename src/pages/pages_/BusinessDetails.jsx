@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
   View, Text, FlatList, ActivityIndicator, StyleSheet,
-  TouchableOpacity, Animated, Dimensions, Linking, Share, Platform,
+  TouchableOpacity, Animated, Dimensions, Linking, Share,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,24 +15,27 @@ import { getBusinessDetails, getBusinessFeed, toggleFollowBusiness } from "./Bus
 import FeedCard from "../home/feeds/feedcard.jsx";
 import { Colors } from "../../theme";
 
-const BRAND      = Colors.primaryDark;
-const ACCENT     = Colors.primary;
-const BG         = Colors.background ?? "#F7F8FA";
-const CARD       = Colors.white;
-const BORDER     = Colors.borderSoft ?? Colors.border;
-const TEXT_HEAD   = Colors.black;
-const TEXT_BODY   = Colors.black;
-const TEXT_MUTED  = Colors.secondaryText;
-const WHITE       = Colors.white;
-const BLACK       = Colors.black;
-const GREEN       = "#22c55e";
+// ─── Design tokens ─────────────────────────────────────────────────────────────
+const BRAND   = Colors.primaryDark;   // Cyprus / dark teal
+const ACCENT  = Colors.primary;       // Java teal
+const BG      = Colors.surfaceBase;    // #f5f7f8 — clean neutral, no green tint
+const CARD    = Colors.white;
+const BORDER  = Colors.borderSoft ?? Colors.border;
+const TEXT_H  = Colors.black;
+const TEXT_M  = Colors.secondaryText;
+const WHITE   = Colors.white;
+const BLACK   = Colors.black;
+const GREEN   = "#22c55e";
+const WA      = "#25D366";            // WhatsApp green
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const COVER_H  = 200;
-const AVATAR_S = 80;
+const COVER_H   = 240;
+const AVATAR_S  = 84;
+const TAB_KEYS  = ["posts", "about", "contact"];
 
 const defaultAvatar = "https://hafrik.com/default-avatar.png";
 
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 const decodeHtml = (str) => {
   if (!str) return str;
   return str
@@ -52,12 +56,32 @@ const fmtCount = (n) => {
   return String(v);
 };
 
+// ─── Small components ──────────────────────────────────────────────────────────
+const StatPill = ({ icon, value, label }) => (
+  <View style={st.statPill}>
+    <Ionicons name={icon} size={14} color={ACCENT} />
+    <Text style={st.statValue}>{value}</Text>
+    <Text style={st.statLabel}>{label}</Text>
+  </View>
+);
+
+const ContactRow = ({ icon, text, onPress, iconColor }) => (
+  <TouchableOpacity style={st.contactRow} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
+    <View style={[st.contactIcon, { backgroundColor: (iconColor ?? ACCENT) + "18" }]}>
+      <Ionicons name={icon} size={15} color={iconColor ?? ACCENT} />
+    </View>
+    <Text style={[st.contactText, onPress && st.contactLink]} numberOfLines={2}>{text}</Text>
+    {!!onPress && <Ionicons name="chevron-forward" size={14} color={TEXT_M} />}
+  </TouchableOpacity>
+);
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function BusinessDetails({ route }) {
   const { pageId } = route.params || {};
-  const navigation    = useNavigation();
+  const navigation   = useNavigation();
   const { token, user } = useAuth();
-  const { top }       = useSafeAreaInsets();
-  const openComposer  = useStore((s) => s.openComposer);
+  const { top }      = useSafeAreaInsets();
+  const openComposer = useStore((s) => s.openComposer);
   const refreshSignal = useStore((s) => s.refreshSignal);
 
   const [page,          setPageData]     = useState(null);
@@ -69,15 +93,15 @@ export default function BusinessDetails({ route }) {
   const [hasMore,       setHasMore]      = useState(true);
   const [following,     setFollowing]    = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [activeTab,     setActiveTab]    = useState("posts");
   const [aboutExpanded, setAboutExpanded] = useState(false);
 
   const followRef = useRef({ following: false, followLoading: false });
   followRef.current = { following, followLoading };
 
-  const scrollY       = useRef(new Animated.Value(0)).current;
-  const coverScale    = scrollY.interpolate({ inputRange: [-100, 0], outputRange: [1.3, 1], extrapolate: "clamp" });
-  const coverOpacity  = scrollY.interpolate({ inputRange: [0, COVER_H * 0.5], outputRange: [1, 0.3], extrapolate: "clamp" });
-  const headerOpacity = scrollY.interpolate({ inputRange: [COVER_H - 60, COVER_H], outputRange: [0, 1], extrapolate: "clamp" });
+  const scrollY      = useRef(new Animated.Value(0)).current;
+  const coverScale   = scrollY.interpolate({ inputRange: [-80, 0], outputRange: [1.2, 1], extrapolate: "clamp" });
+  const headerOpacity = scrollY.interpolate({ inputRange: [COVER_H - 56, COVER_H], outputRange: [0, 1], extrapolate: "clamp" });
 
   const isOwner = !!page && (
     page.is_owner === true || page.is_owner === 1 ||
@@ -110,7 +134,7 @@ export default function BusinessDetails({ route }) {
         setPageData(payload.data);
         setFollowing(!!(payload.data.is_following));
       }
-    } catch (e) { console.log("loadPage:", e); }
+    } catch {}
     setLoadingPage(false);
   };
 
@@ -129,7 +153,7 @@ export default function BusinessDetails({ route }) {
         if (tp != null) setHasMore(pNum < tp);
         else if (feedPosts.length < 10) setHasMore(false);
       }
-    } catch (e) { console.log("loadFeed:", e); }
+    } catch {}
     setLoadingFeed(false);
     setLoadingMore(false);
   };
@@ -149,9 +173,8 @@ export default function BusinessDetails({ route }) {
     try {
       const res = await toggleFollowBusiness(pageId, token);
       if (res?.data?.is_following != null) setFollowing(!!(res.data.is_following));
-    } catch (e) {
-      console.log("follow error:", e);
-      setFollowing(curFollowing);
+    } catch {
+      setFollowing(followRef.current.following);
     }
     setFollowLoading(false);
   }, [pageId, token]);
@@ -159,6 +182,11 @@ export default function BusinessDetails({ route }) {
   const handleCall = useCallback(() => {
     const phone = page?.phone || page?.phone_number || page?.contact_phone || page?.mobile;
     if (phone) Linking.openURL(`tel:${phone.replace(/\s+/g, "")}`);
+  }, [page]);
+
+  const handleWhatsApp = useCallback(() => {
+    const phone = page?.phone || page?.phone_number || page?.contact_phone || page?.mobile;
+    if (phone) Linking.openURL(`https://wa.me/${phone.replace(/[^0-9+]/g, "")}`);
   }, [page]);
 
   const handleWebsite = useCallback(() => {
@@ -176,7 +204,114 @@ export default function BusinessDetails({ route }) {
     } catch {}
   }, [page?.title, pageId]);
 
-  // ── List Header ───────────────────────────────────────────────────────────
+  // ── Tab content ───────────────────────────────────────────────────────────────
+  const aboutTab = useMemo(() => {
+    if (!page) return null;
+    const about    = cleanText(page.about) || "";
+    const category = cleanText(page.category || page.page_category || page.type) || "";
+    const email    = cleanText(page.email) || "";
+
+    return (
+      <View style={st.tabContent}>
+        {!!about && (
+          <View style={st.section}>
+            <Text style={st.sectionLabel}>About</Text>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setAboutExpanded(v => !v)}>
+              <Text style={st.aboutText} numberOfLines={aboutExpanded ? undefined : 5}>{about}</Text>
+              {about.length > 150 && (
+                <Text style={st.seeMore}>{aboutExpanded ? "See less" : "See more"}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+        {!!category && (
+          <View style={st.section}>
+            <Text style={st.sectionLabel}>Category</Text>
+            <View style={st.categoryRow}>
+              <View style={st.categoryPill}>
+                <Ionicons name="pricetag-outline" size={12} color={ACCENT} style={{ marginRight: 5 }} />
+                <Text style={st.categoryText}>{category}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+        {!!email && (
+          <View style={st.section}>
+            <Text style={st.sectionLabel}>Email</Text>
+            <TouchableOpacity onPress={() => Linking.openURL(`mailto:${email}`)} activeOpacity={0.7}>
+              <Text style={[st.aboutText, st.contactLink]}>{email}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  }, [page, aboutExpanded]);
+
+  const contactTab = useMemo(() => {
+    if (!page) return null;
+    const phone   = cleanText(page.phone || page.phone_number || page.contact_phone || page.mobile) || "";
+    const address = cleanText(page.address || page.full_address || page.location) || "";
+    const website = page.website || page.url || page.web || "";
+    const email   = cleanText(page.email) || "";
+
+    if (!phone && !address && !website && !email) {
+      return (
+        <View style={st.tabContent}>
+          <View style={st.emptyTab}>
+            <Ionicons name="call-outline" size={36} color={BORDER} />
+            <Text style={st.emptyTabText}>No contact details provided</Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={st.tabContent}>
+        <View style={st.contactCard}>
+          {!!phone && (
+            <ContactRow
+              icon="call-outline"
+              text={phone}
+              onPress={handleCall}
+              iconColor={GREEN}
+            />
+          )}
+          {!!phone && (
+            <ContactRow
+              icon="logo-whatsapp"
+              text={"WhatsApp: " + phone}
+              onPress={handleWhatsApp}
+              iconColor={WA}
+            />
+          )}
+          {!!address && (
+            <ContactRow
+              icon="location-outline"
+              text={address}
+            />
+          )}
+          {!!website && (
+            <ContactRow
+              icon="globe-outline"
+              text={website}
+              onPress={handleWebsite}
+              iconColor={ACCENT}
+            />
+          )}
+          {!!email && (
+            <ContactRow
+              icon="mail-outline"
+              text={email}
+              onPress={() => Linking.openURL(`mailto:${email}`)}
+              iconColor={ACCENT}
+            />
+          )}
+        </View>
+      </View>
+    );
+  }, [page, handleCall, handleWhatsApp, handleWebsite]);
+
+  // ── List header (cover + profile card + tab bar + tab content for non-posts tabs) ──
   const listHeader = useMemo(() => {
     if (loadingPage) {
       return (
@@ -188,230 +323,231 @@ export default function BusinessDetails({ route }) {
     }
     if (!page) return null;
 
-    const title    = cleanText(page.title) || "";
-    const handle   = cleanText(page.name)  || "";
-    const about    = cleanText(page.about) || "";
-    const category = cleanText(page.category || page.page_category || page.type) || "";
-    const address  = cleanText(page.address || page.full_address || page.location) || "";
-    const phone    = cleanText(page.phone || page.phone_number || page.contact_phone || page.mobile) || "";
-    const website  = page.website || page.url || page.web || "";
+    const title      = cleanText(page.title) || "";
+    const handle     = cleanText(page.name) || "";
+    const isVerified = page.verified === true || page.verified === 1 || page.verified_value === 1;
+    const phone      = cleanText(page.phone || page.phone_number || page.contact_phone || page.mobile) || "";
     const postsCount    = Number(page.posts_count ?? 0);
     const followersCount = Number(page.followers_count ?? page.likes_count ?? 0);
-    const isVerified = page.verified === true || page.verified === 1 || page.verified_value === 1;
-    const hasContact = !!(address || phone || website);
 
     return (
-      <View style={st.headerBlock}>
+      <View>
         {/* ── Cover ── */}
-        <Animated.View style={[st.coverWrap, { transform: [{ scale: coverScale }], opacity: coverOpacity }]}>
-          {page.cover ? (
-            <ExpoImage source={{ uri: page.cover }} style={st.cover} contentFit="cover" cachePolicy="memory-disk" />
-          ) : (
-            <LinearGradient colors={[BRAND, ACCENT + "DD"]} style={st.cover} />
-          )}
-          <LinearGradient colors={["transparent", BRAND + "AA"]} style={StyleSheet.absoluteFillObject} />
-        </Animated.View>
-
-        {/* ── Profile Card ── */}
-        <View style={st.profileCard}>
-          {/* Avatar */}
-          <View style={st.avatarRow}>
-            <View style={st.avatarWrap}>
+        <View style={st.coverWrap}>
+          <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scale: coverScale }] }]}>
+            {page.cover ? (
               <ExpoImage
-                source={{ uri: page.avatar || defaultAvatar }}
-                style={st.avatar}
+                source={{ uri: page.cover }}
+                style={StyleSheet.absoluteFill}
                 contentFit="cover"
                 cachePolicy="memory-disk"
               />
-              {isVerified && (
-                <View style={st.verifiedDot}>
-                  <Ionicons name="checkmark-circle" size={22} color={ACCENT} />
-                </View>
-              )}
-            </View>
-
-            {/* Stats row */}
-            <View style={st.statsRow}>
-              <View style={st.statItem}>
-                <Text style={st.statNum}>{fmtCount(postsCount)}</Text>
-                <Text style={st.statLabel}>Posts</Text>
-              </View>
-              <View style={st.statDivider} />
-              <View style={st.statItem}>
-                <Text style={st.statNum}>{fmtCount(followersCount)}</Text>
-                <Text style={st.statLabel}>Followers</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Name + category */}
-          <View style={st.nameSection}>
-            <View style={st.nameRow}>
-              <Text style={st.pageTitle} numberOfLines={2}>{title}</Text>
-              {isVerified && (
-                <Ionicons name="checkmark-circle" size={16} color={ACCENT} style={{ marginLeft: 5 }} />
-              )}
-            </View>
-            <View style={st.metaRow}>
-              {!!handle && <Text style={st.handle}>@{handle}</Text>}
-              {!!category && (
-                <View style={st.categoryPill}>
-                  <Text style={st.categoryText}>{category}</Text>
-                </View>
-              )}
-            </View>
-            {isOwner && (
-              <View style={st.ownerPill}>
-                <Ionicons name="shield-checkmark" size={11} color={ACCENT} />
-                <Text style={st.ownerPillText}>Your Page</Text>
-              </View>
-            )}
-          </View>
-
-          {/* About */}
-          {!!about && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setAboutExpanded(v => !v)}
-              style={st.aboutWrap}
-            >
-              <Text style={st.aboutText} numberOfLines={aboutExpanded ? undefined : 3}>
-                {about}
-              </Text>
-              {about.length > 120 && (
-                <Text style={st.seeMore}>{aboutExpanded ? "See less" : "See more"}</Text>
-              )}
-            </TouchableOpacity>
-          )}
-
-          {/* ── Action Buttons ── */}
-          <View style={st.actionsRow}>
-            {isOwner ? (
-              <TouchableOpacity style={st.primaryAction} onPress={openPageComposer} activeOpacity={0.85}>
-                <LinearGradient colors={[ACCENT, BRAND]} style={st.actionGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  <Ionicons name="create-outline" size={15} color={WHITE} />
-                  <Text style={st.primaryActionText}>Write Post</Text>
-                </LinearGradient>
-              </TouchableOpacity>
             ) : (
-              <TouchableOpacity
-                style={[st.primaryAction, following && st.followingAction]}
-                onPress={handleFollow}
-                activeOpacity={0.85}
-                disabled={followLoading}
-              >
-                {followLoading ? (
-                  <View style={st.actionInner}>
-                    <ActivityIndicator size="small" color={following ? TEXT_MUTED : WHITE} />
-                  </View>
-                ) : following ? (
-                  <View style={[st.actionInner, { backgroundColor: BG, borderWidth: 1, borderColor: BORDER }]}>
-                    <Ionicons name="checkmark" size={15} color={TEXT_MUTED} />
-                    <Text style={[st.primaryActionText, { color: TEXT_MUTED }]}>Following</Text>
-                  </View>
-                ) : (
-                  <LinearGradient colors={[ACCENT, BRAND]} style={st.actionGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                    <Ionicons name="add" size={16} color={WHITE} />
-                    <Text style={st.primaryActionText}>Follow</Text>
-                  </LinearGradient>
-                )}
-              </TouchableOpacity>
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: BRAND }]} />
             )}
+          </Animated.View>
+          {/* Bottom scrim for avatar blending */}
+          <LinearGradient
+            colors={["transparent", BLACK + "44"]}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
 
-            {!!phone && (
-              <TouchableOpacity style={st.iconAction} onPress={handleCall} activeOpacity={0.85}>
-                <Ionicons name="call" size={16} color={GREEN} />
-              </TouchableOpacity>
+        {/* ── Profile row: avatar (overlapping cover) + stats ── */}
+        <View style={st.profileRow}>
+          <View style={st.avatarWrap}>
+            <ExpoImage
+              source={{ uri: page.avatar || defaultAvatar }}
+              style={st.avatar}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+            {isVerified && (
+              <View style={st.verifiedDot}>
+                <Ionicons name="checkmark-circle" size={20} color={ACCENT} />
+              </View>
             )}
-
-            {!!website && (
-              <TouchableOpacity style={st.iconAction} onPress={handleWebsite} activeOpacity={0.85}>
-                <Ionicons name="globe-outline" size={16} color={ACCENT} />
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={st.iconAction} onPress={handleShare} activeOpacity={0.85}>
-              <Ionicons name="share-outline" size={16} color={BRAND} />
-            </TouchableOpacity>
           </View>
 
-          {/* ── Contact Info ── */}
-          {hasContact && (
-            <View style={st.contactCard}>
-              {!!address && (
-                <View style={st.contactRow}>
-                  <View style={st.contactIconWrap}>
-                    <Ionicons name="location-outline" size={14} color={ACCENT} />
-                  </View>
-                  <Text style={st.contactText} numberOfLines={2}>{address}</Text>
-                </View>
-              )}
-              {!!phone && (
-                <TouchableOpacity style={st.contactRow} onPress={handleCall} activeOpacity={0.7}>
-                  <View style={st.contactIconWrap}>
-                    <Ionicons name="call-outline" size={14} color={ACCENT} />
-                  </View>
-                  <Text style={[st.contactText, st.contactLink]}>{phone}</Text>
-                </TouchableOpacity>
-              )}
-              {!!website && (
-                <TouchableOpacity style={st.contactRow} onPress={handleWebsite} activeOpacity={0.7}>
-                  <View style={st.contactIconWrap}>
-                    <Ionicons name="globe-outline" size={14} color={ACCENT} />
-                  </View>
-                  <Text style={[st.contactText, st.contactLink]} numberOfLines={1}>{website}</Text>
-                </TouchableOpacity>
-              )}
+          {/* Stat pills */}
+          <View style={st.statsStrip}>
+            <StatPill icon="people-outline" value={fmtCount(followersCount)} label="Followers" />
+            <View style={st.statDivider} />
+            <StatPill icon="newspaper-outline" value={fmtCount(postsCount)} label="Posts" />
+          </View>
+        </View>
+
+        {/* ── Business name + handle (always below avatar, never hidden) ── */}
+        <View style={st.nameBlock}>
+          <View style={st.nameRow}>
+            <Text style={st.pageTitle} numberOfLines={2}>{title}</Text>
+            {isVerified && (
+              <Ionicons name="checkmark-circle" size={18} color={ACCENT} style={{ marginLeft: 6, marginTop: 2 }} />
+            )}
+          </View>
+          {!!handle && (
+            <Text style={st.handle}>@{handle}</Text>
+          )}
+          {isVerified && (
+            <View style={st.verifiedBadge}>
+              <Ionicons name="checkmark-circle" size={11} color={ACCENT} />
+              <Text style={st.verifiedText}>Verified Business</Text>
+            </View>
+          )}
+          {isOwner && (
+            <View style={st.ownerPill}>
+              <Ionicons name="shield-checkmark" size={11} color={ACCENT} />
+              <Text style={st.ownerPillText}>Your Page</Text>
             </View>
           )}
         </View>
 
-        {/* ── Feed Section Label ── */}
-        <View style={st.feedSection}>
-          <View style={st.sectionDot} />
-          <Text style={st.feedSectionLabel}>POSTS</Text>
-          {loadingFeed && <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 8 }} />}
+        {/* ── CTA buttons ── */}
+        <View style={st.ctaRow}>
+          {isOwner ? (
+            <TouchableOpacity style={st.primaryBtn} onPress={openPageComposer} activeOpacity={0.85}>
+              <View style={st.primaryBtnGrad}>
+                <Ionicons name="create-outline" size={16} color={WHITE} />
+                <Text style={st.primaryBtnText}>Write Post</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={st.primaryBtn}
+              onPress={handleFollow}
+              activeOpacity={0.85}
+              disabled={followLoading}
+            >
+              {following ? (
+                <View style={st.followingBtn}>
+                  {followLoading
+                    ? <ActivityIndicator size="small" color={TEXT_M} />
+                    : <>
+                        <Ionicons name="checkmark" size={16} color={TEXT_M} />
+                        <Text style={st.followingBtnText}>Following</Text>
+                      </>
+                  }
+                </View>
+              ) : (
+                <View style={st.primaryBtnGrad}>
+                  {followLoading
+                    ? <ActivityIndicator size="small" color={WHITE} />
+                    : <>
+                        <Ionicons name="add" size={17} color={WHITE} />
+                        <Text style={st.primaryBtnText}>Follow</Text>
+                      </>
+                  }
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {!!phone && (
+            <TouchableOpacity style={st.circleBtn} onPress={handleCall} activeOpacity={0.85}>
+              <Ionicons name="call" size={17} color={GREEN} />
+            </TouchableOpacity>
+          )}
+
+          {!!phone && (
+            <TouchableOpacity style={[st.circleBtn, { backgroundColor: WA + "15" }]} onPress={handleWhatsApp} activeOpacity={0.85}>
+              <Ionicons name="logo-whatsapp" size={17} color={WA} />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={st.circleBtn} onPress={handleShare} activeOpacity={0.85}>
+            <Ionicons name="share-outline" size={17} color={BRAND} />
+          </TouchableOpacity>
         </View>
 
-        {/* ── Owner Compose Bar ── */}
-        {isOwner && (
-          <TouchableOpacity style={st.composeBar} onPress={openPageComposer} activeOpacity={0.85}>
-            <View style={st.composeAvatarWrap}>
-              <Ionicons name="storefront-outline" size={16} color={BRAND} />
+        {/* ── Tab bar ── */}
+        <View style={st.tabBar}>
+          {TAB_KEYS.map((key) => {
+            const active = activeTab === key;
+            const label = key.charAt(0).toUpperCase() + key.slice(1);
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[st.tab, active && st.tabActive]}
+                onPress={() => setActiveTab(key)}
+                activeOpacity={0.75}
+              >
+                <Text style={[st.tabLabel, active && st.tabLabelActive]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ── Non-posts tab content lives here (inside header) ── */}
+        {activeTab === "about" && aboutTab}
+        {activeTab === "contact" && contactTab}
+
+        {/* ── Posts tab: owner compose bar + section header ── */}
+        {activeTab === "posts" && (
+          <>
+            {isOwner && (
+              <TouchableOpacity style={st.composeBar} onPress={openPageComposer} activeOpacity={0.85}>
+                <View style={st.composeIcon}>
+                  <Ionicons name="storefront-outline" size={16} color={BRAND} />
+                </View>
+                <View style={st.composeInput}>
+                  <Text style={st.composePlaceholder}>Write something…</Text>
+                </View>
+                <Ionicons name="send" size={16} color={ACCENT} />
+              </TouchableOpacity>
+            )}
+            <View style={st.feedLabel}>
+              <View style={st.feedLabelDot} />
+              <Text style={st.feedLabelText}>LATEST POSTS</Text>
+              {loadingFeed && <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 8 }} />}
             </View>
-            <View style={st.composeInputWrap}>
-              <Text style={st.composePlaceholder}>Write something…</Text>
-            </View>
-            <Ionicons name="send" size={16} color={ACCENT} />
-          </TouchableOpacity>
+          </>
         )}
       </View>
     );
-  }, [loadingPage, page, following, followLoading, aboutExpanded, loadingFeed, isOwner,
-      coverScale, coverOpacity, openPageComposer, handleCall, handleFollow, handleWebsite, handleShare]);
+  }, [
+    loadingPage, page, following, followLoading, aboutExpanded,
+    loadingFeed, isOwner, activeTab, coverScale,
+    openPageComposer, handleCall, handleWhatsApp, handleFollow,
+    handleWebsite, handleShare, aboutTab, contactTab,
+  ]);
+
+  const [visiblePostId, setVisiblePostId] = useState(null);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    const next = viewableItems.find((e) => e?.isViewable && e?.item?.id)?.item?.id ?? null;
+    setVisiblePostId((prev) => (prev === next ? prev : next));
+  });
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 70, waitForInteraction: false });
 
   const renderFeedItem = useCallback(({ item }) => (
-    <FeedCard feed={item} />
-  ), []);
+    <FeedCard feed={item} isVisible={visiblePostId === item?.id} />
+  ), [visiblePostId]);
+
+  // Only show FlatList data in Posts tab
+  const listData = activeTab === "posts" ? posts : [];
 
   return (
     <View style={st.root}>
-      {/* ── Sticky top bar (appears on scroll) ── */}
+      {/* ── Sticky top bar ── */}
       <Animated.View style={[st.stickyHeader, { paddingTop: top + 4, opacity: headerOpacity }]}>
         <Text style={st.stickyTitle} numberOfLines={1}>{cleanText(page?.title) || ""}</Text>
       </Animated.View>
 
       {/* ── Floating back button ── */}
       <TouchableOpacity style={[st.backBtn, { top: top + 8 }]} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-        <Ionicons name="arrow-back" size={18} color={BRAND} />
+        <Ionicons name="arrow-back" size={18} color={WHITE} />
       </TouchableOpacity>
 
       <FlatList
-        data={posts}
-        keyExtractor={(item) => item.id?.toString()}
+        data={listData}
+        keyExtractor={(item) => String(item.id ?? Math.random())}
         renderItem={renderFeedItem}
+        onViewableItemsChanged={onViewableItemsChanged.current}
+        viewabilityConfig={viewabilityConfig.current}
+        extraData={visiblePostId}
         ListHeaderComponent={listHeader}
-        onEndReached={handleLoadMore}
+        onEndReached={activeTab === "posts" ? handleLoadMore : undefined}
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={st.listContent}
@@ -421,10 +557,12 @@ export default function BusinessDetails({ route }) {
         )}
         scrollEventThrottle={16}
         ListFooterComponent={
-          loadingMore ? <ActivityIndicator size="small" color={ACCENT} style={{ paddingVertical: 20 }} /> : null
+          loadingMore && activeTab === "posts"
+            ? <ActivityIndicator size="small" color={ACCENT} style={{ paddingVertical: 20 }} />
+            : null
         }
         ListEmptyComponent={
-          !loadingFeed ? (
+          activeTab === "posts" && !loadingFeed ? (
             <View style={st.empty}>
               <Ionicons name="newspaper-outline" size={40} color={BORDER} />
               <Text style={st.emptyText}>No posts yet</Text>
@@ -436,257 +574,220 @@ export default function BusinessDetails({ route }) {
   );
 }
 
+// ─── Styles ────────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
-  listContent: { paddingBottom: 100 },
+  listContent: { paddingBottom: 120 },
 
-  // Sticky header on scroll
+  // ── Sticky header ──
   stickyHeader: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 50,
-    backgroundColor: CARD,
+    top: 0, left: 0, right: 0, zIndex: 50,
+    backgroundColor: BRAND,
     paddingBottom: 10,
     paddingHorizontal: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
     alignItems: "center",
   },
   stickyTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: BRAND,
+    fontSize: 15, fontWeight: "800", color: WHITE,
+    fontFamily: "ReadexPro-Bold",
   },
 
-  // Back button
+  // ── Back button ──
   backBtn: {
-    position: "absolute",
-    left: 16,
-    zIndex: 99,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: WHITE + "EE",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: BLACK,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    position: "absolute", left: 14, zIndex: 99,
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: BLACK + "55",
+    justifyContent: "center", alignItems: "center",
   },
 
-  // Loader
-  loader: {
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 80,
-    rowGap: 12,
+  // ── Cover ──
+  coverWrap: {
+    width: SCREEN_W, height: COVER_H, overflow: "hidden",
+    backgroundColor: BRAND,
   },
-  loaderText: {
-    color: TEXT_MUTED,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-
-  // Cover
-  headerBlock: { marginBottom: 4 },
-  coverWrap: { width: SCREEN_W, height: COVER_H, overflow: "hidden" },
-  cover: { width: "100%", height: "100%" },
-
-  // ── Profile Card ──
-  profileCard: {
-    backgroundColor: CARD,
-    paddingHorizontal: 18,
-    paddingBottom: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-
-  avatarRow: {
+  // ── Profile row ──
+  profileRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
     marginTop: -(AVATAR_S / 2),
-    marginBottom: 14,
+    marginBottom: 10,
+    gap: 14,
+    backgroundColor: CARD,
   },
   avatarWrap: { position: "relative" },
   avatar: {
-    width: AVATAR_S,
-    height: AVATAR_S,
-    borderRadius: AVATAR_S / 2,
-    borderWidth: 3,
-    borderColor: CARD,
+    width: AVATAR_S, height: AVATAR_S, borderRadius: AVATAR_S / 2,
+    borderWidth: 3.5, borderColor: WHITE,
+    backgroundColor: BORDER,
   },
   verifiedDot: {
-    position: "absolute",
-    bottom: 0,
-    right: -2,
-    backgroundColor: CARD,
-    borderRadius: 12,
+    position: "absolute", bottom: 0, right: -2,
+    backgroundColor: WHITE, borderRadius: 12,
   },
+  statsStrip: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER,
+    paddingVertical: 10, paddingHorizontal: 12, gap: 0,
+    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  statPill: { flex: 1, alignItems: "center", gap: 2 },
+  statValue: { fontSize: 17, fontWeight: "900", color: TEXT_H, fontFamily: "ReadexPro-Bold" },
+  statLabel: { fontSize: 10, color: TEXT_M, textTransform: "uppercase", letterSpacing: 0.4, fontFamily: "ReadexPro-Regular" },
+  statDivider: { width: 1, height: 28, backgroundColor: BORDER, marginHorizontal: 4 },
 
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    paddingBottom: 6,
+  // ── Name block (always below avatar) ──
+  nameBlock: {
+    paddingHorizontal: 16, paddingBottom: 14, backgroundColor: CARD,
   },
-  statItem: { alignItems: "center" },
-  statNum: { fontSize: 17, fontWeight: "900", color: TEXT_HEAD },
-  statLabel: { fontSize: 11, color: TEXT_MUTED, fontWeight: "500", marginTop: 1 },
-  statDivider: { width: 1, height: 26, backgroundColor: BORDER },
-
-  // Name
-  nameSection: { marginBottom: 12 },
-  nameRow: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-  pageTitle: { fontSize: 21, fontWeight: "900", color: TEXT_HEAD, letterSpacing: -0.3, flex: 1 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
-  handle: { fontSize: 13, color: TEXT_MUTED, fontWeight: "500" },
-  categoryPill: {
-    backgroundColor: BG,
-    borderRadius: 100,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: BORDER,
+  nameRow: {
+    flexDirection: "row", alignItems: "flex-start", marginBottom: 4,
   },
-  categoryText: { fontSize: 11, color: TEXT_MUTED, fontWeight: "600" },
+  pageTitle: {
+    flex: 1, fontSize: 22, fontWeight: "900", color: TEXT_H,
+    fontFamily: "ReadexPro-Bold", letterSpacing: -0.3, lineHeight: 28,
+  },
+  handle: {
+    fontSize: 13, color: TEXT_M, fontWeight: "500",
+    marginBottom: 6, fontFamily: "ReadexPro-Regular",
+  },
+  verifiedBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    alignSelf: "flex-start", marginBottom: 6,
+    backgroundColor: ACCENT + "18", borderRadius: 100,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: ACCENT + "30",
+  },
+  verifiedText: { fontSize: 10, fontWeight: "700", color: ACCENT, fontFamily: "ReadexPro-Bold" },
   ownerPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 4,
-    backgroundColor: ACCENT + "14",
-    borderRadius: 100,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: ACCENT + "28",
-    marginTop: 4,
+    flexDirection: "row", alignItems: "center", alignSelf: "flex-start",
+    gap: 4, marginBottom: 0,
+    backgroundColor: ACCENT + "14", borderRadius: 100,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: ACCENT + "28",
   },
-  ownerPillText: { fontSize: 11, fontWeight: "700", color: ACCENT },
+  ownerPillText: { fontSize: 11, fontWeight: "700", color: ACCENT, fontFamily: "ReadexPro-Bold" },
 
-  // About
-  aboutWrap: { marginBottom: 14 },
-  aboutText: { fontSize: 14, color: TEXT_BODY, lineHeight: 22 },
-  seeMore: { fontSize: 13, color: ACCENT, fontWeight: "600", marginTop: 4 },
-
-  // Actions
-  actionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 14,
+  // ── CTA row ──
+  ctaRow: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 16, gap: 10, marginBottom: 18,
+    backgroundColor: CARD,
   },
-  primaryAction: {
-    flex: 1,
+  primaryBtn: {
+    flex: 1, borderRadius: 100, overflow: "hidden",
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4,
+  },
+  primaryBtnGrad: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 12, gap: 6,
+    backgroundColor: BRAND,
     borderRadius: 100,
-    overflow: "hidden",
   },
-  followingAction: {},
-  actionGrad: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    gap: 6,
+  primaryBtnText: { fontSize: 14, fontWeight: "800", color: WHITE, fontFamily: "ReadexPro-Bold" },
+  followingBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 12, borderRadius: 100, gap: 6,
+    backgroundColor: BG, borderWidth: 1.5, borderColor: BORDER,
   },
-  actionInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 100,
-    gap: 6,
-  },
-  primaryActionText: { fontSize: 14, fontWeight: "800", color: WHITE, letterSpacing: 0.2 },
-  iconAction: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: BG,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
+  followingBtnText: { fontSize: 14, fontWeight: "700", color: TEXT_M, fontFamily: "ReadexPro-Bold" },
+  circleBtn: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: BG, borderWidth: 1.5, borderColor: BORDER,
+    alignItems: "center", justifyContent: "center",
   },
 
-  // Contact
+  // ── Tab bar ──
+  tabBar: {
+    flexDirection: "row",
+    backgroundColor: CARD,
+    borderTopWidth: 1, borderTopColor: BORDER,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
+    marginBottom: 0,
+  },
+  tab: {
+    flex: 1, paddingVertical: 14,
+    alignItems: "center",
+    borderBottomWidth: 2.5, borderBottomColor: "transparent",
+  },
+  tabActive: { borderBottomColor: BRAND },
+  tabLabel: {
+    fontSize: 13, fontWeight: "600", color: TEXT_M,
+    fontFamily: "ReadexPro-Medium",
+  },
+  tabLabelActive: {
+    color: BRAND, fontWeight: "800", fontFamily: "ReadexPro-Bold",
+  },
+
+  // ── Tab content ──
+  tabContent: {
+    backgroundColor: BG, paddingHorizontal: 16, paddingVertical: 16, gap: 16,
+  },
+  section: { gap: 8 },
+  sectionLabel: {
+    fontSize: 11, fontWeight: "800", color: TEXT_M,
+    textTransform: "uppercase", letterSpacing: 1.2, fontFamily: "ReadexPro-Bold",
+  },
+  aboutText: { fontSize: 14, color: TEXT_H, lineHeight: 22, fontFamily: "ReadexPro-Regular" },
+  seeMore: { fontSize: 13, color: ACCENT, fontWeight: "600", marginTop: 5, fontFamily: "ReadexPro-Bold" },
+  categoryRow: { flexDirection: "row" },
+  categoryPill: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: ACCENT + "18", borderRadius: 100,
+    paddingHorizontal: 12, paddingVertical: 5,
+    borderWidth: 1, borderColor: ACCENT + "28",
+  },
+  categoryText: { fontSize: 12, fontWeight: "700", color: BRAND, fontFamily: "ReadexPro-Bold" },
+  contactLink: { color: ACCENT, fontWeight: "600" },
+  emptyTab: { alignItems: "center", paddingVertical: 50, gap: 10 },
+  emptyTabText: { fontSize: 14, color: TEXT_M, fontFamily: "ReadexPro-Regular" },
+
+  // ── Contact card ──
   contactCard: {
-    backgroundColor: BG,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: BORDER,
-    paddingVertical: 4,
+    backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER,
+    overflow: "hidden",
+    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   contactRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 10,
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER,
   },
-  contactIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: ACCENT + "14",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 1,
+  contactIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: "center", justifyContent: "center",
   },
-  contactText: { flex: 1, fontSize: 13, color: TEXT_BODY, lineHeight: 20, fontWeight: "500" },
-  contactLink: { color: ACCENT, fontWeight: "600" },
+  contactText: { flex: 1, fontSize: 13, color: TEXT_H, lineHeight: 19, fontFamily: "ReadexPro-Regular" },
 
-  // Feed section
-  feedSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 10,
-    backgroundColor: BG,
-  },
-  sectionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT, marginRight: 8 },
-  feedSectionLabel: { fontSize: 12, fontWeight: "700", color: TEXT_MUTED, letterSpacing: 2 },
-
-  // Compose bar
+  // ── Posts section ──
   composeBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: CARD,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: CARD, paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: BORDER,
   },
-  composeAvatarWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  composeIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: BG, borderWidth: 1, borderColor: BORDER,
+    alignItems: "center", justifyContent: "center",
+  },
+  composeInput: {
+    flex: 1, height: 38, backgroundColor: BG, borderRadius: 19,
+    paddingHorizontal: 14, justifyContent: "center",
+    borderWidth: 1, borderColor: BORDER,
+  },
+  composePlaceholder: { fontSize: 13, color: TEXT_M, fontFamily: "ReadexPro-Regular" },
+  feedLabel: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 18, paddingTop: 14, paddingBottom: 8,
     backgroundColor: BG,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  composeInputWrap: {
-    flex: 1,
-    height: 38,
-    backgroundColor: BG,
-    borderRadius: 19,
-    paddingHorizontal: 14,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  composePlaceholder: { fontSize: 13, color: TEXT_MUTED },
+  feedLabelDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT, marginRight: 8 },
+  feedLabelText: { fontSize: 11, fontWeight: "800", color: TEXT_M, letterSpacing: 2, fontFamily: "ReadexPro-Bold" },
 
-  // Empty
-  empty: { alignItems: "center", paddingVertical: 60, rowGap: 10 },
-  emptyText: { fontSize: 14, color: TEXT_MUTED, fontWeight: "500" },
+  // ── Loader / empty ──
+  loader: { justifyContent: "center", alignItems: "center", paddingVertical: 80, gap: 12 },
+  loaderText: { color: TEXT_M, fontSize: 14, fontFamily: "ReadexPro-Regular" },
+  empty: { alignItems: "center", paddingVertical: 60, gap: 10 },
+  emptyText: { fontSize: 14, color: TEXT_M, fontFamily: "ReadexPro-Regular" },
 });

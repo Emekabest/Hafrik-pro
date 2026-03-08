@@ -1,228 +1,352 @@
 import React, { memo, useState, useCallback, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 
 import AppDetails from '../../../../helpers/appdetails.js';
+import CleanText from '../../../../helpers/cleantext.js';
 import UserDetails from './userdetails.jsx';
 import Videocontent from './videocontent.jsx';
 import ProductContent from './productcontent.jsx';
 import useStore from '../../../../repository/store';
 import { Colors } from '../../../../theme/colors';
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const ACCENT       = Colors.primary;
+const BORDER       = Colors.borderLightAlt;
+const BG_SHARED    = Colors.surfaceCoolAlt;
+const TEXT_BODY    = Colors.textBodyIndigo;
+const TEXT_MUTED   = Colors.mutedBlueGrayAlt;
+const AVATAR_RING  = Colors.infoSurfaceSoft;
+
 const withOpacity = (hex, opacity) => {
-  const normalized = (hex || "").replace("#", "");
-  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
-  return `#${normalized}${alpha}`;
+    const normalized = (hex || '').replace('#', '');
+    const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0');
+    return `#${normalized}${alpha}`;
 };
 
-
-
-const MEDIA_HEIGHT = 470;
-const MEDIA_WIDTH = 240;
-
-const defaultScreenWidth = Dimensions.get("window").width;
-// Calculate offset: Container Padding (10) + Left Column Width (13% of available space) + Right Column Padding (5)
-const defaultLeftOffset = 20 + ((defaultScreenWidth - 20) * 0.13) + 5;
-const defaultRightOffset = 15;
-const defaultImageWidth = defaultScreenWidth - defaultLeftOffset - defaultRightOffset;
-
-
-
-const SharedContent = ({ post = {}, parentFeedId, containerWidth }) => {
+// ─── SharedContent ─────────────────────────────────────────────────────────────
+const SharedContent = ({ post = {}, parentFeedId, containerWidth, isVisible = false }) => {
     const openCommentModal = useStore(state => state.openCommentModal);
-    const tabletMode = useStore(state => state.tabletMode);
-    const storeFeedWidth = useStore(state => state.feedWidth);
+    const tabletMode       = useStore(state => state.tabletMode);
+    const storeFeedWidth   = useStore(state => state.feedWidth);
 
-    // In tablet mode, recalculate sizes based on feed container width
-    const effectiveContainerWidth = containerWidth > 0 ? containerWidth : (tabletMode && storeFeedWidth > 0 ? storeFeedWidth : 0);
-    const leftOffset = effectiveContainerWidth > 0 ? 20 + ((effectiveContainerWidth - 20) * 0.13) + 5 : defaultLeftOffset;
-    const rightOffset = defaultRightOffset;
-    const imageWidth = effectiveContainerWidth > 0 ? effectiveContainerWidth - leftOffset - rightOffset : defaultImageWidth;
- const safePost = post || {}
+    const effectiveContainerWidth = containerWidth > 0
+        ? containerWidth
+        : (tabletMode && storeFeedWidth > 0 ? storeFeedWidth : 0);
 
-const mediaArray = Array.isArray(safePost.media)
-  ? safePost.media
-  : []
+    const leftOffset  = effectiveContainerWidth > 0 ? 20 + ((effectiveContainerWidth - 20) * 0.13) + 5 : 0;
+    const rightOffset = 15;
+    const imageWidth  = effectiveContainerWidth > 0
+        ? effectiveContainerWidth - leftOffset - rightOffset - 2  // -2 for border
+        : undefined;
 
-const mediaItem = mediaArray.length > 0 ? mediaArray[0] : null
+    const safePost    = post || {};
+    const mediaArray  = Array.isArray(safePost.media) ? safePost.media : [];
+    const mediaItem   = mediaArray.length > 0 ? mediaArray[0] : null;
+    const isVideo     = safePost.type === 'video' || safePost.type === 'reel';
 
-const isVideo =
-  safePost.type === 'video' ||
-  safePost.type === 'reel'
-
-const isMultiMedia =
-  mediaArray.length > 1  
-    
-    const [hasError, setHasError] = useState(false);
+    const [hasError, setHasError]   = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
-    
-    // Memoize computed values
-    const isLongPostText = useMemo(() => post.text && post.text.length > 50, [post.text]);
-    
+
+    const cleanedText    = useMemo(() => (post.text ? CleanText(post.text) : null), [post.text]);
+    const isLongPostText = useMemo(() => cleanedText && cleanedText.length > 100, [cleanedText]);
+
     const displayText = useMemo(() => {
-        if (!post.text) return null;
-        if (isLongPostText && !isExpanded) {
-            return `${post.text.substring(0, 50)}...`;
-        }
-        return post.text;
-    }, [post.text, isLongPostText, isExpanded]);
+        if (!cleanedText) return null;
+        if (isLongPostText && !isExpanded) return `${cleanedText.substring(0, 100)}...`;
+        return cleanedText;
+    }, [cleanedText, isLongPostText, isExpanded]);
 
     const handlePress = useCallback(() => {
-        // Open modal with parentFeedId so global video player can match
         openCommentModal(parentFeedId);
     }, [openCommentModal, parentFeedId]);
-    
+
     const toggleExpanded = useCallback(() => {
         setIsExpanded(prev => !prev);
     }, []);
-    
+
     const handleRetry = useCallback(() => {
         setHasError(false);
     }, []);
 
-
+    // ── Computed image dimensions ─────────────────────────────────────────────
+    // Use full available width; height is 4:5 portrait ratio (capped at 400)
+    const mediaImgWidth  = imageWidth || 280;
+    const mediaImgHeight = Math.min(Math.round(mediaImgWidth * 1.05), 400);
 
     return (
-        <View style={[styles.sharedPostContainer, {borderWidth:isMultiMedia ? 0 : 1,}]}>
-            <View style={isMultiMedia ? styles.sharedPostContainerTop : null}>
+        <View style={styles.container}>
 
-                <View style={{ flexDirection: 'row' }}>
-                    <View style={{ marginRight: 5 }}>
-                        <ExpoImage 
-                            source={{ uri: post.user.avatar }}
-                            style={{ width: 40, height: 40, borderRadius: 50 }}
+            {/* ── "Shared post" label ── */}
+            <View style={styles.sharedLabel}>
+                <Ionicons name="repeat-outline" size={13} color={ACCENT} />
+                <Text style={styles.sharedLabelText}>Shared post</Text>
+            </View>
+
+            {/* ── Author row ── */}
+            <View style={styles.header}>
+                <View style={styles.avatarWrapper}>
+                    <View style={styles.avatarRing} />
+                    <ExpoImage
+                        source={{ uri: post.user?.avatar }}
+                        style={styles.avatar}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                    />
+                </View>
+                <View style={styles.userDetailsWrapper}>
+                    <UserDetails feed={post} fullNameFontSize={13} />
+                </View>
+            </View>
+
+            {/* ── Caption ── */}
+            {displayText ? (
+                <Text style={styles.postText}>
+                    {displayText}
+                    {isLongPostText && (
+                        <Text onPress={toggleExpanded} style={styles.seeMoreText}>
+                            {isExpanded ? '  See less' : '  See more'}
+                        </Text>
+                    )}
+                </Text>
+            ) : null}
+
+            {/* ── Content variants ── */}
+            {post.type === 'poll' ? (
+                <View style={styles.pollBadge}>
+                    <Ionicons name="stats-chart-outline" size={13} color={TEXT_MUTED} />
+                    <Text style={styles.pollBadgeText}>Poll</Text>
+                </View>
+
+            ) : post.type === 'product' ? (
+                <ProductContent
+                    feed={post}
+                    leftOffset={leftOffset}
+                    rightOffset={rightOffset}
+                    imageWidth={imageWidth}
+                    containerWidth={effectiveContainerWidth}
+                />
+
+            ) : post.type === 'article' && post.payload ? (
+                <TouchableOpacity
+                    onPress={() => openCommentModal(post.id)}
+                    activeOpacity={0.8}
+                    style={styles.articleCard}
+                >
+                    {post.payload.cover && (
+                        <ExpoImage
+                            source={{ uri: post.payload.cover }}
+                            style={styles.articleCover}
                             contentFit="cover"
                             cachePolicy="memory-disk"
                         />
-                    </View>
-                    
-                    <UserDetails feed={post} fullNameFontSize={13} />
-                </View>
-          
-        
-                <View >
-                    {displayText ? (
-                        <Text style={styles.postText}>
-                            {displayText}
-                            {isLongPostText && (
-                                <Text onPress={toggleExpanded} style={styles.seeMoreText}>
-                                    {isExpanded ? ' See less' : ' See more'}
-                                </Text>
-                            )}
-                        </Text>
-                    ) : null}
-                </View>
-
-        </View>
-
-        
-
-            {post.type === 'poll' ? (
-                // Lightweight inline poll rendering to avoid circular imports
-                <View style={{ marginTop: 5, paddingRight: 5, width: '100%' }}>
-                    <Text style={{ color: Colors.neutral430, fontSize: 12 }}>Poll</Text>
-                </View>
-            ) : post.type === 'product' ? (
-                // <SharedProductItem post={post} />
-                    <ProductContent feed={post} leftOffset={leftOffset} rightOffset={rightOffset} imageWidth={imageWidth} containerWidth={effectiveContainerWidth} />
-            ) : post.type === 'article' && post.payload ? (
-                <TouchableOpacity onPress={() => openCommentModal(post.id)} activeOpacity={0.8} style={{ marginTop: 10 }}>
-                    {post.payload.cover && (
-                        <ExpoImage 
-                            source={{ uri: post.payload.cover }} 
-                            style={{ width: '100%', height: 160, borderRadius: 8, backgroundColor: Colors.neutral150 }} 
-                            contentFit="cover"
-                            cachePolicy="memory-disk" 
-                        />
                     )}
-                    <View style={{ marginTop: 8 }}>
-                        <Text style={{ fontWeight: 'bold', fontSize: 15, color: Colors.neutral700 }} numberOfLines={2}>{post.payload.title}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                            <Text style={{ fontSize: 12, color: Colors.neutral430, fontWeight: '500' }}>Read article</Text>
-                            <Ionicons name="arrow-forward" size={12} color={Colors.neutral430} style={{ marginLeft: 2 }} />
+                    <View style={styles.articleMeta}>
+                        <Text style={styles.articleTitle} numberOfLines={2}>
+                            {post.payload.title}
+                        </Text>
+                        <View style={styles.articleReadRow}>
+                            <Text style={styles.articleReadText}>Read article</Text>
+                            <Ionicons name="arrow-forward" size={12} color={ACCENT} style={{ marginLeft: 4 }} />
                         </View>
                     </View>
                 </TouchableOpacity>
-            ) : (
-                mediaItem ? (
-                    hasError ? (
-                        <View style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginTop: 10, backgroundColor: Colors.neutral800, borderRadius: 10, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
-                            <Ionicons name="alert-circle-outline" size={30} color={Colors.white} />
-                            <Text style={{color: Colors.white, fontSize: 14, marginTop: 10}}>Something went wrong</Text>
-                            <TouchableOpacity onPress={handleRetry} style={{marginTop: 15, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: Colors.neutral700, borderRadius: 20}}>
-                                <Text style={{color: Colors.white, fontSize: 12}}>Try Again</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                    <TouchableWithoutFeedback onPress={handlePress}>
-                    <View style={{ width: MEDIA_WIDTH, height: MEDIA_HEIGHT, marginTop: 10, backgroundColor: Colors.black, borderRadius: 10, overflow: 'hidden' }}>
-                        {isVideo ? (
-                             <Videocontent feedId={parentFeedId} media={post.media} />
-                        ) : (
-                            mediaItem.url ? (
-                                <ExpoImage 
-                                    source={{ uri: mediaItem.url }} 
-                                    style={{ width: '100%', height: '100%' }} 
-                                    contentFit="cover"
-                                    cachePolicy="memory-disk" 
-                                />
-                            ) : null
-                        )}
+
+            ) : mediaItem ? (
+                hasError ? (
+                    <View style={[styles.mediaBox, { width: mediaImgWidth, height: mediaImgHeight }]}>
+                        <Ionicons name="alert-circle-outline" size={28} color={Colors.white} />
+                        <Text style={styles.errorText}>Something went wrong</Text>
+                        <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
+                            <Text style={styles.retryText}>Try Again</Text>
+                        </TouchableOpacity>
                     </View>
+                ) : (
+                    <TouchableWithoutFeedback onPress={handlePress}>
+                        <View style={[styles.mediaBox, { width: mediaImgWidth, height: mediaImgHeight }]}>
+                            {isVideo ? (
+                                <Videocontent feedId={parentFeedId} media={post.media} isVisible={isVisible} />
+                            ) : mediaItem.url ? (
+                                <ExpoImage
+                                    source={{ uri: mediaItem.url }}
+                                    style={StyleSheet.absoluteFill}
+                                    contentFit="cover"
+                                    cachePolicy="memory-disk"
+                                />
+                            ) : null}
+                        </View>
                     </TouchableWithoutFeedback>
-                    )
-                ) : null
-            )}
+                )
+            ) : null}
+
         </View>
     );
 };
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    sharedPostContainer: {
+    container: {
+        backgroundColor: BG_SHARED,
         borderWidth: 1,
-        borderColor: Colors.neutral210,
-        borderRadius: 10,
-        padding: 10,
+        borderColor: BORDER,
+        borderRadius: 14,
+        overflow: 'hidden',
+        padding: 12,
+        gap: 10,
     },
-    muteButton: {
+
+    // ── Shared label ──────────────────────────────────────────────────────────
+    sharedLabel: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    sharedLabelText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: ACCENT,
+        fontFamily: AppDetails.fontFamily?.body,
+        letterSpacing: 0.3,
+        textTransform: 'uppercase',
+    },
+
+    // ── Author header ─────────────────────────────────────────────────────────
+    header: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    avatarWrapper: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    avatarRing: {
         position: 'absolute',
-        bottom: 10,
-        right: 10,
-        backgroundColor: withOpacity(Colors.black, 0.6),
-        padding: 8,
-        borderRadius: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        borderWidth: 1.5,
+        borderColor: AVATAR_RING,
     },
-    sharedPostContainerTop: {
-        paddingHorizontal:10,
-        paddingTop:10,
-        borderTopWidth:1,
-        borderLeftWidth:1,
-        borderRightWidth:1,
-        borderTopLeftRadius:10,
-        borderTopRightRadius:10,
-        marginBottom:5,
-        borderColor:Colors.neutral200,
+    avatar: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
     },
+    userDetailsWrapper: {
+        flex: 1,
+    },
+
+    // ── Caption ───────────────────────────────────────────────────────────────
     postText: {
-        marginTop: 10, 
-        fontFamily: AppDetails.fontFamily.body, 
-        fontSize: 13, 
-        color: AppDetails.bodyColor,
+        fontSize: 13.5,
+        color: TEXT_BODY,
+        lineHeight: 20,
+        fontFamily: AppDetails.fontFamily?.body,
+        letterSpacing: 0.1,
     },
     seeMoreText: {
-        color: Colors.neutral430, 
+        color: ACCENT,
+        fontWeight: '700',
+        fontSize: 13,
+    },
+
+    // ── Poll badge ────────────────────────────────────────────────────────────
+    pollBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: withOpacity(ACCENT, 0.08),
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
+    },
+    pollBadgeText: {
+        fontSize: 12,
+        color: TEXT_MUTED,
         fontWeight: '600',
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+
+    // ── Article card ──────────────────────────────────────────────────────────
+    articleCard: {
+        borderRadius: 10,
+        overflow: 'hidden',
+        backgroundColor: Colors.white,
+        borderWidth: 1,
+        borderColor: BORDER,
+    },
+    articleCover: {
+        width: '100%',
+        height: 150,
+        backgroundColor: Colors.neutral150,
+    },
+    articleMeta: {
+        padding: 10,
+    },
+    articleTitle: {
+        fontWeight: '700',
+        fontSize: 14,
+        color: TEXT_BODY,
+        lineHeight: 20,
+        fontFamily: AppDetails.fontFamily?.heading,
+    },
+    articleReadRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 6,
+    },
+    articleReadText: {
+        fontSize: 12,
+        color: ACCENT,
+        fontWeight: '600',
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+
+    // ── Media box ─────────────────────────────────────────────────────────────
+    mediaBox: {
+        borderRadius: 10,
+        overflow: 'hidden',
+        backgroundColor: Colors.neutral800,
+        justifyContent: 'center',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+    },
+
+    // ── Error state ───────────────────────────────────────────────────────────
+    errorText: {
+        color: Colors.white,
+        fontSize: 13,
+        marginTop: 8,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+    retryBtn: {
+        marginTop: 12,
+        paddingVertical: 7,
+        paddingHorizontal: 18,
+        backgroundColor: Colors.neutral700,
+        borderRadius: 20,
+    },
+    retryText: {
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: '600',
+        fontFamily: AppDetails.fontFamily?.body,
     },
 });
 
-
-// Optimized memo - only re-render when post data changes
 export default memo(SharedContent, (prev, next) => {
     return (
-        prev.post.id === next.post.id &&
-        prev.parentFeedId === next.parentFeedId &&
-        prev.post.likes_count === next.post.likes_count &&
-        prev.post.comments_count === next.post.comments_count
+        prev.post.id             === next.post.id             &&
+        prev.parentFeedId        === next.parentFeedId        &&
+        prev.post.likes_count    === next.post.likes_count    &&
+        prev.post.comments_count === next.post.comments_count &&
+        prev.isVisible           === next.isVisible
     );
 });

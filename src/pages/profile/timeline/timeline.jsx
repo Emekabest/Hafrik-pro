@@ -78,7 +78,9 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId, refre
                 shared_post: post.shared_post || null,
                 context: post.context || { type: 'feed' },
                 likes_count: post.likes_count || 0,
-                is_liked: post.is_liked || false,
+                is_liked: post.is_liked ?? false,
+                my_reaction: post.my_reaction ?? null,
+                reactions: post.reactions ?? null,
                 comments_count: post.comments_count || 0,
                 created: post.created || post.time,
                 user: post.user || null,
@@ -111,15 +113,16 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId, refre
 
     return (
         <View style={styles.container}>
-            <Feeds 
-                feedsName="profileTimelineFeeds" 
-                combinedData={combinedData} 
-                feeds={transformedPosts} 
+            <Feeds
+                feedsName="profileTimelineFeeds"
+                combinedData={combinedData}
+                feeds={transformedPosts}
                 API_URL={API_URL}
                 feedsController={ProfileTimelineController}
                 stickyHeaderIndices={stickyHeaderIndices}
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
+                hideScrollTop
             />
         </View>
     )

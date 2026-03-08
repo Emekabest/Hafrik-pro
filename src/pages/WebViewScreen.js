@@ -13,84 +13,46 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../AuthContext';
+import useWebViewSession, { REDIRECT_GUARD } from '../hooks/useWebViewSession';
 import AuthenticatedWebView from '../components/AuthenticatedWebView';
 import { Colors } from '../theme';
 
-const BRAND = Colors.primaryDark;
-const WHITE = Colors.white;
-const DARK = Colors.black;
-const MUTED = Colors.secondaryText;
-const BORDER = Colors.border;
+const BRAND   = Colors.primaryDark;
+const WHITE   = Colors.white;
+const DARK    = Colors.black;
+const MUTED   = Colors.secondaryText;
+const BORDER  = Colors.border;
 const WARNING = Colors.warning;
-
-const BRIDGE_URL = 'https://hafrik.com/api/v1/auth/webview-login.php';
 
 const WebViewScreen = ({ navigation, route }) => {
   const { url, title } = route.params || {};
   const { token, user } = useAuth();
   const webViewRef = useRef(null);
 
-  const [ready,       setReady]       = useState(false);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState(false);
-  const [bridgeError, setBridgeError] = useState(null);
-  const [canGoBack,    setCanGoBack]    = useState(false);
-  const [currentUrl,   setCurrentUrl]   = useState(url || 'https://hafrik.com');
-  const [sessionCreds, setSessionCreds] = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(false);
+  const [canGoBack,  setCanGoBack]  = useState(false);
+  const [currentUrl, setCurrentUrl] = useState(url || 'https://hafrik.com');
 
-  // ─── 1. Bridge + Cookie injection ─────────────────────────────────────────
-  const initSession = useCallback(async () => {
-    setBridgeError(null);
-    try {
-      const res = await fetch(BRIDGE_URL, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  const { ready, bridgeError, initSession, cookieJS } = useWebViewSession(token);
 
-      const data = await res.json();
-      console.log('Bridge response:', data);
-
-      if (data.status !== 'success') {
-        setBridgeError('Bridge error: ' + (data.message || 'unknown'));
-        return;
-      }
-
-      setSessionCreds({ phpsessid: data.phpsessid, session_token: data.session_token });
-      console.log('✅ Session ready, PHPSESSID:', data.phpsessid);
-      setReady(true);
-    } catch (e) {
-      console.error('Bridge error:', e);
-      setBridgeError(e.message);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token) initSession();
-  }, [token]);
-
-  // ─── 2a. Inject user data before page content loads ────────────────────
+  // ─── Inject user data before page loads ──────────────────────────────────
   const injectedBeforeContent = useMemo(() => {
-    if (!user) return 'true;';
-    const payload = JSON.stringify({
-      id:       user.id        ?? null,
-      username: user.username  ?? null,
-      email:    user.email     ?? null,
-      name:     user.name ?? user.full_name ?? user.username ?? null,
-      avatar:   user.avatar ?? user.profile_picture ?? null,
-      token:    token ?? null,
-    });
-    return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;true;`;
-  }, [user, token]);
+    const userPayload = user ? (() => {
+      const payload = JSON.stringify({
+        id:       user.id        ?? null,
+        username: user.username  ?? null,
+        email:    user.email     ?? null,
+        name:     user.name ?? user.full_name ?? user.username ?? null,
+        avatar:   user.avatar ?? user.profile_picture ?? null,
+        token:    token ?? null,
+      });
+      return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;`;
+    })() : '';
+    return `${cookieJS}${userPayload}true;`;
+  }, [user, token, cookieJS]);
 
-  // ─── 2b. Cookie injection + redirect away from auth pages ─────────────────
-  const injectedScript = useMemo(() => {
-    const cookiePart = sessionCreds
-      ? `(function(){if(document.cookie.indexOf('PHPSESSID=')!==-1)return;var e=new Date();e.setDate(e.getDate()+30);var x=e.toUTCString();document.cookie='PHPSESSID=${sessionCreds.phpsessid};path=/;domain=.hafrik.com;expires='+x;document.cookie='session_token=${sessionCreds.session_token};path=/;domain=.hafrik.com;expires='+x;window.location.reload();})();`
-      : '';
-    return cookiePart + `(function(){var p=window.location.pathname.toLowerCase();var a=['/login','/signin','/register','/signup'];if(a.some(function(x){return p.includes(x);})){window.location.replace('/');}})();true;`;
-  }, [sessionCreds]);
-
-  // ─── 3. Navigation handlers ───────────────────────────────────────────────
+  // ─── Navigation handlers ──────────────────────────────────────────────────
   const handleLoadStart = () => { setLoading(true);  setError(false); };
   const handleLoadEnd   = () =>   setLoading(false);
   const handleError     = () => { setLoading(false);  setError(true); };
@@ -119,7 +81,7 @@ const WebViewScreen = ({ navigation, route }) => {
     return () => handler.remove();
   }, [canGoBack]);
 
-  // ─── 4. Guard: no token ───────────────────────────────────────────────────
+  // ─── Guard: no token ──────────────────────────────────────────────────────
   if (!token || !user) {
     return (
       <SafeAreaView style={styles.container}>
@@ -136,7 +98,7 @@ const WebViewScreen = ({ navigation, route }) => {
     );
   }
 
-  // ─── 5. Guard: bridge failed ──────────────────────────────────────────────
+  // ─── Guard: bridge failed ─────────────────────────────────────────────────
   if (bridgeError) {
     return (
       <SafeAreaView style={styles.container}>
@@ -153,7 +115,7 @@ const WebViewScreen = ({ navigation, route }) => {
     );
   }
 
-  // ─── 6. Guard: waiting for cookies ────────────────────────────────────────
+  // ─── Guard: waiting for cookies ───────────────────────────────────────────
   if (!ready) {
     return (
       <SafeAreaView style={styles.container}>
@@ -166,7 +128,7 @@ const WebViewScreen = ({ navigation, route }) => {
     );
   }
 
-  // ─── 7. Main WebView ──────────────────────────────────────────────────────
+  // ─── Main WebView ─────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -186,7 +148,7 @@ const WebViewScreen = ({ navigation, route }) => {
         source={{ uri: currentUrl }}
         style={styles.webview}
         injectedJavaScriptBeforeContentLoaded={injectedBeforeContent}
-        injectedJavaScript={injectedScript}
+        injectedJavaScript={REDIRECT_GUARD}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onError={handleError}

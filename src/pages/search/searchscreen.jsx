@@ -7,8 +7,9 @@
 //   • Reel detection → Reels2 with initialPostId
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, StyleSheet, StatusBar, FlatList,
+  View, StyleSheet, StatusBar,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -165,7 +166,7 @@ const SearchScreen = () => {
   const handleItemPress = useCallback((item) => {
     saveRecent(searchQuery);
     const type = (item.type || '').toLowerCase();
-    if (type === 'user')    return navigation.navigate('Profile',        { userId: item.id });
+    if (type === 'user')    return navigation.navigate('UserProfile',    { userId: item.id });
     if (type === 'page')    return navigation.navigate('BusinessDetails', { pageId: item.id });
     if (type === 'group')   return navigation.navigate('GroupDetails',    { groupId: item.id });
     if (type === 'article') return navigation.navigate('ArticleDetails',  { postId: item.id, title: item.title, link: item.link });
@@ -383,10 +384,11 @@ const SearchScreen = () => {
         onTabChange={setActiveTab}
       />
 
-      <FlatList
+      <FlashList
         data={listData}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
+        estimatedItemSize={120}
         ListEmptyComponent={
           showEmpty ? (
             <SearchEmptyState
@@ -403,7 +405,7 @@ const SearchScreen = () => {
               onRemoveRecent={removeRecent}
               suggestedPeople={suggestedPeople}
               onPersonPress={(person) =>
-                navigation.navigate('Profile', { userId: person.id ?? person.user_id })
+                navigation.navigate('UserProfile', { userId: person.id ?? person.user_id })
               }
               followedIds={followedIds}
               onFollowToggle={handleFollowToggle}
@@ -414,8 +416,6 @@ const SearchScreen = () => {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
         windowSize={7}
         removeClippedSubviews
       />

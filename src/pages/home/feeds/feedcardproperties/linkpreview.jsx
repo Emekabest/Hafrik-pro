@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Image, View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 
 const LinkPreview = ({ url }) => {
   const [thumbnail, setThumbnail] = useState(null);
@@ -45,10 +46,11 @@ const LinkPreview = ({ url }) => {
   if (loading) return null;
   
   return thumbnail ? (
-    <Image 
-      source={{ uri: thumbnail }} 
+    <ExpoImage
+      source={{ uri: thumbnail }}
       style={{ width: "100%", height: "100%" }}
-      resizeMode="cover"
+      contentFit="cover"
+      cachePolicy="memory-disk"
     />
   ) : null;
 };

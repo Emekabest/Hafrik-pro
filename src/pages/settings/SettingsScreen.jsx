@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
+import { useTheme } from '../../theme/ThemeContext';
 import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme/colors';
 
@@ -27,28 +28,28 @@ const CREAM  = Colors.background;
 const DARK   = Colors.deepSlate;
 const MUTED  = Colors.secondaryText;
 
-const Section = ({ title, children }) => (
+const Section = ({ title, children, themeColors }) => (
   <View style={styles.section}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    <View style={styles.sectionCard}>{children}</View>
+    <Text style={[styles.sectionTitle, themeColors && { color: themeColors.textSecondary }]}>{title}</Text>
+    <View style={[styles.sectionCard, themeColors && { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>{children}</View>
   </View>
 );
 
-const Row = ({ icon, iconColor = BRAND, label, value, onPress, destructive, last }) => (
+const Row = ({ icon, iconColor = BRAND, label, value, onPress, destructive, last, right, themeColors }) => (
   <TouchableOpacity
-    style={[styles.row, last && styles.rowLast]}
+    style={[styles.row, last && styles.rowLast, themeColors && { borderBottomColor: themeColors.border }]}
     activeOpacity={onPress ? 0.82 : 1}
     onPress={onPress}
-    disabled={!onPress}
+    disabled={!onPress && !right}
   >
     <View style={[styles.rowIcon, { backgroundColor: `${iconColor}18` }]}>
       <Ionicons name={icon} size={17} color={iconColor} />
     </View>
-    <Text style={[styles.rowLabel, destructive && styles.rowLabelRed]}>{label}</Text>
-    {value ? (
-      <Text style={styles.rowValue}>{value}</Text>
+    <Text style={[styles.rowLabel, destructive && styles.rowLabelRed, themeColors && { color: themeColors.text }]}>{label}</Text>
+    {right ? right : value ? (
+      <Text style={[styles.rowValue, themeColors && { color: themeColors.textSecondary }]}>{value}</Text>
     ) : onPress ? (
-      <Ionicons name="chevron-forward" size={16} color={withOpacity(Colors.black, 0.25)} />
+      <Ionicons name="chevron-forward" size={16} color={themeColors ? themeColors.textMuted : withOpacity(Colors.black, 0.25)} />
     ) : null}
   </TouchableOpacity>
 );
@@ -57,6 +58,7 @@ export default function SettingsScreen() {
   const navigation = useNavigation();
   const { top }    = useSafeAreaInsets();
   const { logout } = useAuth();
+  const { isDark, colors } = useTheme();
 
   const openWeb = (title, url) =>
     navigation.navigate('InAppBrowser', { title, url });
@@ -81,14 +83,16 @@ export default function SettingsScreen() {
     );
   };
 
+  const tc = isDark ? colors : null; // pass null for light mode (uses defaults)
+
   return (
-    <View style={[styles.root, { paddingTop: top }]}>
+    <View style={[styles.root, { paddingTop: top, backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={21} color={Colors.white} />
+          <Ionicons name="arrow-back" size={21} color={colors.headerText} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: colors.headerText }]}>Settings</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -97,73 +101,83 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: 60 }}
       >
         {/* Account */}
-        <Section title="Account">
+        <Section title="Account" themeColors={tc}>
           <Row
             icon="person-outline"
             label="Edit Profile"
-            onPress={() => openWeb('Edit Profile', 'https://hafrik.com/settings/information')}
+            onPress={() => navigation.navigate('Profile')}
+            themeColors={tc}
           />
           <Row
             icon="lock-closed-outline"
             label="Change Password"
             onPress={() => openWeb('Change Password', 'https://hafrik.com/settings/security/password')}
+            themeColors={tc}
           />
           <Row
             icon="mail-outline"
             label="Email & Phone"
             onPress={() => openWeb('Email & Phone', 'https://hafrik.com/settings/security/password')}
             last
+            themeColors={tc}
           />
         </Section>
 
         {/* Privacy */}
-        <Section title="Privacy">
+        <Section title="Privacy" themeColors={tc}>
           <Row
             icon="eye-outline"
             label="Privacy Settings"
             onPress={() => openWeb('Privacy Settings', 'https://hafrik.com/settings/privacy')}
+            themeColors={tc}
           />
           <Row
             icon="notifications-outline"
             label="Notification Preferences"
             onPress={() => openWeb('Notifications', 'https://hafrik.com/settings/privacy')}
             last
+            themeColors={tc}
           />
         </Section>
 
         {/* About */}
-        <Section title="About">
+        <Section title="About" themeColors={tc}>
           <Row
             icon="document-text-outline"
-            label="Terms of Service"
-            onPress={() => openWeb('Terms of Service', 'https://hafrik.com/terms')}
+            label="Terms of Use"
+            onPress={() => openWeb('Terms of Use', 'https://hafrik.com/termsofuse.html')}
+            themeColors={tc}
           />
           <Row
             icon="shield-checkmark-outline"
             label="Privacy Policy"
-            onPress={() => openWeb('Privacy Policy', 'https://hafrik.com/privacy')}
+            onPress={() => openWeb('Privacy Policy', 'https://hafrik.com/static/privacy')}
+            themeColors={tc}
+          />
+          <Row
+            icon="megaphone-outline"
+            iconColor={ACCENT}
+            label="Our Media Kit"
+            onPress={() => openWeb('Media Kit', 'https://hafrik.com/sponsored-ads.html')}
+            themeColors={tc}
           />
           <Row
             icon="information-circle-outline"
+            label="About Us"
+            onPress={() => openWeb('About Us', 'https://hafrik.com/abouthafrik.html')}
+            themeColors={tc}
+          />
+          <Row
+            icon="layers-outline"
             label="App Version"
             value={`v${AppDetails?.version ?? '1.0.0'}`}
             last
-          />
-        </Section>
-
-        {/* More Settings link */}
-        <Section title="Advanced">
-          <Row
-            icon="options-outline"
-            iconColor={ACCENT}
-            label="More Settings"
-            onPress={() => navigation.navigate('AdvancedSettings')}
-            last
+            themeColors={tc}
           />
         </Section>
 
         {/* Account Actions */}
-        <Section title="Account Actions">
+        <Section title="Account Actions" themeColors={tc}>
           <Row
             icon="log-out-outline"
             iconColor={Colors.warningStrong}
@@ -171,6 +185,7 @@ export default function SettingsScreen() {
             destructive
             onPress={handleLogout}
             last
+            themeColors={tc}
           />
         </Section>
       </ScrollView>

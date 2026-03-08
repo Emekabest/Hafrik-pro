@@ -1,4 +1,4 @@
-import { StyleSheet, View, Alert, Text, Animated, Dimensions } from "react-native";
+import { StyleSheet, View, Alert, Text, Animated, Dimensions, FlatList, Image, TouchableOpacity } from "react-native";
 import { useAuth } from "../../AuthContext";
 import { useEffect, useMemo, useState, useCallback, useRef, memo } from "react";
 import React from "react";
@@ -15,6 +15,9 @@ const { width: SCREEN_W } = Dimensions.get("window");
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
 const WHITE  = Colors.white;
+const MUTED  = Colors.secondaryText;
+const DARK   = Colors.black;
+const CARD   = Colors.white;
 
 // Hardcoded rank movement deltas for top-5 trending (positive=rising, negative=dropping)
 const RANK_DELTAS = [2, -1, 0, 1, -2];
@@ -199,6 +202,71 @@ const th = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────
+// Most Active Users This Week
+// ─────────────────────────────────────────────────────
+
+const ActiveUserChip = ({ user }) => {
+  const navigation = useNavigation();
+  const name   = user.username ?? user.full_name ?? user.name ?? 'User';
+  const avatar = user.avatar ?? user.user_picture ?? null;
+  const posts  = user.posts_count ?? user.total_posts ?? 0;
+  const fmtN   = (n) => { const v = Number(n || 0); return v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v); };
+  return (
+    <TouchableOpacity
+      style={mau.chip}
+      activeOpacity={0.85}
+      onPress={() => navigation.navigate('UserProfile', { userId: user.id ?? user.user_id })}
+    >
+      <View style={mau.avatarWrap}>
+        {avatar
+          ? <Image source={{ uri: avatar }} style={mau.avatar} />
+          : <View style={[mau.avatar, mau.avatarFb]}><Text style={mau.avatarTxt}>{name.slice(0, 1).toUpperCase()}</Text></View>
+        }
+        <View style={mau.activeDot} />
+      </View>
+      <Text style={mau.chipName} numberOfLines={1}>{name}</Text>
+      {posts > 0 && <Text style={mau.chipSub}>{fmtN(posts)} posts</Text>}
+    </TouchableOpacity>
+  );
+};
+
+const MostActiveUsers = ({ users }) => {
+  if (!users || users.length === 0) return null;
+  return (
+    <View style={mau.wrap}>
+      <View style={mau.labelRow}>
+        <View style={mau.labelAccent} />
+        <Text style={mau.labelTxt}>MOST ACTIVE THIS WEEK</Text>
+        <Ionicons name="flame" size={13} color={ACCENT} />
+      </View>
+      <FlatList
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        data={users.slice(0, 12)}
+        keyExtractor={(u, i) => `mau-${u.id ?? u.user_id ?? i}`}
+        renderItem={({ item }) => <ActiveUserChip user={item} />}
+        contentContainerStyle={{ paddingHorizontal: 14, gap: 12, paddingBottom: 14 }}
+      />
+    </View>
+  );
+};
+
+const mau = StyleSheet.create({
+  wrap:        { backgroundColor: CARD, marginHorizontal: 14, marginBottom: 4, borderRadius: 18, borderWidth: 1, borderColor: BRAND + '12', paddingTop: 12, overflow: 'hidden', shadowColor: DARK, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  labelRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, marginBottom: 10 },
+  labelAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: ACCENT },
+  labelTxt:    { flex: 1, fontSize: 11, fontWeight: '800', color: MUTED, letterSpacing: 1.4 },
+  chip:        { alignItems: 'center', width: 76, gap: 4 },
+  avatarWrap:  { position: 'relative' },
+  avatar:      { width: 54, height: 54, borderRadius: 27 },
+  avatarFb:    { backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' },
+  avatarTxt:   { color: WHITE, fontWeight: '900', fontSize: 20 },
+  activeDot:   { position: 'absolute', bottom: 1, right: 1, width: 13, height: 13, borderRadius: 7, backgroundColor: ACCENT, borderWidth: 2, borderColor: WHITE },
+  chipName:    { fontSize: 11, fontWeight: '700', color: DARK, textAlign: 'center', maxWidth: 70 },
+  chipSub:     { fontSize: 10, color: MUTED, textAlign: 'center' },
+});
+
+// ─────────────────────────────────────────────────────
 // Main Screen
 // ─────────────────────────────────────────────────────
 
@@ -319,10 +387,9 @@ const TrendingOnHafrikScreen = () => {
       ),
     };
 
-    // Build interstitial pool, then shuffle so order varies each load
+    // Build interstitial pool (people moved to dedicated section above)
     const pool = [];
     if (adsList.length       > 0) pool.push({ type: 'ad',            data: adsList[0] });
-    if (peopleList.length    > 0) pool.push({ type: 'peoplecard',    data: peopleList });
     if (bizList.length       > 0) pool.push({ type: 'bizcard',       data: bizList });
     if (communityList.length > 0) pool.push({ type: 'communitycard', data: communityList });
     for (let i = pool.length - 1; i > 0; i--) {
@@ -365,7 +432,11 @@ const TrendingOnHafrikScreen = () => {
       }
     });
 
-    return [hero, ...feedItems];
+    const mostActiveItem = peopleList.length > 0
+      ? { type: 'renderComponent', renderComponent: () => <MostActiveUsers users={peopleList} /> }
+      : null;
+
+    return [hero, ...(mostActiveItem ? [mostActiveItem] : []), ...feedItems];
   }, [trendingFeedsFromStore, totalViews, adsList, peopleList, bizList, communityList]);
 
   return (

@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
 import { fetchEventFeed } from './eventsApi';
 import { Colors } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const COVER_H = SCREEN_H * 0.38;
@@ -168,6 +169,7 @@ export default function EventDetailScreen({ navigation, route }) {
   const event = route.params?.event ?? {};
   const { token } = useAuth();
   const { top, bottom } = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
 
   const [posts,       setPosts]       = useState([]);
   const [feedPage,    setFeedPage]    = useState(1);
@@ -380,7 +382,7 @@ export default function EventDetailScreen({ navigation, route }) {
 
   // ─── Sticky top bar (appears after scrolling past cover) ────────────────────
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: tc.background }]}>
       {/* Sticky transparent → solid top bar */}
       <Animated.View
         style={[styles.stickyBar, { paddingTop: top + 4, opacity: headerOpacity }]}

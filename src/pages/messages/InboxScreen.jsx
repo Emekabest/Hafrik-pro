@@ -19,8 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
 
 const BASE_URL = 'https://hafrik.com';
 const BRAND    = Colors.primaryDark;
@@ -176,14 +176,9 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin }) => {
               </Text>
 
               {unreadCount > 0 && (
-                <LinearGradient
-                  colors={[ACCENT, BRAND]}
-                  style={styles.badge}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
+                <View style={[styles.badge, { backgroundColor: ACCENT }]}>
                   <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                </LinearGradient>
+                </View>
               )}
             </View>
           </View>
@@ -241,9 +236,9 @@ const SectionLabel = ({ label }) => (
 /* ─── Empty state ─── */
 const EmptyState = () => (
   <View style={styles.empty}>
-    <LinearGradient colors={[ACCENT + '33', BRAND + '22']} style={styles.emptyCircle}>
+    <View style={[styles.emptyCircle, { backgroundColor: ACCENT + '1A' }]}>
       <Ionicons name="chatbubbles-outline" size={44} color={MUTED} />
-    </LinearGradient>
+    </View>
     <Text style={styles.emptyTitle}>No conversations yet</Text>
     <Text style={styles.emptySubtitle}>Start a conversation with someone on Hafrik.</Text>
   </View>
@@ -254,6 +249,7 @@ export default function InboxScreen() {
   const navigation    = useNavigation();
   const { top }       = useSafeAreaInsets();
   const { token }     = useAuth();
+  const { colors: tc } = useTheme();
   const setMsgCount   = useStore((s) => s.setMessageCount);
 
   const [items,      setItems]      = useState([]);
@@ -362,16 +358,11 @@ export default function InboxScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: tc.background }]}>
       <StatusBar barStyle="light-content" />
 
       {/* ── Header ── */}
-      <LinearGradient
-        colors={[BRAND, ACCENT + 'CC']}
-        style={[styles.header, { paddingTop: top + 6 }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View style={[styles.header, { paddingTop: top + 6 }]}>
         <Animated.View
           style={[
             styles.headerRow,
@@ -385,7 +376,20 @@ export default function InboxScreen() {
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.headerEyebrow}>HAFRIK</Text>
-            <Text style={styles.headerTitle}>Messages</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.headerTitle}>Messages</Text>
+              {items.filter(c => !c.seen || c.seen === 0 || c.seen === '0').length > 0 && (
+                <View style={styles.titleUnreadBadge}>
+                  <Text style={styles.titleUnreadTxt}>
+                    {items.filter(c => !c.seen || c.seen === 0 || c.seen === '0').length > 9
+                      ? '9+' : items.filter(c => !c.seen || c.seen === 0 || c.seen === '0').length}
+                  </Text>
+                </View>
+              )}
+            </View>
+            {items.length > 0 && (
+              <Text style={styles.headerStat}>{items.length} conversations</Text>
+            )}
           </View>
 
           <TouchableOpacity style={styles.composeBtn} activeOpacity={0.8}
@@ -397,7 +401,7 @@ export default function InboxScreen() {
 
         {/* Search bar */}
         <View style={[styles.searchBar, searchFocus && styles.searchBarFocused]}>
-          <Ionicons name="search" size={16} color={searchFocus ? ACCENT : MUTED} />
+          <Ionicons name="search" size={16} color={searchFocus ? ACCENT : WHITE + '88'} />
           <TextInput
             placeholder="Search messages…"
             value={search}
@@ -405,15 +409,15 @@ export default function InboxScreen() {
             onFocus={() => setSearchFocus(true)}
             onBlur={() => setSearchFocus(false)}
             style={styles.searchInput}
-            placeholderTextColor={MUTED}
+            placeholderTextColor={WHITE + '55'}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-circle" size={16} color={MUTED} />
+              <Ionicons name="close-circle" size={16} color={WHITE + '88'} />
             </TouchableOpacity>
           )}
         </View>
-      </LinearGradient>
+      </View>
 
       {/* ── List ── */}
       <FlatList
@@ -462,13 +466,14 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
+    backgroundColor: BRAND,
     paddingHorizontal: 16,
     paddingBottom: 16,
     shadowColor: BRAND,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 8,
   },
   headerRow: {
     flexDirection: 'row',
@@ -482,9 +487,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: {
-    flex: 1, fontSize: 18, fontWeight: '800', color: WHITE,
-    letterSpacing: 0.3,
+    fontSize: 22, fontWeight: '900', color: WHITE, letterSpacing: 0.2,
   },
+  titleUnreadBadge: {
+    backgroundColor: ACCENT, borderRadius: 100,
+    paddingHorizontal: 7, paddingVertical: 2, minWidth: 22, alignItems: 'center',
+  },
+  titleUnreadTxt: { color: WHITE, fontSize: 11, fontWeight: '900' },
+  headerStat:     { fontSize: 11, color: WHITE + '66', marginTop: 2 },
   composeBtn: {
     width: 38, height: 38, borderRadius: 12,
     backgroundColor: ACCENT + '33',

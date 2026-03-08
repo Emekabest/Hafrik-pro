@@ -82,7 +82,7 @@ const VideoPlayer = memo(({ item, isVisible }) => {
   const [isMuted, setIsMuted] = useState(false);
 
   const player = useVideoPlayer({ uri: item.video_url }, p => {
-    if (p) { p.loop = true; }
+    if (p) { p.loop = false; }
   });
 
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });
@@ -156,7 +156,7 @@ const FeedReelPlayer = memo(({ item, isVisible, feedId }) => {
 
   // useVideoPlayer accepts null safely — no invalid source passed to native layer
   const player = useVideoPlayer(safeVideoUrl ? { uri: safeVideoUrl } : null, p => {
-    if (p && safeVideoUrl) { p.loop = true; }
+    if (p && safeVideoUrl) { p.loop = false; }
   });
 
   const { isPlaying }   = useEvent(player, 'playingChange', { isPlaying: player?.playing ?? false });

@@ -31,6 +31,17 @@ export default function GroupFeed({ route }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page,        setPage]        = useState(1);
   const [hasMore,     setHasMore]     = useState(true);
+  const [visiblePostId, setVisiblePostId] = useState(null);
+
+  const onViewableItemsChanged = React.useRef(({ viewableItems }) => {
+    const nextVisibleId = viewableItems.find((entry) => entry?.isViewable && entry?.item?.id)?.item?.id ?? null;
+    setVisiblePostId((prev) => (prev === nextVisibleId ? prev : nextVisibleId));
+  });
+
+  const viewabilityConfig = React.useRef({
+    itemVisiblePercentThreshold: 70,
+    waitForInteraction: false,
+  });
 
   useEffect(() => {
     if (groupId) loadFeed(1);
@@ -95,7 +106,10 @@ export default function GroupFeed({ route }) {
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => <FeedCard feed={item} />}
+        renderItem={({ item }) => <FeedCard feed={item} isVisible={visiblePostId === item?.id} />}
+        onViewableItemsChanged={onViewableItemsChanged.current}
+        viewabilityConfig={viewabilityConfig.current}
+        extraData={visiblePostId}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}

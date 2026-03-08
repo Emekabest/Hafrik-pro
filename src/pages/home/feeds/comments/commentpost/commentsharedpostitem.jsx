@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import CommentVideoItem from './commentvideoitem';
 import PollContent from '../../feedcardproperties/pollcontent';
 import CalculateElapsedTime from '../../../../../helpers/calculateelapsedtime';
@@ -12,6 +13,7 @@ const MEDIA_HEIGHT = 520;
 const MEDIA_WIDTH = 270;
 
 const CommentSharedPostItem = ({ post, isLeaving, parentFeedId }) => {
+    if (!post) return null;
     const isVideo = post.type === 'video' || post.type === 'reel';
     const mediaItem = post.media && post.media.length > 0 ? post.media[0] : null;
 
@@ -37,7 +39,7 @@ const CommentSharedPostItem = ({ post, isLeaving, parentFeedId }) => {
 
             <View style={isMultimediapostMode ? styles.sharedPostTopContainer : null}>
                 <View style={{ flexDirection: 'row', alignItems: 'center',  }}>
-                    <Image source={{ uri: avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} />
+                    <ExpoImage source={{ uri: avatar }} style={{ width: 30, height: 30, borderRadius: 15 }} contentFit="cover" cachePolicy="memory-disk" />
                     <View style={{ marginLeft: 10 }}>
                         <Text style={{ fontWeight: 'bold' }}>{fullName}</Text>
                         <Text style={{ color: Colors.neutral430 }}>{CalculateElapsedTime(postCreated)}</Text>

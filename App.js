@@ -3,10 +3,11 @@
 import { AppState, StyleSheet, View, Platform, Dimensions, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import Login from './src/pages/Login';
 import MainTabNavigator from './src/csslx.js/MainTabNavigator';
 import { AuthProvider, useAuth } from './src/AuthContext';
+import { ThemeProvider } from './src/theme/ThemeContext';
 import UniversalWebView from './src/pages/common/UniversalWebView';
 import CategoriesScreen from './src/pages/CategoriesScreen';
 import EventsScreen from './src/pages/EventsScreen';
@@ -58,6 +59,9 @@ import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen from './src/pages/settings/SettingsScreen';
 import SearchScreen from './src/pages/search/searchscreen';
 import EarningsScreen        from './src/pages/earnings/EarningsScreen';
+import MyPagesAndGroupsScreen   from './src/pages/mypages/MyPagesAndGroupsScreen';
+import JoinedCommunitiesScreen from './src/pages/communities/JoinedCommunitiesScreen';
+import LikedBusinessesScreen   from './src/pages/businesses/LikedBusinessesScreen';
 import ExchangeHomeScreen    from './src/pages/exchange/ExchangeHomeScreen';
 import ExchangeConfirmScreen from './src/pages/exchange/ExchangeConfirmScreen';
 import ExchangeHistoryScreen from './src/pages/exchange/ExchangeHistoryScreen';
@@ -139,6 +143,8 @@ function AppNavigator() {
 
 
 
+  /**Pause or any video playing in the feed */
+  const isNextVideo = useSharedStore(state => state.isNextVideo);
   
   // IMPORTANT: Use the store value (isAppActive_store) as dependency, NOT isAppActiveRef.current
   // Refs don't reliably trigger useEffect - using the store value ensures this fires every time
@@ -248,11 +254,13 @@ function AppNavigator() {
 
         <SafeAreaView style={[styles.container, { backgroundColor: AppDetails.primaryColor }]} edges={['top', 'left', 'right', 'bottom']} >
 
-            <Stack.Navigator 
-              initialRouteName={user && token ? "MainTabs" : "Login"} 
-              screenOptions={{ 
+            <Stack.Navigator
+              initialRouteName={user && token ? "MainTabs" : "Login"}
+              screenOptions={{
                 headerShown: false,
                 cardStyle: { backgroundColor: '#fff' },
+                gestureEnabled: true,
+                cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
               }}
             >
 
@@ -302,6 +310,9 @@ function AppNavigator() {
               <Stack.Screen name="SearchScreen" component={SearchScreen} />
               <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ cardStyle: { backgroundColor: '#fff' } }} />
               <Stack.Screen name="TrendingOnHafrik" component={TrendingOnHafrikScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="MyPagesAndGroups"    component={MyPagesAndGroupsScreen}   options={{ headerShown: false }} />
+              <Stack.Screen name="JoinedCommunities" component={JoinedCommunitiesScreen}  options={{ headerShown: false, gestureEnabled: true }} />
+              <Stack.Screen name="LikedBusinesses"   component={LikedBusinessesScreen}    options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="Earnings"       component={EarningsScreen}        options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeHome"    component={ExchangeHomeScreen}    options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeConfirm" component={ExchangeConfirmScreen} options={{ headerShown: false }} />
@@ -321,9 +332,11 @@ function AppNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <GlobalVideoPlayerProvider>
-        <AppNavigator />
-      </GlobalVideoPlayerProvider>
+      <ThemeProvider>
+        <GlobalVideoPlayerProvider>
+          <AppNavigator />
+        </GlobalVideoPlayerProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

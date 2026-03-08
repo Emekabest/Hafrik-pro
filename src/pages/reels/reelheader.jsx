@@ -13,8 +13,7 @@ const withOpacity = (hex, opacity) => {
 
 
 const TABS = [
-  { key: 'following', label: 'Following' },
-  { key: 'for_you',   label: 'For You'   },
+  { key: 'for_you', label: 'For You' },
 ];
 const INDICATOR_W = 20;
 const ACCENT = Colors.primary;

@@ -7,10 +7,9 @@
  *
  * Auto-login:
  *   If the URL is on hafrik.com the bridge endpoint is called with the
- *   user's Bearer token.  The returned PHP session credentials are injected
- *   as cookies so the user is already logged in when the page loads.
- *   User data is also exposed as window.hafrikNativeUser so the web app can
- *   personalise the page immediately without an extra round-trip.
+ *   user's Bearer token. PHPSESSID and session_token are set via
+ *   CookieManager at the native level so the user is already logged in
+ *   when the page loads — no reload needed.
  */
 
 import React, {
@@ -30,11 +29,12 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
+import useWebViewSession, { REDIRECT_GUARD } from '../../hooks/useWebViewSession';
+import AuthenticatedWebView from '../../components/AuthenticatedWebView';
 import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme/colors';
 
@@ -44,9 +44,7 @@ const withOpacity = (hex, opacity) => {
   return `#${normalized}${alpha}`;
 };
 
-
 // ─────────────────────────────────────────────────────────────────────────────
-const BRIDGE_URL  = 'https://hafrik.com/api/v1/auth/webview-login.php';
 const HAFRIK_HOST = 'hafrik.com';
 const BRAND       = Colors.primaryDark;
 const ACCENT      = Colors.primary;
@@ -116,10 +114,10 @@ function CenterState({ icon, iconColor, title, sub, btnLabel, onBtn }) {
 // MAIN SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 export default function UniversalWebView() {
-  const navigation        = useNavigation();
-  const route             = useRoute();
-  const { top }           = useSafeAreaInsets();
-  const { token, user }   = useAuth();
+  const navigation      = useNavigation();
+  const route           = useRoute();
+  const { top }         = useSafeAreaInsets();
+  const { token, user } = useAuth();
 
   const {
     url   = 'https://hafrik.com',
@@ -131,78 +129,28 @@ export default function UniversalWebView() {
 
   const webRef = useRef(null);
 
-  const [ready,        setReady]        = useState(!needsAuth);
-  const [sessionCreds, setSessionCreds] = useState(null);
-  const [bridgeError,  setBridgeError]  = useState(null);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState(false);
-  const [progress,     setProgress]     = useState(0);
-  const [canGoBack,    setCanGoBack]    = useState(false);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState(false);
+  const [progress,  setProgress]  = useState(0);
+  const [canGoBack, setCanGoBack] = useState(false);
 
-  // ── Bridge: exchange Bearer token for PHP session credentials ──────────────
-  const initSession = useCallback(async () => {
-    setBridgeError(null);
-    try {
-      const res  = await fetch(BRIDGE_URL, {
-        method:  'GET',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-
-      if (data.status !== 'success') {
-        setBridgeError(data.message || 'Authentication failed. Please try again.');
-        return;
-      }
-
-      setSessionCreds({ phpsessid: data.phpsessid, session_token: data.session_token });
-      setReady(true);
-    } catch (e) {
-      setBridgeError(e.message ?? 'Network error. Check your connection.');
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (needsAuth) initSession();
-  }, [needsAuth, initSession]);
+  const { ready, bridgeError, initSession, cookieJS } = useWebViewSession(token, { skip: !needsAuth });
 
   // ── JS injected BEFORE page content loads ─────────────────────────────────
-  // Exposes user data so the web app can personalise UI without extra requests.
   const injectedBeforeContent = useMemo(() => {
-    if (!user) return 'true;';
-    const payload = JSON.stringify({
-      id:       user.id        ?? null,
-      username: user.username  ?? null,
-      email:    user.email     ?? null,
-      name:     user.name ?? user.full_name ?? user.username ?? null,
-      avatar:   user.avatar ?? user.profile_picture ?? null,
-      token:    token ?? null,
-    });
-    return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;true;`;
-  }, [user, token]);
-
-  // ── JS injected AFTER page loads ──────────────────────────────────────────
-  // Sets cookies if not already present (triggers one reload, then stops).
-  // Also redirects away from login/register pages.
-  const injectedAfterLoad = useMemo(() => {
-    const cookiePart = sessionCreds
-      ? `(function(){` +
-          `if(document.cookie.indexOf('PHPSESSID=')!==-1)return;` +
-          `var e=new Date();e.setDate(e.getDate()+30);var x=e.toUTCString();` +
-          `document.cookie='PHPSESSID=${sessionCreds.phpsessid};path=/;domain=.hafrik.com;expires='+x;` +
-          `document.cookie='session_token=${sessionCreds.session_token};path=/;domain=.hafrik.com;expires='+x;` +
-          `window.location.reload();` +
-        `})();`
-      : '';
-
-    const redirectPart =
-      `(function(){` +
-        `var p=window.location.pathname.toLowerCase();` +
-        `var auth=['/login','/signin','/register','/signup'];` +
-        `if(auth.some(function(x){return p.includes(x);})){window.location.replace('/');}` +
-      `})();`;
-
-    return `${cookiePart}${redirectPart}true;`;
-  }, [sessionCreds]);
+    const userPayload = user ? (() => {
+      const payload = JSON.stringify({
+        id:       user.id        ?? null,
+        username: user.username  ?? null,
+        email:    user.email     ?? null,
+        name:     user.name ?? user.full_name ?? user.username ?? null,
+        avatar:   user.avatar ?? user.profile_picture ?? null,
+        token:    token ?? null,
+      });
+      return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;`;
+    })() : '';
+    return `${cookieJS}${userPayload}true;`;
+  }, [user, token, cookieJS]);
 
   // ── Android hardware back button ───────────────────────────────────────────
   const handleBack = useCallback(() => {
@@ -232,18 +180,8 @@ export default function UniversalWebView() {
   if (needsAuth && !ready && !bridgeError) {
     return (
       <View style={[s.root, { paddingTop: top }]}>
-        <BrowserHeader
-          title={title}
-          url={url}
-          onBack={() => navigation.goBack()}
-          onShare={null}
-        />
-        <CenterState
-          icon="key-outline"
-          iconColor={ACCENT}
-          title={null}
-          sub="Signing you in…"
-        />
+        <BrowserHeader title={title} url={url} onBack={() => navigation.goBack()} onShare={null} />
+        <CenterState icon="key-outline" iconColor={ACCENT} sub="Signing you in…" />
       </View>
     );
   }
@@ -252,12 +190,7 @@ export default function UniversalWebView() {
   if (bridgeError) {
     return (
       <View style={[s.root, { paddingTop: top }]}>
-        <BrowserHeader
-          title={title}
-          url={url}
-          onBack={() => navigation.goBack()}
-          onShare={null}
-        />
+        <BrowserHeader title={title} url={url} onBack={() => navigation.goBack()} onShare={null} />
         <CenterState
           icon="warning-outline"
           title="Session Error"
@@ -272,12 +205,7 @@ export default function UniversalWebView() {
   // ── Render: main browser ───────────────────────────────────────────────────
   return (
     <View style={[s.root, { paddingTop: top }]}>
-      <BrowserHeader
-        title={title}
-        url={url}
-        onBack={handleBack}
-        onShare={handleShare}
-      />
+      <BrowserHeader title={title} url={url} onBack={handleBack} onShare={handleShare} />
 
       {/* Thin teal progress bar */}
       <View style={s.progressTrack}>
@@ -295,34 +223,23 @@ export default function UniversalWebView() {
           onBtn={handleReload}
         />
       ) : (
-        <WebView
+        <AuthenticatedWebView
           ref={webRef}
           source={{ uri: url }}
           style={s.webview}
-
-          // Inject user data before the page paints (no reload needed)
           injectedJavaScriptBeforeContentLoaded={injectedBeforeContent}
-
-          // Set cookies + redirect guard after page loads
-          injectedJavaScript={injectedAfterLoad}
-
+          injectedJavaScript={REDIRECT_GUARD}
           onLoadStart={() => { setLoading(true); setError(false); }}
           onLoadEnd={() => setLoading(false)}
           onError={() => { setLoading(false); setError(true); }}
           onLoadProgress={({ nativeEvent }) => setProgress(nativeEvent.progress)}
           onNavigationStateChange={(state) => setCanGoBack(state.canGoBack)}
           onContentProcessDidTerminate={handleReload}
-
-          sharedCookiesEnabled
-          thirdPartyCookiesEnabled
-          javaScriptEnabled
-          domStorageEnabled
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           cacheEnabled
           originWhitelist={['*']}
           userAgent={USER_AGENT}
-
           startInLoadingState
           renderLoading={() => (
             <View style={s.loadingOverlay}>
@@ -339,7 +256,6 @@ export default function UniversalWebView() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: BRAND },
 
-  // ── Header ──────────────────────────────────────────────────────────────────
   header: {
     backgroundColor: BRAND,
     flexDirection: 'row',
@@ -376,11 +292,9 @@ const s = StyleSheet.create({
     marginTop: 1,
   },
 
-  // ── Progress bar ────────────────────────────────────────────────────────────
   progressTrack: { height: 2.5, backgroundColor: withOpacity(Colors.tealAccent, 0.18) },
   progressBar:   { height: '100%', backgroundColor: ACCENT },
 
-  // ── WebView ─────────────────────────────────────────────────────────────────
   webview: { flex: 1, backgroundColor: Colors.white },
 
   loadingOverlay: {
@@ -390,7 +304,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // ── Centre state (auth wait / error / offline) ──────────────────────────────
   centerBox: {
     flex: 1,
     backgroundColor: Colors.white,

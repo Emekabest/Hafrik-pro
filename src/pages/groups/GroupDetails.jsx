@@ -38,6 +38,29 @@ const BORDER = withOpacity(Colors.primaryDark, 0.09);
 
 const TAB_W = W / 4;
 
+// ── Ad banner ─────────────────────────────────────────────────────────────────
+const AdBanner = () => (
+  <View style={adst.wrap}>
+    <View style={adst.sponsorRow}>
+      <Ionicons name="megaphone-outline" size={11} color={MUTED} />
+      <Text style={adst.sponsorTxt}>Sponsored</Text>
+    </View>
+    <View style={adst.body}>
+      <View style={adst.imgBox}>
+        <Ionicons name="storefront-outline" size={24} color={ACCENT} />
+      </View>
+      <View style={adst.text}>
+        <Text style={adst.adTitle} numberOfLines={2}>Grow your business with Hafrik</Text>
+        <Text style={adst.adSub}>Reach thousands across Africa.</Text>
+        <View style={adst.cta}>
+          <Text style={adst.ctaTxt}>Learn More</Text>
+          <Ionicons name="arrow-forward" size={12} color={ACCENT} />
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const decodeHtml = (t = '') =>
   String(t)
@@ -151,7 +174,7 @@ const ComposeModal = ({ visible, group, token, onClose, onPosted }) => {
 };
 
 // ── Member row ────────────────────────────────────────────────────────────────
-const MemberRow = ({ item, index }) => {
+const MemberRow = ({ item, index, onPress }) => {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(anim, {
@@ -166,29 +189,32 @@ const MemberRow = ({ item, index }) => {
   const isAdmin = role === 'admin' || role === 'owner';
 
   return (
-    <Animated.View style={[
-      ms.row,
-      { opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] },
-    ]}>
-      {isRealImg(avatar) ? (
-        <Image source={{ uri: avatar }} style={ms.avatar} />
-      ) : (
-        <LinearGradient colors={[BRAND, Colors.tealWaveAlt]} style={[ms.avatar, ms.avatarFb]}>
-          <Ionicons name="person" size={18} color={Colors.white} />
-        </LinearGradient>
-      )}
-      <View style={{ flex: 1 }}>
-        <Text style={ms.name} numberOfLines={1}>{name}</Text>
-        {!!cleanText(item.bio ?? '') && (
-          <Text style={ms.bio} numberOfLines={1}>{cleanText(item.bio)}</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.72}>
+      <Animated.View style={[
+        ms.row,
+        { opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] },
+      ]}>
+        {isRealImg(avatar) ? (
+          <Image source={{ uri: avatar }} style={ms.avatar} />
+        ) : (
+          <LinearGradient colors={[BRAND, Colors.tealWaveAlt]} style={[ms.avatar, ms.avatarFb]}>
+            <Ionicons name="person" size={18} color={Colors.white} />
+          </LinearGradient>
         )}
-      </View>
-      {isAdmin && (
-        <View style={ms.rolePill}>
-          <Text style={ms.roleTxt}>{role.toUpperCase()}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={ms.name} numberOfLines={1}>{name}</Text>
+          {!!cleanText(item.bio ?? '') && (
+            <Text style={ms.bio} numberOfLines={1}>{cleanText(item.bio)}</Text>
+          )}
         </View>
-      )}
-    </Animated.View>
+        {isAdmin && (
+          <View style={ms.rolePill}>
+            <Text style={ms.roleTxt}>{role.toUpperCase()}</Text>
+          </View>
+        )}
+        <Ionicons name="chevron-forward" size={14} color={withOpacity(MUTED, 0.5)} style={{ marginLeft: 4 }} />
+      </Animated.View>
+    </TouchableOpacity>
   );
 };
 
@@ -512,13 +538,60 @@ export default function GroupDetails({ route }) {
     </>
   );
 
-  const renderItem = useCallback(({ item, index }) => {
-    if (activeTab === 0) return <FeedCard feed={item} />;
-    if (activeTab === 2) return <MemberRow item={item} index={index} />;
-    return null;
+  const [visiblePostId, setVisiblePostId] = useState(null);
+  const activeTabRef = useRef(activeTab);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    if (activeTab !== 0) setVisiblePostId(null);
   }, [activeTab]);
 
-  const listData = activeTab === 0 ? posts : members;
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (activeTabRef.current !== 0) {
+      setVisiblePostId(null);
+      return;
+    }
+
+    const nextVisibleId = viewableItems.find((entry) => entry?.isViewable && entry?.item?.id)?.item?.id ?? null;
+    setVisiblePostId((prev) => (prev === nextVisibleId ? prev : nextVisibleId));
+  });
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 70,
+    waitForInteraction: false,
+  });
+
+  // Inject ad every 5 posts in the feed
+  const processedPosts = useMemo(() => {
+    const result = [];
+    posts.forEach((post, i) => {
+      result.push(post);
+      if ((i + 1) % 5 === 0 && i + 1 < posts.length) {
+        result.push({ _isAd: true, id: `ad-${i}` });
+      }
+    });
+    return result;
+  }, [posts]);
+
+  const renderItem = useCallback(({ item, index }) => {
+    if (activeTab === 0) {
+      if (item._isAd) return <AdBanner />;
+      return <FeedCard feed={item} isVisible={visiblePostId === item?.id} />;
+    }
+    if (activeTab === 2) return (
+      <MemberRow
+        item={item}
+        index={index}
+        onPress={() => navigation.navigate('UserProfile', {
+          userId: item.id ?? item.user_id,
+          username: item.username ?? '',
+        })}
+      />
+    );
+    return null;
+  }, [activeTab, visiblePostId, navigation]);
+
+  const listData = activeTab === 0 ? processedPosts : members;
 
   if (loading) {
     return (
@@ -577,8 +650,11 @@ export default function GroupDetails({ route }) {
       ) : (
         <Animated.FlatList
           data={listData}
-          keyExtractor={(item, i) => String(item.id ?? i)}
+          keyExtractor={(item, i) => item._isAd ? item.id : String(item.id ?? i)}
           renderItem={renderItem}
+          onViewableItemsChanged={onViewableItemsChanged.current}
+          viewabilityConfig={viewabilityConfig.current}
+          extraData={visiblePostId}
           ListHeaderComponent={ListHeader}
           contentContainerStyle={ds.listContent}
           showsVerticalScrollIndicator={false}
@@ -826,4 +902,22 @@ const abt = StyleSheet.create({
   value: { fontSize: 13.5, color: DARK, lineHeight: 20 },
   emptyWrap: { alignItems: 'center', paddingTop: 56, gap: 12 },
   emptyTxt:  { fontSize: 14, fontWeight: '700', color: MUTED },
+});
+
+const adst = StyleSheet.create({
+  wrap: {
+    backgroundColor: Colors.white, marginHorizontal: 0, borderRadius: 0,
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: withOpacity(Colors.primaryDark, 0.07),
+    shadowColor: DARK, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
+    marginVertical: 2,
+  },
+  sponsorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingTop: 10, marginBottom: 6 },
+  sponsorTxt: { fontSize: 9, fontWeight: '700', color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' },
+  body:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 14 },
+  imgBox:     { width: 72, height: 72, borderRadius: 14, backgroundColor: ACCENT + '14', alignItems: 'center', justifyContent: 'center' },
+  text:       { flex: 1 },
+  adTitle:    { fontSize: 14, fontWeight: '800', color: DARK, lineHeight: 19, marginBottom: 3 },
+  adSub:      { fontSize: 12, color: MUTED, lineHeight: 17, marginBottom: 7 },
+  cta:        { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ctaTxt:     { fontSize: 12, fontWeight: '800', color: ACCENT },
 });

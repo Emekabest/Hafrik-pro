@@ -5,7 +5,6 @@ import {
     StyleSheet, Text, View, TouchableOpacity, FlatList,
     Modal, TextInput, Dimensions, Image, ActivityIndicator,
     ScrollView, Platform, KeyboardAvoidingView, Alert, Linking,
-    Animated as RNAnimated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -175,40 +174,13 @@ const PostComposerModal = () => {
 
     const handleClose = useCallback(() => { resetAll(); closeComposer(); }, [resetAll, closeComposer]);
 
-    // ── Upload tracking inside modal ──────────────────────────────────────────
+    // ── Upload state (block double-tapping Post while a previous upload runs) ──
     const activeUpload = useStore((s) => s.activeUpload);
-    const clearUpload  = useStore((s) => s.clearUpload);
-    const [isUploading, setIsUploading] = useState(false);
-    const uploadBarAnim = useRef(new RNAnimated.Value(0)).current;
-
-    // Animate the progress bar width to match real upload %
-    useEffect(() => {
-        if (!isUploading || !activeUpload) return;
-        RNAnimated.timing(uploadBarAnim, {
-            toValue: activeUpload.pct ?? 0,
-            duration: 250,
-            useNativeDriver: false,
-        }).start();
-    }, [activeUpload?.pct, isUploading]);
-
-    // Auto-close modal when upload completes
-    useEffect(() => {
-        if (!isUploading) return;
-        if (activeUpload?.phase === 'done') {
-            // Brief pause so the user sees 100%
-            const t = setTimeout(() => {
-                setIsUploading(false);
-                uploadBarAnim.setValue(0);
-                handleClose();
-            }, 1200);
-            return () => clearTimeout(t);
-        }
-    }, [activeUpload?.phase, isUploading]);
 
     // ── Can post? ─────────────────────────────────────────────────────────────
     const canPost = (() => {
-        // Block posting while uploading
-        if (isUploading || activeUpload) return false;
+        // Block posting while a previous upload is still running
+        if (activeUpload) return false;
         if (activeTab === 'text')   return postText.trim().length > 0;
         if (activeTab === 'photos') return selectedImages.length > 0;
         if (activeTab === 'video')  return !!selectedVideo;
@@ -308,11 +280,7 @@ const PostComposerModal = () => {
         const tab       = activeTab;
         const authToken = token;
 
-        // Show in-modal progress overlay (don't close yet)
-        setIsUploading(true);
-        uploadBarAnim.setValue(0);
-
-        // Start upload — updates Zustand store with progress, modal watches it
+        // Start upload in background — GlobalUploadBanner shows progress app-wide
         startBackgroundUpload({
             postBody,
             activeTab: tab,
@@ -322,6 +290,9 @@ const PostComposerModal = () => {
             selectedCategory: category,
             token: authToken,
         });
+
+        // Close modal immediately so user can navigate freely while upload continues
+        handleClose();
     };
 
     // ── Tab content ───────────────────────────────────────────────────────────
@@ -629,71 +600,6 @@ const PostComposerModal = () => {
 
                         </KeyboardAvoidingView>
 
-                        {/* ── UPLOAD PROGRESS OVERLAY ─────────────────────────── */}
-                        {isUploading && (
-                            <View style={styles.uploadOverlay}>
-                                <View style={styles.uploadCard}>
-                                    {activeUpload?.phase === 'error' ? (
-                                        <>
-                                            <View style={styles.uploadIconWrap}>
-                                                <Ionicons name="alert-circle" size={40} color="#E53935" />
-                                            </View>
-                                            <Text style={styles.uploadLabel}>
-                                                {activeUpload?.error || 'Upload failed'}
-                                            </Text>
-                                            <TouchableOpacity
-                                                style={styles.uploadDismissBtn}
-                                                activeOpacity={0.8}
-                                                onPress={() => {
-                                                    setIsUploading(false);
-                                                    uploadBarAnim.setValue(0);
-                                                    clearUpload();
-                                                }}
-                                            >
-                                                <Text style={styles.uploadDismissTxt}>Dismiss</Text>
-                                            </TouchableOpacity>
-                                        </>
-                                    ) : activeUpload?.phase === 'done' ? (
-                                        <>
-                                            <View style={[styles.uploadIconWrap, { backgroundColor: '#43A047' + '1A' }]}>
-                                                <Ionicons name="checkmark-circle" size={40} color="#43A047" />
-                                            </View>
-                                            <Text style={styles.uploadLabel}>Posted successfully!</Text>
-                                            <View style={styles.uploadBarTrack}>
-                                                <View style={[styles.uploadBarFill, styles.uploadBarDone, { width: '100%' }]} />
-                                            </View>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <View style={styles.uploadIconWrap}>
-                                                <ActivityIndicator size="large" color={ACCENT} />
-                                            </View>
-                                            <Text style={styles.uploadLabel}>
-                                                {activeUpload?.label || 'Uploading…'}
-                                            </Text>
-                                            <Text style={styles.uploadPct}>
-                                                {Math.round(activeUpload?.pct ?? 0)}%
-                                            </Text>
-                                            <View style={styles.uploadBarTrack}>
-                                                <RNAnimated.View
-                                                    style={[
-                                                        styles.uploadBarFill,
-                                                        {
-                                                            width: uploadBarAnim.interpolate({
-                                                                inputRange: [0, 100],
-                                                                outputRange: ['0%', '100%'],
-                                                                extrapolate: 'clamp',
-                                                            }),
-                                                        },
-                                                    ]}
-                                                />
-                                            </View>
-                                            <Text style={styles.uploadHint}>Please wait…</Text>
-                                        </>
-                                    )}
-                                </View>
-                            </View>
-                        )}
                     </View>
                 </KeyboardAvoidingView>
             </View>
@@ -912,88 +818,6 @@ const styles = StyleSheet.create({
     catPillActive: { backgroundColor: ACCENT, borderColor: ACCENT },
     catPillText: { fontSize: 12, color: MUTED, fontWeight: '600' },
     catPillTextActive: { color: WHITE, fontWeight: '800' },
-
-    // ── Upload progress overlay ───────────────────────────────────────────────
-    uploadOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: WHITE + 'F2',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 50,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-    },
-    uploadCard: {
-        width: '82%',
-        backgroundColor: WHITE,
-        borderRadius: 24,
-        paddingVertical: 36,
-        paddingHorizontal: 28,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 20,
-        elevation: 12,
-        borderWidth: 1,
-        borderColor: BORDER,
-    },
-    uploadIconWrap: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        backgroundColor: ACCENT + '14',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 18,
-    },
-    uploadLabel: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: BRAND,
-        textAlign: 'center',
-        marginBottom: 6,
-    },
-    uploadPct: {
-        fontSize: 28,
-        fontWeight: '900',
-        color: ACCENT,
-        letterSpacing: -1,
-        marginBottom: 16,
-    },
-    uploadBarTrack: {
-        width: '100%',
-        height: 7,
-        backgroundColor: BG,
-        borderRadius: 4,
-        overflow: 'hidden',
-        marginBottom: 10,
-    },
-    uploadBarFill: {
-        height: '100%',
-        backgroundColor: ACCENT,
-        borderRadius: 4,
-    },
-    uploadBarDone: {
-        backgroundColor: '#43A047',
-    },
-    uploadHint: {
-        fontSize: 12,
-        color: MUTED,
-        marginTop: 4,
-    },
-    uploadDismissBtn: {
-        marginTop: 16,
-        paddingHorizontal: 24,
-        paddingVertical: 10,
-        borderRadius: 22,
-        backgroundColor: '#E53935' + '14',
-    },
-    uploadDismissTxt: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#E53935',
-    },
 });
 
 export default memo(PostComposerModal);

@@ -13,6 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { Colors } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || "").replace("#", "");
@@ -62,6 +63,7 @@ const items = [
 ];
 
 const ShortcutItem = ({ item, index, onPress }) => {
+  const { colors: tc } = useTheme();
   const scale    = useRef(new Animated.Value(0)).current;
   const opacity  = useRef(new Animated.Value(0)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
@@ -112,7 +114,7 @@ const ShortcutItem = ({ item, index, onPress }) => {
           {item.icon(true)}
         </LinearGradient>
 
-        <Text style={styles.label} numberOfLines={1}>{item.label}</Text>
+        <Text style={[styles.label, { color: tc.text }]} numberOfLines={1}>{item.label}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -120,6 +122,7 @@ const ShortcutItem = ({ item, index, onPress }) => {
 
 export default function StaticShortcutRow() {
   const navigation = useNavigation();
+  const { colors: tc } = useTheme();
 
   const handlePress = (screen, params) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -127,7 +130,7 @@ export default function StaticShortcutRow() {
   };
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { backgroundColor: tc.surface, borderBottomColor: tc.border }]}>
       {/* Subtle top accent line */}
       <LinearGradient
         colors={[ACCENT, LIME, ACCENT]}

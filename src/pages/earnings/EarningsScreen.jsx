@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Dimensions, Animated, RefreshControl,
+  ActivityIndicator, Dimensions, Animated, RefreshControl, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -223,9 +223,9 @@ export default function EarningsScreen() {
         <View style={st.qaRow}>
           <QuickAction
             icon="arrow-down-circle"
-            label="Withdraw"
-            gradient={[GREEN, Colors.tealAccentDark ?? "#0a9e78"]}
-            onPress={() => {}}
+            label="Coming Soon"
+            gradient={[Colors.secondaryText ?? "#9ca3af", "#6b7280"]}
+            onPress={() => Alert.alert('Coming Soon', 'Withdrawals will be available soon. Stay tuned!')}
           />
           <QuickAction
             icon="rocket"
@@ -240,8 +240,8 @@ export default function EarningsScreen() {
             onPress={() => {}}
           />
           <QuickAction
-            icon="gift"
-            label="Rewards"
+            icon="git-network"
+            label="Affiliate"
             gradient={[Colors.purple ?? "#9c27b0", Colors.violetDeep ?? "#6d28d9"]}
             onPress={() => {}}
           />
@@ -258,6 +258,32 @@ export default function EarningsScreen() {
               Earn money from ad revenue on your posts, reels, and pages. Accumulate Hafrik Points through engagement, referrals, and content rewards — then convert them to wallet balance anytime. Boost
               your posts or pages directly from your wallet.
             </Text>
+          </View>
+        </View>
+
+        {/* ── Points Info Card ── */}
+        <View style={st.pointsInfoCard}>
+          <View style={st.pointsInfoHeader}>
+            <View style={st.pointsInfoIcon}>
+              <Ionicons name="star" size={16} color={Colors.star ?? "#ffd700"} />
+            </View>
+            <Text style={st.pointsInfoTitle}>About Hafrik Points</Text>
+          </View>
+          <View style={st.pointsInfoList}>
+            {[
+              { icon: "thumbs-up", text: "Like, comment & share posts to earn points daily" },
+              { icon: "people",    text: "Refer friends — earn points per successful sign-up" },
+              { icon: "videocam",  text: "Post trending reels & articles for bonus points" },
+              { icon: "swap-horizontal", text: "Convert points to wallet balance anytime (min. 500 pts)" },
+              { icon: "time",      text: "Points expire after 12 months of inactivity" },
+            ].map((item, i) => (
+              <View key={i} style={st.pointsInfoRow}>
+                <View style={st.pointsInfoDot}>
+                  <Ionicons name={item.icon} size={12} color={ACCENT} />
+                </View>
+                <Text style={st.pointsInfoText}>{item.text}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
@@ -481,6 +507,33 @@ const st = StyleSheet.create({
     lineHeight: 19,
     fontFamily: FONT_R,
   },
+
+  // Points info card
+  pointsInfoCard: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    backgroundColor: Colors.star ? Colors.star + "0F" : "#ffd70018",
+    borderWidth: 1,
+    borderColor: Colors.star ? Colors.star + "30" : "#ffd70030",
+    borderRadius: 16,
+    padding: 16,
+  },
+  pointsInfoHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  pointsInfoIcon: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: Colors.star ? Colors.star + "22" : "#ffd70033",
+    alignItems: "center", justifyContent: "center",
+  },
+  pointsInfoTitle: { fontSize: 14, fontWeight: "800", color: TEXT_H, fontFamily: FONT_B },
+  pointsInfoList: { gap: 10 },
+  pointsInfoRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  pointsInfoDot: {
+    width: 26, height: 26, borderRadius: 8,
+    backgroundColor: ACCENT + "14",
+    alignItems: "center", justifyContent: "center",
+    marginTop: 1,
+  },
+  pointsInfoText: { flex: 1, fontSize: 12.5, color: TEXT_M, lineHeight: 18, fontFamily: FONT_R },
 
   // Transactions section
   txSection: {

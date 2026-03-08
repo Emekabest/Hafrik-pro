@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
+import { Image as ExpoImage } from 'expo-image';
 import CalculateElapsedTime from "../../helpers/calculateelapsedtime";
 import { Colors } from '../../theme/colors';
 
@@ -32,9 +33,11 @@ const SearchPostCard = ({ item, onPress }) => {
         <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={styles.container}>
             <View style={styles.containerLeft}>
                 <View style={styles.ImageContainer}>
-                    <Image
+                    <ExpoImage
                         source={{ uri: author.avatar || thumb }}
                         style={{ height: "100%", width: "100%" }}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
                     />
                 </View>
             </View>
@@ -58,7 +61,7 @@ const SearchPostCard = ({ item, onPress }) => {
                 ) : null}
 
                 {thumb ? (
-                    <Image source={{ uri: thumb }} style={[styles.thumbnail, { width: MEDIA_WIDTH, height: MEDIA_HEIGHT }]} />
+                    <ExpoImage source={{ uri: thumb }} style={[styles.thumbnail, { width: MEDIA_WIDTH, height: MEDIA_HEIGHT }]} contentFit="cover" cachePolicy="memory-disk" />
                 ) : null}
             </View>
         </TouchableOpacity>

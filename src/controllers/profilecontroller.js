@@ -2,6 +2,122 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { useEffect } from "react";
 
+const API_BASE = "https://hafrik.com/api/v1";
+const EDIT_PROFILE_URL = `${API_BASE}/users/update_profile.php`;
+const PROFILE_FIELDS_URL = `${API_BASE}/auth/profile_field.php`;
+
+const firstDefined = (...values) => values.find(
+    (value) => value !== undefined && value !== null && value !== ""
+);
+
+const toNumberOrNull = (value) => {
+    if (value === undefined || value === null || value === "") return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normaliseProfileUser = (payload) => {
+    const raw = payload?.user || payload || {};
+
+    const firstName = firstDefined(raw.user_firstname, raw.first_name, raw.firstname, "");
+    const lastName = firstDefined(raw.user_lastname, raw.last_name, raw.lastname, "");
+    const username = firstDefined(raw.user_name, raw.username, raw.name, "");
+    const email = firstDefined(raw.user_email, raw.email, "");
+    const phone = firstDefined(raw.user_phone, raw.phone, raw.mobile, "");
+    const biography = firstDefined(raw.user_biography, raw.biography, raw.bio, raw.about_me, raw.about, "");
+    const website = firstDefined(raw.user_website, raw.website, "");
+    const countryId = firstDefined(raw.user_country, raw.country_id, raw.country);
+    const countryName = firstDefined(raw.user_country_name, raw.country_name, raw.country_title, raw.country_label, "");
+    const currentCity = firstDefined(raw.user_current_city, raw.current_city, raw.city, "");
+    const hometown = firstDefined(raw.user_hometown, raw.hometown, "");
+    const gender = firstDefined(raw.user_gender, raw.gender);
+    const relationship = firstDefined(raw.user_relationship, raw.relationship, "");
+    const birthdate = firstDefined(raw.user_birthdate, raw.birthdate, raw.birth_date, "");
+
+    return {
+        ...raw,
+        first_name: firstName,
+        last_name: lastName,
+        username,
+        email,
+        phone,
+        gender: toNumberOrNull(gender),
+        birthdate,
+        bio: biography,
+        about: biography,
+        about_me: biography,
+        biography,
+        website,
+        country: countryName || countryId || "",
+        country_id: toNumberOrNull(countryId),
+        country_name: countryName,
+        user_country: toNumberOrNull(countryId) ?? countryId ?? "",
+        current_city: currentCity,
+        hometown,
+        relationship,
+        work_title: firstDefined(raw.user_work_title, raw.work_title, ""),
+        work_place: firstDefined(raw.user_work_place, raw.work_place, ""),
+        work_url: firstDefined(raw.user_work_url, raw.work_url, ""),
+        edu_school: firstDefined(raw.user_edu_school, raw.edu_school, ""),
+        edu_major: firstDefined(raw.user_edu_major, raw.edu_major, ""),
+        edu_class: firstDefined(raw.user_edu_class, raw.edu_class, ""),
+        facebook: firstDefined(raw.user_social_facebook, raw.facebook, ""),
+        instagram: firstDefined(raw.user_social_instagram, raw.instagram, ""),
+        twitter: firstDefined(raw.user_social_twitter, raw.twitter, ""),
+        youtube: firstDefined(raw.user_social_youtube, raw.youtube, ""),
+        linkedin: firstDefined(raw.user_social_linkedin, raw.linkedin, ""),
+        twitch: firstDefined(raw.user_social_twitch, raw.twitch, ""),
+    };
+};
+
+const normaliseSelectableOption = (item, index, fallbackPrefix) => {
+    if (item === null || item === undefined) return null;
+
+    if (typeof item === "string" || typeof item === "number") {
+        return {
+            id: item,
+            label: String(item),
+        };
+    }
+
+    const id = firstDefined(item.id, item.value, item.key, index + 1);
+    const label = firstDefined(item.label, item.name, item.title, item.value, `${fallbackPrefix} ${index + 1}`);
+
+    return {
+        ...item,
+        id,
+        label,
+    };
+};
+
+const normaliseProfileFieldResponse = (payload) => {
+    const raw = payload?.data || payload || {};
+
+    const countries = Array.isArray(raw.countries)
+        ? raw.countries.map((country) => ({
+            ...country,
+            id: firstDefined(country.id, country.country_id),
+            name: firstDefined(country.name, country.country_name, ""),
+            code: firstDefined(country.code, country.country_code, ""),
+            phone_code: firstDefined(country.phone_code, country.phoneCode, country.dial_code, ""),
+        })).filter((country) => country.id !== undefined && country.id !== null)
+        : [];
+
+    const genders = Array.isArray(raw.genders)
+        ? raw.genders.map((item, index) => normaliseSelectableOption(item, index, "Gender")).filter(Boolean)
+        : [];
+
+    const relationships = Array.isArray(raw.relationships)
+        ? raw.relationships.map((item, index) => normaliseSelectableOption(item, index, "Relationship")).filter(Boolean)
+        : [];
+
+    return {
+        countries,
+        genders,
+        relationships,
+    };
+};
+
 const ProfileHeaderController = async(token) => {
     
     try{
@@ -42,23 +158,88 @@ const getProfileAvatarController = async(token) => {
 
 
 const UpdateProfileController = async(token, newProfileData) => {
-    
-
     try{
-        const response = await axios.post("https://hafrik.com/api/v1/users/update_profile.php", newProfileData, {
+        // Always convert to FormData so PHP can read via $_POST
+        let dataToSend;
+        if (newProfileData instanceof FormData) {
+            dataToSend = newProfileData;
+        } else {
+            const fd = new FormData();
+            Object.entries(newProfileData).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    fd.append(key, String(value));
+                }
+            });
+            dataToSend = fd;
+        }
+        const response = await axios.post(EDIT_PROFILE_URL, dataToSend, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'multipart/form-data',
             },
         });
 
-        console.log("Profile update response:", response.data);
+        return {
+            status: response.status,
+            message: response.data?.message || '',
+            data: normaliseProfileUser(response.data?.data || response.data),
+        };
 
-        return {status: response.status, data: response.data.data};
     }
     catch(error){
 
-        return {status: error.response?.status || 500, data: null};
+        return {
+            status: error.response?.status || 500,
+            message: error.response?.data?.message || 'Failed to update profile',
+            data: null,
+        };
+    }
+}
+
+const GetEditableProfileController = async(token) => {
+    try {
+        // Use the profile GET endpoint — safer than POSTing to the update endpoint
+        const response = await axios.get("https://hafrik.com/api/v1/users/profile.php", {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        return {
+            status: response.status,
+            message: response.data?.message || '',
+            data: normaliseProfileUser(response.data?.data?.user || response.data?.data || response.data),
+        };
+    } catch (error) {
+        return {
+            status: error.response?.status || 500,
+            message: error.response?.data?.message || 'Failed to load editable profile',
+            data: null,
+        };
+    }
+}
+
+const GetProfileFieldController = async(token) => {
+    try {
+        const response = await axios.get(PROFILE_FIELDS_URL, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        return {
+            status: response.status,
+            message: response.data?.message || '',
+            data: normaliseProfileFieldResponse(response.data?.data || response.data),
+        };
+    } catch (error) {
+        return {
+            status: error.response?.status || 500,
+            message: error.response?.data?.message || 'Failed to load profile field metadata',
+            data: null,
+        };
     }
 }
 
@@ -291,6 +472,8 @@ const UserReelsController = async(token, userId, page = 1, limit = 10) => {
 export  { 
     ProfileHeaderController,
     getProfileAvatarController, 
+    GetEditableProfileController,
+    GetProfileFieldController,
     UpdateProfileController as updateProfileController, 
     UploadProfileImageController, 
     ProfileTimelineController,

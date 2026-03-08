@@ -85,14 +85,22 @@ const CommentEngagementBar = ({
     try {
       const response = await ToggleFeedController(feedId, token, reactionType);
       if (response.status === 200 && response.data) {
-        const d = response.data;
-        const serverReacted = !!d.is_reacted;
-        const serverReaction = d.my_reaction || null;
+        // Handle both flat and nested API shapes (mirrors main EngagementBar)
+        const raw = response.data;
+        const d = raw.data && (raw.data.is_reacted !== undefined || raw.data.my_reaction !== undefined || raw.data.user_reaction !== undefined) ? raw.data : raw;
+
+        const serverReacted = !!(d.is_reacted || d.my_reaction || d.user_reaction);
+        const serverReaction = d.my_reaction || d.user_reaction || null;
         const serverReactions = d.reactions || null;
 
         let serverTotal = newCount;
         if (serverReactions && typeof serverReactions === 'object') {
-          serverTotal = Object.values(serverReactions).reduce((a, b) => a + Number(b || 0), 0);
+          serverTotal = Object.entries(serverReactions)
+            .filter(([k]) => k !== 'total')
+            .reduce((a, [, b]) => a + Number(b || 0), 0);
+          if (serverTotal === 0 && typeof serverReactions.total === 'number') {
+            serverTotal = serverReactions.total;
+          }
         }
 
         setIsReacted(serverReacted);
@@ -129,10 +137,10 @@ const CommentEngagementBar = ({
     }
   }, [isReacted, myReaction, likeCount, feedId, token]);
 
+  /** Tap = open / close the reaction picker so users see all options */
   const handleTap = useCallback(() => {
-    if (pickerVisible) { setPickerVisible(false); return; }
-    sendReaction(myReaction || 'like');
-  }, [sendReaction, myReaction, pickerVisible]);
+    setPickerVisible(v => !v);
+  }, []);
 
   const handleLongPress = useCallback(() => {
     setPickerVisible(true);

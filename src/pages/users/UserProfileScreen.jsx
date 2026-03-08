@@ -558,11 +558,33 @@ export default function UserProfileScreen({ navigation, route }) {
   const tabData = activeTab === 'followers' ? followersList : ts.data;
   const isMedia = activeTab === 'media';
   const isFollowersTab = activeTab === 'followers';
+  const [visiblePostId, setVisiblePostId] = useState(null);
+  const activeTabRef = useRef(activeTab);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    if (activeTab !== 'posts') setVisiblePostId(null);
+  }, [activeTab]);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (activeTabRef.current !== 'posts') {
+      setVisiblePostId(null);
+      return;
+    }
+
+    const nextVisibleId = viewableItems.find((entry) => entry?.isViewable && entry?.item?.id)?.item?.id ?? null;
+    setVisiblePostId((prev) => (prev === nextVisibleId ? prev : nextVisibleId));
+  });
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 70,
+    waitForInteraction: false,
+  });
 
   // ── Renderers ──────────────────────────────────────────────────────────────
   const renderPost = useCallback(({ item }) => (
-    <FeedCard feed={item} />
-  ), []);
+    <FeedCard feed={item} isVisible={visiblePostId === item?.id} />
+  ), [visiblePostId]);
 
   const renderMedia = useCallback(({ item }) => {
     const apiType = item?.type ?? '';
@@ -785,6 +807,9 @@ export default function UserProfileScreen({ navigation, route }) {
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false },
         )}
+        onViewableItemsChanged={onViewableItemsChanged.current}
+        viewabilityConfig={viewabilityConfig.current}
+        extraData={visiblePostId}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 30 }}

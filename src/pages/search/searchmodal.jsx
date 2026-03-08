@@ -535,7 +535,7 @@ const SearchModal = () => {
 
   const handlePersonPress = useCallback((p) => {
     close();
-    setTimeout(() => navigation.navigate("Profile", { userId: p.id }), 80);
+    setTimeout(() => navigation.navigate("UserProfile", { userId: p.id }), 80);
   }, [close, navigation]);
 
   const handlePostPress = useCallback((item) => {

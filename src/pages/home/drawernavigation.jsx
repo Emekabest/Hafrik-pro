@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   Modal,
   Animated,
@@ -36,7 +37,6 @@ const MUTED  = Colors.secondaryText;
 const WHITE  = Colors.white;
 const DANGER = Colors.destructive;
 const BLACK  = Colors.black;
-const GREEN  = Colors.success ?? "#22c55e";
 
 const FONT_B = AppDetails?.fontFamily?.redex?.bold ?? "System";
 const FONT_R = AppDetails?.fontFamily?.inter?.regular ?? "System";
@@ -226,13 +226,9 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
         {/* Drawer panel */}
         <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
           {/* ── Header ── */}
-          <LinearGradient colors={[BRAND, ACCENT + "DD"]} style={[styles.drawerHeader, { paddingTop: insets.top + 12 }]}>
+          <View style={[styles.drawerHeader, { paddingTop: insets.top + 12 }]}>
             {/* Top row */}
             <View style={styles.headerTopRow}>
-              <View style={styles.brandPill}>
-                <View style={styles.brandDot} />
-                <Text style={styles.brandPillText}>HAFRIK</Text>
-              </View>
               <TouchableOpacity onPress={close} activeOpacity={0.8} style={styles.closeBtn}>
                 <Ionicons name="close" size={18} color={WHITE} />
               </TouchableOpacity>
@@ -290,7 +286,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                 <Ionicons name="arrow-forward" size={14} color={ACCENT} />
               </View>
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
 
           {/* ── Scrollable content ── */}
           <ScrollView
@@ -311,9 +307,8 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             <SectionTitle>Menu</SectionTitle>
             <View style={styles.card}>
               <DrawerItem icon="person-outline" title="My Profile" subtitle="View & edit your profile" onPress={() => handleNavigate("Profile")} />
-              <DrawerItem icon="business-outline" title="My Pages" subtitle="Manage business pages" onPress={() => handleNavigate("BusinessPages")} />
-              <DrawerItem icon="people-outline" title="My Communities" subtitle="Groups you belong to" onPress={() => handleNavigate("InAppBrowser", { url: "https://hafrik.com/groups/manage", title: "My Communities" })} />
-              <DrawerItem icon="swap-horizontal-outline" title="Exchange" subtitle="Buy, sell & exchange currencies" iconColor={GREEN} iconBg={GREEN + "18"} onPress={() => handleNavigate("ExchangeHome")} />
+              <DrawerItem icon="storefront-outline" title="Liked Businesses" subtitle="Businesses you follow" onPress={() => handleNavigate("LikedBusinesses")} />
+              <DrawerItem icon="people-outline" title="Joined Communities" subtitle="Communities you belong to" onPress={() => handleNavigate("JoinedCommunities")} />
               <DrawerItem icon="wallet-outline" title="Earnings" subtitle="Wallet, points & transactions" iconColor={ACCENT} onPress={() => handleNavigate("Earnings")} />
             </View>
 
@@ -370,8 +365,13 @@ const styles = StyleSheet.create({
 
   // ── Header ──
   drawerHeader: {
+    backgroundColor: BRAND,
     paddingHorizontal: 18,
     paddingBottom: 18,
+  },
+  drawerLogo: {
+    height: 26,
+    width: 110,
   },
 
   headerTopRow: {
@@ -379,25 +379,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 18,
-  },
-  brandPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: WHITE + "18",
-    borderWidth: 1,
-    borderColor: WHITE + "22",
-  },
-  brandDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT },
-  brandPillText: {
-    color: WHITE,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    fontWeight: "900",
-    fontFamily: FONT_B,
   },
   closeBtn: {
     width: 32,

@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || "").replace("#", "");
@@ -43,6 +44,7 @@ export default function ProductDetailScreen({ navigation, route }) {
   // product is passed directly from the list — no API call needed
   const product = route.params?.product;
   const { top } = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
 
   const [activeImg, setActiveImg] = useState(0);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -96,8 +98,8 @@ export default function ProductDetailScreen({ navigation, route }) {
 
   // ── Render ───────────────────────────────────────────────────
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.root, { backgroundColor: tc.background }]}>
+      <StatusBar barStyle={tc.statusBar} />
 
       {/* Sticky header (fades in on scroll) */}
       <Animated.View

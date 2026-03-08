@@ -28,6 +28,7 @@ import ProfileTabs from "../../profile/tabs.jsx";
 import TimelineComponents from "../../profile/timeline/timelineComponents.jsx";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../theme";
+import { useTheme } from "../../../theme/ThemeContext";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BG_BASE = Colors.surfaceTint;
@@ -324,20 +325,19 @@ const Feeds = ({
   refreshing = false,
   onRefresh,
   onPostPress,
+  hideScrollTop = false,
 }) => {
   const pageRef        = useRef(1);
   const loadingMoreRef = useRef(false);
   const [loadingMore,    setLoadingMore]    = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [visibleFeedId,  setVisibleFeedId]  = useState(null); // drives extraData re-render
-  const visibleFeedIdRef  = useRef(null);   // stable ref for renderItem (immediate)
-  const visibleDebounceRef = useRef(null);  // debounce timer for extraData state
+  const [visibleFeedId,  setVisibleFeedId]  = useState(null);
+  const visibleFeedIdRef  = useRef(null);
   const flashListRef       = useRef(null);
   const [showScrollTop,  setShowScrollTop]  = useState(false);
   const scrollTopVisible  = useRef(false);
   const { token } = useAuth();
-
-  const BASE_URL = 'https://hafrik.com';
+  const { colors: tc } = useTheme();  const BASE_URL = 'https://hafrik.com';
   const viewedPosts = useRef(new Set());
 
   const addView = useCallback(async (postId) => {
@@ -403,16 +403,15 @@ const Feeds = ({
     flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
-  // Track which feed item is visible on screen (video) + send view to backend once per session
+  // Track which feed item is visible on screen (video) + send view to backend once per session.
+  // Update immediately so videos pause as soon as they leave the viewport.
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    const firstFeed = viewableItems.find(v => v.item?.type === 'feed');
+    const firstFeed = viewableItems.find(v => v?.isViewable && v.item?.type === 'feed');
     const nextId = firstFeed?.item?.data?.id ?? null;
-    // Update the ref immediately so renderCombinedItem always reads the right value
-    visibleFeedIdRef.current = nextId;
-    // Debounce the state update that drives extraData — prevents FlashList from
-    // re-evaluating all visible cells on every single scroll tick
-    clearTimeout(visibleDebounceRef.current);
-    visibleDebounceRef.current = setTimeout(() => setVisibleFeedId(nextId), 150);
+    if (visibleFeedIdRef.current !== nextId) {
+      visibleFeedIdRef.current = nextId;
+      setVisibleFeedId(nextId);
+    }
 
     viewableItems.forEach((v) => {
       const postId = v?.item?.type === 'feed' ? v?.item?.data?.id : null;
@@ -512,7 +511,7 @@ const Feeds = ({
   const getItemType = useCallback(item => item.type, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tc.background }]}>
       <FlashList
         ref={flashListRef}
         data={combinedData}
@@ -541,7 +540,7 @@ const Feeds = ({
       />
 
       {/* ── Back-to-top FAB ──────────────────────────────────────────────── */}
-      {showScrollTop && (
+      {showScrollTop && !hideScrollTop && (
         <TouchableOpacity
           style={styles.scrollTopBtn}
           onPress={scrollToTop}

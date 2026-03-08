@@ -26,6 +26,7 @@ import * as Haptics from 'expo-haptics';
 import { fetchArticleDetail, normalizeTags } from './articlesApi';
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -154,6 +155,7 @@ export default function ArticleDetailsScreen({ navigation, route }) {
   const { postId, title: navTitle } = route.params || {};
   const { top, bottom } = useSafeAreaInsets();
   const { token, user } = useAuth();
+  const { colors: tc } = useTheme();
 
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -449,11 +451,11 @@ export default function ArticleDetailsScreen({ navigation, route }) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.root}
+      style={[styles.root, { backgroundColor: tc.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={0}
     >
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={tc.statusBar} />
 
       {/* Reading progress bar */}
       <View style={[styles.progressWrap, { paddingTop: top }]}>

@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
+import { useTheme } from '../../theme/ThemeContext';
 import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme';
 
@@ -155,6 +156,7 @@ export default function ThreadScreen() {
   const route      = useRoute();
   const { top, bottom } = useSafeAreaInsets();
   const { token, user } = useAuth();
+  const { colors: tc } = useTheme();
   const refreshBadges   = useStore((s) => s.refreshBadges);
   const setMessageCount = useStore((s) => s.setMessageCount);
 
@@ -258,7 +260,7 @@ export default function ThreadScreen() {
   };
 
   return (
-    <View style={[styles.root, { paddingTop: top }]}>
+    <View style={[styles.root, { paddingTop: top, backgroundColor: tc.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>

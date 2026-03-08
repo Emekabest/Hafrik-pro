@@ -44,8 +44,8 @@ const PRIVACY_ICONS = {
 
 // ─── Reaction emoji mapping ───────────────────────────────────────────────────
 const REACTION_EMOJIS = {
-  like:  '👍', love: '❤️', haha: '😂', yay: '🎉',
-  wow:   '😮', sad:  '😢', angry: '😡',
+  like: '👍', love: '❤️', laugh: '😂', haha: '😂',
+  wow:  '😮', sad:  '😢', angry: '😡', support: '🤝', yay: '🎉',
 };
 
 /**
@@ -506,11 +506,11 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
         {/* Engagement */}
         <EngagementBar
           feedId={feed?.id}
-          initialLiked={!!feed?.is_liked}
-          initialLikeCount={feed?.likes_count ?? 0}
+          initialLiked={!!(feed?.is_liked || feed?.my_reaction || feed?.user_reaction)}
+          initialLikeCount={feed?.likes_count ?? feed?.reactions?.total ?? feed?.total_reactions ?? feed?.reaction_count ?? feed?.reactions_count ?? 0}
           commentsCount={feed?.comments_count ?? 0}
           sharesCount={feed?.shares_count ?? 0}
-          myReaction={feed?.my_reaction}
+          myReaction={feed?.my_reaction ?? feed?.user_reaction ?? null}
           reactions={feed?.reactions}
           isSaved={!!feed?.is_saved}
           commentsDisabled={commentsDisabled}
@@ -756,6 +756,7 @@ export default memo(FeedCard, (prev, next) => {
     prev.feed.page?.title        === next.feed.page?.title        &&
     prev.feed.page?.avatar       === next.feed.page?.avatar       &&
     prev.isVisible               === next.isVisible               &&
-    prev.onPostPress             === next.onPostPress
+    prev.onPostPress             === next.onPostPress             &&
+    JSON.stringify(prev.feed.reactions) === JSON.stringify(next.feed.reactions)
   );
 });

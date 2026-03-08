@@ -81,16 +81,22 @@ const EngagementBar = ({
             if (response.status === 200 && response.data) {
                 // Handle both flat and nested API shapes
                 const raw = response.data;
-                const d = raw.data && (raw.data.is_reacted !== undefined || raw.data.my_reaction !== undefined) ? raw.data : raw;
-                // Sync with server truth
-                const serverReacted = !!d.is_reacted;
-                const serverReaction = d.my_reaction || null;
+                const d = raw.data && (raw.data.is_reacted !== undefined || raw.data.my_reaction !== undefined || raw.data.user_reaction !== undefined) ? raw.data : raw;
+                // Sync with server truth (support both my_reaction and user_reaction field names)
+                const serverReacted = !!(d.is_reacted || d.my_reaction || d.user_reaction);
+                const serverReaction = d.my_reaction || d.user_reaction || null;
                 const serverReactions = d.reactions || null;
 
-                // Compute total from reactions object if available
+                // Compute total from reactions object if available (exclude 'total' key)
                 let serverTotal = newCount;
                 if (serverReactions && typeof serverReactions === 'object') {
-                    serverTotal = Object.values(serverReactions).reduce((a, b) => a + Number(b || 0), 0);
+                    serverTotal = Object.entries(serverReactions)
+                        .filter(([k]) => k !== 'total')
+                        .reduce((a, [, b]) => a + Number(b || 0), 0);
+                    // Fall back to explicit total field if individual counts aren't present
+                    if (serverTotal === 0 && typeof serverReactions.total === 'number') {
+                        serverTotal = serverReactions.total;
+                    }
                 }
 
                 setIsReacted(serverReacted);
@@ -278,6 +284,7 @@ export default memo(EngagementBar, (prev, next) => {
         prev.sharesCount === next.sharesCount &&
         prev.isSaved === next.isSaved &&
         prev.commentsDisabled === next.commentsDisabled &&
-        prev.myReaction === next.myReaction
+        prev.myReaction === next.myReaction &&
+        JSON.stringify(prev.reactions) === JSON.stringify(next.reactions)
     );
 });

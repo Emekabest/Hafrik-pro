@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../AuthContext';
+import useWebViewSession, { REDIRECT_GUARD } from '../../hooks/useWebViewSession';
 import AuthenticatedWebView from '../../components/AuthenticatedWebView';
 import { Colors } from '../../theme/colors';
 
@@ -22,7 +23,6 @@ const withOpacity = (hex, opacity) => {
 };
 
 
-const BRIDGE_URL = 'https://hafrik.com/api/v1/auth/webview-login.php';
 const BRAND = Colors.primaryDark;
 
 export default function MarketplaceWebviewScreen({ navigation, route }) {
@@ -31,50 +31,12 @@ export default function MarketplaceWebviewScreen({ navigation, route }) {
 
   const webViewRef = useRef(null);
 
-  const [ready,       setReady]       = useState(false);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState(false);
-  const [bridgeError, setBridgeError] = useState(null);
-  const [canGoBack,    setCanGoBack]    = useState(false);
-  const [currentUrl,   setCurrentUrl]   = useState(url || 'https://hafrik.com/marketplace');
-  const [sessionCreds, setSessionCreds] = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(false);
+  const [canGoBack,  setCanGoBack]  = useState(false);
+  const [currentUrl, setCurrentUrl] = useState(url || 'https://hafrik.com/marketplace');
 
-  // ─── Bridge + Cookie injection ─────────────────────────────────────────────
-  const initSession = useCallback(async () => {
-    setBridgeError(null);
-    try {
-      const res = await fetch(BRIDGE_URL, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await res.json();
-      console.log('Bridge response:', data);
-
-      if (data.status !== 'success') {
-        setBridgeError('Bridge error: ' + (data.message || 'unknown'));
-        return;
-      }
-
-      setSessionCreds({ phpsessid: data.phpsessid, session_token: data.session_token });
-      console.log('✅ Session ready, PHPSESSID:', data.phpsessid);
-      setReady(true);
-    } catch (e) {
-      console.error('Bridge error:', e);
-      setBridgeError(e.message);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token) initSession();
-  }, [token]);
-
-  const injectedScript = useMemo(() => {
-    const cookiePart = sessionCreds
-      ? `(function(){if(document.cookie.indexOf('PHPSESSID=')!==-1)return;var e=new Date();e.setDate(e.getDate()+30);var x=e.toUTCString();document.cookie='PHPSESSID=${sessionCreds.phpsessid};path=/;domain=.hafrik.com;expires='+x;document.cookie='session_token=${sessionCreds.session_token};path=/;domain=.hafrik.com;expires='+x;window.location.reload();})();`
-      : '';
-    return cookiePart + `(function(){var p=window.location.pathname.toLowerCase();var a=['/login','/signin','/register','/signup'];if(a.some(function(x){return p.includes(x);})){window.location.replace('/');}})();true;`;
-  }, [sessionCreds]);
+  const { ready, bridgeError, initSession, cookieJS } = useWebViewSession(token);
 
   const handleBack = () => {
     if (canGoBack && webViewRef.current) webViewRef.current.goBack();
@@ -149,7 +111,8 @@ export default function MarketplaceWebviewScreen({ navigation, route }) {
         ref={webViewRef}
         source={{ uri: currentUrl }}
         style={{ flex: 1 }}
-        injectedJavaScript={injectedScript}
+        injectedJavaScriptBeforeContentLoaded={cookieJS || 'true;'}
+        injectedJavaScript={REDIRECT_GUARD}
         onLoadStart={() => { setLoading(true); setError(false); }}
         onLoadEnd={() => setLoading(false)}
         onError={() => { setLoading(false); setError(true); }}

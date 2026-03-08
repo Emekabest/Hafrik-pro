@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { View, TouchableOpacity, Image, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import ImageViewModal from '../../../../imageviewmodal';
 import { Ionicons } from '@expo/vector-icons';
 import SvgIcon from '../../../../../assl.js/svg/svg';
@@ -150,9 +151,11 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
             <View style={styles.authorRow}>
                 {/* Avatar */}
                 <TouchableOpacity onPress={handleAuthorPress} activeOpacity={0.8}>
-                    <Image
+                    <ExpoImage
                         source={{ uri: displayUser.avatar }}
                         style={styles.authorAvatar}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
                     />
                 </TouchableOpacity>
 

@@ -82,9 +82,8 @@ const VideoPlayerLayer = memo(({ videoUrl, thumbnail, isVisible, videoWidth, vid
   const player = useVideoPlayer(videoUrl, (p) => {
     if (!p) return;
     try {
-      p.loop  = true;
+      p.loop  = false;
       p.muted = false;
-      p.play();
     } catch (e) {
       console.warn("Player setup error:", e);
     }

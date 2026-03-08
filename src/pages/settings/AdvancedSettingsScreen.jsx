@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || "").replace("#", "");
@@ -53,12 +54,13 @@ const Row = ({ icon, iconColor = BRAND, label, onPress, destructive, last }) => 
 export default function AdvancedSettingsScreen() {
   const navigation = useNavigation();
   const { top }    = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
 
   const openWeb = (title, url) =>
     navigation.navigate('InAppBrowser', { title, url });
 
   return (
-    <View style={[styles.root, { paddingTop: top }]}>
+    <View style={[styles.root, { paddingTop: top, backgroundColor: tc.background }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>

@@ -17,6 +17,7 @@ import SvgIcon    from '../assl.js/svg/svg';
 import { useAuth } from '../AuthContext';
 import useStore   from '../repository/store';
 import { Colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || "").replace("#", "");
@@ -33,9 +34,10 @@ const ACCENT  = Colors.primary;
 // ─── Custom Tab Bar ─────────────────────────────────────────
 const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
   const { bottom } = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
 
   return (
-    <View style={[styles.tabBarContainer, { paddingBottom: bottom, height: AppDetails.mainTabNavigatorHeight + bottom }]}>
+    <View style={[styles.tabBarContainer, { paddingBottom: bottom, height: AppDetails.mainTabNavigatorHeight + bottom, backgroundColor: tc.tabBarBg, borderTopColor: tc.tabBarBorder }]}>
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
 

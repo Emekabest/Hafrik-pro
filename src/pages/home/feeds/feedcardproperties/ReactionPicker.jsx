@@ -5,18 +5,18 @@ import {
 import { Colors } from '../../../../theme/colors';
 
 const REACTIONS = [
-  { type: 'like',  emoji: '👍', label: 'Like' },
-  { type: 'love',  emoji: '❤️', label: 'Love' },
-  { type: 'haha',  emoji: '😂', label: 'Haha' },
-  { type: 'yay',   emoji: '🎉', label: 'Yay' },
-  { type: 'wow',   emoji: '😮', label: 'Wow' },
-  { type: 'sad',   emoji: '😢', label: 'Sad' },
-  { type: 'angry', emoji: '😡', label: 'Angry' },
+  { type: 'like',    emoji: '👍', label: 'Like' },
+  { type: 'love',    emoji: '❤️', label: 'Love' },
+  { type: 'laugh',   emoji: '😂', label: 'Laugh' },
+  { type: 'wow',     emoji: '😮', label: 'Wow' },
+  { type: 'sad',     emoji: '😢', label: 'Sad' },
+  { type: 'angry',   emoji: '😡', label: 'Angry' },
+  { type: 'support', emoji: '🤝', label: 'Support' },
 ];
 
 export const REACTION_EMOJI_MAP = {
-  like: '👍', love: '❤️', haha: '😂', yay: '🎉',
-  wow: '😮', sad: '😢', angry: '😡',
+  like: '👍', love: '❤️', laugh: '😂', haha: '😂',
+  wow: '😮', sad: '😢', angry: '😡', support: '🤝', yay: '🎉',
 };
 
 /**

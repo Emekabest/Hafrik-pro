@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || "").replace("#", "");
@@ -41,6 +42,7 @@ const API_BASE = 'https://hafrik.com';
 export default function CreateListingScreen({ navigation }) {
   const { token } = useAuth();
   const { top } = useSafeAreaInsets();
+  const { colors: tc } = useTheme();
 
   const [title, setTitle]           = useState('');
   const [description, setDescription] = useState('');
@@ -91,8 +93,8 @@ export default function CreateListingScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BRAND} />
+    <SafeAreaView style={[styles.root, { backgroundColor: tc.background }]}>
+      <StatusBar barStyle={tc.statusBar} backgroundColor={BRAND} />
 
       {/* Header */}
       <LinearGradient colors={[BRAND, Colors.tealHeader]} style={[styles.header, { paddingTop: top + 4 }]}>

@@ -6,7 +6,6 @@ import {
   ScrollView, StyleSheet, Animated, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme';
@@ -92,12 +91,7 @@ const SearchHeader = ({
   });
 
   return (
-    <LinearGradient
-      colors={[PRIMARY, ACCENT + 'CC']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.header, { paddingTop: top + 10 }]}
-    >
+    <View style={[styles.header, { paddingTop: top + 10 }]}>
       {/* Decorative blobs */}
       <View style={styles.blob1} />
       <View style={styles.blob2} />
@@ -179,12 +173,13 @@ const SearchHeader = ({
 
       {/* Accent underline */}
       <View style={styles.borderBottom} />
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   header: {
+    backgroundColor: PRIMARY,
     paddingHorizontal: 16,
     paddingBottom: 14,
     overflow: 'hidden',

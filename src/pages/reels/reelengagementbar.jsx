@@ -394,7 +394,7 @@ const ReelEngagementBar = ({
           onPress={() => setModalVisible(false)}
         />
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.sheet}
         >
           {/* Handle + Title row */}
@@ -423,6 +423,8 @@ const ReelEngagementBar = ({
               renderItem={({ item }) => <CommentItem item={item} />}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               ListEmptyComponent={
                 <View style={styles.emptyWrap}>
                   <Ionicons name="chatbubble-outline" size={44} color={Colors.mutedBlueGray} />

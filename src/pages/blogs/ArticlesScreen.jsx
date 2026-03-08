@@ -1,17 +1,8 @@
 // src/pages/blogs/ArticlesScreen.jsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  TextInput,
-  ActivityIndicator,
-  Image,
-  RefreshControl,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView,
+  StatusBar, TextInput, ActivityIndicator, Image, RefreshControl, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,72 +14,107 @@ import {
 } from './articlesApi';
 import { ArticleCard } from './ArticleCard';
 import { Colors } from '../../theme/colors';
+import { useAuth } from '../../AuthContext';
 
 const withOpacity = (hex, opacity) => {
-  const normalized = (hex || "").replace("#", "");
-  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  const normalized = (hex || '').replace('#', '');
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0');
   return `#${normalized}${alpha}`;
 };
 
-
-const LIMIT  = 20;
+const LIMIT        = 8;
+const SCREEN_W     = Dimensions.get('window').width;
+const SLIDER_W     = Math.round(SCREEN_W * 0.82);
+const SLIDER_H     = 200;
+const SLIDER_SNAP  = SLIDER_W + 12;
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
 const WARM   = Colors.warm;
 const MUTED  = Colors.secondaryText;
 const DARK   = Colors.deepSlate;
-const BORDER = withOpacity(Colors.primaryDark, 0.09);
+const WHITE  = Colors.white;
+const CREAM  = Colors.background;
+const BORDER = BRAND + '14';
+
+const ON_DARK_10 = WHITE + '1A';
+const ON_DARK_14 = WHITE + '24';
+const ON_DARK_15 = WHITE + '26';
+const ON_DARK_40 = WHITE + '66';
+const ON_DARK_55 = WHITE + '8C';
 
 const FALLBACK_IMAGE = 'https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/photos/2026/01/hafrik_2b884253077d991796e12f7d1d13d243.png';
 
-const formatViews = (n) => {
+const fmtViews = (n) => {
   const num = Number(n || 0);
   if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
   if (num >= 1_000) return `${(num / 1_000).toFixed(1)}k`;
   return String(num);
 };
 
-// ─── Trending card (wide, with image) ────────────────────────────────────────
-const TrendingCard = ({ item, onPress }) => (
-  <TouchableOpacity style={styles.trendCard} onPress={onPress} activeOpacity={0.82}>
+// ─── Ad banner ────────────────────────────────────────────────────────────────
+const AdBanner = () => (
+  <View style={ads.wrap}>
+    <View style={ads.sponsorRow}>
+      <Ionicons name="megaphone-outline" size={11} color={MUTED} />
+      <Text style={ads.sponsorTxt}>Sponsored</Text>
+    </View>
+    <View style={ads.body}>
+      <View style={ads.imgBox}>
+        <Ionicons name="storefront-outline" size={26} color={ACCENT} />
+      </View>
+      <View style={ads.text}>
+        <Text style={ads.adTitle} numberOfLines={2}>Grow your business with Hafrik</Text>
+        <Text style={ads.adSub}>Reach thousands across Africa. Advertise your brand today.</Text>
+        <View style={ads.cta}>
+          <Text style={ads.ctaTxt}>Learn More</Text>
+          <Ionicons name="arrow-forward" size={12} color={ACCENT} />
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+// ─── Featured slider card ──────────────────────────────────────────────────────
+const SliderCard = ({ item, onPress }) => (
+  <TouchableOpacity style={sl.card} onPress={onPress} activeOpacity={0.84}>
     <Image
       source={{ uri: item.image || FALLBACK_IMAGE }}
-      style={styles.trendImage}
+      style={sl.image}
       resizeMode="cover"
     />
     <LinearGradient
-      colors={['transparent', withOpacity(Colors.deepSlate, 0.88)]}
-      style={styles.trendGradient}
+      colors={['transparent', withOpacity(Colors.deepSlate, 0.92)]}
+      style={sl.grad}
     />
-    {/* flame badge */}
-    <View style={styles.flameBadge}>
-      <Ionicons name="flame" size={11} color={Colors.white} />
-      <Text style={styles.flameTxt}>Trending</Text>
+    <View style={sl.badge}>
+      <Ionicons name="flame" size={10} color={WHITE} />
+      <Text style={sl.badgeTxt}>FEATURED</Text>
     </View>
-    <View style={styles.trendBottom}>
+    <View style={sl.bottom}>
       {!!item.category_name && (
-        <View style={styles.trendCat}>
-          <Text style={styles.trendCatTxt}>{item.category_name}</Text>
+        <View style={sl.catPill}>
+          <Text style={sl.catTxt}>{item.category_name}</Text>
         </View>
       )}
-      <Text style={styles.trendTitle} numberOfLines={2}>{item.title}</Text>
-      <Text style={styles.trendMeta}>
-        {formatViews(item.views)} views
-      </Text>
+      <Text style={sl.title} numberOfLines={2}>{item.title}</Text>
+      <View style={sl.meta}>
+        <Ionicons name="eye-outline" size={12} color={ON_DARK_55} />
+        <Text style={sl.metaTxt}>{fmtViews(item.views)} views</Text>
+      </View>
     </View>
   </TouchableOpacity>
 );
 
-// ─── Most-read-week card (compact, no image) ──────────────────────────────────
+// ─── Most-read-week compact card ───────────────────────────────────────────────
 const WeekCard = ({ item, index, onPress }) => (
-  <TouchableOpacity style={styles.weekCard} onPress={onPress} activeOpacity={0.82}>
-    <View style={styles.weekRankBadge}>
-      <Text style={styles.weekRankTxt}>#{index + 1}</Text>
+  <TouchableOpacity style={wk.card} onPress={onPress} activeOpacity={0.82}>
+    <View style={wk.rank}>
+      <Text style={wk.rankTxt}>#{index + 1}</Text>
     </View>
-    <Text style={styles.weekTitle} numberOfLines={3}>{item.title}</Text>
-    <View style={styles.weekFooter}>
+    <Text style={wk.title} numberOfLines={3}>{item.title}</Text>
+    <View style={wk.footer}>
       <Ionicons name="eye-outline" size={12} color={MUTED} />
-      <Text style={styles.weekViews}>{formatViews(item.views)}</Text>
+      <Text style={wk.views}>{fmtViews(item.views)}</Text>
     </View>
   </TouchableOpacity>
 );
@@ -96,13 +122,15 @@ const WeekCard = ({ item, index, onPress }) => (
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function ArticlesScreen({ navigation }) {
   const { top } = useSafeAreaInsets();
+  const { user } = useAuth();
+  const isVerified = user?.verified_value === 1 || user?.verified_value === true ||
+                     user?.verified === 1 || user?.verified === true ||
+                     user?.is_verified === true || user?.is_verified === 1;
 
-  // Sections state
-  const [trending,    setTrending]    = useState([]);
-  const [mostRead,    setMostRead]    = useState([]);
+  const [trending,        setTrending]        = useState([]);
+  const [mostRead,        setMostRead]        = useState([]);
   const [sectionsLoading, setSectionsLoading] = useState(true);
 
-  // Paginated grid state
   const [articles,    setArticles]    = useState([]);
   const [search,      setSearch]      = useState('');
   const [page,        setPage]        = useState(1);
@@ -115,42 +143,25 @@ export default function ArticlesScreen({ navigation }) {
   const abortRef  = useRef(null);
   const skipFirst = useRef(true);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (abortRef.current) abortRef.current.abort();
-    };
-  }, []);
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   // Load trending + most-read on mount
   useEffect(() => {
     let mounted = true;
     setSectionsLoading(true);
-    Promise.all([
-      fetchTrendingArticles(10),
-      fetchMostReadWeekArticles(10),
-    ])
-      .then(([trendData, weekData]) => {
-        if (!mounted) return;
-        setTrending(trendData);
-        setMostRead(weekData);
-      })
-      .catch(() => {/* silently ignore; grid still works */})
+    Promise.all([fetchTrendingArticles(10), fetchMostReadWeekArticles(10)])
+      .then(([t, w]) => { if (mounted) { setTrending(t); setMostRead(w); } })
+      .catch(() => {})
       .finally(() => { if (mounted) setSectionsLoading(false); });
     return () => { mounted = false; };
   }, []);
 
-  // Paginated grid fetch
   const fetchPage = useCallback(async (pageNum, q, replace) => {
     if (abortRef.current) abortRef.current.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-
     try {
-      const data = await fetchArticles(
-        { page: pageNum, limit: LIMIT, q: q || undefined },
-        ctrl.signal,
-      );
+      const data = await fetchArticles({ page: pageNum, limit: LIMIT, q: q || undefined }, ctrl.signal);
       setArticles(prev => replace ? data : [...prev, ...data]);
       setHasMore(data.length >= LIMIT);
       setPage(pageNum);
@@ -164,26 +175,17 @@ export default function ArticlesScreen({ navigation }) {
     }
   }, []);
 
-  // Initial load
-  useEffect(() => {
-    fetchPage(1, '', true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { fetchPage(1, '', true); }, []);
 
-  // Search debounce
   useEffect(() => {
     if (skipFirst.current) { skipFirst.current = false; return; }
-    const t = setTimeout(() => {
-      setLoading(true);
-      setArticles([]);
-      fetchPage(1, search, true);
-    }, 400);
+    const t = setTimeout(() => { setLoading(true); fetchPage(1, search, true); }, 400);
     return () => clearTimeout(t);
   }, [search, fetchPage]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // also refresh sections
     Promise.all([fetchTrendingArticles(10), fetchMostReadWeekArticles(10)])
       .then(([t, w]) => { setTrending(t); setMostRead(w); })
       .catch(() => {});
@@ -197,74 +199,124 @@ export default function ArticlesScreen({ navigation }) {
   }, [hasMore, loadingMore, loading, refreshing, page, search, fetchPage]);
 
   const openArticle = useCallback((item) => {
-    navigation.navigate('ArticleDetails', {
-      postId: item.post_id,
-      link: item.link,
-      title: item.title,
-    });
+    navigation.navigate('ArticleDetails', { postId: item.post_id, link: item.link, title: item.title });
   }, [navigation]);
 
-  // ─── Render helpers ───────────────────────────────────────────────────────
+  // Build 2-per-row + ad entries from articles
+  const processedData = useMemo(() => {
+    const rows = [];
+    let rowCount = 0;
+    for (let i = 0; i < articles.length; i += 2) {
+      rows.push({ _type: 'row', id: `row-${i}`, items: articles.slice(i, i + 2) });
+      rowCount += 1;
+      // inject ad every 3 rows (= every 6 articles), skip if nothing after
+      if (rowCount % 3 === 0 && i + 2 < articles.length) {
+        rows.push({ _type: 'ad', id: `ad-${i}` });
+      }
+    }
+    return rows;
+  }, [articles]);
 
-  const renderGridItem = useCallback(({ item }) => (
-    <ArticleCard item={item} onPress={() => openArticle(item)} />
-  ), [openArticle]);
-
-  const ListFooter = () =>
-    loadingMore ? (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={BRAND} />
+  const renderRow = useCallback(({ item }) => {
+    if (item._type === 'ad') return <AdBanner />;
+    return (
+      <View style={st.gridRow}>
+        {item.items.map((a) => (
+          <ArticleCard key={String(a.id)} item={a} onPress={() => openArticle(a)} />
+        ))}
+        {item.items.length === 1 && <View style={{ flex: 1 }} />}
       </View>
-    ) : null;
+    );
+  }, [openArticle]);
 
-  const ListEmpty = () => (
-    <View style={styles.emptyWrap}>
-      <Ionicons name="newspaper-outline" size={56} color={MUTED} />
-      <Text style={styles.emptyTitle}>No articles found</Text>
-      <Text style={styles.emptySub}>
-        {error ? error : 'Try a different search term.'}
-      </Text>
-    </View>
-  );
-
-  // Sections header rendered as FlatList ListHeaderComponent
-  const ListHeader = () => (
+  const listHeaderElement = (
     <View>
-      {/* ── Trending ── */}
+      {/* ── Hero block (same pattern as BusinessList / CommunitiesScreen) ── */}
+      <View style={st.heroBlock}>
+        <View style={st.heroPills}>
+          <View style={st.heroLivePill}>
+            <View style={st.heroLiveDot} />
+            <Text style={st.heroLiveText}>ARTICLES</Text>
+          </View>
+          {trending.length > 0 && (
+            <View style={st.heroCountPill}>
+              <Ionicons name="flame" size={10} color={WHITE + 'BF'} />
+              <Text style={st.heroCountText}>{trending.length}+ Trending</Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={st.heroTitle}>Read, Explore{'\n'}&amp; Stay Informed.</Text>
+        <Text style={st.heroSub}>
+          Stories, guides, and updates from Africa and the world.
+        </Text>
+
+        <View style={st.heroStats}>
+          <View style={st.heroStatItem}>
+            <Text style={st.heroStatNum}>{trending.length > 0 ? `${trending.length}+` : '—'}</Text>
+            <Text style={st.heroStatLabel}>TRENDING</Text>
+          </View>
+          <View style={st.heroStatDivider} />
+          <View style={st.heroStatItem}>
+            <Text style={st.heroStatNum}>{mostRead.length > 0 ? `${mostRead.length}+` : '—'}</Text>
+            <Text style={st.heroStatLabel}>THIS WEEK</Text>
+          </View>
+          <View style={st.heroStatDivider} />
+          <View style={st.heroStatItem}>
+            <Text style={st.heroStatNum}>{articles.length > 0 ? `${articles.length}+` : '—'}</Text>
+            <Text style={st.heroStatLabel}>ARTICLES</Text>
+          </View>
+        </View>
+
+        {/* Search */}
+        <View style={st.heroSearch}>
+          <Ionicons name="search-outline" size={16} color={ON_DARK_55} style={{ marginRight: 8 }} />
+          <TextInput
+            style={st.searchInput}
+            placeholder="Search articles…"
+            placeholderTextColor={ON_DARK_40}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color={ON_DARK_55} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* ── Featured slider ── */}
       {!sectionsLoading && trending.length > 0 && (
         <View>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLabelWrap}>
-              <Ionicons name="flame" size={16} color={WARM} />
-              <Text style={styles.sectionLabel}>Trending</Text>
-            </View>
-            <Text style={styles.sectionSub}>All-time most viewed</Text>
+          <View style={st.sectionBar}>
+            <View style={st.sectionAccent} />
+            <Text style={st.sectionBarText}>FEATURED</Text>
+            <Ionicons name="flame" size={13} color={WARM} style={{ marginLeft: 4 }} />
           </View>
-
           <FlatList
             data={trending}
-            keyExtractor={item => `trend-${item.id}`}
-            renderItem={({ item }) => (
-              <TrendingCard item={item} onPress={() => openArticle(item)} />
-            )}
+            keyExtractor={item => `slider-${item.id}`}
+            renderItem={({ item }) => <SliderCard item={item} onPress={() => openArticle(item)} />}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.hScroll}
+            contentContainerStyle={st.scrollRow}
+            snapToInterval={SLIDER_SNAP}
+            decelerationRate="fast"
           />
         </View>
       )}
 
-      {/* ── Most Read This Week ── */}
+      {/* ── Most read this week ── */}
       {!sectionsLoading && mostRead.length > 0 && (
         <View>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLabelWrap}>
-              <Ionicons name="trending-up" size={16} color={ACCENT} />
-              <Text style={styles.sectionLabel}>Most Read This Week</Text>
-            </View>
-            <Text style={styles.sectionSub}>Last 7 days</Text>
+          <View style={st.sectionBar}>
+            <View style={st.sectionAccent} />
+            <Text style={st.sectionBarText}>MOST READ THIS WEEK</Text>
           </View>
-
           <FlatList
             data={mostRead}
             keyExtractor={item => `week-${item.id}`}
@@ -273,202 +325,208 @@ export default function ArticlesScreen({ navigation }) {
             )}
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.hScroll}
+            contentContainerStyle={st.scrollRow}
           />
         </View>
       )}
 
-      {/* Sections skeleton */}
       {sectionsLoading && (
-        <View style={styles.sectionSkeleton}>
+        <View style={st.skeleton}>
           <ActivityIndicator size="small" color={BRAND} />
         </View>
       )}
 
-      {/* All articles title */}
-      <View style={[styles.sectionRow, { marginTop: 4 }]}>
-        <View style={styles.sectionLabelWrap}>
-          <Ionicons name="newspaper-outline" size={16} color={BRAND} />
-          <Text style={styles.sectionLabel}>All Articles</Text>
-        </View>
+      {/* ── Section label ── */}
+      <View style={st.sectionBar}>
+        <View style={st.sectionAccent} />
+        <Text style={st.sectionBarText}>ALL ARTICLES</Text>
+        {articles.length > 0 && <Text style={st.sectionCount}>{articles.length} results</Text>}
       </View>
     </View>
   );
 
-  // ─── UI ───────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={st.root}>
       <StatusBar barStyle="light-content" backgroundColor={BRAND} />
 
-      {/* Header */}
-      <LinearGradient
-        colors={[BRAND, Colors.tealHeader]}
-        style={[styles.header, { paddingTop: top + 4 }]}
-      >
-        <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={20} color={Colors.white} />
+      {/* Flat header — back only */}
+      <View style={[st.header, { paddingTop: top + 8 }]}>
+        <View style={st.headerTop}>
+          <TouchableOpacity style={st.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+            <Ionicons name="arrow-back" size={20} color={WHITE} />
           </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Articles</Text>
-            <Text style={styles.headerSub}>Stories, guides & updates</Text>
+          <View style={st.headerLogoWrap} pointerEvents="none">
+            <Image source={require('../../assl.js/Layer 3.png')} style={st.headerLogo} resizeMode="contain" />
           </View>
-          <View style={{ width: 38 }} />
-        </View>
-
-        {/* Search */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color={withOpacity(Colors.white, 0.7)} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search articles..."
-            placeholderTextColor={withOpacity(Colors.white, 0.45)}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={17} color={withOpacity(Colors.white, 0.55)} />
+          <View style={{ flex: 1 }} />
+          {isVerified && (
+            <TouchableOpacity style={st.createBtn} onPress={() => navigation.navigate('CreateArticle')} activeOpacity={0.85}>
+              <Ionicons name="create-outline" size={15} color={WHITE} />
+              <Text style={st.createBtnTxt}>Write</Text>
             </TouchableOpacity>
           )}
+          {!isVerified && <View style={{ width: 36 }} />}
         </View>
-      </LinearGradient>
+      </View>
 
-      {/* Content */}
-      {loading && !refreshing ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={BRAND} />
-          <Text style={{ marginTop: 10, color: MUTED }}>Loading articles...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={articles}
-          keyExtractor={item => String(item.id)}
-          renderItem={renderGridItem}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.grid}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND} />
-          }
-          onEndReached={onEndReached}
-          onEndReachedThreshold={0.4}
-          ListHeaderComponent={ListHeader}
-          ListFooterComponent={ListFooter}
-          ListEmptyComponent={ListEmpty}
-        />
-      )}
+      <FlatList
+        data={processedData}
+        keyExtractor={item => item.id}
+        renderItem={renderRow}
+        contentContainerStyle={st.listContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND} />
+        }
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.4}
+        ListHeaderComponent={listHeaderElement}
+        ListFooterComponent={
+          loadingMore ? <ActivityIndicator size="small" color={BRAND} style={{ marginVertical: 20 }} /> : null
+        }
+        ListEmptyComponent={
+          loading ? (
+            <View style={st.centered}>
+              <ActivityIndicator size="large" color={BRAND} />
+              <Text style={{ marginTop: 10, color: MUTED }}>Loading articles...</Text>
+            </View>
+          ) : (
+            <View style={st.emptyWrap}>
+              <View style={st.emptyCircle}>
+                <Ionicons name="newspaper-outline" size={36} color={MUTED} />
+              </View>
+              <Text style={st.emptyTitle}>No articles found</Text>
+              <Text style={st.emptySub}>{error ?? 'Try a different search term.'}</Text>
+            </View>
+          )
+        }
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.surfaceSky },
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const st = StyleSheet.create({
+  root: { flex: 1, backgroundColor: CREAM },
 
-  // Header
-  header: { paddingHorizontal: 16, paddingBottom: 14 },
-  headerTop: {
+  // Header — flat BRAND, same as BusinessList / CommunitiesScreen
+  header: {
+    backgroundColor: BRAND,
+    paddingHorizontal: 16, paddingBottom: 10,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22, shadowRadius: 10, elevation: 8,
+  },
+  headerTop:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backBtn:        { width: 36, height: 36, borderRadius: 18, backgroundColor: ON_DARK_14, alignItems: 'center', justifyContent: 'center' },
+  headerLogoWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  headerLogo:     { height: 26, width: 110 },
+  createBtn:    { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ACCENT, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100 },
+  createBtnTxt: { fontSize: 12, fontWeight: '800', color: WHITE },
+
+  // Hero block — flat BRAND, rounded bottom, same pattern
+  heroBlock: {
+    backgroundColor: BRAND,
+    paddingHorizontal: 18, paddingTop: 18, paddingBottom: 24,
+    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
+    overflow: 'hidden', marginBottom: 4,
+    marginHorizontal: -14,
+  },
+  heroPills:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  heroLivePill:  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: WHITE + '1F', borderWidth: 1, borderColor: WHITE + '29', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  heroLiveDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
+  heroLiveText:  { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: WHITE + 'BF' },
+  heroCountPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: WHITE + '1F', borderWidth: 1, borderColor: WHITE + '1F', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  heroCountText: { fontSize: 11, fontWeight: '700', color: WHITE + 'BF' },
+  heroTitle:     { fontSize: 28, fontWeight: '900', color: WHITE, lineHeight: 34 },
+  heroSub:       { marginTop: 8, fontSize: 13, lineHeight: 19, color: WHITE + 'A6' },
+  heroStats: {
+    flexDirection: 'row', alignItems: 'center', marginTop: 18,
+    backgroundColor: WHITE + '12', borderRadius: 14,
+    borderWidth: 1, borderColor: WHITE + '1A',
+    paddingVertical: 13, paddingHorizontal: 16,
+  },
+  heroStatItem:    { flex: 1, alignItems: 'center' },
+  heroStatNum:     { fontSize: 18, fontWeight: '900', color: WHITE },
+  heroStatLabel:   { fontSize: 10, color: WHITE + '88', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  heroStatDivider: { width: 1, height: 30, backgroundColor: WHITE + '22' },
+  heroSearch: {
     flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 12,
+    backgroundColor: ON_DARK_10, borderRadius: 100,
+    borderWidth: 1, borderColor: ON_DARK_15,
+    paddingHorizontal: 14, height: 44, marginTop: 16,
   },
-  backBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: withOpacity(Colors.white, 0.15),
-    justifyContent: 'center', alignItems: 'center',
-  },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: Colors.white, fontSize: 20, fontWeight: '800' },
-  headerSub:   { color: withOpacity(Colors.white, 0.65), fontSize: 11, marginTop: 1 },
-  searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: withOpacity(Colors.white, 0.15),
-    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
-  },
-  searchInput: { flex: 1, color: Colors.white, fontSize: 14 },
+  searchInput: { flex: 1, color: WHITE, fontSize: 13 },
 
-  // Section headers
-  sectionRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingTop: 18, paddingBottom: 10,
-  },
-  sectionLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sectionLabel: { fontSize: 15, fontWeight: '800', color: DARK },
-  sectionSub:   { fontSize: 11, color: MUTED },
+  // Section label
+  sectionBar:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  sectionAccent:  { width: 3, height: 14, borderRadius: 2, backgroundColor: ACCENT },
+  sectionBarText: { fontSize: 11, fontWeight: '800', color: MUTED, letterSpacing: 1.5 },
+  sectionCount:   { marginLeft: 'auto', fontSize: 11, color: MUTED },
+  skeleton:       { height: 60, alignItems: 'center', justifyContent: 'center' },
+  scrollRow:      { paddingHorizontal: 16, gap: 12, paddingBottom: 4 },
 
-  hScroll: { paddingHorizontal: 14, gap: 12 },
+  // Grid
+  listContent: { paddingHorizontal: 14, paddingBottom: 40, gap: 10 },
+  gridRow:     { flexDirection: 'row', gap: 10 },
 
-  sectionSkeleton: {
-    height: 60, justifyContent: 'center', alignItems: 'center',
-  },
+  centered:  { alignItems: 'center', paddingTop: 60, gap: 12 },
+  emptyWrap: { alignItems: 'center', paddingTop: 60, gap: 12, paddingHorizontal: 24 },
+  emptyCircle: { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT + '18' },
+  emptyTitle:  { fontSize: 16, fontWeight: '800', color: DARK },
+  emptySub:    { fontSize: 13, color: MUTED, textAlign: 'center' },
+});
 
-  // Trending card
-  trendCard: {
-    width: 220,
-    height: 160,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: Colors.neutral220,
-  },
-  trendImage: { ...StyleSheet.absoluteFillObject },
-  trendGradient: {
-    position: 'absolute', left: 0, right: 0, bottom: 0, height: 110,
-  },
-  flameBadge: {
+// ─── Slider card styles ────────────────────────────────────────────────────────
+const sl = StyleSheet.create({
+  card:     { width: SLIDER_W, height: SLIDER_H, borderRadius: 18, overflow: 'hidden', backgroundColor: Colors.neutral220 },
+  image:    { ...StyleSheet.absoluteFillObject },
+  grad:     { position: 'absolute', left: 0, right: 0, bottom: 0, height: 130 },
+  badge: {
     position: 'absolute', top: 10, left: 10,
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: withOpacity(Colors.coral, 0.92),
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 999,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
   },
-  flameTxt: { color: Colors.white, fontSize: 10, fontWeight: '800' },
-  trendBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 10 },
-  trendCat: {
-    alignSelf: 'flex-start',
-    backgroundColor: withOpacity(Colors.tealAccent, 0.22),
-    borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
+  badgeTxt: { color: WHITE, fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+  bottom:   { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12 },
+  catPill:  { alignSelf: 'flex-start', backgroundColor: ACCENT + '33', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginBottom: 5 },
+  catTxt:   { fontSize: 9, fontWeight: '800', color: ACCENT },
+  title:    { fontSize: 14, fontWeight: '800', color: WHITE, lineHeight: 19, marginBottom: 5 },
+  meta:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaTxt:  { fontSize: 11, color: ON_DARK_55, fontWeight: '600' },
+});
+
+// ─── Week card styles ──────────────────────────────────────────────────────────
+const wk = StyleSheet.create({
+  card: {
+    width: 150, backgroundColor: Colors.white, borderRadius: 14, padding: 12,
+    borderWidth: 1, borderColor: BORDER, justifyContent: 'space-between',
+    shadowColor: Colors.black, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+  },
+  rank:    { alignSelf: 'flex-start', backgroundColor: BRAND + '18', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 8 },
+  rankTxt: { fontSize: 11, fontWeight: '900', color: BRAND },
+  title:   { fontSize: 12.5, fontWeight: '700', color: DARK, lineHeight: 17, flex: 1 },
+  footer:  { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  views:   { fontSize: 11, color: MUTED, fontWeight: '600' },
+});
+
+// ─── Ad banner styles ──────────────────────────────────────────────────────────
+const ads = StyleSheet.create({
+  wrap: {
+    backgroundColor: Colors.white, borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: BRAND + '14',
+    shadowColor: DARK, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
     marginBottom: 4,
   },
-  trendCatTxt: { fontSize: 9, fontWeight: '800', color: ACCENT },
-  trendTitle:  { fontSize: 13, fontWeight: '800', color: Colors.white, lineHeight: 17, marginBottom: 4 },
-  trendMeta:   { fontSize: 10, color: withOpacity(Colors.white, 0.65) },
-
-  // Week card
-  weekCard: {
-    width: 150,
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: BORDER,
-    justifyContent: 'space-between',
-    shadowColor: Colors.black,
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  weekRankBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: withOpacity(Colors.primaryDark, 0.10),
-    borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 3,
-    marginBottom: 8,
-  },
-  weekRankTxt:  { fontSize: 11, fontWeight: '900', color: BRAND },
-  weekTitle:    { fontSize: 12.5, fontWeight: '700', color: DARK, lineHeight: 17, flex: 1 },
-  weekFooter:   { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  weekViews:    { fontSize: 11, color: MUTED, fontWeight: '600' },
-
-  // Grid
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  grid: { paddingHorizontal: 10, paddingBottom: 40 },
-  row:  { gap: 10, marginBottom: 10 },
-
-  footerLoader: { paddingVertical: 20, alignItems: 'center' },
-
-  emptyWrap:  { alignItems: 'center', paddingTop: 40, gap: 8, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: DARK },
-  emptySub:   { fontSize: 13, color: MUTED, textAlign: 'center' },
+  sponsorRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingTop: 10, marginBottom: 6 },
+  sponsorTxt: { fontSize: 9, fontWeight: '700', color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' },
+  body:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingBottom: 14 },
+  imgBox:     { width: 76, height: 76, borderRadius: 14, backgroundColor: ACCENT + '14', alignItems: 'center', justifyContent: 'center' },
+  text:       { flex: 1 },
+  adTitle:    { fontSize: 14, fontWeight: '800', color: DARK, lineHeight: 19, marginBottom: 4 },
+  adSub:      { fontSize: 12, color: MUTED, lineHeight: 17, marginBottom: 8 },
+  cta:        { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ctaTxt:     { fontSize: 12, fontWeight: '800', color: ACCENT },
 });

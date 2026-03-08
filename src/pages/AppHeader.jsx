@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import useStore from '../repository/store';
 import AppDetails from '../helpers/appdetails';
@@ -51,12 +50,7 @@ const AppHeader = ({ onOpenDrawer, title }) => {
     ) : null;
 
   return (
-    <LinearGradient
-      colors={Colors.gradientPrimary}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.header, { paddingTop: top + 6 }]}
-    >
+    <View style={[styles.header, { paddingTop: top + 6 }]}>
       <View style={styles.inner}>
 
         {/* LEFT — hamburger */}
@@ -109,12 +103,13 @@ const AppHeader = ({ onOpenDrawer, title }) => {
       </View>
       {/* subtle accent underline */}
       <View style={styles.borderBottom} />
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   header: {
+    backgroundColor: BRAND,
     zIndex: 10,
     elevation: 6,
     shadowColor: BRAND,

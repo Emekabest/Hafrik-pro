@@ -32,7 +32,7 @@ const formatCount = (n) => {
 };
 
 
-const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followingsCount, groupsCount, pagesCount, isOwner, isFollowing }) => {
+const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followingsCount, groupsCount, pagesCount, isOwner, isFollowing, onProfileUpdated }) => {
     
     const {token} = useAuth();
 
@@ -44,10 +44,16 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
 
 
     const getGender = (g) => {
-        if (g === 1) return 'Male';
-        if (g === 2) return 'Female';
+        const gender = Number(g);
+        if (gender === 1) return 'Male';
+        if (gender === 2) return 'Female';
+        if (gender === 3) return 'Other';
         return 'Unknown';
     };
+
+    const biography = userDetails?.bio || userDetails?.about_me || userDetails?.biography || userDetails?.user_biography || '';
+    const countryLabel = userDetails?.country_name || userDetails?.country_label || userDetails?.user_country_name || userDetails?.country || '';
+    const cityLabel = userDetails?.current_city || userDetails?.city || userDetails?.user_current_city || '';
 
     useEffect(()=>{
         if (userDetails?.cover) {
@@ -192,7 +198,9 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     cachePolicy="memory-disk"
                 />
                 <LinearGradient
-                    colors={['transparent', withOpacity(Colors.black, 0.55)]}
+                    colors={['transparent', withOpacity(BRAND, 0.80)]}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
                     style={styles.coverGradient}
                 />
                 {isOwner && (
@@ -279,8 +287,8 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                 <Text style={styles.usernameText}>@{userDetails?.username || user?.username || 'username'}</Text>
 
                 {/* Bio placeholder */}
-                {userDetails?.bio ? (
-                    <Text style={styles.bioText}>{userDetails.bio}</Text>
+                {biography ? (
+                    <Text style={styles.bioText}>{biography}</Text>
                 ) : null}
 
                 {/* Quick info chips */}
@@ -293,11 +301,11 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                         />
                         <Text style={styles.infoChipText}>{getGender(userDetails?.gender)}</Text>
                     </View>
-                    {!!(userDetails?.current_city || userDetails?.city || userDetails?.country) && (
+                    {!!(cityLabel || countryLabel) && (
                         <View style={styles.infoChip}>
                             <Ionicons name="location-outline" size={13} color={ACCENT} />
                             <Text style={styles.infoChipText}>
-                                {[userDetails?.current_city || userDetails?.city, userDetails?.country].filter(Boolean).join(', ')}
+                                {[cityLabel, countryLabel].filter(Boolean).join(', ')}
                             </Text>
                         </View>
                     )}
@@ -316,7 +324,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                 </View>
 
                 {/* Location prompt — only for owner with no location set */}
-                {isOwner && !(userDetails?.current_city || userDetails?.city || userDetails?.country) && (
+                {isOwner && !(cityLabel || countryLabel) && (
                     <TouchableOpacity
                         style={styles.locationPrompt}
                         activeOpacity={0.8}
@@ -358,6 +366,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                 visible={editModalVisible} 
                 onClose={() => setEditModalVisible(false)}
                 userDetails={userDetails || user}
+                onProfileUpdated={onProfileUpdated}
             />
             
             {/* Avatar options bottom sheet */}

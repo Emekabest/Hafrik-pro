@@ -24,7 +24,7 @@ const ACCENT = Colors.primary;
 
 const ProfileScreen = () => {
     const navigation = useNavigation();
-    const { user, token } = useAuth();
+    const { user, token, updateUser } = useAuth();
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState({label: "Timeline", value: "timeline"});
@@ -38,6 +38,16 @@ const ProfileScreen = () => {
     // Live notification + message counts (polls every 20 s while focused)
     useLiveCounts();
 
+    // const tabs = useRef([
+    //     "Timeline", 
+    //     "Followers", 
+    //     "Photos", 
+    //     "Videos", 
+    //     "Product", 
+    //     "Business Pages", 
+    //     "Communities", 
+    //     "Events" 
+    // ])
 
     const tabs = useRef([
         {label: "Timeline", value: "timeline", icon: "home-outline"},
@@ -91,6 +101,23 @@ const ProfileScreen = () => {
         setRefreshing(false);
     }, [token]);
 
+    const handleProfileUpdated = useCallback(async (updatedUser) => {
+        if (!updatedUser) return;
+
+        setProfileData((prev) => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                user: {
+                    ...prev.user,
+                    ...updatedUser,
+                },
+            };
+        });
+
+        await updateUser({ ...(user || {}), ...updatedUser });
+    }, [updateUser, user]);
+
 
 
 
@@ -130,8 +157,9 @@ const ProfileScreen = () => {
             pagesCount={pagesCount}
             isOwner={isOwner}
             isFollowing={isFollowing}
+            onProfileUpdated={handleProfileUpdated}
         />
-    ), [userDetails, user, postsCount, followersCount, followingsCount, groupsCount, pagesCount, isOwner, isFollowing]);
+    ), [userDetails, user, postsCount, followersCount, followingsCount, groupsCount, pagesCount, isOwner, isFollowing, handleProfileUpdated]);
 
     
 

@@ -11,8 +11,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
 
 const BASE_URL = 'https://hafrik.com';
 const BRAND    = Colors.primaryDark;
@@ -88,11 +88,11 @@ const Avatar = ({ url, name, size = 47 }) => {
     return <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: r }} />;
   }
   return (
-    <LinearGradient colors={Colors.gradientPrimary} style={{ width: size, height: size, borderRadius: r, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: size, height: size, borderRadius: r, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ color: Colors.white, fontWeight: '900', fontSize: size * 0.38 }}>
         {(name ?? 'U').slice(0, 1).toUpperCase()}
       </Text>
-    </LinearGradient>
+    </View>
   );
 };
 
@@ -202,9 +202,9 @@ const Empty = () => {
   return (
     <View style={ns.emptyWrap}>
       <Animated.View style={{ transform: [{ scale: pulse }] }}>
-        <LinearGradient colors={[ACCENT + '33', BRAND + '22']} style={ns.emptyCircle}>
+        <View style={[ns.emptyCircle, { backgroundColor: ACCENT + '1A' }]}>
           <Ionicons name="notifications-off-outline" size={46} color={MUTED} />
-        </LinearGradient>
+        </View>
       </Animated.View>
       <Text style={ns.emptyTitle}>All caught up!</Text>
       <Text style={ns.emptySub}>Your notifications will show up here.</Text>
@@ -237,6 +237,7 @@ export default function NotificationsScreen() {
   const navigation    = useNavigation();
   const { top }       = useSafeAreaInsets();
   const { token }     = useAuth();
+  const { colors: tc } = useTheme();
   const setNotifCount = useStore((s) => s.setNotificationCount);
 
   const [allItems,    setAllItems]    = useState([]);
@@ -304,11 +305,11 @@ export default function NotificationsScreen() {
   }, [handleDel]);
 
   return (
-    <View style={ns.root}>
+    <View style={[ns.root, { backgroundColor: tc.background }]}>
       <StatusBar barStyle="light-content" />
 
       {/* ── Header ── */}
-      <LinearGradient colors={Colors.gradientPrimary} style={[ns.header, { paddingTop: top + 8 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <View style={[ns.header, { paddingTop: top + 8 }]}>
         <View style={ns.decorCircle} pointerEvents="none" />
 
         <Animated.View style={[ns.headerRow, { opacity: hdrAnim, transform: [{ translateY: hdrAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }] }]}>
@@ -318,10 +319,13 @@ export default function NotificationsScreen() {
           </TouchableOpacity>
 
           <View style={ns.titleRow}>
-            <Text style={ns.title}>Notifications</Text>
-            {unread > 0 && (
-              <View style={ns.titleBadge}><Text style={ns.titleBadgeTxt}>{unread > 99 ? '99+' : unread}</Text></View>
-            )}
+            <Text style={ns.titleEyebrow}>HAFRIK</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Text style={ns.title}>Notifications</Text>
+              {unread > 0 && (
+                <View style={ns.titleBadge}><Text style={ns.titleBadgeTxt}>{unread > 99 ? '99+' : unread}</Text></View>
+              )}
+            </View>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -341,7 +345,7 @@ export default function NotificationsScreen() {
           onChange={setFilter}
           counts={{ Unread: unread, Mentions: mentions, Messages: messages }}
         />
-      </LinearGradient>
+      </View>
 
       {/* ── List ── */}
       <FlatList
@@ -378,8 +382,9 @@ const ns = StyleSheet.create({
 
   // Header
   header: {
+    backgroundColor: BRAND,
     paddingHorizontal: 16, paddingBottom: 0, overflow: 'hidden',
-    shadowColor: BRAND, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 14,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 8,
   },
   decorCircle: {
     position: 'absolute', width: 220, height: 220, borderRadius: 110,
@@ -397,7 +402,8 @@ const ns = StyleSheet.create({
     borderWidth: 1.5, borderColor: BRAND,
   },
   hBtnDotTxt: { color: Colors.white, fontSize: 8, fontWeight: '900' },
-  titleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  titleRow:     { flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+  titleEyebrow: { fontSize: 9, fontWeight: '800', letterSpacing: 2.5, color: ACCENT, marginBottom: 2 },
   title: { fontSize: 18, fontWeight: '800', color: Colors.white, letterSpacing: 0.2 },
   titleBadge: {
     backgroundColor: ACCENT, borderRadius: 10, minWidth: 22, height: 20,

@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
+import useWebViewSession, { REDIRECT_GUARD } from '../../hooks/useWebViewSession';
 import AuthenticatedWebView from '../../components/AuthenticatedWebView';
 import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme/colors';
@@ -21,8 +22,6 @@ const withOpacity = (hex, opacity) => {
   return `#${normalized}${alpha}`;
 };
 
-
-const BRIDGE_URL = 'https://hafrik.com/api/v1/auth/webview-login.php';
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
 const MUTED  = Colors.secondaryText;
@@ -31,71 +30,34 @@ export default function InAppBrowser() {
   const navigation = useNavigation();
   const route      = useRoute();
   const { top }    = useSafeAreaInsets();
-  const { token, user }  = useAuth();
+  const { token, user } = useAuth();
 
   const { title = 'Hafrik', url = 'https://hafrik.com' } = route.params ?? {};
 
   const webRef = useRef(null);
 
-  const [ready,        setReady]        = useState(false);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState(false);
-  const [bridgeError,  setBridgeError]  = useState(null);
-  const [canGoBack,    setCanGoBack]    = useState(false);
-  const [progress,     setProgress]     = useState(0);
-  const [sessionCreds, setSessionCreds] = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
+  const [progress,  setProgress]  = useState(0);
 
-  // ─── Bridge + Cookie injection ─────────────────────────────────────────────
-  const initSession = useCallback(async () => {
-    setBridgeError(null);
-    try {
-      const res = await fetch(BRIDGE_URL, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await res.json();
-      console.log('Bridge response:', data);
-
-      if (data.status !== 'success') {
-        setBridgeError('Bridge error: ' + (data.message || 'unknown'));
-        return;
-      }
-
-      setSessionCreds({ phpsessid: data.phpsessid, session_token: data.session_token });
-      console.log('✅ Session ready, PHPSESSID:', data.phpsessid);
-      setReady(true);
-    } catch (e) {
-      console.error('Bridge error:', e);
-      setBridgeError(e.message);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token) initSession();
-    else setReady(true); // no token — open without auth
-  }, [token]);
+  const { ready, bridgeError, initSession, cookieJS } = useWebViewSession(token);
 
   // ─── Inject user data before page loads ─────────────────────────────────
   const injectedBeforeContent = useMemo(() => {
-    if (!user) return 'true;';
-    const payload = JSON.stringify({
-      id:       user.id        ?? null,
-      username: user.username  ?? null,
-      email:    user.email     ?? null,
-      name:     user.name ?? user.full_name ?? user.username ?? null,
-      avatar:   user.avatar ?? user.profile_picture ?? null,
-      token:    token ?? null,
-    });
-    return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;true;`;
-  }, [user, token]);
-
-  const injectedScript = useMemo(() => {
-    const cookiePart = sessionCreds
-      ? `(function(){if(document.cookie.indexOf('PHPSESSID=')!==-1)return;var e=new Date();e.setDate(e.getDate()+30);var x=e.toUTCString();document.cookie='PHPSESSID=${sessionCreds.phpsessid};path=/;domain=.hafrik.com;expires='+x;document.cookie='session_token=${sessionCreds.session_token};path=/;domain=.hafrik.com;expires='+x;window.location.reload();})();`
-      : '';
-    return cookiePart + `(function(){var p=window.location.pathname.toLowerCase();var a=['/login','/signin','/register','/signup'];if(a.some(function(x){return p.includes(x);})){window.location.replace('/');}})();true;`;
-  }, [sessionCreds]);
+    const userPayload = user ? (() => {
+      const payload = JSON.stringify({
+        id:       user.id        ?? null,
+        username: user.username  ?? null,
+        email:    user.email     ?? null,
+        name:     user.name ?? user.full_name ?? user.username ?? null,
+        avatar:   user.avatar ?? user.profile_picture ?? null,
+        token:    token ?? null,
+      });
+      return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;`;
+    })() : '';
+    return `${cookieJS}${userPayload}true;`;
+  }, [user, token, cookieJS]);
 
   const handleShare = async () => {
     try { await Share.share({ message: `${title} — ${url}`, url }); } catch {}
@@ -198,7 +160,7 @@ export default function InAppBrowser() {
           source={{ uri: url }}
           style={styles.webview}
           injectedJavaScriptBeforeContentLoaded={injectedBeforeContent}
-          injectedJavaScript={injectedScript}
+          injectedJavaScript={REDIRECT_GUARD}
           onLoadStart={() => { setLoading(true); setError(false); }}
           onLoadEnd={() => setLoading(false)}
           onError={() => { setLoading(false); setError(true); }}

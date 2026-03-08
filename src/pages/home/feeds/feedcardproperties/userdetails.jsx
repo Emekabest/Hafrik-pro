@@ -1,4 +1,5 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image as ExpoImage } from 'expo-image';
 import AppDetails from "../../../../helpers/appdetails";
 import SvgIcon from "../../../../assl.js/svg/svg";
 import { useNavigation } from "@react-navigation/native";
@@ -97,7 +98,7 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
                         />
                         <Text style={styles.postedInPrefix}>{postContext.label}</Text>
                         {postContext.avatar ? (
-                            <Image source={{ uri: postContext.avatar }} style={styles.postedInAvatar} />
+                            <ExpoImage source={{ uri: postContext.avatar }} style={styles.postedInAvatar} contentFit="cover" cachePolicy="memory-disk" />
                         ) : (
                             <View style={[styles.postedInAvatar, styles.postedInAvatarFallback]}>
                                 <Ionicons

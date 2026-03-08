@@ -223,7 +223,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     // Interstitial pool
     const pool = [];
     if (adsList.length       > 0) pool.push({ type: 'ad',            data: adsList[0] });
-    if (peopleList.length    > 0) pool.push({ type: 'peoplecard',    data: peopleList });
+    if (peopleList.length    > 0 && Math.random() < 0.5) pool.push({ type: 'peoplecard',    data: peopleList });
     if (bizList.length       > 0) pool.push({ type: 'bizcard',       data: bizList });
     if (communityList.length > 0) pool.push({ type: 'communitycard', data: communityList });
     // Shuffle
