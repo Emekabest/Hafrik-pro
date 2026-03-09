@@ -5,6 +5,10 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import Login from './src/pages/Login';
+import ForgotPasswordScreen from './src/pages/ForgotPasswordScreen.jsx';
+import ResetPasswordScreen from './src/pages/ResetPasswordScreen.jsx';
+import VerifyResetScreen from './src/pages/VerifyResetScreen.jsx';
+import ChangePasswordScreen from './src/pages/ChangePasswordScreen.jsx';
 import MainTabNavigator from './src/csslx.js/MainTabNavigator';
 import { AuthProvider, useAuth } from './src/AuthContext';
 import { ThemeProvider } from './src/theme/ThemeContext';
@@ -285,6 +289,10 @@ function AppNavigator() {
             >
 
               <Stack.Screen name="Login" component={Login} />
+              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+              <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+              <Stack.Screen name="VerifyReset" component={VerifyResetScreen} />
+              <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
               <Stack.Screen name="MainTabs" component={MainTabNavigator} options={{ gestureEnabled: false, }} />
               
               {/* Add your new screens here */}
