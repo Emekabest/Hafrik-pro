@@ -172,7 +172,7 @@ function AppNavigator() {
 
 
 
-        const [fontsLoaded] = useFonts({
+        const [fontsLoaded, fontError] = useFonts({
           // Legacy keys (keep for existing screens)
           WorkSans_300Light,
           WorkSans_400Regular,
@@ -226,9 +226,17 @@ function AppNavigator() {
   }, [token]);
 
   // ── Animated splash fade-out ───────────────────────────────────────────────
+  const SPLASHSCEEN_MIN_DURATION = 5000; // Minimum time to show splash screen (ms)
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const [splashDone, setSplashDone] = useState(false);
-  const isAppReady = fontsLoaded && !loading;
+  const [minDelayDone, setMinDelayDone] = useState(false);
+  const isAppReady = (fontsLoaded || !!fontError) && !loading && minDelayDone;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinDelayDone(true), SPLASHSCEEN_MIN_DURATION);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     if (isAppReady && !splashDone) {
       Animated.timing(splashOpacity, {
@@ -240,7 +248,7 @@ function AppNavigator() {
     }
   }, [isAppReady]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return <SplashScreen fadeAnim={splashOpacity} />;
   }
 
