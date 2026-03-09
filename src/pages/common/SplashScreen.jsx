@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -22,9 +22,12 @@ const { width, height } = Dimensions.get('window');
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
 const LIGHT  = Colors.tealWave;
+const ARC_SIZES = [300, 380, 460, 540];
+const FEATURE_CHIPS = ['🤝 Connect', '🚀 Grow', '🌐 Belong'];
+const BACKGROUND_GRADIENT = [BRAND, Colors.brandDeepAlt, Colors.brandDeepStrong];
 
 // ─── Floating particles (matches Login onboarding style) ─────────────────────
-const FloatingParticles = () => {
+const FloatingParticles = memo(() => {
   const particles = useMemo(
     () =>
       Array.from({ length: 14 }, (_, i) => ({
@@ -37,37 +40,46 @@ const FloatingParticles = () => {
     [],
   );
 
-  useEffect(() => {
-    particles.forEach(p => {
-      const loop = () => {
-        Animated.parallel([
-          Animated.timing(p.x, {
-            toValue: Math.random() * width,
-            duration: 5000 + Math.random() * 4000,
+  const animateParticle = useCallback((p) => {
+    const loop = () => {
+      Animated.parallel([
+        Animated.timing(p.x, {
+          toValue: Math.random() * width,
+          duration: 5000 + Math.random() * 4000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(p.y, {
+          toValue: Math.random() * height,
+          duration: 5000 + Math.random() * 4000,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(p.opacity, {
+            toValue: Math.random() * 0.35 + 0.08,
+            duration: 1800,
             useNativeDriver: true,
           }),
-          Animated.timing(p.y, {
-            toValue: Math.random() * height,
-            duration: 5000 + Math.random() * 4000,
+          Animated.timing(p.opacity, {
+            toValue: 0,
+            duration: 1800,
             useNativeDriver: true,
           }),
-          Animated.sequence([
-            Animated.timing(p.opacity, {
-              toValue: Math.random() * 0.35 + 0.08,
-              duration: 1800,
-              useNativeDriver: true,
-            }),
-            Animated.timing(p.opacity, {
-              toValue: 0,
-              duration: 1800,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]).start(({ finished }) => { if (finished) loop(); });
-      };
-      setTimeout(loop, p.delay);
-    });
+        ]),
+      ]).start(({ finished }) => { if (finished) loop(); });
+    };
+    return loop;
   }, []);
+
+  useEffect(() => {
+    const timers = particles.map((p) => {
+      const loop = animateParticle(p);
+      return setTimeout(loop, p.delay);
+    });
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [particles, animateParticle]);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -87,10 +99,10 @@ const FloatingParticles = () => {
       ))}
     </View>
   );
-};
+});
 
 // ─── Concentric pulse rings ───────────────────────────────────────────────────
-const PulseRings = ({ size = 140 }) => {
+const PulseRings = memo(({ size = 140 }) => {
   const rings = useMemo(
     () =>
       Array.from({ length: 3 }, () => ({
@@ -143,10 +155,10 @@ const PulseRings = ({ size = 140 }) => {
       ))}
     </View>
   );
-};
+});
 
 // ─── Shimmer loading bar ──────────────────────────────────────────────────────
-const ShimmerBar = () => {
+const ShimmerBar = memo(() => {
   const shimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -160,40 +172,49 @@ const ShimmerBar = () => {
     ).start();
   }, []);
 
-  const translateX = shimmer.interpolate({
-    inputRange:  [0, 1],
-    outputRange: [-width * 0.55, width * 0.55],
-  });
+  const translateX = useMemo(
+    () => shimmer.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-width * 0.55, width * 0.55],
+    }),
+    [shimmer],
+  );
 
   return (
     <View style={styles.shimmerTrack}>
       <Animated.View style={[styles.shimmerGlow, { transform: [{ translateX }] }]} />
     </View>
   );
-};
+});
 
 // ─── Decorative static concentric arcs ───────────────────────────────────────
-const ArcLines = () => (
-  <View style={StyleSheet.absoluteFill} pointerEvents="none">
-    {[300, 380, 460, 540].map((d, i) => (
-      <View
-        key={i}
-        style={{
-          position: 'absolute',
-          top:  height / 2 - d / 2,
-          left: width  / 2 - d / 2,
-          width: d, height: d,
-          borderRadius: d / 2,
-          borderWidth: 0.5,
-          borderColor: withOpacity(Colors.tealAccent, 0.07 - i * 0.015),
-        }}
-      />
-    ))}
-  </View>
-);
+const ArcLines = memo(() => {
+  const arcStyles = useMemo(
+    () =>
+      ARC_SIZES.map((d, i) => ({
+        position: 'absolute',
+        top: height / 2 - d / 2,
+        left: width / 2 - d / 2,
+        width: d,
+        height: d,
+        borderRadius: d / 2,
+        borderWidth: 0.5,
+        borderColor: withOpacity(Colors.tealAccent, 0.07 - i * 0.015),
+      })),
+    [],
+  );
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {arcStyles.map((style, i) => (
+        <View key={i} style={style} />
+      ))}
+    </View>
+  );
+});
 
 // ─── Main Splash Screen ───────────────────────────────────────────────────────
-export default function SplashScreen({ fadeAnim }) {
+function SplashScreen({ fadeAnim }) {
   const logoScale   = useRef(new Animated.Value(0.5)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
 
@@ -206,6 +227,7 @@ export default function SplashScreen({ fadeAnim }) {
   const chipTY      = useRef(new Animated.Value(14)).current;
 
   const globeScale = useRef(new Animated.Value(0)).current;
+  const fallbackOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     // Logo springs in
@@ -244,13 +266,13 @@ export default function SplashScreen({ fadeAnim }) {
     }, 860);
   }, []);
 
-  const wrapperOpacity = fadeAnim ?? new Animated.Value(1);
+  const wrapperOpacity = useMemo(() => fadeAnim ?? fallbackOpacity, [fadeAnim, fallbackOpacity]);
 
   return (
     <Animated.View style={[styles.root, { opacity: wrapperOpacity }]}>
       {/* Background gradient */}
       <LinearGradient
-        colors={[BRAND, Colors.brandDeepAlt, Colors.brandDeepStrong]}
+        colors={BACKGROUND_GRADIENT}
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.85, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -309,7 +331,7 @@ export default function SplashScreen({ fadeAnim }) {
 
         {/* Feature chips */}
         <Animated.View style={[styles.chipRow, { opacity: chipOpacity, transform: [{ translateY: chipTY }] }]}>
-          {['🤝 Connect', '🚀 Grow', '🌐 Belong'].map(label => (
+          {FEATURE_CHIPS.map((label) => (
             <View key={label} style={styles.chip}>
               <Text style={styles.chipTxt}>{label}</Text>
             </View>
@@ -325,6 +347,8 @@ export default function SplashScreen({ fadeAnim }) {
     </Animated.View>
   );
 }
+
+export default memo(SplashScreen);
 
 const styles = StyleSheet.create({
   root: {

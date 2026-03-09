@@ -138,16 +138,22 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     // 2️⃣ Fallback: user.entity === "page" means the poster IS the page
     const fUser = feed?.user;
     if (fUser && (fUser.entity || '').toLowerCase() === 'page') {
-      const pageId    = Number(fUser.id ?? feed?.page_id ?? 0);
-      const pageTitle = fUser.page_title || fUser.page_name || fUser.name || fUser.title
-                      || fUser.full_name || fUser.username || null;
-      if (pageId > 0 && pageTitle && !/deleted/i.test(pageTitle)) {
+      const pageId = Number(fUser.id ?? feed?.page_id ?? 0);
+      // Build title from page-specific fields first, skip any "Deleted User" values
+      const notDeleted = (v) => v && !/deleted/i.test(v);
+      const pageTitle = [fUser.page_title, fUser.page_name, fUser.name, fUser.title,
+                         feed?.page_title, feed?.page_name]
+                         .find(notDeleted)
+                      || (notDeleted(fUser.full_name) ? fUser.full_name : null)
+                      || (notDeleted(fUser.username) ? fUser.username : null);
+      const pageAvatar = fUser.avatar || fUser.logo || fUser.image || null;
+      if (pageId > 0 && pageTitle) {
         return {
           type: 'page',
           label: 'Posted via',
           id: pageId,
           title: pageTitle,
-          avatar: fUser.avatar || fUser.logo || fUser.image || null,
+          avatar: pageAvatar,
         };
       }
       const fallbackId = Number(feed?.page_id ?? fUser.id ?? 0);
@@ -157,7 +163,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           label: 'Posted via',
           id: fallbackId,
           title: pageTitle || 'Page',
-          avatar: fUser.avatar || fUser.logo || fUser.image || null,
+          avatar: pageAvatar,
         };
       }
     }

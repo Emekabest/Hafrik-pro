@@ -2,6 +2,7 @@ import React, { memo, useState, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 import AppDetails from '../../../../helpers/appdetails.js';
 import CleanText from '../../../../helpers/cleantext.js';
@@ -27,7 +28,7 @@ const withOpacity = (hex, opacity) => {
 
 // ─── SharedContent ─────────────────────────────────────────────────────────────
 const SharedContent = ({ post = {}, parentFeedId, containerWidth, isVisible = false }) => {
-    const openCommentModal = useStore(state => state.openCommentModal);
+    const navigation = useNavigation();
     const tabletMode       = useStore(state => state.tabletMode);
     const storeFeedWidth   = useStore(state => state.feedWidth);
 
@@ -58,9 +59,12 @@ const SharedContent = ({ post = {}, parentFeedId, containerWidth, isVisible = fa
         return cleanedText;
     }, [cleanedText, isLongPostText, isExpanded]);
 
+    // When user taps the shared post, open the full post detail screen for the shared post
     const handlePress = useCallback(() => {
-        openCommentModal(parentFeedId);
-    }, [openCommentModal, parentFeedId]);
+        if (post?.id) {
+            navigation.navigate('PostDetail', { postId: post.id });
+        }
+    }, [navigation, post?.id]);
 
     const toggleExpanded = useCallback(() => {
         setIsExpanded(prev => !prev);
@@ -130,7 +134,7 @@ const SharedContent = ({ post = {}, parentFeedId, containerWidth, isVisible = fa
 
             ) : post.type === 'article' && post.payload ? (
                 <TouchableOpacity
-                    onPress={() => openCommentModal(post.id)}
+                    onPress={handlePress}
                     activeOpacity={0.8}
                     style={styles.articleCard}
                 >
@@ -155,7 +159,7 @@ const SharedContent = ({ post = {}, parentFeedId, containerWidth, isVisible = fa
 
             ) : mediaItem ? (
                 hasError ? (
-                    <View style={[styles.mediaBox, { width: mediaImgWidth, height: mediaImgHeight }]}>
+                    <View style={[styles.mediaBox, { width: mediaImgWidth, height: mediaImgHeight }]}> 
                         <Ionicons name="alert-circle-outline" size={28} color={Colors.white} />
                         <Text style={styles.errorText}>Something went wrong</Text>
                         <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
@@ -164,7 +168,7 @@ const SharedContent = ({ post = {}, parentFeedId, containerWidth, isVisible = fa
                     </View>
                 ) : (
                     <TouchableWithoutFeedback onPress={handlePress}>
-                        <View style={[styles.mediaBox, { width: mediaImgWidth, height: mediaImgHeight }]}>
+                        <View style={[styles.mediaBox, { width: mediaImgWidth, height: mediaImgHeight }]}> 
                             {isVideo ? (
                                 <Videocontent feedId={parentFeedId} media={post.media} isVisible={isVisible} />
                             ) : mediaItem.url ? (

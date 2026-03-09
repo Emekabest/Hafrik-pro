@@ -61,20 +61,24 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
         // 2️⃣ Fallback: if user.entity === "page", the user object IS the page
         const u = post?.user;
         if (u && (u.entity || '').toLowerCase() === 'page') {
-            const pageId    = Number(u.id ?? post?.page_id ?? 0);
-            const pageTitle = u.page_title || u.page_name || u.name || u.title
-                            || u.full_name || u.username || null;
-            // Only use it if we actually have a name (skip "Deleted User" type placeholders)
-            if (pageId > 0 && pageTitle && !/deleted/i.test(pageTitle)) {
-                return { id: pageId, title: pageTitle, avatar: u.avatar || u.logo || u.image || null };
+            const pageId = Number(u.id ?? post?.page_id ?? 0);
+            // Build title from page-specific fields first, skip any "Deleted User" values
+            const notDeleted = (v) => v && !/deleted/i.test(v);
+            const pageTitle = [u.page_title, u.page_name, u.name, u.title,
+                               post?.page_title, post?.page_name]
+                               .find(notDeleted)
+                            || (notDeleted(u.full_name) ? u.full_name : null)
+                            || (notDeleted(u.username) ? u.username : null);
+            const pageAvatar = u.avatar || u.logo || u.image || null;
+            if (pageId > 0 && pageTitle) {
+                return { id: pageId, title: pageTitle, avatar: pageAvatar };
             }
-            // Even if the name looks like "Deleted User", still try page_id fields
             const fallbackId = Number(post?.page_id ?? u.id ?? 0);
             if (fallbackId > 0) {
                 return {
                     id: fallbackId,
-                    title: u.page_title || u.page_name || u.name || u.title || u.full_name || u.username || 'Page',
-                    avatar: u.avatar || u.logo || u.image || null,
+                    title: pageTitle || 'Page',
+                    avatar: pageAvatar,
                 };
             }
         }
