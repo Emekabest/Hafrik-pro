@@ -27,6 +27,7 @@ import { fetchArticleDetail, normalizeTags } from './articlesApi';
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
 import { useTheme } from '../../theme/ThemeContext';
+import ShareModal from '../home/feeds/share';
 
 const { width, height } = Dimensions.get('window');
 
@@ -131,7 +132,7 @@ async function sendClapToApi({ postId, clapsToAdd, token }) {
 }
 
 function CommentRow({ item }) {
-  const name = item.user?.name || item.user?.username || item.username || 'User';
+  const name = item.user?.full_name || item.user?.name || item.user?.username || item.username || 'User';
   const avatar = item.user?.avatar || item.avatar || null;
   const text = item.comment || item.body || item.text || '';
   return (
@@ -179,6 +180,9 @@ export default function ArticleDetailsScreen({ navigation, route }) {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+
+  // Share to Timeline modal
+  const [shareToTimelineVisible, setShareToTimelineVisible] = useState(false);
 
   // Sticky author bar visibility
   const stickyAnim = useRef(new Animated.Value(0)).current;
@@ -372,7 +376,7 @@ export default function ArticleDetailsScreen({ navigation, route }) {
   const displayTitle = safeText(article?.title) || safeText(navTitle) || 'Article';
   const tags = normalizeTags(article?.tags);
 
-  const authorName = article?.author?.name || article?.author?.username || 'Hafrik';
+  const authorName = article?.author?.full_name || article?.author?.name || article?.author?.username || 'Hafrik';
   const authorAvatar = article?.author?.avatar;
   const authorVerified = !!article?.author?.verified;
 
@@ -795,10 +799,10 @@ export default function ArticleDetailsScreen({ navigation, route }) {
         </View>
       </Animated.ScrollView>
 
-      {/* Floating “Clap” + “Bookmark” */}
+      {/* Floating “Clap” + “Bookmark” + “Share to Timeline” */}
       <View style={[styles.fabRow, { paddingBottom: Math.max(18, bottom + 10) }]}>
         <TouchableOpacity style={styles.fab} onPress={handleClap} activeOpacity={0.9}>
-          <Ionicons name="hand-left-outline" size={20} color={WHITE} />
+          <Ionicons name={'hand-left-outline'} size={20} color={WHITE} />
           <Text style={styles.fabTxt}>Clap</Text>
         </TouchableOpacity>
 
@@ -810,7 +814,23 @@ export default function ArticleDetailsScreen({ navigation, route }) {
           <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={20} color={WHITE} />
           <Text style={styles.fabTxt}>{bookmarked ? 'Saved' : 'Save'}</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setShareToTimelineVisible(true)}
+          activeOpacity={0.9}
+        >
+          <Ionicons name={'share-social-outline'} size={20} color={WHITE} />
+          <Text style={styles.fabTxt}>Share</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Share to Timeline modal */}
+      <ShareModal
+        visible={shareToTimelineVisible}
+        onClose={() => setShareToTimelineVisible(false)}
+        feed={{ id: postId }}
+      />
     </KeyboardAvoidingView>
   );
 }

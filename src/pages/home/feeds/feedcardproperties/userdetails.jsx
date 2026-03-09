@@ -1,13 +1,10 @@
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Image as ExpoImage } from 'expo-image';
 import AppDetails from "../../../../helpers/appdetails";
 import SvgIcon from "../../../../assl.js/svg/svg";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import CleanText from "../../../../helpers/cleantext";
-import getActionText from "../../../../helpers/getactiontext";
 import CalculateElapsedTime from "../../../../helpers/calculateelapsedtime";
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useState } from "react";
 import OptionsModal from "../options.jsx";
 import { Colors } from '../../../../theme/colors';
 
@@ -17,102 +14,84 @@ const withOpacity = (hex, opacity) => {
   return `#${normalized}${alpha}`;
 };
 
-
+const ACCENT = Colors.primary;
+const MUTED  = Colors.secondaryText;
 
 const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress, feelingText, privacyIcon }) => {
     const navigation = useNavigation();
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
 
     const elapsedTime = useMemo(() => CalculateElapsedTime(feed.created), [feed.created]);
-    const actionText  = useMemo(() => getActionText(feed), [feed]);
-    const contextName = useMemo(() => {
-        if (feed.context?.type === "group") return CleanText(feed.context.name);
-        if (feed.context?.type === "event") return CleanText(feed.context.title);
-        return null;
-    }, [feed.context]);
 
-    const handleContextPress = useCallback(() => {
-        if (!feed.context?.id) return;
+    // Context from feed.context (legacy group / event on same post object)
+    const legacyContext = useMemo(() => {
+        if (postContext) return null; // modern postContext takes priority
+        if (feed.context?.type === "group") return { type: 'group', name: feed.context.name, id: feed.context.id };
+        if (feed.context?.type === "event") return { type: 'event', name: feed.context.title, id: feed.context.id };
+        return null;
+    }, [feed.context, postContext]);
+
+    const handleLegacyContextPress = () => {
+        if (!legacyContext?.id) return;
         navigation.navigate('GroupScreen', {
-            contextId:   feed.context.id,
-            contextType: feed.context.type,
+            contextId:   legacyContext.id,
+            contextType: legacyContext.type,
         });
-    }, [navigation, feed.context]);
+    };
+
+    // Resolve which context to show for the "posted in/via" sub-line
+    const ctx = postContext || (legacyContext ? {
+        type:  legacyContext.type,
+        label: legacyContext.type === 'group' ? 'Posted in' : 'Posted in',
+        title: legacyContext.name,
+        id:    legacyContext.id,
+        avatar: null,
+    } : null);
+
+    const handleCtxPress = postContext ? onPostContextPress : handleLegacyContextPress;
 
     return (
         <View style={styles.firstSection}>
             <View style={styles.nameSection}>
-                {/* ── Author name row ─────────────────────────────────────── */}
-                <TouchableOpacity activeOpacity={0.75} onPress={onOwnerPress}>
-                    <View style={styles.nameRow}>
-                        <Text
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                            style={[styles.userFullname, { fontSize: fullNameFontSize }]}
-                        >
-                            {feed.user.full_name}
-                        </Text>
 
-                        {feed.user.verified && (
-                            <View style={styles.verifiedIconContainer}>
-                                <SvgIcon name="verified" width={15} height={15} color={AppDetails.primaryColor} />
-                            </View>
-                        )}
+                {/* ── Line 1: Full name + verified badge ── */}
+                <TouchableOpacity activeOpacity={0.75} onPress={onOwnerPress} style={styles.nameRow}>
+                    <Text
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        style={[styles.userFullname, { fontSize: fullNameFontSize }]}
+                    >
+                        {feed.user.full_name}
+                    </Text>
 
-                        {!!actionText && (
-                            <Text style={styles.actionText}>{actionText}</Text>
-                        )}
+                    {feed.user.verified && (
+                        <View style={styles.verifiedIconContainer}>
+                            <SvgIcon name="verified" width={15} height={15} color={AppDetails.primaryColor} />
+                        </View>
+                    )}
 
-                        {!!feelingText && (
-                            <Text style={styles.actionText}>{feelingText}</Text>
-                        )}
-                    </View>
-
-                    {/* ── Old context (group / event from feed.context) ──── */}
-                    {contextName ? (
-                        <TouchableOpacity
-                            style={styles.contextRow}
-                            activeOpacity={0.75}
-                            onPress={handleContextPress}
-                        >
-                            <Ionicons name="arrow-forward" size={11} color={MUTED} />
-                            <Text style={styles.feedContextText}>{contextName}</Text>
-                        </TouchableOpacity>
-                    ) : null}
+                    {!!feelingText && (
+                        <Text style={styles.actionText}>{feelingText}</Text>
+                    )}
                 </TouchableOpacity>
 
-                {/* ── Modern "Posted in / Posted via" pill ─────────────── */}
-                {/* For page posts the page name is already shown as the primary name,
-                    so we skip the redundant "Posted via" pill. Groups still show it. */}
-                {!!postContext && postContext.type !== 'page' && (
-                    <TouchableOpacity
-                        style={styles.postedInRow}
-                        activeOpacity={0.75}
-                        onPress={onPostContextPress}
-                    >
-                        <Ionicons
-                            name={postContext.type === 'page' ? 'storefront-outline' : 'people-outline'}
-                            size={11}
-                            color={ACCENT}
-                            style={{ marginRight: 4 }}
-                        />
-                        <Text style={styles.postedInPrefix}>{postContext.label}</Text>
-                        {postContext.avatar ? (
-                            <ExpoImage source={{ uri: postContext.avatar }} style={styles.postedInAvatar} contentFit="cover" cachePolicy="memory-disk" />
-                        ) : (
-                            <View style={[styles.postedInAvatar, styles.postedInAvatarFallback]}>
-                                <Ionicons
-                                    name={postContext.type === 'page' ? 'document-text-outline' : 'people-outline'}
-                                    size={10}
-                                    color={Colors.mutedBlueGray}
-                                />
-                            </View>
-                        )}
-                        <Text style={styles.postedInTitle} numberOfLines={1}>{postContext.title}</Text>
-                        <Ionicons name="chevron-forward" size={10} color={ACCENT} style={{ marginLeft: 2 }} />
-                    </TouchableOpacity>
-                )}
+                {/* ── Line 2: "posted" / "posted in Group" / "posted via Page" ── */}
+                <View style={styles.postedRow}>
+                    <Text style={styles.postedText}>posted</Text>
 
+                    {ctx && ctx.type !== 'page' && !!ctx.title && (
+                        <>
+                            <Text style={styles.postedText}>
+                                {ctx.type === 'group' ? ' in ' : ' in '}
+                            </Text>
+                            <TouchableOpacity onPress={handleCtxPress} activeOpacity={0.75}>
+                                <Text style={styles.contextTitle} numberOfLines={1}>{ctx.title}</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
+                </View>
+
+                {/* ── Line 3: Timestamp + privacy ── */}
                 <View style={styles.elapsedRow}>
                     <Text style={styles.elapsedTime}>{elapsedTime}</Text>
                     {!!privacyIcon && (
@@ -140,10 +119,6 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
     );
 };
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const ACCENT = Colors.primary;
-const MUTED  = Colors.secondaryText;
-
 const styles = StyleSheet.create({
     firstSection: {
         flexDirection:    'row',
@@ -157,7 +132,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 
-    // ── Name row (full name + verified + action) ─────────────────────────────
+    // ── Line 1: name row ─────────────────────────────────────────────────────
     nameRow: {
         flexDirection: 'row',
         alignItems:    'center',
@@ -182,62 +157,28 @@ const styles = StyleSheet.create({
         fontSize:   13,
     },
 
-    // ── Old-style context row (group / event from feed.context) ──────────────
-    contextRow: {
+    // ── Line 2: "posted [in Group]" ───────────────────────────────────────────
+    postedRow: {
         flexDirection: 'row',
         alignItems:    'center',
-        marginTop:     3,
-        gap:           4,
+        flexWrap:      'wrap',
+        marginTop:     2,
     },
 
-    feedContextText: {
+    postedText: {
+        color:      MUTED,
         fontSize:   12,
         fontFamily: AppDetails.fontFamily.body,
-        color:      Colors.greenDeep,
-        fontWeight: '600',
     },
 
-    // ── Modern "Posted in / via" pill ────────────────────────────────────────
-    postedInRow: {
-        marginTop:      4,
-        flexDirection:  'row',
-        alignItems:     'center',
-        alignSelf:      'flex-start',
-        backgroundColor: Colors.infoSurfaceAlt,
-        borderRadius:   20,
-        paddingHorizontal: 8,
-        paddingVertical:   3,
-        maxWidth:       '100%',
-    },
-
-    postedInPrefix: {
-        color:      MUTED,
-        fontSize:   11,
-        fontFamily: AppDetails.fontFamily.body,
-        marginRight: 5,
-    },
-
-    postedInAvatar: {
-        width:        16,
-        height:       16,
-        borderRadius: 8,
-        marginRight:  4,
-    },
-
-    postedInAvatarFallback: {
-        backgroundColor: Colors.borderLight,
-        alignItems:      'center',
-        justifyContent:  'center',
-    },
-
-    postedInTitle: {
+    contextTitle: {
         color:      ACCENT,
-        fontSize:   11,
-        fontFamily: AppDetails.fontFamily.body,
+        fontSize:   12,
         fontWeight: '700',
-        flexShrink: 1,
+        fontFamily: AppDetails.fontFamily.body,
     },
 
+    // ── Line 3: elapsed + privacy ─────────────────────────────────────────────
     elapsedRow: {
         flexDirection: 'row',
         alignItems:    'center',
@@ -265,7 +206,6 @@ export default memo(UserDetails, (prev, next) => {
         prev.postContext?.id         === next.postContext?.id         &&
         prev.postContext?.type       === next.postContext?.type       &&
         prev.postContext?.title      === next.postContext?.title      &&
-        prev.postContext?.avatar     === next.postContext?.avatar     &&
         prev.onOwnerPress            === next.onOwnerPress            &&
         prev.onPostContextPress      === next.onPostContextPress      &&
         prev.feelingText             === next.feelingText             &&

@@ -276,7 +276,9 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
             <View style={styles.userInfoSection}>
                 <View style={styles.nameRow}>
                     <Text style={styles.fullNameText}>
-                        {userDetails ? `${userDetails.first_name} ${userDetails.last_name || ''}`.trim() : (user?.full_name || 'Hafrik User')}
+                        {userDetails
+                            ? (userDetails.full_name || `${userDetails.first_name || ''} ${userDetails.last_name || ''}`.trim() || 'Hafrik User')
+                            : (user?.full_name || 'Hafrik User')}
                     </Text>
                     {userDetails?.verified ? (
                         <View style={styles.verifiedBadge}>

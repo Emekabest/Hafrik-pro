@@ -855,7 +855,11 @@ const AuthScreen = () => {
 
           {/* Forgot password (login only) */}
           {mode === 'login' && (
-            <TouchableOpacity style={styles.forgotBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.forgotBtn}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('ForgotPassword')}
+            >
               <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
           )}
