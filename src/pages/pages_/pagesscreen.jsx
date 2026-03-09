@@ -1382,7 +1382,7 @@ export default function DiscoveryScreen() {
     trendingPostsRef.current = ctrl;
     const timer = addTimeout(ctrl, 8000);
     try {
-      const res  = await fetch(`${BASE_URL}/api/v1/feed/trending.php?limit=5`, {
+      const res  = await fetch(`${BASE_URL}/api/v1/feed/list.php?get=popular&limit=10`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
         signal: ctrl.signal,
       });
@@ -1653,6 +1653,17 @@ export default function DiscoveryScreen() {
     if (url) openInBrowser(url, name);
   }, [openInBrowser]);
 
+  const goToPopularFeedTab = useCallback(() => {
+    try {
+      navigation.navigate('Feed', { initialTabKey: 'popular' });
+      return;
+    } catch {}
+    navigation.navigate('MainTabs', {
+      screen: 'Feed',
+      params: { initialTabKey: 'popular' },
+    });
+  }, [navigation]);
+
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -1828,7 +1839,7 @@ export default function DiscoveryScreen() {
               <TouchableOpacity
                 style={ss.viewMoreBtn}
                 activeOpacity={0.85}
-                onPress={() => navigation.navigate('TrendingOnHafrik')}
+                onPress={goToPopularFeedTab}
               >
                 <Ionicons name="flame-outline" size={14} color={ACCENT} />
                 <Text style={ss.viewMoreText}>View All Trending Posts</Text>

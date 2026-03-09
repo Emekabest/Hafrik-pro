@@ -12,7 +12,7 @@ import UniversalWebView from './src/pages/common/UniversalWebView';
 import CategoriesScreen from './src/pages/CategoriesScreen';
 import EventsScreen from './src/pages/EventsScreen';
 import GroupsScreen from './src/pages/GroupsScreen';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppDetails from './src/helpers/appdetails';
 import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
@@ -100,7 +100,7 @@ function AppNavigator() {
     // Track previous app state to distinguish inactive vs background
     const prevAppStateRef = useRef('active');
 
-    const handleAppStateChange = (nextAppState) => {
+    const handleAppStateChange = useCallback((nextAppState) => {
         const wasActive = prevAppStateRef.current === 'active';
         const isNowActive = nextAppState === 'active';
         const isNowBackground = nextAppState === 'background';
@@ -123,7 +123,7 @@ function AppNavigator() {
         }
         // For 'inactive': do nothing — keep players alive, keep isAppActive true.
         // This prevents crashes from notification popups, control center, etc.
-    };
+      }, [setIsAppActive_store]);
 
 
 
@@ -137,7 +137,7 @@ function AppNavigator() {
 
       };
 
-  }, []);
+  }, [handleAppStateChange]);
   /**.........................................................................................*/
 
 
@@ -229,7 +229,20 @@ function AppNavigator() {
   const splashOpacity = useRef(new Animated.Value(1)).current;
   const [splashDone, setSplashDone] = useState(false);
   const [minDelayDone, setMinDelayDone] = useState(false);
-  const isAppReady = (fontsLoaded || !!fontError) && !loading && minDelayDone;
+  const isAppReady = useMemo(
+    () => (fontsLoaded || !!fontError) && !loading && minDelayDone,
+    [fontsLoaded, fontError, loading, minDelayDone],
+  );
+  const shouldBlockAppRender = useMemo(
+    () => !fontsLoaded && !fontError,
+    [fontsLoaded, fontError],
+  );
+  const showSplashOverlay = useMemo(() => !splashDone, [splashDone]);
+  const splashNode = useMemo(
+    () => <SplashScreen fadeAnim={splashOpacity} />,
+    [splashOpacity],
+  );
+  const handleSplashFadeDone = useCallback(() => setSplashDone(true), []);
 
   useEffect(() => {
     const timer = setTimeout(() => setMinDelayDone(true), SPLASHSCEEN_MIN_DURATION);
@@ -243,12 +256,12 @@ function AppNavigator() {
         duration: 650,
         delay: 350,
         useNativeDriver: true,
-      }).start(() => setSplashDone(true));
+      }).start(handleSplashFadeDone);
     }
-  }, [isAppReady]);
+  }, [isAppReady, splashDone, splashOpacity, handleSplashFadeDone]);
 
-  if (!fontsLoaded && !fontError) {
-    return <SplashScreen fadeAnim={splashOpacity} />;
+  if (shouldBlockAppRender) {
+    return splashNode;
   }
 
   
@@ -331,7 +344,7 @@ function AppNavigator() {
 
     </NavigationContainer>
       <GlobalUploadBanner />
-      {!splashDone && <SplashScreen fadeAnim={splashOpacity} />}
+      {showSplashOverlay && splashNode}
     </View>
   );
 }

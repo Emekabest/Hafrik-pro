@@ -26,7 +26,7 @@ import { Colors } from '../../theme/colors';
 
 const BRAND = Colors.primaryDark;
 
-const HomePage = () => {
+const HomePage = ({ route, navigation }) => {
   const { height } = Dimensions.get("window");
   const { token } = useAuth();
   const isFocused = useIsFocused();
@@ -40,6 +40,17 @@ const HomePage = () => {
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [activeTab, setActiveTab]             = useState(0); // 0 = For You
   const [contentFilter, setContentFilter]     = useState('');
+
+  useEffect(() => {
+    const tabKey = route?.params?.initialTabKey;
+    if (!tabKey) return;
+    const idx = FEED_TABS.findIndex((tab) => tab.key === tabKey);
+    if (idx >= 0) {
+      setActiveTab(idx);
+      setContentFilter('');
+    }
+    navigation?.setParams?.({ initialTabKey: undefined });
+  }, [route?.params?.initialTabKey, navigation]);
 
   const isSearchVisible        = useStore((state) => state.isSearchVisible);
   const isSearchResultsVisible = useStore((state) => state.isSearchResultsVisible);
