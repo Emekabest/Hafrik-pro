@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { useIsFocused } from '@react-navigation/native';
 import DrawerNavigation from './drawernavigation.jsx';
 import AppHeader from '../../pages/AppHeader.jsx';
 import FeedTabBar, { ContentFilterBar, FEED_TABS } from './FeedTabBar.jsx';
@@ -28,6 +29,7 @@ const BRAND = Colors.primaryDark;
 const HomePage = () => {
   const { height } = Dimensions.get("window");
   const { token } = useAuth();
+  const isFocused = useIsFocused();
 
   const tabletMode      = useStore((state) => state.tabletMode);
   const tabletDimension = useStore((state) => state.tabletDimension);
@@ -180,7 +182,7 @@ const HomePage = () => {
         <Ionicons name="add" size={28} color={Colors.white} />
       </TouchableOpacity>
 
-      <PostComposerModal />
+      {isFocused && <PostComposerModal />}
     </View>
   );
 };
