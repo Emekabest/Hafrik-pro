@@ -171,7 +171,6 @@ function AppNavigator() {
   },[isAppActive_store])
 
 
-
         const [fontsLoaded, fontError] = useFonts({
           // Legacy keys (keep for existing screens)
           WorkSans_300Light,
@@ -210,10 +209,10 @@ function AppNavigator() {
           'WorkSans-Bold': WorkSans_700Bold,
 
           'ShadowsIntoLight-Regular': ShadowsIntoLight_400Regular,
-        })
+      })
   
   
-
+  
   const [isFontStored, setIsFontStored] = useState(false);
   const { user, token, loading } = useAuth();
 

@@ -253,13 +253,31 @@ export default function EarningsScreen() {
             <Ionicons name="information-circle" size={20} color={ACCENT} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={st.infoTitle}>How Earnings Work</Text>
+            <Text style={st.withdrawInfoTitle}>How Earnings Work</Text>
             <Text style={st.infoText}>
               Earn money from ad revenue on your posts, reels, and pages. Accumulate Hafrik Points through engagement, referrals, and content rewards — then convert them to wallet balance anytime. Boost
               your posts or pages directly from your wallet.
             </Text>
           </View>
         </View>
+
+        
+        {/* ── Info Card ── */}
+        <View style={[st.infoCard, { backgroundColor: GREEN + "0F", borderColor: GREEN + "22" }]}>
+          <View style={st.infoIconWrap}>
+            <Ionicons name="information-circle" size={20} color={ACCENT} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={st.infoTitle}>How To Withdraw</Text>
+            <Text style={st.infoText}>
+              To withdraw your earnings, accumulate Hafrik Points through engagement, referrals, and content rewards. Once you have enough points, you can convert them to your wallet balance and initiate a withdrawal. Boost
+              your posts or pages directly from your wallet.
+            </Text>
+          </View>
+        </View>
+
+
+        
 
         {/* ── Points Info Card ── */}
         <View style={st.pointsInfoCard}>
@@ -495,6 +513,14 @@ const st = StyleSheet.create({
   },
   infoIconWrap: { marginTop: 1 },
   infoTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: BRAND,
+    fontFamily: FONT_B,
+    marginBottom: 4,
+  },
+
+  withdrawInfoTitle:{
     fontSize: 14,
     fontWeight: "800",
     color: BRAND,

@@ -199,74 +199,7 @@ const SectionHeader = memo(({ title, onSeeAll }) => (
   </View>
 ));
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Upgrade to Pro card
-// ─────────────────────────────────────────────────────────────────────────────
-const UpgradeToProCard = memo(({ onPress }) => (
-  <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={ss.proWrap}>
-    <LinearGradient
-      colors={[Colors.primaryDark, BRAND, ACCENT]}
-      style={ss.proCard}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <View style={ss.proCircle1} />
-      <View style={ss.proCircle2} />
-      <View style={ss.proLeft}>
-        <View style={ss.proCrown}>
-          <Ionicons name="flash" size={18} color={WARM} />
-        </View>
-        <View>
-          <Text style={ss.proTitle}>Grow faster on Hafrik</Text>
-          <Text style={ss.proSub}>Unlock Pro tools, visibility{'\n'}& priority listing</Text>
-        </View>
-      </View>
-      <TouchableOpacity style={ss.proBtn} onPress={onPress} activeOpacity={0.85}>
-        <Text style={ss.proBtnText}>Upgrade Now</Text>
-        <Ionicons name="arrow-forward" size={13} color={BRAND} />
-      </TouchableOpacity>
-    </LinearGradient>
-  </TouchableOpacity>
-));
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hafrik Exchange CTA
-// ─────────────────────────────────────────────────────────────────────────────
-const HafrikExchangeCTA = memo(({ onPress }) => (
-  <TouchableOpacity onPress={onPress} activeOpacity={0.88} style={ss.exWrap}>
-    <LinearGradient
-      colors={[Colors.primaryDark, BRAND, ACCENT + 'CC']}
-      style={ss.exCard}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      {/* Decorative circles */}
-      <View style={ss.exCircle1} />
-      <View style={ss.exCircle2} />
-
-      <View style={ss.exIconWrap}>
-        <Ionicons name="swap-horizontal" size={26} color={ACCENT} />
-      </View>
-
-      <View style={ss.exContent}>
-        <View style={ss.exTopRow}>
-          <View style={ss.exPill}>
-            <Text style={ss.exPillText}>HAFRIK EXCHANGE</Text>
-          </View>
-        </View>
-        <Text style={ss.exTitle}>Send & Receive Money{'\n'}Across Borders</Text>
-        <Text style={ss.exSub}>Fast RMB → Africa transfers. Secure & instant.</Text>
-      </View>
-
-      <View style={ss.exBtnWrap}>
-        <TouchableOpacity style={ss.exBtn} onPress={onPress} activeOpacity={0.85}>
-          <Text style={ss.exBtnText}>Open Exchange</Text>
-          <Ionicons name="arrow-forward" size={13} color={BRAND} />
-        </TouchableOpacity>
-      </View>
-    </LinearGradient>
-  </TouchableOpacity>
-));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Inline Ad Card — replaces promo CTAs with live ads from /api/v1/ads/list.php
@@ -693,7 +626,7 @@ const RankedTrendingCard = memo(({ item, rank, rankDelta, onPress }) => {
           </View>
         </View>
       </View>
-
+          
       <Ionicons name="chevron-forward" size={14} color={ACCENT + '70'} style={ss.rtChevron} />
     </TouchableOpacity>
   );
@@ -1837,6 +1770,7 @@ export default function DiscoveryScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
 
         {/* ─── QUICK LINKS ─── */}
         <StaticShortcutRow />
