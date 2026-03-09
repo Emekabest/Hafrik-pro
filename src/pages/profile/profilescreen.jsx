@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, StatusBar } from "react-native";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from "../../AuthContext";
 import useStore from "../../repository/store";
@@ -24,6 +24,7 @@ const ACCENT = Colors.primary;
 
 const ProfileScreen = () => {
     const navigation = useNavigation();
+    const isFocused = useIsFocused();
     const { user, token, updateUser } = useAuth();
     const [profileData, setProfileData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -253,7 +254,7 @@ const ProfileScreen = () => {
                 <Ionicons name="add" size={28} color={Colors.white} />
             </TouchableOpacity>
 
-            <PostComposerModal />
+            {isFocused && <PostComposerModal />}
         </View>
     );
 };

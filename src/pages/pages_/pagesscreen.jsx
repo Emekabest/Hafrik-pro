@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppDetails from '../../helpers/appdetails';
 import { useAuth } from '../../AuthContext';
@@ -1158,6 +1158,7 @@ const VisaModal = memo(({ visible, onClose }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function DiscoveryScreen() {
   const navigation        = useNavigation();
+  const isFocused         = useIsFocused();
   const { top }           = useSafeAreaInsets();
   const { token }         = useAuth();
   const notificationCount = useStore((s) => s.notificationCount ?? 0);
@@ -2219,7 +2220,7 @@ export default function DiscoveryScreen() {
         <Ionicons name="add" size={28} color={WHITE} />
       </TouchableOpacity>
 
-      <PostComposerModal />
+      {isFocused && <PostComposerModal />}
     </View>
   );
 }
