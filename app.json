@@ -6,6 +6,7 @@
     "icon": "./src/assl.js/icon.png",
     "android": {
       "package": "com.jojo104.hafrik",
+      "googleServicesFile": "./google-services.json",
       "icon": "./src/assl.js/icon.png"
     },
     "ios": {
@@ -30,6 +31,13 @@
         {
           "supportsBackgroundPlayback": false,
           "supportsPictureInPicture": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assl.js/icon.png",
+          "color": "#ffffff"
         }
       ]
     ],
