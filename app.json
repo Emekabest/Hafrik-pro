@@ -10,7 +10,7 @@
       "icon": "./src/assl.js/icon.png"
     },
     "ios": {
-      "bundleIdentifier": "com.hafrik.app",
+      "bundleIdentifier": "com.hafrik.hafrikpro",
       "icon": "./src/assl.js/icon.png",
       "supportsTablet": true,
       "infoPlist": {
