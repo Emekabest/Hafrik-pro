@@ -21,7 +21,7 @@
  *   • Video player only plays the visible item (isVisible = from onViewableItemsChanged)
  */
 
-import React, { memo, useState, useEffect, useCallback } from 'react';
+import React, { memo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -29,7 +29,9 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { Image as ExpoImage } from 'expo-image';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
@@ -241,90 +243,98 @@ const FeedReelPlayer = memo(({ item, isVisible, feedId }) => {
   );
 });
 
-// ─── GridImage (single tile, no aspect-ratio detection) ───────────────────────
-const GridImage = memo(({ item, width, height, overlay }) => (
-  <View style={{ width, height }}>
-    <ExpoImage
-      source={{ uri: item.url }}
-      style={{ width, height, borderRadius: 10, backgroundColor: Colors.neutral150 }}
-      contentFit="cover"
-      cachePolicy="memory-disk"
-      transition={180}
-    />
-    {overlay && (
-      <View style={[StyleSheet.absoluteFillObject, styles.moreOverlay, { borderRadius: 10 }]}>
-        <Text style={styles.moreText}>{overlay}</Text>
-      </View>
-    )}
-  </View>
-));
+// ─── Carousel — all photos slide one-by-one, natural aspect ratio ─────────────
+const MAX_H_RATIO = 16 / 9;
+const MIN_H_RATIO = 0.5;
 
-// ─── SingleImage (full-width, fixed 1:1 ratio — no setState after mount) ──────
-const SingleImage = memo(({ item }) => (
-  <View style={{ width: MEDIA_W }}>
-    <ExpoImage
-      source={{ uri: item.url }}
-      style={{ width: MEDIA_W, aspectRatio: 1, borderRadius: 12, backgroundColor: Colors.neutral150 }}
-      contentFit="cover"
-      cachePolicy="memory-disk"
-      transition={180}
-    />
-  </View>
-));
+// Module-level size cache: persists for the lifetime of the JS bundle
+const sizeCache = {};
 
-// ─── Grid layouts ─────────────────────────────────────────────────────────────
-const TwoColumnGrid = memo(({ media }) => (
-  <View style={styles.row}>
-    <GridImage item={media[0]} width={CELL_W} height={CELL_H} />
-    <View style={{ width: GAP }} />
-    <GridImage item={media[1]} width={CELL_W} height={CELL_H} />
-  </View>
-));
+const DEFAULT_H = Math.round(MEDIA_W * 0.8);
 
-const ThreeImageGrid = memo(({ media }) => (
-  <View>
-    <View style={[styles.row, { marginBottom: GAP }]}>
-      <GridImage item={media[0]} width={CELL_W} height={CELL_H} />
-      <View style={{ width: GAP }} />
-      <GridImage item={media[1]} width={CELL_W} height={CELL_H} />
-    </View>
-    <GridImage item={media[2]} width={MEDIA_W} height={BOTTOM_H} />
-  </View>
-));
+function calcHeight(w, h) {
+  if (!w || !h) return DEFAULT_H;
+  const ratio   = h / w;
+  const clamped = Math.min(Math.max(ratio, MIN_H_RATIO), MAX_H_RATIO);
+  return Math.round(MEDIA_W * clamped);
+}
 
-const FourGrid = memo(({ media, hasMore, extra }) => (
-  <View>
-    <View style={[styles.row, { marginBottom: GAP }]}>
-      <GridImage item={media[0]} width={CELL_W} height={CELL_H} />
-      <View style={{ width: GAP }} />
-      <GridImage item={media[1]} width={CELL_W} height={CELL_H} />
-    </View>
-    <View style={styles.row}>
-      <GridImage item={media[2]} width={CELL_W} height={CELL_H} />
-      <View style={{ width: GAP }} />
-      <GridImage
-        item={media[3]}
-        width={CELL_W}
-        height={CELL_H}
-        overlay={hasMore ? `+${extra + 1}` : undefined}
-      />
-    </View>
-  </View>
-));
-
-// ─── ImageGrid (router) ───────────────────────────────────────────────────────
 const ImageGrid = memo(({ media }) => {
   const n = media.length;
   if (n === 0) return null;
-  if (n === 1) return <SingleImage item={media[0]} />;
-  if (n === 2) return <TwoColumnGrid media={media} />;
-  if (n === 3) return <ThreeImageGrid media={media} />;
+
+  const firstUrl = media[0]?.url;
+
+  // Lazy-init from cache so already-seen images render immediately at the right height
+  const initH = (firstUrl && sizeCache[firstUrl]) || DEFAULT_H;
+  const [imgH, setImgH] = useState(initH);
+  // Animated value drives the container height — smooth transition on first reveal
+  const animH = useRef(new Animated.Value(initH)).current;
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef(null);
+
+  // Called by ExpoImage when the first image finishes decoding — provides real dimensions
+  // with zero extra network round-trips. Only fires once per unique URL (cache guard).
+  const handleFirstLoad = useCallback(({ source }) => {
+    if (!firstUrl || sizeCache[firstUrl]) return;
+    const px = calcHeight(source?.width, source?.height);
+    sizeCache[firstUrl] = px;
+    setImgH(px);
+    Animated.timing(animH, {
+      toValue:         px,
+      duration:        220,
+      useNativeDriver: false,
+    }).start();
+  }, [firstUrl, animH]);
+
+  const handleScroll = useCallback((e) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / MEDIA_W);
+    setActiveIndex(Math.max(0, Math.min(idx, n - 1)));
+  }, [n]);
+
   return (
-    <FourGrid
-      media={media.slice(0, 4)}
-      hasMore={n > 4}
-      extra={n - 4}
-    />
+    <View>
+      {/* Animated container — height grows smoothly on first load */}
+      <Animated.View style={{ height: animH, borderRadius: 12, overflow: 'hidden' }}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          scrollEventThrottle={16}
+          onScroll={handleScroll}
+          style={{ flex: 1 }}
+        >
+          {media.map((item, i) => (
+            <ExpoImage
+              key={i}
+              source={{ uri: item.url }}
+              style={{ width: MEDIA_W, height: imgH, backgroundColor: Colors.neutral150 }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={180}
+              onLoad={i === 0 ? handleFirstLoad : undefined}
+            />
+          ))}
+        </ScrollView>
+      </Animated.View>
+
+      {/* Counter badge top-right + dots at bottom */}
+      {n > 1 && (
+        <>
+          <View style={styles.slideCounter}>
+            <Text style={styles.slideCounterTxt}>{activeIndex + 1}/{n}</Text>
+          </View>
+          <View style={styles.dotsRow}>
+            {media.map((_, i) => (
+              <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
+            ))}
+          </View>
+        </>
+      )}
+    </View>
   );
 });
 
@@ -408,11 +418,6 @@ const FeedMediaRenderer = ({ feed, isVisible }) => {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-
   videoWrap: {
     width: MEDIA_W,
     borderRadius: 12,
@@ -487,16 +492,41 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  moreOverlay: {
-    backgroundColor: withOpacity(Colors.black, 0.55),
+  // ── Carousel dots ──────────────────────────────────────────────────────────
+  dotsRow: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 8,
+    gap: 4,
   },
-  moreText: {
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: withOpacity(Colors.black, 0.18),
+  },
+  dotActive: {
+    width: 18,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+  },
+
+  // ── Slide counter badge (top-right) ────────────────────────────────────────
+  slideCounter: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: withOpacity(Colors.black, 0.52),
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  slideCounterTxt: {
     color: Colors.white,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 
