@@ -179,9 +179,6 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-
-
-    project.ext.react = [
-        enableHermes: true
-    ]
 }
+
+apply plugin: 'com.google.gms.google-services'

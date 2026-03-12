@@ -72,7 +72,6 @@ import ExchangeHistoryScreen from './src/pages/exchange/ExchangeHistoryScreen';
 import ExchangeAdminScreen   from './src/pages/exchange/ExchangeAdminScreen';
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import { registerForPushNotificationsAsync } from './src/helpers/pushnotification';
 import { NotificationProvider } from './context/notificationcontext';
 
 Notifications.setNotificationHandler({
