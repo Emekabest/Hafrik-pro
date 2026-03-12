@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "239126796818",
-    "project_id": "hafrik-64129",
-    "storage_bucket": "hafrik-64129.firebasestorage.app"
+    "project_number": "893001894664",
+    "project_id": "hafrikpro-479f1",
+    "storage_bucket": "hafrikpro-479f1.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:239126796818:android:410f8fa7274436ddb196cb",
+        "mobilesdk_app_id": "1:893001894664:android:2fab477968946d51d93abd",
         "android_client_info": {
-          "package_name": "com.jojo104.hafrik"
+          "package_name": "com.hafrik.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDHdQHU0WlsaNR34mZMHko524G7K8e_KcM"
+          "current_key": "AIzaSyCRKnhAb4R-1VspO_BRKtse4Kupra7ua-U"
         }
       ],
       "services": {

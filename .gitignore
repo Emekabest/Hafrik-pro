@@ -11,6 +11,8 @@ ios/Pods
 *.tar
 *.gz
 .expo
+*.keystore
+*.jks
 dist
 build
 coverage

@@ -1,16 +1,16 @@
 {
   "expo": {
     "name": "Hafrik Pro",
-    "slug": "hafrik",
+    "slug": "hafrikpro",
     "version": "1.0.0",
     "icon": "./src/assl.js/icon.png",
     "android": {
-      "package": "com.jojo104.hafrik",
+      "package": "com.hafrik.app",
       "googleServicesFile": "./google-services.json",
       "icon": "./src/assl.js/icon.png"
     },
     "ios": {
-      "bundleIdentifier": "com.jojo104.hafrikpro1",
+      "bundleIdentifier": "com.hafrik.app",
       "icon": "./src/assl.js/icon.png",
       "supportsTablet": true,
       "infoPlist": {
@@ -43,8 +43,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "baed6d6b-0b66-486e-aec9-01d4af7e0947"
+        "projectId": "f31bc39b-255b-4ca9-933a-43630bf6b195"
       }
-    }
+    },
+    "owner": "horlaarsman"
   }
 }

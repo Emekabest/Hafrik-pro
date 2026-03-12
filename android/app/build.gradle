@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.jojo104.hafrik'
+    namespace 'com.hafrik.app'
     defaultConfig {
-        applicationId 'com.jojo104.hafrik'
+        applicationId 'com.hafrik.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
