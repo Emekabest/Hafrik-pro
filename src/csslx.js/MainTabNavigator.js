@@ -169,7 +169,7 @@ const MainTabNavigator = () => {
 
   return (
     <Tab.Navigator
-      initialRouteName="Feed"
+      initialRouteName="Home"
       tabBar={props => <CustomTabBar {...props} unreadCount={unreadCount} notifCount={notifCount} />}
       screenOptions={{ headerShown: false }}
     >
