@@ -1,4 +1,6 @@
 node_modules
+.expo/
+.expo-shared/
 .git
 .gitignore
 android/.gradle
@@ -17,5 +19,17 @@ ios/Pods
 dist
 build
 coverage
+
+# environment
+.env
+.env.local
+
+# system
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
 
 google-services.json
