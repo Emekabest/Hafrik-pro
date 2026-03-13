@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   inner: {
-    height: 54,
+    height: 44,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',

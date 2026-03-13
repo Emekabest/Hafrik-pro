@@ -121,6 +121,15 @@ const PostComposerModal = () => {
         }
     }, [selectedVideo?.uri]); // eslint-disable-line
 
+    // ── Apply initialTab from composerConfig ──────────────────────────────────
+    useEffect(() => {
+        if (!isComposerOpen) return;
+        const tab = composerConfig?.initialTab;
+        if (tab && POST_TYPES.some(t => t.id === tab)) {
+            setActiveTab(tab);
+        }
+    }, [isComposerOpen, composerConfig?.initialTab]);
+
     // ── Fetch targets on open ──────────────────────────────────────────────────
     useEffect(() => {
         if (!isComposerOpen || !token) return;

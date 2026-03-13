@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../theme/colors';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -62,11 +63,19 @@ const FeedTabBar = memo(({ activeIndex, onTabChange }) => {
               activeOpacity={0.8}
               onPress={() => onTabChange(index)}
             >
+              {active && (
+                <LinearGradient
+                  colors={[Colors.brandDeep, Colors.primaryDark, Colors.primary]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
               <Ionicons
                 name={active ? tab.icon.replace('-outline', '') || tab.icon : tab.icon}
-                size={16}
-                color={active ? Colors.white : BRAND}
-                style={{ marginRight: 6 }}
+                size={15}
+                color={active ? Colors.white : BRAND + 'CC'}
+                style={{ marginRight: 5 }}
               />
               <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
                 {tab.label}
@@ -130,29 +139,35 @@ const styles = StyleSheet.create({
   },
   tabBarContent: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     gap: 6,
   },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 24,
-    backgroundColor: BRAND + '08',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: BRAND + '0C',
+    overflow: 'hidden',
   },
   tabActive: {
-    backgroundColor: BRAND,
+    shadowColor: Colors.brandDeep,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
   },
   tabLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: BRAND,
-    letterSpacing: -0.2,
+    color: BRAND + 'CC',
+    letterSpacing: -0.1,
   },
   tabLabelActive: {
     color: Colors.white,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
 
   // Content filter pills
@@ -163,15 +178,15 @@ const styles = StyleSheet.create({
   },
   filterBarContent: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     gap: 6,
   },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: BRAND + '20',
   },

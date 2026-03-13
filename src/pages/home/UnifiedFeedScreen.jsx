@@ -218,6 +218,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     const items = [
       { type: 'banner', feedWidth: feedWidth || 0 },
       { type: 'feedsheader', name: tabConfig.label, id: feedsName },
+      { type: 'locationstrip' },
     ];
 
     // Interstitial pool

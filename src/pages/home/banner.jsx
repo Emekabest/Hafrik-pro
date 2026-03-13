@@ -159,7 +159,7 @@ const Banner = () => {
   // Responsive sizing — fills phone, capped at 600 on tablets
   const H_PAD       = screenWidth > 600 ? 24 : 16;
   const SLIDE_W     = Math.min(screenWidth - H_PAD * 2, 600);
-  const SLIDE_H     = Math.round(SLIDE_W * 0.5);
+  const SLIDE_H     = Math.round(SLIDE_W * 0.42);
   const ITEM_STRIDE = SLIDE_W + 12;
 
   const [banners,     setBanners]     = useState([]);
@@ -308,7 +308,7 @@ const Banner = () => {
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   wrapper: {
-    marginVertical: 12,
+    marginVertical: 6,
   },
 
   // skeleton

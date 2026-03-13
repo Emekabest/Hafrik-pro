@@ -17,14 +17,14 @@ const bottomContainerIcons = [
 const bottomLeftIconsSize = 19;
 
 const PostFeed = () => {
-    const openComposer = useStore((state) => state.openComposer);
-    const userAvatar   = useStore((state) => state.userAvatar);
+    const openCreateMenu = useStore((state) => state.openCreateMenu);
+    const userAvatar     = useStore((state) => state.userAvatar);
     const [avatarUrl, setAvatarUrl] = useState(userAvatar);
 
     useEffect(() => { setAvatarUrl(userAvatar); }, [userAvatar]);
 
     return (
-        <TouchableOpacity style={styles.container} activeOpacity={1} onPress={openComposer}>
+        <TouchableOpacity style={styles.container} activeOpacity={1} onPress={openCreateMenu}>
             {/* Avatar + placeholder text */}
             <View style={styles.containerTop}>
                 <View style={styles.containerTopImage}>
