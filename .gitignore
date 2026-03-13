@@ -5,6 +5,7 @@ android/.gradle
 android/app/build
 android/build
 ios/build
+android
 ios/Pods
 *.log
 *.zip
