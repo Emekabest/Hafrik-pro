@@ -24,6 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 
 import { fetchArticleDetail, normalizeTags } from './articlesApi';
+import { GetCommentsController, AddCommentController, AddReplyController, LikeCommentController } from '../../controllers/commentscontroller';
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
 import { useTheme } from '../../theme/ThemeContext';
@@ -180,6 +181,7 @@ export default function ArticleDetailsScreen({ navigation, route }) {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null); // comment id
 
   // Share to Timeline modal
   const [shareToTimelineVisible, setShareToTimelineVisible] = useState(false);
@@ -252,14 +254,8 @@ export default function ArticleDetailsScreen({ navigation, route }) {
     if (!postId || !token) return;
     setCommentsLoading(true);
     try {
-      const res = await fetch(
-        `https://hafrik.com/api/v1/article/get_comment.php?post_id=${postId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!res.ok) return;
-      const json = await res.json();
-      const list = Array.isArray(json?.data ?? json) ? (json?.data ?? json) : [];
-      setComments(list);
+      const res = await GetCommentsController(postId, token, 1, 10);
+      setComments(Array.isArray(res?.data) ? res.data : []);
     } catch {}
     finally { setCommentsLoading(false); }
   }, [postId, token]);
@@ -278,16 +274,12 @@ export default function ArticleDetailsScreen({ navigation, route }) {
     setComments((c) => [optimistic, ...c]);
     setNewComment('');
     try {
-      const form = new FormData();
-      form.append('post_id', String(postId));
-      form.append('comment', text);
-      const res = await fetch('https://hafrik.com/api/v1/article/add_comment.php', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
-      if (!res.ok) throw new Error('failed');
-      // Reload to get server-assigned IDs
+      if (replyingTo) {
+        await AddReplyController(postId, replyingTo, text, token);
+        setReplyingTo(null);
+      } else {
+        await AddCommentController(postId, text, token);
+      }
       loadComments();
     } catch {
       setComments((c) => c.filter((x) => x.id !== optimistic.id));
@@ -295,7 +287,7 @@ export default function ArticleDetailsScreen({ navigation, route }) {
     } finally {
       setSubmittingComment(false);
     }
-  }, [newComment, postId, token, submittingComment, user, loadComments]);
+  }, [newComment, postId, token, submittingComment, user, loadComments, replyingTo]);
 
   const handleLike = useCallback(async () => {
     if (!postId || !token) return;
@@ -305,14 +297,8 @@ export default function ArticleDetailsScreen({ navigation, route }) {
     setIsLiked(!prevLiked);
     setLikesCount((c) => prevLiked ? Math.max(0, c - 1) : c + 1);
     try {
-      const form = new FormData();
-      form.append('post_id', String(postId));
-      const res = await fetch('https://hafrik.com/api/v1/article/like.php', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
-      if (!res.ok) throw new Error('failed');
+      const res = await LikeCommentController(postId, token);
+      if (res.status !== 200) throw new Error('failed');
     } catch {
       setIsLiked(prevLiked);
       setLikesCount(prevCount);

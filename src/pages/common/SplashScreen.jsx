@@ -313,10 +313,6 @@ function SplashScreen({ fadeAnim }) {
           </Animated.View>
         </View>
 
-        {/* Brand wordmark */}
-        <Animated.Text style={[styles.brandName, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
-          HAFRIK
-        </Animated.Text>
 
         {/* Accent underline */}
         <Animated.View style={[styles.accentLine, { opacity: logoOpacity }]} />
@@ -396,6 +392,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: Colors.white,
     letterSpacing: 9,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  brandLogo: {
+    width: 180,
+    height: 60,
     marginTop: 16,
     marginBottom: 8,
   },

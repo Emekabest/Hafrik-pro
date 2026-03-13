@@ -279,7 +279,7 @@ function AppNavigator() {
         <SafeAreaView style={[styles.container, { backgroundColor: AppDetails.primaryColor }]} edges={['top', 'left', 'right', 'bottom']} >
 
             <Stack.Navigator
-              initialRouteName={user && token ? "MainTabs" : "Login"}
+              initialRouteName={user && token ? "MainTabs" : "Feed"}
               screenOptions={{
                 headerShown: false,
                 cardStyle: { backgroundColor: '#fff' },

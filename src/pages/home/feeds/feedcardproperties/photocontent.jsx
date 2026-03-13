@@ -1,11 +1,12 @@
-import React, { memo, useState, useRef } from 'react';
+import React, { memo, useState, useRef, useEffect } from 'react';
 import {
   View,
   Dimensions,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
+  Image,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { Image as ExpoImage } from 'expo-image';
 import { Colors } from '../../../../theme/colors';
 
@@ -22,7 +23,7 @@ const DEFAULT_IMAGE_W = screenWidth - 88;
 
 // ─── PhotoPostContent ─────────────────────────────────────────────────────────
 // imageWidth: optional override (pass from comment screen for full-width context)
-// contentFit: 'cover' (feed — square crop) | 'contain' (post detail — full image, no crop)
+// contentFit: 'cover' (feed — square crop) | 'contain' (post detail — full image)
 const PhotoPostContent = ({ media, onImagePress, imageWidth: imageWidthProp, contentFit = 'cover' }) => {
   const validMedia = (media || []).filter(item => item?.url);
   if (validMedia.length === 0) return null;
@@ -39,6 +40,20 @@ const PhotoPostContent = ({ media, onImagePress, imageWidth: imageWidthProp, con
     setActiveIndex(Math.max(0, Math.min(index, validMedia.length - 1)));
   };
 
+  // Single image — render with natural aspect ratio
+  if (!isMultiple) {
+    return (
+      <View style={styles.container}>
+        <FlexibleImage
+          uri={validMedia[0].url}
+          width={imgW}
+          onPress={() => onImagePress?.(validMedia[0].url)}
+        />
+      </View>
+    );
+  }
+
+  // Multiple images — horizontal carousel with square crop
   return (
     <View style={styles.container}>
       <ScrollView
@@ -61,24 +76,63 @@ const PhotoPostContent = ({ media, onImagePress, imageWidth: imageWidthProp, con
         ))}
       </ScrollView>
 
-      {/* Dot indicators for multi-image posts */}
-      {isMultiple && (
-        <View style={styles.dotsRow}>
-          {validMedia.map((_, i) => (
-            <View
-              key={i}
-              style={[styles.dot, i === activeIndex && styles.dotActive]}
-            />
-          ))}
-        </View>
-      )}
+      <View style={styles.dotsRow}>
+        {validMedia.map((_, i) => (
+          <View
+            key={i}
+            style={[styles.dot, i === activeIndex && styles.dotActive]}
+          />
+        ))}
+      </View>
     </View>
   );
 };
 
-// ─── ThreadImage — no setState on load ────────────────────────────────────────
-// contentFit='cover'   → 1:1 square crop (feed card)
-// contentFit='contain' → full image letterboxed inside same square (post detail)
+// ─── FlexibleImage — single image, natural aspect ratio ───────────────────────
+// Fetches the real w×h of the remote image and renders at full available width
+// with the correct height. Capped at 4:5 portrait to avoid very tall images.
+const MAX_ASPECT_RATIO = 0.5625; // 9:16 — absolute tallest we allow
+const MIN_ASPECT_RATIO = 0.5;    // wider than 2:1 landscape gets capped too
+
+const FlexibleImage = ({ uri, width, onPress }) => {
+  // Default to a pleasant 4:5 portrait while loading
+  const [aspectRatio, setAspectRatio] = useState(0.8);
+
+  useEffect(() => {
+    if (!uri) return;
+    Image.getSize(
+      uri,
+      (w, h) => {
+        if (w > 0 && h > 0) {
+          const ratio = h / w; // height-to-width ratio
+          // Clamp: no taller than 16:9, no wider than 2:1
+          const clamped = Math.min(Math.max(ratio, MIN_ASPECT_RATIO), 1 / MAX_ASPECT_RATIO);
+          setAspectRatio(clamped);
+        }
+      },
+      () => {} // silent on error, keep default
+    );
+  }, [uri]);
+
+  return (
+    <TouchableOpacity activeOpacity={0.95} onPress={onPress}>
+      <ExpoImage
+        source={{ uri }}
+        style={{
+          width,
+          height: width * aspectRatio,
+          borderRadius: 12,
+          backgroundColor: Colors.neutral150,
+        }}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={200}
+      />
+    </TouchableOpacity>
+  );
+};
+
+// ─── ThreadImage — multi-image carousel item (square crop) ────────────────────
 const ThreadImage = ({ uri, onPress, width, contentFit = 'cover' }) => (
   <TouchableOpacity activeOpacity={0.95} onPress={onPress}>
     <ExpoImage

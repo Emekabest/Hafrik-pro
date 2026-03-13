@@ -14,6 +14,7 @@ import {
   Animated,
   FlatList,
   Modal,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +35,7 @@ const { width, height } = Dimensions.get('window');
 // ─── Brand tokens ──────────────────────────────────────────────────────────────
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
-const CREAM  = Colors.background;
+const CREAM  = Colors.surfaceCool;
 const DARK   = Colors.black;
 const MUTED  = Colors.secondaryText;
 const ERROR  = Colors.destructive;
@@ -80,8 +81,6 @@ const SLIDES = [
     title: 'Your diaspora.\nYour community.',
     body: 'Connect with fellow Africans across China and beyond. Find your people, build your network.',
     emoji: '🌍',
-    bg: BRAND,
-    accent: ACCENT,
   },
   {
     id: 2,
@@ -89,8 +88,6 @@ const SLIDES = [
     title: 'Groups built\naround you.',
     body: 'Join city groups, student communities, business networks and more — all in one place.',
     emoji: '👥',
-    bg: Colors.primary,
-    accent: Colors.primary,
   },
   {
     id: 3,
@@ -98,8 +95,6 @@ const SLIDES = [
     title: 'Grow where\nyou are.',
     body: 'Discover jobs, marketplace listings, shipping agents, events and local guides.',
     emoji: '🚀',
-    bg: Colors.primaryDark,
-    accent: ACCENT,
   },
 ];
 
@@ -302,9 +297,16 @@ const CountryModal = ({ visible, onClose, onSelect }) => {
 // ─── Input field ──────────────────────────────────────────────────────────────
 const Field = ({ label, error, children }) => (
   <View style={styles.fieldWrap}>
-    <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={styles.fieldLabelRow}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      {!!error && (
+        <View style={styles.fieldErrorBadge}>
+          <Ionicons name="alert-circle" size={11} color={ERROR} style={{ marginRight: 3 }} />
+          <Text style={styles.fieldErrorBadgeText}>{error}</Text>
+        </View>
+      )}
+    </View>
     {children}
-    {!!error && <Text style={styles.fieldError}>{error}</Text>}
   </View>
 );
 
@@ -341,22 +343,33 @@ const Onboarding = ({ onDone }) => {
     }
   };
 
-  const slide = SLIDES[idx];
-
   return (
-    <View style={{ flex: 1, backgroundColor: slide.bg }}>
+    <LinearGradient
+      colors={[Colors.brandDeep, Colors.primaryDark, Colors.tealWave]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0.4, y: 1 }}
+      style={{ flex: 1 }}
+    >
       {/* Animated floating particles */}
       <FloatingParticles />
 
-      {/* Decorative blobs */}
-      <View style={[styles.blob, { width: 300, height: 300, top: -80, right: -100, opacity: 0.08 }]} />
-      <View style={[styles.blob, { width: 200, height: 200, bottom: 140, left: -60, opacity: 0.06 }]} />
-      <View style={[styles.blob, { width: 100, height: 100, top: '38%', left: '25%', opacity: 0.04 }]} />
+      {/* Decorative blobs — non-interactive */}
+      <View pointerEvents="none" style={[styles.blob, { width: 300, height: 300, top: -80, right: -100, opacity: 0.08 }]} />
+      <View pointerEvents="none" style={[styles.blob, { width: 200, height: 200, bottom: 140, left: -60, opacity: 0.06 }]} />
+      <View pointerEvents="none" style={[styles.blob, { width: 100, height: 100, top: '38%', left: '25%', opacity: 0.04 }]} />
+
+      {/* Logo top-left */}
+      <Image
+        source={require('../assl.js/Layer 3.png')}
+        style={[styles.onboardLogo, { top: top + 18 }]}
+        resizeMode="contain"
+        pointerEvents="none"
+      />
 
       {/* Skip */}
       {idx < SLIDES.length - 1 && (
         <TouchableOpacity
-          style={[styles.skipBtn, { top: top + 16 }]}
+          style={[styles.skipBtn, { top: top + 20 }]}
           onPress={onDone}
           activeOpacity={0.7}
         >
@@ -379,7 +392,7 @@ const Onboarding = ({ onDone }) => {
             {/* Emoji orb with double pulse rings */}
             <FadeSlide delay={60}>
               <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
-                <PulseRing color={slide.accent} size={120} />
+                <PulseRing color={ACCENT} size={120} />
                 <Animated.View style={[styles.slideEmoji, { transform: [{ scale: emojiScale }] }]}>
                   <Text style={{ fontSize: 72 }}>{s.emoji}</Text>
                 </Animated.View>
@@ -438,7 +451,7 @@ const Onboarding = ({ onDone }) => {
           <Ionicons name="arrow-forward" size={18} color={BRAND} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -651,23 +664,30 @@ const AuthScreen = () => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       {/* ── Gradient brand header ── */}
-      <LinearGradient
-        colors={[BRAND, Colors.primary, Colors.primaryDark]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: top + 8 }]}
-      >
-        <View style={styles.headerBlob} />
-        <View style={[styles.headerBlob, { width: 110, height: 110, top: 8, left: -18, opacity: 0.07 }]} />
+      <View>
+        <LinearGradient
+          colors={[Colors.brandDeep, Colors.primaryDark, Colors.tealWave]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: top + 20 }]}
+        >
+          {/* Decorative orbs — non-interactive */}
+          <View style={styles.headerBlob} pointerEvents="none" />
+          <View style={[styles.headerBlob, { width: 110, height: 110, top: 8, left: -18, opacity: 0.07 }]} pointerEvents="none" />
 
-        <View style={{ flex: 1 }}>
-          {/* Live social proof pill */}
+          {/* Brand logo image */}
+          <Image
+            source={require('../assl.js/Layer 3.png')}
+            style={styles.headerLogoImg}
+            resizeMode="contain"
+          />
+
+          {/* Social proof pill */}
           <View style={styles.proofPill}>
             <View style={styles.proofDot} />
             <Text style={styles.proofText}>50,000+ members worldwide</Text>
           </View>
 
-          <Text style={styles.headerEyebrow}>HAFRIK</Text>
           <Text style={styles.headerTitle}>
             {mode === 'login' ? 'Welcome back.' : 'Join Hafrik.'}
           </Text>
@@ -676,12 +696,11 @@ const AuthScreen = () => {
               ? 'Sign in to your community'
               : 'Create your account in seconds'}
           </Text>
-        </View>
+        </LinearGradient>
 
-        <View style={styles.headerLogo}>
-          <Text style={{ fontSize: 28 }}>🌍</Text>
-        </View>
-      </LinearGradient>
+        {/* Curved bottom — sits OUTSIDE the gradient so it never blocks touches */}
+        <View style={styles.headerCurve} pointerEvents="none" />
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.body}
@@ -697,6 +716,13 @@ const AuthScreen = () => {
               onPress={() => { if (mode !== m) toggleMode(); }}
               activeOpacity={0.8}
             >
+              {mode === m && (
+                <LinearGradient
+                  colors={[Colors.primaryDark, Colors.primary]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
               <Ionicons
                 name={m === 'login' ? 'log-in-outline' : 'person-add-outline'}
                 size={14}
@@ -716,11 +742,14 @@ const AuthScreen = () => {
           {/* Username / email */}
           <Field label={mode === 'login' ? 'Username or Email' : 'Username'} error={errors.username}>
             <View style={inputStyle('username')}>
-              <Ionicons name="person-outline" size={16} color={MUTED} style={styles.inputIcon} />
+              <View style={styles.inputPrefix}>
+                <Ionicons name="person-outline" size={17} color={focused.username ? ACCENT : MUTED} />
+              </View>
+              <View style={styles.inputDivider} />
               <TextInput
-                style={styles.inputText}
+                style={[styles.inputText, { flex: 1 }]}
                 placeholder={mode === 'login' ? 'Enter username or email' : 'Choose a username'}
-                placeholderTextColor={MUTED}
+                placeholderTextColor={Colors.placeholder}
                 value={mode === 'login' ? (form.username || form.email) : form.username}
                 onChangeText={(v) => {
                   if (mode === 'login') {
@@ -737,11 +766,14 @@ const AuthScreen = () => {
           {/* Password */}
           <Field label="Password" error={errors.password}>
             <View style={inputStyle('password')}>
-              <Ionicons name="lock-closed-outline" size={16} color={MUTED} style={styles.inputIcon} />
+              <View style={styles.inputPrefix}>
+                <Ionicons name="lock-closed-outline" size={17} color={focused.password ? ACCENT : MUTED} />
+              </View>
+              <View style={styles.inputDivider} />
               <TextInput
                 style={[styles.inputText, { flex: 1 }]}
                 placeholder="Enter your password"
-                placeholderTextColor={MUTED}
+                placeholderTextColor={Colors.placeholder}
                 value={form.password}
                 onChangeText={(v) => set('password', v)}
                 secureTextEntry={!showPwd}
@@ -749,7 +781,7 @@ const AuthScreen = () => {
                 onBlur={()  => setFocused((p) => ({ ...p, password: false }))}
               />
               <TouchableOpacity onPress={() => setShowPwd((v) => !v)} style={styles.eyeBtn}>
-                <Ionicons name={showPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={MUTED} />
+                <Ionicons name={showPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={focused.password ? ACCENT : MUTED} />
               </TouchableOpacity>
             </View>
             {/* Strength bar (register only) */}
@@ -761,11 +793,14 @@ const AuthScreen = () => {
             <>
               <Field label="Email" error={errors.email}>
                 <View style={inputStyle('email')}>
-                  <Ionicons name="mail-outline" size={16} color={MUTED} style={styles.inputIcon} />
+                  <View style={styles.inputPrefix}>
+                    <Ionicons name="mail-outline" size={17} color={focused.email ? ACCENT : MUTED} />
+                  </View>
+                  <View style={styles.inputDivider} />
                   <TextInput
-                    style={styles.inputText}
+                    style={[styles.inputText, { flex: 1 }]}
                     placeholder="your@email.com"
-                    placeholderTextColor={MUTED}
+                    placeholderTextColor={Colors.placeholder}
                     value={form.email}
                     onChangeText={(v) => set('email', v)}
                     keyboardType="email-address"
@@ -778,11 +813,14 @@ const AuthScreen = () => {
 
               <Field label="Full Name" error={errors.fullName}>
                 <View style={inputStyle('fullName')}>
-                  <Ionicons name="id-card-outline" size={16} color={MUTED} style={styles.inputIcon} />
+                  <View style={styles.inputPrefix}>
+                    <Ionicons name="id-card-outline" size={17} color={focused.fullName ? ACCENT : MUTED} />
+                  </View>
+                  <View style={styles.inputDivider} />
                   <TextInput
-                    style={styles.inputText}
+                    style={[styles.inputText, { flex: 1 }]}
                     placeholder="Your full name"
-                    placeholderTextColor={MUTED}
+                    placeholderTextColor={Colors.placeholder}
                     value={form.fullName}
                     onChangeText={(v) => set('fullName', v)}
                     onFocus={() => setFocused((p) => ({ ...p, fullName: true }))}
@@ -793,38 +831,37 @@ const AuthScreen = () => {
 
               <Field label="Country" error={errors.country}>
                 <TouchableOpacity
-                  style={[styles.input, styles.inputRow, errors.country && styles.inputError]}
+                  style={[styles.input, errors.country && styles.inputError]}
                   onPress={() => setShowModal(true)}
                   activeOpacity={0.8}
                 >
-                  {form.country ? (
-                    <>
-                      <Text style={{ fontSize: 18, marginRight: 10 }}>{form.country.flag}</Text>
-                      <Text style={[styles.inputText, { flex: 1 }]}>{form.country.name}</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons name="globe-outline" size={16} color={MUTED} style={styles.inputIcon} />
-                      <Text style={[styles.inputText, { color: MUTED, flex: 1 }]}>Select your country</Text>
-                    </>
-                  )}
-                  <Ionicons name="chevron-down" size={18} color={MUTED} />
+                  <View style={styles.inputPrefix}>
+                    {form.country
+                      ? <Text style={{ fontSize: 20 }}>{form.country.flag}</Text>
+                      : <Ionicons name="globe-outline" size={17} color={MUTED} />
+                    }
+                  </View>
+                  <View style={styles.inputDivider} />
+                  <Text style={[styles.inputText, { flex: 1, color: form.country ? Colors.textStrong : Colors.placeholder }]}>
+                    {form.country ? form.country.name : 'Select your country'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color={MUTED} style={{ marginRight: 14 }} />
                 </TouchableOpacity>
               </Field>
 
               <Field label="Phone" error={errors.phone}>
-                <View style={[styles.input, styles.inputRow, errors.phone && styles.inputError]}>
+                <View style={[styles.input, focused.phone && styles.inputFocused, errors.phone && styles.inputError]}>
                   <TouchableOpacity onPress={() => setShowModal(true)} style={styles.dialCode}>
                     <Text style={styles.dialCodeText}>
                       {form.country?.flag ?? '🌍'} {form.country?.dialCode ?? '+?'}
                     </Text>
-                    <Ionicons name="chevron-down" size={14} color={MUTED} />
+                    <Ionicons name="chevron-down" size={13} color={MUTED} />
                   </TouchableOpacity>
                   <View style={styles.phoneDivider} />
                   <TextInput
                     style={[styles.inputText, { flex: 1 }]}
                     placeholder="Mobile number"
-                    placeholderTextColor={MUTED}
+                    placeholderTextColor={Colors.placeholder}
                     value={form.phone}
                     onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
                     keyboardType="phone-pad"
@@ -1079,37 +1116,54 @@ const styles = StyleSheet.create({
     color: BRAND,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
+  onboardLogo: {
+    position: 'absolute',
+    left: 24,
+    width: 110,
+    height: 36,
+  },
 
   // ── Auth header ──
   header: {
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    overflow: 'hidden',
+    paddingHorizontal: 28,
+    paddingBottom: 36,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 36,
+    backgroundColor: CREAM,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
   },
   headerBlob: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: ACCENT + '1A',
-    top: -60,
-    right: -40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: ACCENT + '18',
+    top: -80,
+    right: -60,
+  },
+  headerLogoImg: {
+    width: 140,
+    height: 46,
+    marginBottom: 18,
   },
   proofPill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
-    backgroundColor: ACCENT + '29',
+    backgroundColor: ACCENT + '2A',
     borderWidth: 1,
-    borderColor: ACCENT + '47',
+    borderColor: ACCENT + '50',
     borderRadius: 100,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 14,
   },
   proofDot: {
     width: 6, height: 6, borderRadius: 3,
@@ -1121,33 +1175,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: AppDetails?.fontFamily?.inter?.medium ?? 'System',
   },
-  headerEyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 3,
-    color: ACCENT,
-    marginBottom: 6,
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
-  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '900',
     color: WHITE,
+    lineHeight: 36,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
   headerSub: {
-    fontSize: 13,
-    color: WHITE + '99',
-    marginTop: 4,
+    fontSize: 14,
+    color: WHITE + 'A0',
+    marginTop: 6,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
-  },
-  headerLogo: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: WHITE + '1A',
-    borderWidth: 1,
-    borderColor: WHITE + '26',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 
   // ── Body ──
@@ -1160,20 +1199,34 @@ const styles = StyleSheet.create({
   // Tab row
   tabRow: {
     flexDirection: 'row',
-    backgroundColor: BRAND + '14',
-    borderRadius: 100,
+    backgroundColor: Colors.surfaceFrost,
+    borderRadius: 16,
     padding: 4,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: BRAND + '12',
+    shadowColor: Colors.brandDeep,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderRadius: 100,
+    borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  tabActive: { backgroundColor: BRAND },
+  tabActive: {
+    shadowColor: Colors.brandDeep,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
+  },
   tabText: {
     fontSize: 14,
     fontWeight: '700',
@@ -1186,23 +1239,32 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: WHITE,
     borderRadius: 24,
-    padding: 22,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 20,
+    shadowColor: Colors.brandDeep,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.09,
+    shadowRadius: 28,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: BRAND + '12',
-    shadowColor: DARK,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
+    borderColor: BRAND + '0A',
   },
 
   // Field
-  fieldWrap: { marginBottom: 18 },
+  fieldWrap: { marginBottom: 16 },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: DARK,
-    marginBottom: 7,
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textStrongAlt,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
     fontFamily: AppDetails?.fontFamily?.inter?.medium ?? 'System',
   },
   fieldError: {
@@ -1211,45 +1273,83 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
   },
+  fieldErrorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: ERROR + '12',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  fieldErrorBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: ERROR,
+    fontFamily: AppDetails?.fontFamily?.inter?.medium ?? 'System',
+  },
 
   // Input
   input: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceTint,
-    borderRadius: 12,
+    backgroundColor: Colors.surfaceFrost,
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: BRAND + '1A',
-    paddingHorizontal: 14,
-    height: 50,
+    borderColor: Colors.borderSoft,
+    height: 54,
+    overflow: 'hidden',
+  },
+  inputPrefix: {
+    width: 48,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surfaceCoolAlt,
+  },
+  inputDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: Colors.borderSoft,
+    marginRight: 12,
   },
   inputRow:    { flexDirection: 'row', alignItems: 'center' },
-  inputFocused: { borderColor: ACCENT, backgroundColor: WHITE },
-  inputError:  { borderColor: ERROR,   backgroundColor: ERROR + '14' },
+  inputFocused: {
+    borderColor: ACCENT,
+    backgroundColor: WHITE,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  inputError:  { borderColor: ERROR, backgroundColor: ERROR + '08' },
   inputIcon:   { marginRight: 10 },
   inputText: {
     fontSize: 15,
-    color: DARK,
+    color: Colors.textStrong,
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
   },
-  eyeBtn: { padding: 4 },
+  eyeBtn: { padding: 10 },
 
   // Dial code
   dialCode: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingLeft: 14,
     paddingRight: 10,
+    height: '100%',
+    backgroundColor: Colors.surfaceCoolAlt,
   },
   dialCodeText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: DARK,
     fontFamily: AppDetails?.fontFamily?.inter?.medium ?? 'System',
   },
   phoneDivider: {
-    width: 1, height: 24,
-    backgroundColor: BRAND + '26',
+    width: 1, height: 26,
+    backgroundColor: Colors.borderSoft,
     marginRight: 12,
   },
 
@@ -1280,20 +1380,26 @@ const styles = StyleSheet.create({
 
   // Submit
   submitBtn: {
-    borderRadius: 14,
+    borderRadius: 28,
     overflow: 'hidden',
     marginBottom: 18,
+    shadowColor: Colors.brandDeep,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 6,
   },
   submitGradient: {
-    height: 54,
+    height: 58,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   submitText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     color: WHITE,
+    letterSpacing: 0.3,
     fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
   },
 
@@ -1323,11 +1429,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: Colors.surfaceTint,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: Colors.surfaceCoolAlt,
     borderWidth: 1.5,
-    borderColor: BRAND + '1A',
+    borderColor: BRAND + '18',
   },
   socialBtnText: {
     fontSize: 14,
