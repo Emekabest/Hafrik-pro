@@ -70,6 +70,19 @@ import ExchangeHomeScreen    from './src/pages/exchange/ExchangeHomeScreen';
 import ExchangeConfirmScreen from './src/pages/exchange/ExchangeConfirmScreen';
 import ExchangeHistoryScreen from './src/pages/exchange/ExchangeHistoryScreen';
 import ExchangeAdminScreen   from './src/pages/exchange/ExchangeAdminScreen';
+import * as Device from "expo-device";
+import * as Notifications from "expo-notifications";
+import { NotificationProvider } from './context/notificationcontext';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+
 
 const Stack = createStackNavigator();
 
@@ -82,6 +95,12 @@ function AppNavigator() {
 
   const setTabletMode = useSharedStore(state => state.setTabletMode);
   const setTabletDimension = useSharedStore(state => state.setTabletDimension);
+
+
+    useEffect(() => {
+    // registerForPushNotificationsAsync();
+  }, []);
+
 
 
   const { width, height } = Dimensions.get("window");
@@ -271,7 +290,8 @@ function AppNavigator() {
   
 
   return (
-    <View style={styles.root}>
+    <NotificationProvider>
+      <View style={styles.root}>
       <NavigationContainer>
       
         <StatusBar style="light" translucent={Platform.OS === "android" ? false : true} />
@@ -354,6 +374,8 @@ function AppNavigator() {
       <GlobalUploadBanner />
       {showSplashOverlay && splashNode}
     </View>
+    </NotificationProvider>
+  
   );
 }
 

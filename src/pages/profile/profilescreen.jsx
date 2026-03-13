@@ -18,6 +18,7 @@ import ProgressBarLoader from '../progressbarloader';
 import PostComposerModal from '../home/PostComposerModal';
 import { useLiveCounts } from '../../hooks/useLiveCounts';
 import { Colors } from '../../theme/colors';
+import { useNotification } from '../../../context/notificationcontext';
 
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
@@ -35,6 +36,11 @@ const ProfileScreen = () => {
     const setSearchVisible = useStore((state) => state.setSearchVisible);
     const setProfileTabMode = useStore((state) => state.setProfileTabMode);
     const openComposer = useStore((state) => state.openComposer);
+
+
+    const { expoPushToken, notification } = useNotification();
+        
+    // console.log("Expo Push Token in ProfileScreen:", notification);
 
     // Live notification + message counts (polls every 20 s while focused)
     useLiveCounts();
