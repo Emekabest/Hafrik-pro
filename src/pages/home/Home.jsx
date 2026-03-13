@@ -8,6 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useIsFocused } from '@react-navigation/native';
 import DrawerNavigation from './drawernavigation.jsx';
@@ -18,6 +19,7 @@ import SearchModal from '../search/searchmodal.jsx';
 import useStore from '../../repository/store.js';
 import SearchScreen from '../search/searchscreen.jsx';
 import PostComposerModal from './PostComposerModal.jsx';
+import CreateMenuSheet from './CreateMenuSheet.jsx';
 import AppDetails from '../../helpers/appdetails.js';
 import { getProfileAvatarController } from '../../controllers/profilecontroller.js';
 import { useAuth } from '../../AuthContext.js';
@@ -25,6 +27,7 @@ import { useLiveCounts } from '../../hooks/useLiveCounts.js';
 import { Colors } from '../../theme/colors';
 
 const BRAND = Colors.primaryDark;
+const WHITE = Colors.white;
 
 const HomePage = ({ route, navigation }) => {
   const { height } = Dimensions.get("window");
@@ -34,12 +37,13 @@ const HomePage = ({ route, navigation }) => {
   const tabletMode      = useStore((state) => state.tabletMode);
   const tabletDimension = useStore((state) => state.tabletDimension);
   const openComposer    = useStore((state) => state.openComposer);
+  const openCreateMenu  = useStore((state) => state.openCreateMenu);
 
   const homeViewHeight = height - (AppDetails.headerHeight + AppDetails.mainTabNavigatorHeight + (tabletMode ? StatusBar.currentHeight : 0));
 
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
-  const [activeTab, setActiveTab]             = useState(0); // 0 = For You
-  const [contentFilter, setContentFilter]     = useState('');
+  const [activeTab,       setActiveTab]       = useState(0); // 0 = For You
+  const [contentFilter,   setContentFilter]   = useState('');
 
   useEffect(() => {
     const tabKey = route?.params?.initialTabKey;
@@ -184,16 +188,19 @@ const HomePage = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* FAB — compose new post */}
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.88}
-        onPress={() => openComposer()}
-      >
-        <Ionicons name="add" size={28} color={Colors.white} />
+      {/* FAB — opens shared creation menu */}
+      <TouchableOpacity style={styles.fab} activeOpacity={0.88} onPress={openCreateMenu}>
+        <LinearGradient
+          colors={[Colors.primaryDark, Colors.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <Ionicons name="add" size={28} color={WHITE} />
       </TouchableOpacity>
 
       {isFocused && <PostComposerModal />}
+      <CreateMenuSheet />
     </View>
   );
 };
@@ -205,6 +212,8 @@ const styles = StyleSheet.create({
   },
   homeContainer: { width: '100%' },
   screenArea: { flex: 1 },
+
+  // FAB
   fab: {
     position: 'absolute',
     bottom: 24,
@@ -212,16 +221,17 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: BRAND,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: BRAND,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowOpacity: 0.38,
+    shadowRadius: 14,
     elevation: 10,
     zIndex: 100,
   },
+
 });
 
 export default HomePage;

@@ -20,9 +20,14 @@ const useStore = create((set, get) => ({
     }),
 
     isComposerOpen: false,
-    composerConfig: null, // { _type, id, title, avatar, locked }
+    composerConfig: null, // { _type, id, title, avatar, locked, initialTab }
     openComposer: (config = null) => set({ isComposerOpen: true, composerConfig: config }),
     closeComposer: () => set({ isComposerOpen: false, composerConfig: null }),
+
+    // ── Creation menu (shared bottom sheet across Home, Explore, Feed card) ──
+    showCreateMenu: false,
+    openCreateMenu: () => set({ showCreateMenu: true }),
+    closeCreateMenu: () => set({ showCreateMenu: false }),
 
 
     userAvatar: "",

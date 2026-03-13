@@ -34,7 +34,7 @@ const AppDetails = {
         profileTimeline:  `${baseUrl}/users/profile_feed.php`,
     },
 
-    headerHeight: 50,
+    headerHeight: 44,
     mainTabNavigatorHeight: 60,
     
 

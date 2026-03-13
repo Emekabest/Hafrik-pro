@@ -10,6 +10,7 @@ import {
   Image,
   Platform,
 } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
 import FeedCard from "./feedcard.jsx";
 import { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
@@ -19,6 +20,7 @@ import PostFeed from "../postfeed.jsx";
 import { useAuth } from "../../../AuthContext.js";
 import FeedsHeader from "../feedsheader.jsx";
 import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { TOPIC_POOL, pickRandom } from '../../../helpers/topicPool';
 import useStore from "../../../repository/store.js";
 import VideoPreloader from "../../../helpers/VideoPreloader.js";
 import { FlashList } from "@shopify/flash-list";
@@ -219,6 +221,121 @@ const CommunityToJoin = memo(({ items }) => {
       ))}
     </View>
   );
+});
+
+// ─── Location Discovery Strip ─────────────────────────────────────────────────
+const PILL_PALETTES = [
+  { bg: Colors.primaryDark,            text: Colors.white,   border: Colors.primaryDark },
+  { bg: Colors.primary,                text: Colors.white,   border: Colors.primary },
+  { bg: Colors.primaryDark + '12',     text: Colors.primaryDark, border: Colors.primaryDark + '40' },
+  { bg: Colors.primary + '1A',         text: Colors.primary, border: Colors.primary + '60' },
+  { bg: Colors.warning + '1A',         text: Colors.warning, border: Colors.warning + '60' },
+  { bg: Colors.primary + '1F',         text: Colors.primaryDark, border: Colors.primary + '40' },
+];
+
+const LocationDiscoveryStrip = memo(() => {
+  const navigation = useNavigation();
+  const [topics, setTopics] = useState(() => pickRandom(TOPIC_POOL, 8));
+
+  const shuffle = useCallback(() => setTopics(pickRandom(TOPIC_POOL, 8)), []);
+
+  return (
+    <View style={ldStyles.wrapper}>
+      <View style={ldStyles.headerRow}>
+        <View style={ldStyles.iconBubble}>
+          <Ionicons name="location" size={13} color={Colors.white} />
+        </View>
+        <Text style={ldStyles.heading}>Discover Near You</Text>
+        <TouchableOpacity style={ldStyles.shuffleBtn} onPress={shuffle} activeOpacity={0.75}>
+          <Ionicons name="shuffle-outline" size={16} color={Colors.primaryDark} />
+        </TouchableOpacity>
+      </View>
+      <Text style={ldStyles.sub}>Tap any tag to dive into trending conversations</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={ldStyles.chipRow}
+      >
+        {topics.map((topic, i) => {
+          const pal = PILL_PALETTES[i % PILL_PALETTES.length];
+          return (
+            <TouchableOpacity
+              key={`${topic}-${i}`}
+              style={[ldStyles.chip, { backgroundColor: pal.bg, borderColor: pal.border }]}
+              activeOpacity={0.78}
+              onPress={() => navigation.navigate('SearchScreen', { initialQuery: topic, initialTab: 'all' })}
+            >
+              <Text style={[ldStyles.hash, { color: pal.text, opacity: 0.6 }]}>#</Text>
+              <Text style={[ldStyles.chipLabel, { color: pal.text }]}>{topic}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+});
+
+const ldStyles = StyleSheet.create({
+  wrapper: {
+    marginHorizontal: 0,
+    marginBottom: 4,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.primaryDark + '0F',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    marginBottom: 4,
+    gap: 8,
+  },
+  iconBubble: {
+    width: 24, height: 24, borderRadius: 8,
+    backgroundColor: Colors.primaryDark,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  heading: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+    letterSpacing: 0.1,
+    flex: 1,
+  },
+  shuffleBtn: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: Colors.primaryDark + '0F',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sub: {
+    paddingHorizontal: 14,
+    marginBottom: 10,
+    fontSize: 11,
+    color: Colors.secondaryText,
+  },
+  chipRow: {
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    gap: 2,
+  },
+  hash: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  chipLabel: {
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
 });
 
 // ─── Memoized section components ──────────────────────────────────────────────
@@ -446,6 +563,9 @@ const Feeds = ({
 
       case 'feedsheader':
         return <MemoizedFeedsHeader name={item.name} id={item.id} />;
+
+      case 'locationstrip':
+        return <LocationDiscoveryStrip />;
 
       case 'profileHeader':
         return item.component;
