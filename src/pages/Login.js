@@ -28,6 +28,8 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import AppDetails from '../helpers/appdetails';
 import { Colors } from '../theme/colors';
+import { useNotification } from '../../context/notificationcontext';
+import PushNotificationController from '../controllers/pushnotificationcontroller';
 
 const { width, height } = Dimensions.get('window');
 
@@ -458,6 +460,9 @@ const AuthScreen = () => {
   const isSubmitting              = useRef(false);
   const [socialLoading, setSocialLoading] = useState(null); // 'apple' | 'google' | null
 
+    const { expoPushToken, notification } = useNotification();
+
+
   const [form, setForm] = useState({
     fullName: '', username: '', email: '',
     password: '', phone: '', country: null,
@@ -529,6 +534,14 @@ const AuthScreen = () => {
         if (!token || !user) throw new Error('Invalid server response');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await login(user, token);
+
+        const msg = {
+          token: expoPushToken,
+          title: 'Hafrik',
+          body: 'Welcome to Hafrik',
+        };
+        const response = await PushNotificationController(msg);
+
         navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
