@@ -16,3 +16,5 @@ ios/Pods
 dist
 build
 coverage
+
+google-services.json
