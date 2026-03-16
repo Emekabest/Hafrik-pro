@@ -456,10 +456,10 @@ export default function EarningsScreen() {
           onPress={() => openModal(setWithdrawAffOpen)}
         />
         <QuickAction
-          icon="rocket"
-          label="Boost Post"
+          icon="card"
+          label="Withdraw"
           gradient={[BRAND, ACCENT]}
-          onPress={() => Alert.alert("Boost Post", "Select a post from your profile to boost it.")}
+          onPress={() => Alert.alert("Coming Soon", "Withdraw to bank is coming soon.")}
         />
       </View>
 
