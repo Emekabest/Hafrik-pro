@@ -112,9 +112,10 @@ const FeedsHeader = ({ name, id }) => {
   const [search,              setSearch]              = useState('');
   const [loading,             setLoading]             = useState(false);
 
-  const clearFeedsList_store = useStore((state) => state.clearFeedsList);
-  const addFeedsToList_store = useStore((state) => state.addFeedsToList);
-  const triggerRefresh       = useStore((state) => state.triggerRefresh);
+  const clearFeedsList_store  = useStore((state) => state.clearFeedsList);
+  const addFeedsToList_store  = useStore((state) => state.addFeedsToList);
+  const triggerRefresh        = useStore((state) => state.triggerRefresh);
+  const setSelectedCountryId  = useStore((state) => state.setSelectedCountryId);
 
   // ── Load countries from API ──────────────────────────────────────────────
   useEffect(() => {
@@ -138,7 +139,12 @@ const FeedsHeader = ({ name, id }) => {
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
-          if (parsed) setSelectedCountry(normaliseCountry(parsed));
+          if (parsed) {
+            const norm = normaliseCountry(parsed);
+            setSelectedCountry(norm);
+            // Sync into Zustand so all tabs build the right apiUrl immediately
+            setSelectedCountryId(norm.country_id);
+          }
         } catch {}
       }
     });
@@ -154,6 +160,9 @@ const FeedsHeader = ({ name, id }) => {
 
     // ① Persist FIRST — GetFeedsController reads AsyncStorage, so we must await
     await AsyncStorage.setItem('selected_country', JSON.stringify(normalised));
+
+    // ② Push to Zustand so apiUrl rebuilds reactively in all UnifiedFeedScreen tabs
+    setSelectedCountryId(normalised.country_id);
 
     // ② Reload this tab's feed immediately
     let API;
@@ -180,7 +189,7 @@ const FeedsHeader = ({ name, id }) => {
 
     // ③ Trigger a global refresh so the other tabs also reload with the new filter
     triggerRefresh();
-  }, [id, token, clearFeedsList_store, addFeedsToList_store, triggerRefresh]);
+  }, [id, token, clearFeedsList_store, addFeedsToList_store, triggerRefresh, setSelectedCountryId]);
 
   // ── Filtered country list for the search box ─────────────────────────────
   const filteredCountries = search.trim()
@@ -325,15 +334,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 6,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
   },
   headerName: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: 'ReadexPro_600SemiBold',
     color: BRAND,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
     flex: 1,
   },
 
@@ -341,14 +350,14 @@ const styles = StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: 22,
     backgroundColor: Colors.surfaceCoolAlt,
     borderWidth: 1,
     borderColor: BORDER,
-    maxWidth: 160,
+    maxWidth: 170,
   },
   filterPillActive: {
     backgroundColor: ACCENT,
@@ -368,12 +377,12 @@ const styles = StyleSheet.create({
   filterIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingBottom: 6,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   filterIndicatorText: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: ACCENT,
     fontFamily: 'ReadexPro_500Medium',
     flex: 1,
@@ -381,8 +390,8 @@ const styles = StyleSheet.create({
 
   // ── Inline ad slot ────────────────────────────────────────────────────────
   adSlot: {
-    paddingHorizontal: 14,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
   },
   adCard: {
     flexDirection: 'row',

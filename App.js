@@ -17,7 +17,7 @@ import CategoriesScreen from './src/pages/CategoriesScreen';
 import EventsScreen from './src/pages/EventsScreen';
 import GroupsScreen from './src/pages/GroupsScreen';
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import AppDetails from './src/helpers/appdetails';
 import WhatsNearbyScreen from './src/pages/home/whatsnearbyscreen';
 import CommentScreen from './src/pages/home/feeds/comments/commentscreen';
@@ -44,6 +44,7 @@ import VideoManager from './src/helpers/videomanager';
 import ReelsManager from './src/helpers/reelsmanager';
 import VideoPreloader from './src/helpers/VideoPreloader';
 import GlobalUploadBanner from './src/components/GlobalUploadBanner';
+import Toast from './src/components/Toast';
 import GroupScreen from './src/pages/groups/groupscreen';
 import { GlobalVideoPlayerProvider } from './src/helpers/GlobalVideoPlayerContext';
 import ProfileScreen from './src/pages/profile/profilescreen';
@@ -73,6 +74,7 @@ import ExchangeAdminScreen   from './src/pages/exchange/ExchangeAdminScreen';
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { NotificationProvider } from './context/notificationcontext';
+import { navigationRef } from './src/helpers/navigationRef';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -292,11 +294,11 @@ function AppNavigator() {
   return (
     <NotificationProvider>
       <View style={styles.root}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
       
         <StatusBar style="light" translucent={Platform.OS === "android" ? false : true} />
 
-        <SafeAreaView style={[styles.container, { backgroundColor: AppDetails.primaryColor }]} edges={['top', 'left', 'right', 'bottom']} >
+        <SafeAreaView style={[styles.container, { backgroundColor: AppDetails.primaryColor }]} edges={['left', 'right']} >
 
             <Stack.Navigator
               initialRouteName={user && token ? "MainTabs" : "Feed"}
@@ -372,6 +374,7 @@ function AppNavigator() {
 
     </NavigationContainer>
       <GlobalUploadBanner />
+      <Toast />
       {showSplashOverlay && splashNode}
     </View>
     </NotificationProvider>
@@ -381,13 +384,15 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <GlobalVideoPlayerProvider>
-          <AppNavigator />
-        </GlobalVideoPlayerProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <GlobalVideoPlayerProvider>
+            <AppNavigator />
+          </GlobalVideoPlayerProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

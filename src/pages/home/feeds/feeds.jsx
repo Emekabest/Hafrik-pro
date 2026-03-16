@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import FeedCard from "./feedcard.jsx";
@@ -31,6 +32,7 @@ import TimelineComponents from "../../profile/timeline/timelineComponents.jsx";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../theme";
 import { useTheme } from "../../../theme/ThemeContext";
+import { FeedSkeletonList } from "./feedskelenton.jsx";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BG_BASE = Colors.surfaceTint;
@@ -453,6 +455,8 @@ const Feeds = ({
   const flashListRef       = useRef(null);
   const [showScrollTop,  setShowScrollTop]  = useState(false);
   const scrollTopVisible  = useRef(false);
+  const savedScrollOffset = useRef(0);
+  const isFocused         = useIsFocused();
   const { token } = useAuth();
   const { colors: tc } = useTheme();  const BASE_URL = 'https://hafrik.com';
   const viewedPosts = useRef(new Set());
@@ -506,9 +510,21 @@ const Feeds = ({
     }
   }, [feeds.length, initialLoading, feedsController, API_URL, token]);
 
-  // Track scroll offset → show/hide back-to-top button
+  // Restore scroll position when returning to feed (e.g. after viewing a post)
+  useEffect(() => {
+    if (isFocused && savedScrollOffset.current > 0 && !initialLoading) {
+      const offset = savedScrollOffset.current;
+      const timer = setTimeout(() => {
+        flashListRef.current?.scrollToOffset({ offset, animated: false });
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [isFocused]);
+
+  // Track scroll offset → show/hide back-to-top + save position
   const handleScroll = useCallback((e) => {
     const y = e.nativeEvent.contentOffset.y;
+    savedScrollOffset.current = y;
     const shouldShow = y > 900;
     if (shouldShow !== scrollTopVisible.current) {
       scrollTopVisible.current = shouldShow;
@@ -630,8 +646,22 @@ const Feeds = ({
 
   const getItemType = useCallback(item => item.type, []);
 
+  const brandedRefresh = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      tintColor={ACCENT}
+      colors={[ACCENT, BRAND]}
+      progressBackgroundColor={Colors.white}
+    />
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: tc.background }]}>
+      {/* Skeleton loading state */}
+      {initialLoading ? (
+        <FeedSkeletonList />
+      ) : (
       <FlashList
         ref={flashListRef}
         data={combinedData}
@@ -642,8 +672,7 @@ const Feeds = ({
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
+        refreshControl={brandedRefresh}
         onViewableItemsChanged={onViewableItemsChanged.current}
         viewabilityConfig={viewabilityConfig}
         extraData={visibleFeedId}
@@ -651,13 +680,14 @@ const Feeds = ({
         contentContainerStyle={styles.listContent}
         stickyHeaderIndices={stickyHeaderIndices?.length ? stickyHeaderIndices : []}
         onScroll={handleScroll}
-        scrollEventThrottle={200}
+        scrollEventThrottle={150}
         removeClippedSubviews
         initialNumToRender={4}
         maxToRenderPerBatch={4}
         windowSize={5}
         ItemSeparatorComponent={Separator}
       />
+      )}
 
       {/* ── Back-to-top FAB ──────────────────────────────────────────────── */}
       {showScrollTop && !hideScrollTop && (

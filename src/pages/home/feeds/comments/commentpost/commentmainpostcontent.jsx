@@ -24,13 +24,17 @@ import CommentEventPostCoverContent from './commenteventpostcovercontent';
 import CommentJobPostContent from './commentjobpostcontent';
 import CommentMediaLinkContent from './commentmedialinkcontent';
 import parseLinkFromText from '../../../../../helpers/linkparser';
-import CommentEngagementBar from '../commentengagementbar';
 import CommentMultipleSharedProductMediaCard from './commentmultiplesharedproductmediacard';
 import { Colors } from '../../../../../theme/colors';
 import LinkPreview from '../../../../../components/LinkPreview';
 import ShareModal from '../../share';
 import ReactionsModal from '../../feedcardproperties/ReactionsModal';
-import { REACTION_EMOJI_MAP } from '../../feedcardproperties/ReactionPicker';
+import EngagementBar from '../../feedcardproperties/engagementbar';
+import RepostModal from '../../feedcardproperties/RepostModal';
+import SaveCollectionsModal from '../../feedcardproperties/SaveCollectionsModal';
+import SaveAsImageModal from '../../SaveAsImageModal';
+import { useAuth } from '../../../../../AuthContext';
+import useStore from '../../../../../repository/store';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -42,9 +46,13 @@ const horizontalPadding = 15;
 
 const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
     const navigation = useNavigation();
-    const [viewingImage, setViewingImage] = useState(null);
-    const [shareModalVisible, setShareModalVisible] = useState(false);
-    const [reactionsModalVisible, setReactionsModalVisible] = useState(false);
+    const { user: authUser } = useAuth();
+    const [viewingImage,               setViewingImage]               = useState(null);
+    const [shareModalVisible,          setShareModalVisible]          = useState(false);
+    const [saveImageModalVisible,      setSaveImageModalVisible]      = useState(false);
+    const [reactionsModalVisible,      setReactionsModalVisible]      = useState(false);
+    const [repostModalVisible,         setRepostModalVisible]         = useState(false);
+    const [saveCollectionsModalVisible, setSaveCollectionsModalVisible] = useState(false);
 
     // ── Page-post identity swap (mirrors feedcard.jsx logic) ────────────────
     const pageContext = useMemo(() => {
@@ -123,19 +131,6 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
             username: post.user.username ?? '',
         });
     };
-
-    // ── Reactions summary (top 3 emojis + total) ────────────────────────────
-    const reactionsSummary = useMemo(() => {
-        const reactions = post?.reactions;
-        if (!reactions || typeof reactions !== 'object') return null;
-        const entries = Object.entries(reactions)
-            .filter(([, count]) => Number(count) > 0)
-            .sort((a, b) => Number(b[1]) - Number(a[1]));
-        if (entries.length === 0) return null;
-        const total = entries.reduce((sum, [, c]) => sum + Number(c), 0);
-        const emojis = entries.slice(0, 3).map(([r]) => REACTION_EMOJI_MAP[r]).filter(Boolean);
-        return { emojis, total };
-    }, [post?.reactions]);
 
     if (!post) return null;
 
@@ -328,37 +323,25 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
 
             </View>
 
-            {/* ── Reactions summary (tap to open reactions modal) ── */}
-            {reactionsSummary && (
-                <TouchableOpacity
-                    style={styles.reactionsRow}
-                    onPress={() => setReactionsModalVisible(true)}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.reactionsEmojis}>
-                        {reactionsSummary.emojis.map((emoji, i) => (
-                            <Text key={i} style={styles.reactionEmoji}>{emoji}</Text>
-                        ))}
-                    </View>
-                    <Text style={styles.reactionsCount}>
-                        {reactionsSummary.total.toLocaleString()}
-                    </Text>
-                </TouchableOpacity>
-            )}
-
-            <CommentEngagementBar
-                feedId={post.id}
-                initialLiked={post.is_liked}
-                initialLikeCount={post.likes_count}
-                commentsCount={post.comments_count}
-                sharesCount={Number(post.shares ?? post.shares_count ?? post.share_count ?? 0)}
-                isSaved={post.is_saved}
-                myReaction={post.my_reaction}
-                reactions={post.reactions}
-                onCommentPress={() => textInputRef?.current?.focus()}
-                onOpenShare={() => setShareModalVisible(true)}
-                onReactionsPress={() => setReactionsModalVisible(true)}
-            />
+            {/* Engagement bar — same component as feedcard (summary row + 5 actions) */}
+            <View style={{ paddingHorizontal: horizontalPadding }}>
+                <EngagementBar
+                    feedId={post.id}
+                    initialLiked={!!(post.is_liked || post.my_reaction || post.user_reaction)}
+                    initialLikeCount={post.likes_count ?? post.reactions?.total ?? 0}
+                    commentsCount={post.comments_count ?? 0}
+                    sharesCount={Number(post.shares ?? post.shares_count ?? post.share_count ?? 0)}
+                    isSaved={!!post.is_saved}
+                    myReaction={post.my_reaction ?? post.user_reaction ?? null}
+                    reactions={post.reactions}
+                    viewsCount={post.views_count ?? post.view_count ?? post.views ?? 0}
+                    onCommentPress={() => textInputRef?.current?.focus()}
+                    onOpenShare={() => setShareModalVisible(true)}
+                    onReactionsPress={() => setReactionsModalVisible(true)}
+                    onRepost={() => setRepostModalVisible(true)}
+                    onCollectionSave={() => setSaveCollectionsModalVisible(true)}
+                />
+            </View>
 
             <ImageViewModal
                 isVisible={!!viewingImage}
@@ -371,6 +354,14 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                 visible={shareModalVisible}
                 onClose={() => setShareModalVisible(false)}
                 feed={post}
+                onSaveAsImage={() => setSaveImageModalVisible(true)}
+            />
+
+            {/* ── Save as Image modal ── */}
+            <SaveAsImageModal
+                visible={saveImageModalVisible}
+                onClose={() => setSaveImageModalVisible(false)}
+                feed={post}
             />
 
             {/* ── Reactions modal ── */}
@@ -379,6 +370,28 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                 onClose={() => setReactionsModalVisible(false)}
                 postId={post.id}
                 reactions={post.reactions}
+                currentUserId={authUser?.id}
+            />
+
+            {/* ── Repost modal ── */}
+            <RepostModal
+                visible={repostModalVisible}
+                postId={post.id}
+                onClose={() => setRepostModalVisible(false)}
+                onRepostWithComment={() => { setRepostModalVisible(false); setShareModalVisible(true); }}
+            />
+
+            {/* ── Save to Collections modal ── */}
+            <SaveCollectionsModal
+                visible={saveCollectionsModalVisible}
+                postId={post.id}
+                isSaved={!!post.is_saved}
+                onClose={() => setSaveCollectionsModalVisible(false)}
+                onSaved={(val) => {
+                    const { feeds, updateFeedById } = useStore.getState();
+                    const current = feeds.feedsById[post.id];
+                    if (current) updateFeedById(post.id, { ...current, is_saved: val });
+                }}
             />
         </View>
     );
@@ -498,26 +511,6 @@ const styles = StyleSheet.create({
         letterSpacing: 0.2,
     },
 
-    // ── Reactions summary row ─────────────────────────────────────────────────
-    reactionsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: horizontalPadding,
-        paddingTop: 10,
-        gap: 6,
-    },
-    reactionsEmojis: {
-        flexDirection: 'row',
-        gap: 2,
-    },
-    reactionEmoji: {
-        fontSize: 16,
-    },
-    reactionsCount: {
-        fontSize: 13,
-        color: Colors.secondaryText,
-        fontWeight: '600',
-    },
 })
 
 export default CommentMainPostContent;

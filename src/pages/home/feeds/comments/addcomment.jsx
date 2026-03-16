@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { AddCommentController, AddReplyController } from '../../../../controllers/commentscontroller';
 import { Colors } from '../../../../theme/colors';
+import useStore from '../../../../repository/store';
 import { Spacing } from '../../../../theme/spacing';
 
 const withOpacity = (hex, opacity) => {
@@ -79,6 +80,7 @@ const AddComment = forwardRef(({ user, feedId, token, replyingTo, onCancelReply,
       }
       onPosted?.();
       onCancelReply?.();
+      useStore.getState().showToast(replyingTo ? 'Reply posted' : 'Comment posted', '💬');
     } catch {
       // Restore text so user can retry
       setCommentText(trimmed);
