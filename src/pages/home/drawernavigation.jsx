@@ -307,6 +307,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             <SectionTitle>Menu</SectionTitle>
             <View style={styles.card}>
               <DrawerItem icon="person-outline" title="My Profile" subtitle="View & edit your profile" onPress={() => handleNavigate("Profile")} />
+              <DrawerItem icon="bookmark-outline" title="Saved Posts" subtitle="Posts you've bookmarked" iconColor={ACCENT} onPress={() => handleNavigate("SavedPosts")} />
               <DrawerItem icon="storefront-outline" title="Liked Businesses" subtitle="Businesses you follow" onPress={() => handleNavigate("LikedBusinesses")} />
               <DrawerItem icon="people-outline" title="Joined Communities" subtitle="Communities you belong to" onPress={() => handleNavigate("JoinedCommunities")} />
               <DrawerItem icon="wallet-outline" title="Earnings" subtitle="Wallet, points & transactions" iconColor={ACCENT} onPress={() => handleNavigate("Earnings")} />

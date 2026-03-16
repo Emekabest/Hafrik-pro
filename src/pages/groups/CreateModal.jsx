@@ -62,13 +62,20 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
       .finally(() => setVerifyLoading(false));
   }, [visible, token]);
 
-  const [name,     setName]     = useState('');
-  const [about,    setAbout]    = useState('');
-  const [privacy,  setPrivacy]  = useState('public');
-  const [location, setLocation] = useState('');
-  const [saving,   setSaving]   = useState(false);
+  const [name,      setName]      = useState('');
+  const [username,  setUsername]  = useState('');
+  const [about,     setAbout]     = useState('');
+  const [privacy,   setPrivacy]   = useState('public');
+  const [category,  setCategory]  = useState('');
+  const [country,   setCountry]   = useState('');
+  const [language,  setLanguage]  = useState('');
+  const [saving,    setSaving]    = useState(false);
+  const [formError, setFormError] = useState('');
 
-  const reset      = () => { setName(''); setAbout(''); setPrivacy('public'); setLocation(''); };
+  const reset = () => {
+    setName(''); setUsername(''); setAbout(''); setPrivacy('public');
+    setCategory(''); setCountry(''); setLanguage(''); setFormError('');
+  };
   const handleClose = () => { reset(); onClose(); };
 
   const handleApplyNow = () => {
@@ -82,8 +89,17 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
   };
 
   const handleSubmit = async () => {
+    setFormError('');
     if (!name.trim()) {
-      Alert.alert('Required', `Please enter a ${isCommunity ? 'community' : 'business'} name.`);
+      setFormError(`Please enter a ${isCommunity ? 'community' : 'business'} name.`);
+      return;
+    }
+    if (!username.trim()) {
+      setFormError('Please choose a unique username (no spaces).');
+      return;
+    }
+    if (!isCommunity && !category.trim()) {
+      setFormError('Please enter a category for your business page.');
       return;
     }
     setSaving(true);
@@ -92,20 +108,37 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
         ? 'https://hafrik.com/api/v1/communities/create_community.php'
         : 'https://hafrik.com/api/v1/business/create_business.php';
       const body = new FormData();
-      body.append('name',  name.trim());
-      body.append('about', about.trim());
-      if (isCommunity) body.append('privacy',  privacy);
-      else             body.append('location', location.trim());
+      body.append('name',        name.trim());
+      body.append('username',    username.trim());
+      body.append('description', about.trim());
+      if (isCommunity) {
+        body.append('privacy', privacy);
+      } else {
+        body.append('category', category.trim());
+        if (country.trim())  body.append('country',  country.trim());
+        if (language.trim()) body.append('language', language.trim());
+      }
       const res  = await fetch(endpoint, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body });
       const json = await res.json().catch(() => ({}));
-      if (json?.status === 'success' || json?.data?.id) {
-        Alert.alert('Created!', `Your ${isCommunity ? 'community' : 'business page'} is live.`);
-        reset(); onCreated?.(json.data); onClose();
+      const createdId = json?.data?.id ?? json?.id ?? null;
+      if (json?.status === 'success' || createdId) {
+        reset();
+        onCreated?.(json.data ?? json);
+        onClose();
+        if (createdId) {
+          setTimeout(() => {
+            if (isCommunity) {
+              navigation.navigate('GroupDetails', { groupId: createdId });
+            } else {
+              navigation.navigate('BusinessDetails', { pageId: createdId });
+            }
+          }, 350);
+        }
       } else {
-        Alert.alert('Error', json?.message ?? 'Could not create. Please try again.');
+        setFormError(json?.message ?? 'Could not create. Please try again.');
       }
     } catch {
-      Alert.alert('Error', 'Network error. Please try again.');
+      setFormError('Network error. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -144,6 +177,12 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
                     placeholder={isCommunity ? 'Give your community a name' : 'Your business or page name'}
                     placeholderTextColor={MUTED} maxLength={80}
                   />
+                  <Text style={cr.label}>Username *</Text>
+                  <TextInput
+                    style={cr.input} value={username} onChangeText={(t) => setUsername(t.replace(/\s/g, '').toLowerCase())}
+                    placeholder={isCommunity ? 'community_username' : 'business_handle'}
+                    placeholderTextColor={MUTED} maxLength={40} autoCapitalize="none"
+                  />
                   <Text style={cr.label}>{isCommunity ? 'Description' : 'About'}</Text>
                   <TextInput
                     style={[cr.input, cr.textarea]} value={about} onChangeText={setAbout}
@@ -173,19 +212,32 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
                     </>
                   ) : (
                     <>
-                      <Text style={cr.label}>Location</Text>
+                      <Text style={cr.label}>Category *</Text>
                       <TextInput
-                        style={cr.input} value={location} onChangeText={setLocation}
-                        placeholder="City, Country" placeholderTextColor={MUTED} maxLength={100}
+                        style={cr.input} value={category} onChangeText={setCategory}
+                        placeholder="e.g. Restaurant, Retail, Services…" placeholderTextColor={MUTED} maxLength={80}
+                      />
+                      <Text style={cr.label}>Country</Text>
+                      <TextInput
+                        style={cr.input} value={country} onChangeText={setCountry}
+                        placeholder="e.g. Nigeria" placeholderTextColor={MUTED} maxLength={80}
+                      />
+                      <Text style={cr.label}>Language</Text>
+                      <TextInput
+                        style={cr.input} value={language} onChangeText={setLanguage}
+                        placeholder="e.g. English" placeholderTextColor={MUTED} maxLength={80}
                       />
                     </>
+                  )}
+                  {!!formError && (
+                    <Text style={cr.errorTxt}>{formError}</Text>
                   )}
                 </View>
               </ScrollView>
               <View style={cr.formFooter}>
                 <TouchableOpacity
-                  style={[cr.submitBtn, (!name.trim() || saving) && cr.submitBtnOff]}
-                  onPress={handleSubmit} disabled={!name.trim() || saving} activeOpacity={0.85}
+                  style={[cr.submitBtn, (!name.trim() || !username.trim() || saving) && cr.submitBtnOff]}
+                  onPress={handleSubmit} disabled={!name.trim() || !username.trim() || saving} activeOpacity={0.85}
                 >
                   {saving
                     ? <ActivityIndicator size="small" color={WHITE} />
@@ -304,4 +356,5 @@ const cr = StyleSheet.create({
   },
   applyTxt:  { fontSize: 14, fontWeight: '800', color: WHITE },
   maybeTxt:  { fontSize: 13, color: MUTED, textAlign: 'center', fontWeight: '500' },
+  errorTxt:  { fontSize: 13, color: '#E53935', marginTop: 10, fontWeight: '500' },
 });

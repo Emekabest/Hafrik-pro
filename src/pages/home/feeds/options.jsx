@@ -13,7 +13,7 @@ const withOpacity = (hex, opacity) => {
 };
 
 
-const OptionsModal = ({ visible, postId, onClose }) => {
+const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete }) => {
 
     const {token} = useAuth();
 
@@ -48,13 +48,19 @@ const OptionsModal = ({ visible, postId, onClose }) => {
                                 <Ionicons name="bookmark-outline" size={24} color={Colors.neutral700} />
                                 <Text style={styles.bottomSheetOptionText}>Save Post</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.bottomSheetOption}>
-                                <Ionicons name="eye-off-outline" size={24} color={Colors.neutral700} />
+                            <TouchableOpacity
+                                style={styles.bottomSheetOption}
+                                onPress={() => { onClose(); onEdit?.(); }}
+                            >
+                                <Ionicons name="create-outline" size={24} color={Colors.neutral700} />
                                 <Text style={styles.bottomSheetOptionText}>Edit Post</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.bottomSheetOption}>
-                                <Ionicons name="trash-outline" size={24} color={Colors.neutral700} />
-                                <Text style={[styles.bottomSheetOptionText, {color: Colors.neutral700}]}>Delete Post</Text>
+                            <TouchableOpacity
+                                style={styles.bottomSheetOption}
+                                onPress={() => { onClose(); onDelete?.(); }}
+                            >
+                                <Ionicons name="trash-outline" size={24} color="#E53935" />
+                                <Text style={[styles.bottomSheetOptionText, { color: '#E53935' }]}>Delete Post</Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.bottomSheetOption}>
                                 <Ionicons name="alert-circle-outline" size={24} color={Colors.neutral700} />
