@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, Animated, RefreshControl, StatusBar,
+  Image, Animated, RefreshControl, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +33,8 @@ const TYPE_META = {
   mention:    { icon: 'at',               color: Colors.link,    bg: Colors.link + '1F',    label: 'mentioned you'             },
   message:    { icon: 'paper-plane',      color: Colors.link,    bg: Colors.link + '1F',    label: 'sent you a message'      },
   share:      { icon: 'arrow-redo',       color: ACCENT,         bg: ACCENT + '1F',         label: 'shared your post'        },
+  system:     { icon: 'megaphone',        color: '#F59E0B',      bg: '#F59E0B1F',           label: 'system alert'            },
+  admin:      { icon: 'shield-checkmark', color: '#8B5CF6',      bg: '#8B5CF61F',           label: 'from Hafrik'             },
   default:    { icon: 'notifications',    color: BRAND,          bg: BRAND + '1F',          label: 'sent a notification'      },
 };
 const getMeta = (action) =>
@@ -96,8 +98,53 @@ const Avatar = ({ url, name, size = 47 }) => {
   );
 };
 
+// ── Follow button inside a notification row ───────────────────────────────
+const InlineFollowBtn = React.memo(({ userId, initialFollowing, token }) => {
+  const [following, setFollowing] = useState(Boolean(initialFollowing));
+  const [loading,   setLoading]   = useState(false);
+
+  const toggle = useCallback(async () => {
+    if (loading || !userId) return;
+    Haptics.selectionAsync().catch(() => {});
+    const next = !following;
+    setFollowing(next);
+    setLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('user_id', String(userId));
+      const res = await fetch('https://hafrik.com/api/v1/people/follow_toggle.php', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const json = await res.json().catch(() => null);
+      const serverFollowing = json?.data?.is_following ?? json?.is_following;
+      if (serverFollowing !== undefined) setFollowing(Boolean(serverFollowing));
+    } catch {
+      setFollowing(!next); // rollback
+    }
+    setLoading(false);
+  }, [userId, following, loading, token]);
+
+  return (
+    <TouchableOpacity
+      style={[ns.followBtn, following && ns.followBtnActive]}
+      activeOpacity={0.8}
+      onPress={toggle}
+      disabled={loading}
+    >
+      {loading
+        ? <ActivityIndicator size="small" color={following ? Colors.white : ACCENT} />
+        : <Text style={[ns.followBtnTxt, following && ns.followBtnTxtActive]}>
+            {following ? 'Following' : 'Follow'}
+          </Text>
+      }
+    </TouchableOpacity>
+  );
+});
+
 // ── Notification row (TikTok-style) ──────────────────────────────────────
-const NotifRow = React.memo(({ item, index, onDelete }) => {
+const NotifRow = React.memo(({ item, index, onDelete, token, currentUserId }) => {
   const navigation = useNavigation();
   const fade  = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(1)).current;
@@ -112,6 +159,7 @@ const NotifRow = React.memo(({ item, index, onDelete }) => {
   const action   = String(item.action ?? item.type ?? item.node_type ?? '').toLowerCase();
   const meta     = getMeta(action);
   const actor    = item.actor ?? item.from_user ?? item.user ?? {};
+  const actorId  = actor?.id ?? actor?.user_id ?? item?.from_user_id ?? item?.user_id;
   const name     = actor.username ?? actor.full_name ?? actor.name ?? item.username ?? 'Someone';
   const avatar   = (actor.avatar ?? actor.user_picture ?? item.avatar ?? '').trim() || null;
   const unread   = !item.seen || item.seen === 0 || item.seen === '0';
@@ -119,6 +167,8 @@ const NotifRow = React.memo(({ item, index, onDelete }) => {
   const body     = item.message ?? item.text ?? item.notify_text ?? '';
   const postImg  = (() => { const v = item.post_image ?? item.postImage ?? item.post_thumbnail ?? null; return typeof v === 'string' && v.trim().length > 8 ? v.trim() : null; })();
   const notifId  = item.id ?? item.notification_id ?? item.notify_id;
+  const isSystem = action === 'system' || action === 'admin' || !actorId;
+  const isOwnNotif = actorId && String(actorId) === String(currentUserId);
 
   const handlePress = useCallback(() => {
     Animated.sequence([
@@ -127,14 +177,54 @@ const NotifRow = React.memo(({ item, index, onDelete }) => {
     ]).start();
     Haptics.selectionAsync().catch(() => {});
     if (action === 'follow') {
-      const uid = actor?.id ?? actor?.user_id ?? item?.from_user_id ?? item?.user_id;
-      if (uid) navigation.navigate('UserProfile', { userId: uid });
+      if (actorId) navigation.navigate('UserProfile', { userId: actorId });
       return;
     }
     if (action === 'message') { navigation.navigate('Inbox'); return; }
+    if (action === 'system' || action === 'admin') return;
     const pid = item.post_id ?? item.postId ?? item.node_id ?? item.notify_id;
-    if (pid) navigation.navigate('CommentScreen', { feedId: pid });
-  }, [action, actor, item, navigation]);
+    if (pid) navigation.navigate('PostDetail', { postId: pid });
+  }, [action, actorId, item, navigation]);
+
+  // System notifications have a different visual treatment
+  if (isSystem) {
+    const sysPid = item.post_id ?? item.postId ?? item.node_id ?? item.notify_id;
+    return (
+      <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }}>
+        <Swipeable
+          friction={2}
+          overshootRight={false}
+          renderRightActions={() => (
+            <View style={ns.swipeBox}>
+              <TouchableOpacity
+                style={ns.swipeBtn}
+                activeOpacity={0.9}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); onDelete(notifId); }}
+              >
+                <Ionicons name="trash-outline" size={21} color={Colors.white} />
+                <Text style={ns.swipeTxt}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        >
+          <TouchableOpacity
+            activeOpacity={sysPid ? 0.7 : 1}
+            onPress={() => { if (sysPid) navigation.navigate('PostDetail', { postId: sysPid }); }}
+            style={[ns.systemRow, { borderLeftColor: meta.color }]}
+          >
+            <View style={[ns.systemIconWrap, { backgroundColor: meta.bg }]}>
+              <Ionicons name={meta.icon} size={20} color={meta.color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[ns.systemTitle, { color: meta.color }]}>{meta.label.toUpperCase()}</Text>
+              <Text style={ns.systemBody} numberOfLines={3}>{body || 'A new alert from Hafrik.'}</Text>
+            </View>
+            <Text style={[ns.timeText, { marginLeft: 8, alignSelf: 'flex-start', marginTop: 2 }]}>{ts}</Text>
+          </TouchableOpacity>
+        </Swipeable>
+      </Animated.View>
+    );
+  }
 
   return (
     <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }, { scale: press }] }}>
@@ -175,10 +265,20 @@ const NotifRow = React.memo(({ item, index, onDelete }) => {
             </Text>
           </View>
 
-          {postImg
-            ? <Image source={{ uri: postImg }} style={ns.postThumb} />
-            : <View style={[ns.iconBox, { backgroundColor: meta.bg }]}><Ionicons name={meta.icon} size={16} color={meta.color} /></View>
-          }
+          {/* Follow button for follow-type, thumbnail/icon for others */}
+          {action === 'follow' && !isOwnNotif ? (
+            <InlineFollowBtn
+              userId={actorId}
+              initialFollowing={actor?.is_following ?? item?.is_following ?? false}
+              token={token}
+            />
+          ) : postImg ? (
+            <Image source={{ uri: postImg }} style={ns.postThumb} />
+          ) : (
+            <View style={[ns.iconBox, { backgroundColor: meta.bg }]}>
+              <Ionicons name={meta.icon} size={16} color={meta.color} />
+            </View>
+          )}
         </TouchableOpacity>
       </Swipeable>
     </Animated.View>
@@ -236,7 +336,7 @@ const FilterBar = ({ tabs, active, onChange, counts }) => (
 export default function NotificationsScreen() {
   const navigation    = useNavigation();
   const { top }       = useSafeAreaInsets();
-  const { token }     = useAuth();
+  const { token, user } = useAuth();
   const { colors: tc } = useTheme();
   const setNotifCount = useStore((s) => s.setNotificationCount);
 
@@ -250,7 +350,7 @@ export default function NotificationsScreen() {
 
   const load = useCallback(async (pageNum = 1, append = false) => {
     if (!append) setRefreshing(pageNum === 1); else setLoadingMore(true);
-    const res = await apiFetch(`/api/v1/notifications/list.php?page=${pageNum}&limit=20`, token);
+    const res = await apiFetch(`/api/v1/notifications/get.php?page=${pageNum}&limit=20`, token);
     let items = [];
     if (Array.isArray(res?.data?.items)) items = res.data.items;
     else if (Array.isArray(res?.data))   items = res.data;
@@ -260,7 +360,7 @@ export default function NotificationsScreen() {
     if (!append) setNotifCount(items.filter((n) => !n.seen || n.seen === 0 || n.seen === '0').length);
     setRefreshing(false); setLoadingMore(false);
     if (pageNum === 1) {
-      apiFetch('/api/v1/notifications/mark_seen.php', token, { method: 'POST' });
+      apiFetch('/api/v1/notifications/read.php', token, { method: 'POST' });
       if (!append) setNotifCount(0);
     }
   }, [token, setNotifCount]);
@@ -276,7 +376,7 @@ export default function NotificationsScreen() {
   const markAllRead = useCallback(async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setAllItems((p) => p.map((n) => ({ ...n, seen: 1 }))); setNotifCount(0);
-    apiFetch('/api/v1/notifications/mark_seen.php', token, { method: 'POST' });
+    apiFetch('/api/v1/notifications/read.php', token, { method: 'POST' });
   }, [token, setNotifCount]);
 
   const unread   = useMemo(() => allItems.filter((n) => !n.seen || n.seen === 0 || n.seen === '0').length, [allItems]);
@@ -301,8 +401,16 @@ export default function NotificationsScreen() {
 
   const renderRow = useCallback(({ item: row }) => {
     if (row._type === 'header') return <SectionLabel title={row.title} />;
-    return <NotifRow item={row.item} index={row._i} onDelete={handleDel} />;
-  }, [handleDel]);
+    return (
+      <NotifRow
+        item={row.item}
+        index={row._i}
+        onDelete={handleDel}
+        token={token}
+        currentUserId={user?.id}
+      />
+    );
+  }, [handleDel, token, user?.id]);
 
   return (
     <View style={[ns.root, { backgroundColor: tc.background }]}>
@@ -466,6 +574,31 @@ const ns = StyleSheet.create({
   // Right element
   postThumb: { width: 50, height: 50, borderRadius: 10, backgroundColor: BG },
   iconBox:   { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+
+  // Inline follow button
+  followBtn: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1.5, borderColor: ACCENT,
+    minWidth: 84, alignItems: 'center', justifyContent: 'center',
+  },
+  followBtnActive: { backgroundColor: ACCENT, borderColor: ACCENT },
+  followBtnTxt:    { fontSize: 12, fontWeight: '800', color: ACCENT },
+  followBtnTxtActive: { color: Colors.white },
+
+  // System alert row
+  systemRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 14,
+    backgroundColor: '#FFFBEB',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F59E0B26',
+    borderLeftWidth: 4,
+  },
+  systemIconWrap: {
+    width: 42, height: 42, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  systemTitle: { fontSize: 10, fontWeight: '900', letterSpacing: 1.2, marginBottom: 3 },
+  systemBody:  { fontSize: 13, color: DARK + 'CC', lineHeight: 18, flexShrink: 1 },
 
   // Swipe
   swipeBox: { width: 80, justifyContent: 'center', alignItems: 'center' },

@@ -6,8 +6,7 @@
     "icon": "./src/assl.js/icon.png",
     "android": {
       "package": "com.hafrik.app",
-      "googleServicesFile": "./google-services.json",
-      "icon": "./src/assl.js/icon.png"
+"icon": "./src/assl.js/icon.png"
     },
     "ios": {
       "bundleIdentifier": "com.hafrik.hafrikpro",

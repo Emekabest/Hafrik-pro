@@ -292,7 +292,7 @@ const useStore = create((set, get) => ({
     refreshBadges: async (token) => {
         if (!token) return;
         const [notifRes, inboxRes] = await Promise.all([
-            apiBadge('/api/v1/notifications/unread_count.php', token),
+            apiBadge('/api/v1/notifications/count.php', token),
             apiBadge('/api/v1/messages/inbox.php?page=1&limit=50', token),
         ]);
         const notifCount = Number(notifRes?.data?.count ?? notifRes?.count ?? 0);
@@ -315,6 +315,20 @@ const useStore = create((set, get) => ({
         set({ _badgeInterval: null });
     },
 
+    // ── Country filter (reactive — drives apiUrl rebuild in UnifiedFeedScreen) ─
+    selectedCountryId: null, // null | 'all' | number/string country_id
+    setSelectedCountryId: (id) => set({ selectedCountryId: id }),
+
+    // ── Toast ────────────────────────────────────────────────────────────────
+    toast: null, // { message: string, emoji: string | null, id: number }
+    showToast: (message, emoji = null, duration = 2600) => {
+        const id = Date.now();
+        set({ toast: { message, emoji, id } });
+        setTimeout(() => {
+            set((s) => (s.toast?.id === id ? { toast: null } : {}));
+        }, duration);
+    },
+    hideToast: () => set({ toast: null }),
 
 }));
 

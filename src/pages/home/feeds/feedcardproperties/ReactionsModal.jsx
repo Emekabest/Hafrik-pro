@@ -37,13 +37,42 @@ const TABS = [
  *  - reactions: { like: n, love: n, … } — used to show counts on tabs
  *  - onClose  : () => void
  */
-const ReactionsModal = ({ visible, postId, token, reactions, onClose }) => {
+const ReactionsModal = ({ visible, postId, token, reactions, onClose, currentUserId }) => {
   const navigation = useNavigation();
-  const [activeTab, setActiveTab] = useState('all');
-  const [data, setData]           = useState([]);
-  const [loading, setLoading]     = useState(false);
-  const [page, setPage]           = useState(1);
-  const [hasMore, setHasMore]     = useState(true);
+  const [activeTab, setActiveTab]   = useState('all');
+  const [data, setData]             = useState([]);
+  const [loading, setLoading]       = useState(false);
+  const [page, setPage]             = useState(1);
+  const [hasMore, setHasMore]       = useState(true);
+  const [followingMap, setFollowingMap] = useState({});
+
+  // Sync initial follow state from loaded data
+  useEffect(() => {
+    if (data.length === 0) return;
+    const map = {};
+    data.forEach(item => {
+      const u = item.user ?? item;
+      if (u?.id) map[u.id] = !!(u.is_following ?? u.following ?? false);
+    });
+    setFollowingMap(prev => ({ ...prev, ...map }));
+  }, [data]);
+
+  const handleFollow = useCallback(async (userId) => {
+    const prev = followingMap[userId];
+    setFollowingMap(m => ({ ...m, [userId]: !prev }));
+    const form = new FormData();
+    form.append('user_id', String(userId));
+    try {
+      const res = await fetch('https://hafrik.com/api/v1/people/follow_toggle.php', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok) setFollowingMap(m => ({ ...m, [userId]: prev }));
+    } catch {
+      setFollowingMap(m => ({ ...m, [userId]: prev }));
+    }
+  }, [followingMap, token]);
 
   const fetchReactions = useCallback(async (tab, pg = 1) => {
     if (!postId || !token) return;
@@ -122,36 +151,49 @@ const ReactionsModal = ({ visible, postId, token, reactions, onClose }) => {
     );
   }, [activeTab, reactions]);
 
-  const renderUser = useCallback(({ item }) => (
-    <TouchableOpacity
-      style={styles.userRow}
-      onPress={() => handleUserPress(item.user ?? item)}
-      activeOpacity={0.7}
-    >
-      <Image
-        source={{ uri: (item.user ?? item)?.avatar }}
-        style={styles.avatar}
-      />
-      <View style={styles.userInfo}>
-        <View style={styles.nameRow}>
-          <Text style={styles.userName} numberOfLines={1}>
-            {(item.user ?? item)?.full_name || (item.user ?? item)?.username || 'User'}
-          </Text>
-          {(item.user ?? item)?.verified && (
-            <Ionicons name="checkmark-circle" size={14} color={Colors.primary} style={{ marginLeft: 4 }} />
+  const renderUser = useCallback(({ item }) => {
+    const u = item.user ?? item;
+    const isOwn = currentUserId && u?.id === currentUserId;
+    const isFollowing = followingMap[u?.id] ?? false;
+    return (
+      <TouchableOpacity
+        style={styles.userRow}
+        onPress={() => handleUserPress(u)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: u?.avatar }} style={styles.avatar} />
+        <View style={styles.userInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.userName} numberOfLines={1}>
+              {u?.full_name || u?.username || 'User'}
+            </Text>
+            {u?.verified && (
+              <Ionicons name="checkmark-circle" size={14} color={Colors.primary} style={{ marginLeft: 4 }} />
+            )}
+          </View>
+          {u?.username && (
+            <Text style={styles.userHandle} numberOfLines={1}>@{u.username}</Text>
           )}
         </View>
-        {(item.user ?? item)?.username && (
-          <Text style={styles.userHandle} numberOfLines={1}>@{(item.user ?? item).username}</Text>
+        {!isOwn && u?.id && (
+          <TouchableOpacity
+            style={[styles.followBtn, isFollowing && styles.followBtnActive]}
+            onPress={(e) => { e.stopPropagation?.(); handleFollow(u.id); }}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.followBtnTxt, isFollowing && styles.followBtnTxtActive]}>
+              {isFollowing ? 'Following' : '+ Follow'}
+            </Text>
+          </TouchableOpacity>
         )}
-      </View>
-      {item.reaction && (
-        <Text style={styles.reactionBadge}>
-          {{ like: '👍', love: '❤️', haha: '😂', yay: '🎉', wow: '😮', sad: '😢', angry: '😡' }[item.reaction] || '👍'}
-        </Text>
-      )}
-    </TouchableOpacity>
-  ), [handleUserPress]);
+        {item.reaction && (
+          <Text style={styles.reactionBadge}>
+            {{ like: '👍', love: '❤️', haha: '😂', yay: '🎉', wow: '😮', sad: '😢', angry: '😡' }[item.reaction] || '👍'}
+          </Text>
+        )}
+      </TouchableOpacity>
+    );
+  }, [handleUserPress, handleFollow, followingMap, currentUserId]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -268,6 +310,17 @@ const styles = StyleSheet.create({
   userName: { fontSize: 14, fontWeight: '700', color: Colors.primaryDark },
   userHandle: { fontSize: 12, color: Colors.neutral500, marginTop: 1 },
   reactionBadge: { fontSize: 20, marginLeft: 8 },
+  followBtn: {
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14,
+    borderWidth: 1.5, borderColor: Colors.primary,
+    marginLeft: 8,
+  },
+  followBtnActive: {
+    backgroundColor: Colors.primary + '14',
+    borderColor: Colors.primary + '60',
+  },
+  followBtnTxt: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  followBtnTxtActive: { color: Colors.primaryDark },
   emptyText: {
     textAlign: 'center', marginTop: 30,
     fontSize: 14, color: Colors.neutral400,
