@@ -37,16 +37,35 @@ interface NotificationProviderProps {
   children: ReactNode;
 }
 
-// Route notification target to the correct screen
+// Route notification payload to the correct screen.
+// Backend sends: data = { type: "post", id: "19066" }
+// Legacy format:  data = { target: { type: "post", id: "19066" } }
 function handleNotificationNavigation(data: Record<string, any> | null | undefined) {
   try {
-    const target = data?.target ?? data?.data?.target;
-    if (!target) return;
-    const type = String(target.type ?? "").toLowerCase();
-    const id   = target.id;
-    if (!id) return;
+    if (!data) return;
+
+    // Resolve type + id from either format
+    const type = String(
+      data.type ?? data.target?.type ?? data.data?.type ?? ""
+    ).toLowerCase();
+    const id = data.id ?? data.target?.id ?? data.data?.id;
+
+    if (!type || !id) return;
+
     if (["post", "post_comment", "reply_post", "comment_post"].includes(type)) {
       navigate("PostDetail", { postId: String(id) });
+      return;
+    }
+
+    if (type === "message") {
+      // id is the thread/conversation id
+      navigate("ThreadScreen", { threadId: String(id) });
+      return;
+    }
+
+    if (type === "profile") {
+      navigate("UserProfile", { userId: String(id) });
+      return;
     }
   } catch {}
 }
