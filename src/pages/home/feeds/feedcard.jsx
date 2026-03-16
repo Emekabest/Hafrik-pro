@@ -3,9 +3,10 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
+  Animated,
 } from "react-native";
-import React, { memo, useMemo, useCallback, useState } from "react";
+import React, { memo, useMemo, useCallback, useState, useRef } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import EngagementBar from "./feedcardproperties/engagementbar.jsx";
 import { Image as ExpoImage } from "expo-image";
@@ -14,10 +15,16 @@ import CleanText from "../../../helpers/cleantext.js";
 import UserDetails from "./feedcardproperties/userdetails.jsx";
 import { parseLinkFromText } from "../../../helpers/linkparser.js";
 import ShareModal from "./share.jsx";
+import SaveAsImageModal from "./SaveAsImageModal.jsx";
 import ReactionsModal from "./feedcardproperties/ReactionsModal.jsx";
+import RepostModal from "./feedcardproperties/RepostModal.jsx";
+import SaveCollectionsModal from "./feedcardproperties/SaveCollectionsModal.jsx";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from '../../../AuthContext';
 import { Colors } from '../../../theme/colors';
+import useStore from '../../../repository/store';
+import ToggleFeedController from '../../../controllers/tooglefeedcontroller';
+import { useDoubleTap } from '../../reels/useDoubleTap';
 import LinkPreview from '../../../components/LinkPreview';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -25,7 +32,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 const ACCENT      = Colors.primary;
 const BRAND       = Colors.primaryDark;
 const TEXT_BODY   = Colors.textBodyIndigo;
-const TEXT_MUTED  = Colors.mutedBlueGrayAlt;
 const BG_CARD     = Colors.white;
 const BORDER      = Colors.borderLight;
 const AVATAR_RING = Colors.infoSurfaceSoft;
@@ -42,11 +48,6 @@ const PRIVACY_ICONS = {
   custom:   'lock-closed-outline',
 };
 
-// ─── Reaction emoji mapping ───────────────────────────────────────────────────
-const REACTION_EMOJIS = {
-  like: '👍', love: '❤️', laugh: '😂', haha: '😂',
-  wow:  '😮', sad:  '😢', angry: '😡', support: '🤝', yay: '🎉',
-};
 
 /**
  * ✅ NEW RULE:
@@ -75,9 +76,16 @@ const getOwnerRoute = (feedUser) => {
 const FeedCard = ({ feed, isVisible, onPostPress }) => {
   const navigation       = useNavigation();
   const { token }        = useAuth();
-  const [shareModalVisible, setShareModalVisible] = useState(false);
-  const [reactionsModalVisible, setReactionsModalVisible] = useState(false);
+  const [shareModalVisible,          setShareModalVisible]          = useState(false);
+  const [saveImageModalVisible,      setSaveImageModalVisible]      = useState(false);
+  const [reactionsModalVisible,      setReactionsModalVisible]      = useState(false);
+  const [repostModalVisible,         setRepostModalVisible]         = useState(false);
+  const [saveCollectionsModalVisible, setSaveCollectionsModalVisible] = useState(false);
   const [adultRevealed, setAdultRevealed] = useState(false);
+
+  // ── Double-tap heart animation ─────────────────────────────────────────────
+  const heartScaleAnim   = useRef(new Animated.Value(0)).current;
+  const heartOpacityAnim = useRef(new Animated.Value(0)).current;
 
   // ── Anonymous check ───────────────────────────────────────────────────────
   const isAnonymous = !!feed?.is_anonymous;
@@ -191,12 +199,21 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     const apiTags = feed?.hashtags || [];
     let extractedUrl = null;
 
-    if (!feed?.text) return { displayText: "", showSeeMore: false, allTags: apiTags, extractedUrl: null };
+    if (!feed?.text) {
+      // For link-type posts with no text body, still grab the URL
+      const fallbackUrl = feed?.url || feed?.link_url || feed?.payload?.url || null;
+      return { displayText: "", showSeeMore: false, allTags: apiTags, extractedUrl: fallbackUrl };
+    }
 
     // Always parse and strip URL from text so the LinkPreview card replaces it
     const parsed = parseLinkFromText(feed.text);
     let text = parsed.text;
     extractedUrl = parsed.url;
+
+    // For link-type posts fall back to feed.url if text had no URL
+    if (!extractedUrl) {
+      extractedUrl = feed?.url || feed?.link_url || feed?.payload?.url || null;
+    }
 
     // Pull out #hashtag tokens from the raw text
     const extracted = (text.match(/#\w+/g) || []).map(t => t.slice(1));
@@ -231,7 +248,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
 
     if ([
       'shared', 'product', 'article', 'poll', 'event_cover', 'job',
-      'link', 'media', 'video', 'reel', 'photos',
+      'media', 'video', 'reel', 'photos',
       'profile_picture', 'profile_cover', 'page_picture', 'page_cover',
       'group_picture', 'group_cover'
     ].includes(feed?.type)) {
@@ -292,6 +309,74 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     }
   }, [navigation, postContext]);
 
+  // ── Double-tap like ───────────────────────────────────────────────────────
+  const triggerHeartAnimation = useCallback(() => {
+    heartScaleAnim.setValue(0.4);
+    heartOpacityAnim.setValue(1);
+    Animated.parallel([
+      Animated.spring(heartScaleAnim, { toValue: 1.3, friction: 4, useNativeDriver: true }),
+    ]).start(() => {
+      Animated.parallel([
+        Animated.timing(heartScaleAnim,   { toValue: 1.7, duration: 250, useNativeDriver: true }),
+        Animated.timing(heartOpacityAnim, { toValue: 0,   duration: 250, useNativeDriver: true }),
+      ]).start();
+    });
+  }, [heartScaleAnim, heartOpacityAnim]);
+
+  const handleDoubleTapLike = useCallback(async () => {
+    triggerHeartAnimation();
+    // Only add like, never remove on double-tap (Instagram behaviour)
+    if (feed?.is_liked || feed?.my_reaction) return;
+    try {
+      await ToggleFeedController(feed.id, token, 'like');
+      const { feeds: storeFeeds, updateFeedById } = useStore.getState();
+      const current = storeFeeds.feedsById[feed.id];
+      if (current) {
+        const updReactions = { ...(current.reactions || {}), like: Number(current.reactions?.like || 0) + 1 };
+        updateFeedById(feed.id, {
+          ...current,
+          is_liked: true,
+          my_reaction: 'like',
+          likes_count: Number(current.likes_count || 0) + 1,
+          reactions: updReactions,
+        });
+      }
+    } catch {}
+  }, [feed?.id, feed?.is_liked, feed?.my_reaction, token, triggerHeartAnimation]);
+
+  const mediaTapHandler = useDoubleTap(handleDoubleTapLike, handleMoveToCommentScreen);
+
+  // ── Follow author ─────────────────────────────────────────────────────────
+  const handleFollow = useCallback(async () => {
+    const userId = feed?.user?.id;
+    if (!userId || (feed?.user?.entity || 'user').toLowerCase() !== 'user') return;
+    // Optimistic toggle
+    const { feeds: storeFeeds, updateFeedById } = useStore.getState();
+    const current = storeFeeds.feedsById[feed.id];
+    if (current) {
+      const nowFollowing = !current.user?.is_following;
+      updateFeedById(feed.id, {
+        ...current,
+        user: { ...current.user, is_following: nowFollowing },
+      });
+    }
+    const form = new FormData();
+    form.append('user_id', String(userId));
+    try {
+      const res = await fetch('https://hafrik.com/api/v1/people/follow_toggle.php', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok && current) {
+        // Rollback
+        useStore.getState().updateFeedById(feed.id, current);
+      }
+    } catch {
+      if (current) useStore.getState().updateFeedById(feed.id, current);
+    }
+  }, [feed?.user?.id, feed?.user?.entity, feed?.id, token]);
+
   // For page posts: show page identity instead of personal author
   const isPagePost = postContext?.type === 'page';
   const displayAvatar = isPagePost && postContext.avatar ? postContext.avatar : user?.avatar;
@@ -326,19 +411,6 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
 
   // ── Adult content ─────────────────────────────────────────────────────────
   const isAdult = !!feed?.for_adult && !adultRevealed;
-
-  // ── Reactions summary (top 3 emojis + total) ──────────────────────────────
-  const reactionsSummary = useMemo(() => {
-    const reactions = feed?.reactions;
-    if (!reactions || typeof reactions !== 'object') return null;
-    const entries = Object.entries(reactions)
-      .filter(([, count]) => Number(count) > 0)
-      .sort((a, b) => Number(b[1]) - Number(a[1]));
-    if (entries.length === 0) return null;
-    const top3 = entries.slice(0, 3).map(([type]) => REACTION_EMOJIS[type] || '👍');
-    const total = entries.reduce((sum, [, c]) => sum + Number(c), 0);
-    return { emojis: top3, total };
-  }, [feed?.reactions]);
 
   // ── Privacy icon ──────────────────────────────────────────────────────────
   const privacyIcon = PRIVACY_ICONS[feed?.privacy] || PRIVACY_ICONS.public;
@@ -388,6 +460,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           feelingText={feelingText}
           privacyIcon={privacyIcon}
           isBoosted={isBoosted}
+          onFollow={isAnonymous ? undefined : handleFollow}
         />
 
         {/* ── Adult content blur overlay ── */}
@@ -441,28 +514,40 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
               </>
             )}
 
-            {/* ── Link Preview (YouTube / Spotify / generic OG card) ── */}
-            {extractedUrl && !hasMedia ? (
+            {/* ── Link Preview (YouTube / Spotify / Vimeo / SoundCloud / generic OG card) ── */}
+            {extractedUrl && (!hasMedia || feed?.type === 'link') ? (
               <LinkPreview url={extractedUrl} />
             ) : null}
 
-            {/* ── Media ── */}
+            {/* ── Media (double-tap to like) ── */}
             {hasMedia ? (
               feed?.type === 'reel' ? (
                 <TouchableOpacity
                   activeOpacity={0.9}
-                  onPress={handleMoveToCommentScreen}
+                  onPress={mediaTapHandler}
                   style={styles.reelMediaWrapper}
                 >
                   <FeedMediaRenderer feed={feed} isVisible={isVisible} />
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[styles.heartOverlay, { opacity: heartOpacityAnim, transform: [{ scale: heartScaleAnim }] }]}
+                  >
+                    <Ionicons name="heart" size={80} color="rgba(255,255,255,0.9)" />
+                  </Animated.View>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
                   activeOpacity={0.9}
-                  onPress={handleMoveToCommentScreen}
+                  onPress={mediaTapHandler}
                   style={styles.mediaWrapper}
                 >
                   <FeedMediaRenderer feed={feed} isVisible={isVisible} />
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[styles.heartOverlay, { opacity: heartOpacityAnim, transform: [{ scale: heartScaleAnim }] }]}
+                  >
+                    <Ionicons name="heart" size={80} color="rgba(255,255,255,0.9)" />
+                  </Animated.View>
                 </TouchableOpacity>
               )
             ) : null}
@@ -484,32 +569,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           </View>
         ) : null}
 
-        {/* ── Reactions summary (tap to open reactions modal) ── */}
-        {reactionsSummary && (
-          <TouchableOpacity
-            style={styles.reactionsRow}
-            onPress={() => setReactionsModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.reactionsEmojis}>
-              {reactionsSummary.emojis.map((emoji, i) => (
-                <Text key={i} style={styles.reactionEmoji}>{emoji}</Text>
-              ))}
-            </View>
-            <Text style={styles.reactionsCount}>
-              {reactionsSummary.total.toLocaleString()}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Views + privacy */}
-        <View style={styles.metaRow}>
-          <Ionicons name="eye-outline" size={13} color={TEXT_MUTED} />
-          <Text style={styles.metaText}>{feed?.views ?? 0}</Text>
-          <Ionicons name={privacyIcon} size={11} color={TEXT_MUTED} style={{ marginLeft: 10 }} />
-        </View>
-
-        {/* Engagement */}
+        {/* Engagement (summary row + actions — all inside EngagementBar) */}
         <EngagementBar
           feedId={feed?.id}
           initialLiked={!!(feed?.is_liked || feed?.my_reaction || feed?.user_reaction)}
@@ -520,9 +580,12 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           reactions={feed?.reactions}
           isSaved={!!feed?.is_saved}
           commentsDisabled={commentsDisabled}
+          viewsCount={feed?.views ?? 0}
           onOpenShare={() => setShareModalVisible(true)}
           onCommentPress={commentsDisabled ? undefined : handleMoveToCommentScreen}
           onReactionsPress={() => setReactionsModalVisible(true)}
+          onRepost={() => setRepostModalVisible(true)}
+          onCollectionSave={() => setSaveCollectionsModalVisible(true)}
         />
       </View>
 
@@ -530,6 +593,14 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       <ShareModal
         visible={shareModalVisible}
         onClose={() => setShareModalVisible(false)}
+        feed={feed}
+        onSaveAsImage={() => setSaveImageModalVisible(true)}
+      />
+
+      {/* Save as Image */}
+      <SaveAsImageModal
+        visible={saveImageModalVisible}
+        onClose={() => setSaveImageModalVisible(false)}
         feed={feed}
       />
 
@@ -540,6 +611,28 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
         token={token}
         reactions={feed?.reactions}
         onClose={() => setReactionsModalVisible(false)}
+        currentUserId={user?.id}
+      />
+
+      {/* Repost Modal */}
+      <RepostModal
+        visible={repostModalVisible}
+        postId={feed?.id}
+        onClose={() => setRepostModalVisible(false)}
+        onRepostWithComment={() => { setRepostModalVisible(false); setShareModalVisible(true); }}
+      />
+
+      {/* Save to Collections Modal */}
+      <SaveCollectionsModal
+        visible={saveCollectionsModalVisible}
+        postId={feed?.id}
+        isSaved={!!feed?.is_saved}
+        onClose={() => setSaveCollectionsModalVisible(false)}
+        onSaved={(val) => {
+          const { feeds: storeFeeds, updateFeedById } = useStore.getState();
+          const current = storeFeeds.feedsById[feed?.id];
+          if (current) updateFeedById(feed.id, { ...current, is_saved: val });
+        }}
       />
 
     </View>
@@ -629,18 +722,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     backgroundColor: Colors.black,
   },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-    marginBottom: 2,
-  },
-  metaText: {
-    fontSize: 12,
-    color: TEXT_MUTED,
-    marginLeft: 4,
-    fontFamily: AppDetails.fontFamily?.body,
-    letterSpacing: 0.2,
+
+  // Double-tap heart overlay
+  heartOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   postTextLarge: {
@@ -718,25 +806,6 @@ const styles = StyleSheet.create({
     color: Colors.white + '80',
   },
 
-  // ── Reactions summary ──────────────────────────────────────────────────────
-  reactionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 6,
-  },
-  reactionsEmojis: {
-    flexDirection: 'row',
-    gap: 1,
-  },
-  reactionEmoji: {
-    fontSize: 14,
-  },
-  reactionsCount: {
-    fontSize: 12,
-    color: TEXT_MUTED,
-    fontWeight: '600',
-  },
 });
 
 // ✅ memo includes entity so routing label changes still update card
@@ -753,6 +822,7 @@ export default memo(FeedCard, (prev, next) => {
     prev.feed.boosted            === next.feed.boosted            &&
     prev.feed.user?.entity       === next.feed.user?.entity       &&
     prev.feed.user?.id           === next.feed.user?.id           &&
+    prev.feed.user?.is_following === next.feed.user?.is_following &&
     prev.feed.group_id           === next.feed.group_id           &&
     prev.feed.page_id            === next.feed.page_id            &&
     prev.feed.group?.id          === next.feed.group?.id          &&

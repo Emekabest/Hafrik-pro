@@ -132,14 +132,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 
-    // ── Line 1: name row ─────────────────────────────────────────────────────
+    // ── Line 1: name row ──────────────────────────────────────────────────────
     nameRow: {
         flexDirection: 'row',
         alignItems:    'center',
         flexWrap:      'wrap',
         gap:           4,
+        flex:          1,
+        minWidth:      0,
     },
-
     userFullname: {
         color:      Colors.black,
         fontFamily: AppDetails.fontFamily.heading,
@@ -199,16 +200,16 @@ const styles = StyleSheet.create({
 
 export default memo(UserDetails, (prev, next) => {
     return (
-        prev.feed.id                 === next.feed.id                 &&
-        prev.feed.user.full_name     === next.feed.user.full_name     &&
-        prev.feed.user.verified      === next.feed.user.verified      &&
-        prev.source                  === next.source                  &&
-        prev.postContext?.id         === next.postContext?.id         &&
-        prev.postContext?.type       === next.postContext?.type       &&
-        prev.postContext?.title      === next.postContext?.title      &&
-        prev.onOwnerPress            === next.onOwnerPress            &&
-        prev.onPostContextPress      === next.onPostContextPress      &&
-        prev.feelingText             === next.feelingText             &&
-        prev.privacyIcon             === next.privacyIcon
+        prev.feed.id                   === next.feed.id                   &&
+        prev.feed.user.full_name       === next.feed.user.full_name       &&
+        prev.feed.user.verified        === next.feed.user.verified        &&
+        prev.source                    === next.source                    &&
+        prev.postContext?.id           === next.postContext?.id           &&
+        prev.postContext?.type         === next.postContext?.type         &&
+        prev.postContext?.title        === next.postContext?.title        &&
+        prev.onOwnerPress              === next.onOwnerPress              &&
+        prev.onPostContextPress        === next.onPostContextPress        &&
+        prev.feelingText               === next.feelingText               &&
+        prev.privacyIcon               === next.privacyIcon
     );
 });

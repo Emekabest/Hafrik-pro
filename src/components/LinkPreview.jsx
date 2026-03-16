@@ -1,9 +1,16 @@
 /**
  * LinkPreview — Universal link embed component
  *
- * • YouTube links → inline player via react-native-youtube-iframe
- * • Spotify links → WebView embed player
- * • Generic URLs  → OG-style card (image + title + description + domain)
+ * • YouTube    → inline player via react-native-youtube-iframe
+ * • Spotify    → WebView embed player
+ * • Vimeo      → WebView embed player
+ * • SoundCloud → WebView embed player
+ * • Apple Music→ WebView embed player
+ * • Twitter/X  → OG metadata card (Twitter blocks iframe embeds)
+ * • Generic    → OG-style card (image + title + description + domain)
+ *
+ * When a link is embedded, the URL is NOT shown in the post text
+ * (the text is already stripped by parseLinkFromText in feedcard.jsx).
  *
  * Usage:
  *   <LinkPreview url="https://youtube.com/watch?v=abc123" />
@@ -33,54 +40,87 @@ const TEXT_MUTED = Colors.mutedBlueGrayAlt;
 const BORDER     = Colors.borderLight;
 const BG_CARD    = Colors.surfaceCool;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── URL type detectors ───────────────────────────────────────────────────────
 
-/** Check if a URL is a YouTube link */
-const isYouTubeUrl = (url) => {
-  if (!url) return false;
-  return /(?:youtube\.com|youtu\.be)/i.test(url);
-};
+const isYouTubeUrl = (url) =>
+  !!url && /(?:youtube\.com|youtu\.be)/i.test(url);
 
-/** Check if a URL is a Spotify link */
-const isSpotifyUrl = (url) => {
-  if (!url) return false;
-  return /open\.spotify\.com/i.test(url);
-};
+const isSpotifyUrl = (url) =>
+  !!url && /open\.spotify\.com/i.test(url);
 
-/**
- * Convert a Spotify URL to an embed URL.
- * e.g. https://open.spotify.com/track/xxx → https://open.spotify.com/embed/track/xxx
- */
+const isVimeoUrl = (url) =>
+  !!url && /(?:vimeo\.com)/i.test(url);
+
+const isSoundCloudUrl = (url) =>
+  !!url && /soundcloud\.com/i.test(url);
+
+const isAppleMusicUrl = (url) =>
+  !!url && /music\.apple\.com/i.test(url);
+
+const isTwitterUrl = (url) =>
+  !!url && /(?:twitter\.com|x\.com)/i.test(url);
+
+// ─── Embed URL builders ───────────────────────────────────────────────────────
+
 const getSpotifyEmbedUrl = (url) => {
   if (!url) return null;
   try {
     const u = new URL(url);
-    // Already an embed URL
     if (u.pathname.startsWith('/embed/')) return url;
-    // Convert /track/xxx or /album/xxx etc.
     return `https://open.spotify.com/embed${u.pathname}?utm_source=generator&theme=0`;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+};
+
+const getVimeoEmbedUrl = (url) => {
+  if (!url) return null;
+  // Match vimeo.com/12345678 or vimeo.com/channels/xyz/12345678 etc.
+  const match = url.match(/vimeo\.com(?:\/channels\/[^/]+)?(?:\/videos?)?\/(\d+)/i);
+  if (!match) return null;
+  return `https://player.vimeo.com/video/${match[1]}?autoplay=0&byline=0&portrait=0`;
+};
+
+const getSoundCloudEmbedUrl = (url) => {
+  if (!url) return null;
+  return `https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&visual=true`;
+};
+
+const getAppleMusicEmbedUrl = (url) => {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    // Convert music.apple.com/... → embed.music.apple.com/...
+    return `https://embed.music.apple.com${u.pathname}${u.search}`;
+  } catch { return null; }
 };
 
 /** Extract domain from URL for display */
 const getDomain = (url) => {
   try {
-    const u = new URL(url);
-    return u.hostname.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch { return ''; }
 };
 
 // ─── OG metadata cache (in-memory) ───────────────────────────────────────────
 const ogCache = new Map();
 
+/** Decode common HTML entities */
+const decodeHTMLEntities = (str) => {
+  if (!str) return '';
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/');
+};
+
 /**
- * Fetch OG metadata using a lightweight HTML fetch + regex parse.
- * We avoid open-graph-scraper in RN because it relies on Node APIs.
- * Instead we fetch the raw HTML and extract <meta property="og:..." /> tags.
+ * Fetch OG metadata.
+ * In React Native there is no CORS restriction, so we fetch the raw HTML
+ * and extract <meta property="og:..." /> tags.
+ * Falls back to a minimal card showing just the domain if the fetch fails.
  */
 const fetchOGData = async (url) => {
   if (ogCache.has(url)) return ogCache.get(url);
@@ -100,63 +140,52 @@ const fetchOGData = async (url) => {
     });
     clearTimeout(timeout);
 
-    // Only read first 50KB to avoid reading huge pages
     const text = await res.text();
-    const head = text.substring(0, 50000);
+    const head = text.substring(0, 60000); // first 60KB is enough for <head>
 
     const get = (property) => {
-      // Match both <meta property="og:title" content="..." /> and <meta name="og:title" content="..." />
       const re = new RegExp(
         `<meta[^>]*(?:property|name)=["']${property}["'][^>]*content=["']([^"']*?)["']`,
         'i'
       );
-      const match = head.match(re);
-      if (match) return decodeHTMLEntities(match[1]);
-
-      // Try reversed order: content first, then property
+      const m = head.match(re);
+      if (m) return decodeHTMLEntities(m[1]);
+      // reversed attribute order
       const re2 = new RegExp(
         `<meta[^>]*content=["']([^"']*?)["'][^>]*(?:property|name)=["']${property}["']`,
         'i'
       );
-      const match2 = head.match(re2);
-      if (match2) return decodeHTMLEntities(match2[1]);
-
-      return null;
+      const m2 = head.match(re2);
+      return m2 ? decodeHTMLEntities(m2[1]) : null;
     };
 
-    // Also try to get <title> as fallback
     const titleTagMatch = head.match(/<title[^>]*>([^<]*)<\/title>/i);
     const titleTag = titleTagMatch ? decodeHTMLEntities(titleTagMatch[1]) : null;
 
+    // Resolve relative image URL
+    let image = get('og:image') || get('twitter:image') || '';
+    if (image && image.startsWith('/')) {
+      try {
+        const base = new URL(url);
+        image = `${base.protocol}//${base.host}${image}`;
+      } catch {}
+    }
+
     const data = {
-      title: get('og:title') || get('twitter:title') || titleTag || '',
+      title:       get('og:title')       || get('twitter:title')       || titleTag || '',
       description: get('og:description') || get('twitter:description') || get('description') || '',
-      image: get('og:image') || get('twitter:image') || '',
-      siteName: get('og:site_name') || getDomain(url),
+      image,
+      siteName:    get('og:site_name') || getDomain(url),
       url,
     };
 
     ogCache.set(url, data);
     return data;
-  } catch (err) {
-    // Return minimal fallback
+  } catch {
     const fallback = { title: '', description: '', image: '', siteName: getDomain(url), url };
     ogCache.set(url, fallback);
     return fallback;
   }
-};
-
-/** Decode common HTML entities */
-const decodeHTMLEntities = (str) => {
-  if (!str) return '';
-  return str
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, '/');
 };
 
 // ─── YouTube Embed ────────────────────────────────────────────────────────────
@@ -172,15 +201,11 @@ const YouTubeEmbed = memo(({ url }) => {
 
   if (!videoId) return null;
 
-  // Show thumbnail with play button initially for performance
   if (!showPlayer) {
     return (
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={() => {
-          setShowPlayer(true);
-          setPlaying(true);
-        }}
+        onPress={() => { setShowPlayer(true); setPlaying(true); }}
         style={styles.ytContainer}
       >
         <ExpoImage
@@ -189,8 +214,8 @@ const YouTubeEmbed = memo(({ url }) => {
           contentFit="cover"
           cachePolicy="memory-disk"
         />
-        <View style={styles.ytPlayOverlay}>
-          <View style={styles.ytPlayButton}>
+        <View style={styles.playOverlay}>
+          <View style={styles.playButton}>
             <Ionicons name="play" size={32} color={Colors.white} />
           </View>
         </View>
@@ -205,7 +230,7 @@ const YouTubeEmbed = memo(({ url }) => {
   return (
     <View style={styles.ytContainer}>
       <YoutubePlayer
-        height={200}
+        height={210}
         videoId={videoId}
         play={playing}
         onChangeState={onStateChange}
@@ -223,15 +248,14 @@ const SpotifyEmbed = memo(({ url }) => {
   const embedUrl = getSpotifyEmbedUrl(url);
   if (!embedUrl) return null;
 
-  // Detect type for height: tracks are shorter, albums/playlists are taller
   const isCompact = /\/(track|episode)\//.test(url);
   const height = isCompact ? 152 : 352;
 
   return (
-    <View style={[styles.spotifyContainer, { height }]}>
+    <View style={[styles.webEmbedContainer, { height }]}>
       <WebView
         source={{ uri: embedUrl }}
-        style={[styles.spotifyWebView, { height }]}
+        style={{ height, backgroundColor: 'transparent' }}
         scrollEnabled={false}
         bounces={false}
         javaScriptEnabled
@@ -239,16 +263,106 @@ const SpotifyEmbed = memo(({ url }) => {
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
         startInLoadingState
-        renderLoading={() => (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={Colors.tealAccent} />
-          </View>
-        )}
+        renderLoading={() => <EmbedLoader color="#1DB954" bg="#191414" />}
       />
-      <View style={styles.spotifyBadge}>
-        <Ionicons name="musical-notes" size={14} color="#1DB954" />
-        <Text style={styles.spotifyBadgeText}>Spotify</Text>
-      </View>
+      <PlatformBadge icon="musical-notes" label="Spotify" color="#1DB954" bg="rgba(0,0,0,0.6)" />
+    </View>
+  );
+});
+
+// ─── Vimeo Embed ──────────────────────────────────────────────────────────────
+const VimeoEmbed = memo(({ url }) => {
+  const embedUrl = getVimeoEmbedUrl(url);
+  const [showPlayer, setShowPlayer] = useState(false);
+
+  if (!embedUrl) return null;
+
+  if (!showPlayer) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => setShowPlayer(true)}
+        style={[styles.ytContainer, { backgroundColor: '#1ab7ea' }]}
+      >
+        <View style={styles.embedPlaceholder}>
+          <Ionicons name="videocam" size={40} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.embedPlaceholderText}>Tap to play Vimeo video</Text>
+        </View>
+        <View style={styles.playOverlay}>
+          <View style={[styles.playButton, { backgroundColor: 'rgba(26,183,234,0.85)' }]}>
+            <Ionicons name="play" size={32} color={Colors.white} />
+          </View>
+        </View>
+        <PlatformBadge icon="videocam" label="Vimeo" color="#1ab7ea" bg="rgba(0,0,0,0.55)" />
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={[styles.webEmbedContainer, { height: 210 }]}>
+      <WebView
+        source={{ uri: embedUrl }}
+        style={{ height: 210, backgroundColor: '#000' }}
+        scrollEnabled={false}
+        bounces={false}
+        javaScriptEnabled
+        domStorageEnabled
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+        startInLoadingState
+        renderLoading={() => <EmbedLoader color="#1ab7ea" bg="#000" />}
+      />
+    </View>
+  );
+});
+
+// ─── SoundCloud Embed ─────────────────────────────────────────────────────────
+const SoundCloudEmbed = memo(({ url }) => {
+  const embedUrl = getSoundCloudEmbedUrl(url);
+  if (!embedUrl) return null;
+
+  return (
+    <View style={[styles.webEmbedContainer, { height: 300 }]}>
+      <WebView
+        source={{ uri: embedUrl }}
+        style={{ height: 300, backgroundColor: 'transparent' }}
+        scrollEnabled={false}
+        bounces={false}
+        javaScriptEnabled
+        domStorageEnabled
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+        startInLoadingState
+        renderLoading={() => <EmbedLoader color="#ff5500" bg="#f2f2f2" />}
+      />
+      <PlatformBadge icon="musical-note" label="SoundCloud" color="#ff5500" bg="rgba(0,0,0,0.5)" />
+    </View>
+  );
+});
+
+// ─── Apple Music Embed ────────────────────────────────────────────────────────
+const AppleMusicEmbed = memo(({ url }) => {
+  const embedUrl = getAppleMusicEmbedUrl(url);
+  if (!embedUrl) return null;
+
+  const isAlbumOrPlaylist = /\/(album|playlist)\//.test(url);
+  const height = isAlbumOrPlaylist ? 450 : 175;
+
+  return (
+    <View style={[styles.webEmbedContainer, { height }]}>
+      <WebView
+        source={{ uri: embedUrl }}
+        style={{ height, backgroundColor: 'transparent' }}
+        scrollEnabled={false}
+        bounces={false}
+        javaScriptEnabled
+        domStorageEnabled
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+        startInLoadingState
+        renderLoading={() => <EmbedLoader color="#fa2d55" bg="#000" />}
+      />
+      <PlatformBadge icon="musical-notes" label="Apple Music" color="#fa2d55" bg="rgba(0,0,0,0.6)" />
     </View>
   );
 });
@@ -262,10 +376,7 @@ const GenericLinkCard = memo(({ url }) => {
     let mounted = true;
     setLoading(true);
     fetchOGData(url).then((data) => {
-      if (mounted) {
-        setOgData(data);
-        setLoading(false);
-      }
+      if (mounted) { setOgData(data); setLoading(false); }
     });
     return () => { mounted = false; };
   }, [url]);
@@ -284,31 +395,20 @@ const GenericLinkCard = memo(({ url }) => {
 
   const hasImage = ogData?.image?.length > 0;
   const hasTitle = ogData?.title?.length > 0;
-  const hasDesc = ogData?.description?.length > 0;
+  const hasDesc  = ogData?.description?.length > 0;
 
-  // If no metadata at all, show a minimal link pill
   if (!hasTitle && !hasDesc && !hasImage) {
     return (
-      <TouchableOpacity
-        style={styles.minimalLink}
-        onPress={handlePress}
-        activeOpacity={0.7}
-      >
+      <TouchableOpacity style={styles.minimalLink} onPress={handlePress} activeOpacity={0.7}>
         <Ionicons name="link-outline" size={16} color={ACCENT} />
-        <Text style={styles.minimalLinkText} numberOfLines={1}>
-          {getDomain(url)}
-        </Text>
+        <Text style={styles.minimalLinkText} numberOfLines={1}>{getDomain(url)}</Text>
         <Ionicons name="open-outline" size={14} color={TEXT_MUTED} />
       </TouchableOpacity>
     );
   }
 
   return (
-    <TouchableOpacity
-      style={styles.genericCard}
-      onPress={handlePress}
-      activeOpacity={0.85}
-    >
+    <TouchableOpacity style={styles.genericCard} onPress={handlePress} activeOpacity={0.85}>
       {hasImage && (
         <ExpoImage
           source={{ uri: ogData.image }}
@@ -319,14 +419,10 @@ const GenericLinkCard = memo(({ url }) => {
       )}
       <View style={styles.genericCardBody}>
         {hasTitle && (
-          <Text style={styles.genericCardTitle} numberOfLines={2}>
-            {ogData.title}
-          </Text>
+          <Text style={styles.genericCardTitle} numberOfLines={2}>{ogData.title}</Text>
         )}
         {hasDesc && (
-          <Text style={styles.genericCardDesc} numberOfLines={2}>
-            {ogData.description}
-          </Text>
+          <Text style={styles.genericCardDesc} numberOfLines={2}>{ogData.description}</Text>
         )}
         <View style={styles.genericCardDomain}>
           <Ionicons name="globe-outline" size={12} color={TEXT_MUTED} />
@@ -339,27 +435,41 @@ const GenericLinkCard = memo(({ url }) => {
   );
 });
 
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
+/** Small spinner shown while a WebView embed loads */
+const EmbedLoader = ({ color, bg }) => (
+  <View style={[StyleSheet.absoluteFill, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
+    <ActivityIndicator size="small" color={color} />
+  </View>
+);
+
+/** Platform badge shown over embeds */
+const PlatformBadge = ({ icon, label, color, bg }) => (
+  <View style={[styles.platformBadge, { backgroundColor: bg }]}>
+    <Ionicons name={icon} size={14} color={color} />
+    <Text style={[styles.platformBadgeText, { color }]}>{label}</Text>
+  </View>
+);
+
 // ─── Main LinkPreview Component ───────────────────────────────────────────────
 const LinkPreview = ({ url }) => {
   if (!url) return null;
-
-  // Clean up URL
   const cleanUrl = url.trim();
 
-  if (isYouTubeUrl(cleanUrl)) {
-    return <YouTubeEmbed url={cleanUrl} />;
-  }
+  if (isYouTubeUrl(cleanUrl))    return <YouTubeEmbed     url={cleanUrl} />;
+  if (isSpotifyUrl(cleanUrl))    return <SpotifyEmbed     url={cleanUrl} />;
+  if (isVimeoUrl(cleanUrl))      return <VimeoEmbed       url={cleanUrl} />;
+  if (isSoundCloudUrl(cleanUrl)) return <SoundCloudEmbed  url={cleanUrl} />;
+  if (isAppleMusicUrl(cleanUrl)) return <AppleMusicEmbed  url={cleanUrl} />;
 
-  if (isSpotifyUrl(cleanUrl)) {
-    return <SpotifyEmbed url={cleanUrl} />;
-  }
-
+  // Twitter/X and all other links → OG metadata card
   return <GenericLinkCard url={cleanUrl} />;
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  // YouTube
+  // ── YouTube ──────────────────────────────────────────────────────────────
   ytContainer: {
     borderRadius: 14,
     overflow: 'hidden',
@@ -369,21 +479,6 @@ const styles = StyleSheet.create({
   ytThumbnail: {
     width: '100%',
     aspectRatio: 16 / 9,
-  },
-  ytPlayOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.25)',
-  },
-  ytPlayButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingLeft: 4,
   },
   ytBadge: {
     position: 'absolute',
@@ -404,36 +499,66 @@ const styles = StyleSheet.create({
     fontFamily: AppDetails.fontFamily?.body,
   },
 
-  // Spotify
-  spotifyContainer: {
+  // ── Shared play overlay ───────────────────────────────────────────────────
+  playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.20)',
+  },
+  playButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingLeft: 4,
+  },
+
+  // ── Vimeo placeholder (before tap) ───────────────────────────────────────
+  embedPlaceholder: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#1ab7ea22',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  embedPlaceholderText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: AppDetails.fontFamily?.body,
+  },
+
+  // ── Generic WebView embed wrapper ─────────────────────────────────────────
+  webEmbedContainer: {
     borderRadius: 14,
     overflow: 'hidden',
     marginTop: 10,
-    backgroundColor: '#191414',
+    backgroundColor: Colors.black,
   },
-  spotifyWebView: {
-    backgroundColor: 'transparent',
-  },
-  spotifyBadge: {
+
+  // ── Platform badge (overlay on embeds) ───────────────────────────────────
+  platformBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    gap: 4,
   },
-  spotifyBadgeText: {
-    color: '#1DB954',
+  platformBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    marginLeft: 4,
     fontFamily: AppDetails.fontFamily?.body,
   },
 
-  // Generic card
+  // ── Generic OG card ───────────────────────────────────────────────────────
   genericCard: {
     borderRadius: 14,
     overflow: 'hidden',
@@ -467,15 +592,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
+    gap: 4,
   },
   genericCardDomainText: {
     fontSize: 12,
     color: TEXT_MUTED,
-    marginLeft: 4,
     fontFamily: AppDetails.fontFamily?.body,
   },
 
-  // Loading state
+  // ── Loading / minimal states ───────────────────────────────────────────────
   genericCardLoading: {
     height: 80,
     borderRadius: 14,
@@ -486,14 +611,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#191414',
-  },
-
-  // Minimal link pill
   minimalLink: {
     flexDirection: 'row',
     alignItems: 'center',

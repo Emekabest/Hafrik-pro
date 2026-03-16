@@ -37,6 +37,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const prependFeedsToList_store = useStore(s => s.prependFeedsToList);
   const setFeedsMeta_store       = useStore(s => s.setFeedsMeta);
   const refreshSignal            = useStore(s => s.refreshSignal);
+  const selectedCountryId        = useStore(s => s.selectedCountryId);
   const ids                      = useStore(s => s.feeds.lists[feedsName] || []);
   const feedsById                = useStore(s => s.feeds.feedsById);
 
@@ -44,6 +45,9 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     () => ids.map(id => feedsById[id]).filter(Boolean),
     [ids, feedsById],
   );
+
+  // ── Client-side country filter (secondary safety net after server filter) ──
+    const feedsFromStoreFiltered = feedsFromStore; // Country filter removed: show all feeds
 
   // ── Local state ─────────────────────────────────────────────────────────────
   const [feeds,         setFeeds]         = useState([]);
@@ -59,7 +63,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const pageRef    = useRef(1);
   const hasMoreRef = useRef(true);
 
-  // ── Build the API URL from tab config + content filter ────────────────────
+  // ── Build the API URL from tab config + content filter + country ──────────
   const apiUrl = useMemo(() => {
     const base = AppDetails.apis.feedApi;
     const url  = new URL(base);
@@ -68,8 +72,11 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     if (contentFilter) {
       url.searchParams.set('filter', contentFilter);
     }
+    if (selectedCountryId && selectedCountryId !== 'all') {
+      url.searchParams.set('country', String(selectedCountryId));
+    }
     return url.toString();
-  }, [tabConfig.get, contentFilter]);
+  }, [tabConfig.get, contentFilter, selectedCountryId]);
 
   // ── Fetch interstitials on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -157,8 +164,8 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
 
   // ── Sync store → local feeds state ────────────────────────────────────────
   useEffect(() => {
-    setFeeds(feedsFromStore);
-  }, [feedsFromStore]);
+    setFeeds(feedsFromStoreFiltered);
+  }, [feedsFromStoreFiltered]);
 
   // ── Silent background refresh ──────────────────────────────────────────────
   const silentRefresh = useCallback(async () => {

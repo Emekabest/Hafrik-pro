@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   View, Text, Image, TouchableOpacity, StyleSheet, Animated,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import useStore from '../repository/store';
@@ -13,6 +13,13 @@ import { Colors } from '../theme';
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
 
+const Badge = ({ count }) =>
+  count > 0 ? (
+    <View style={styles.badge}>
+      <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
+    </View>
+  ) : null;
+
 /**
  * AppHeader — consistent top header used on Home & Profile screens.
  *
@@ -21,11 +28,8 @@ const ACCENT = Colors.primary;
  *   title         — if set, shows a text title in the centre instead of the logo
  */
 const AppHeader = ({ onOpenDrawer, title }) => {
-  const { top }       = useSafeAreaInsets();
-  const navigation    = useNavigation();
-
-  const notifCount    = useStore((s) => s.notificationCount ?? 0);
-  const msgCount      = useStore((s) => s.messageCount ?? 0);
+  const navigation = useNavigation();
+  const notifCount = useStore((s) => s.notificationCount ?? 0);
 
   // pulse animation for notification bell when count changes
   const bellPulse = useRef(new Animated.Value(1)).current;
@@ -39,18 +43,8 @@ const AppHeader = ({ onOpenDrawer, title }) => {
     }
   }, [notifCount]);
 
-  // Counts come from the store (App.js runs startBadgePolling persistently).
-  // No local polling here — avoids duplicate requests and conflicting state.
-
-  const Badge = ({ count }) =>
-    count > 0 ? (
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
-      </View>
-    ) : null;
-
   return (
-    <View style={[styles.header, { paddingTop: top + 6 }]}>
+    <SafeAreaView edges={['top']} style={styles.header}>
       <View style={styles.inner}>
 
         {/* LEFT — hamburger */}
@@ -62,16 +56,20 @@ const AppHeader = ({ onOpenDrawer, title }) => {
           <Ionicons name="menu-outline" size={22} color={Colors.white} />
         </TouchableOpacity>
 
-        {/* CENTER — logo */}
+        {/* CENTER — logo or title */}
         <View style={styles.center} pointerEvents="none">
-          <Image
-            source={require('../assl.js/Layer 3.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          {title ? (
+            <Text style={styles.title}>{title}</Text>
+          ) : (
+            <Image
+              source={require('../assl.js/Layer 3.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          )}
         </View>
 
-        {/* RIGHT — search · notifications · messages shortcut */}
+        {/* RIGHT — search + notifications */}
         <View style={styles.actions}>
           <TouchableOpacity
             style={styles.iconBtn}
@@ -81,7 +79,6 @@ const AppHeader = ({ onOpenDrawer, title }) => {
             <Ionicons name="search-outline" size={20} color={Colors.white} />
           </TouchableOpacity>
 
-          {/* Notifications bell */}
           <TouchableOpacity
             style={styles.iconBtn}
             activeOpacity={0.85}
@@ -96,14 +93,12 @@ const AppHeader = ({ onOpenDrawer, title }) => {
             </Animated.View>
             <Badge count={notifCount} />
           </TouchableOpacity>
-
-
         </View>
 
       </View>
       {/* subtle accent underline */}
       <View style={styles.borderBottom} />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -119,7 +114,7 @@ const styles = StyleSheet.create({
   },
   inner: {
     height: 44,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -133,15 +128,8 @@ const styles = StyleSheet.create({
     pointerEvents: 'none',
   },
   logo: {
-    height: 30,
-    width: 120,
-  },
-  logoText: {
-    color: Colors.white,
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 3,
-    fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
+    height: 28,
+    width: 110,
   },
   title: {
     color: Colors.white,
@@ -153,12 +141,12 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: Colors.white + '1A',
     borderWidth: 1,
     borderColor: Colors.white + '24',

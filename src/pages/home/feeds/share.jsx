@@ -50,7 +50,7 @@ const TargetChip = ({ item, isSelected, onPress }) => {
 };
 
 // ─── ShareModal ───────────────────────────────────────────────────────────────
-const ShareModal = ({ visible, onClose, feed }) => {
+const ShareModal = ({ visible, onClose, feed, onSaveAsImage }) => {
   const { token } = useAuth();
 
   const [targets,         setTargets]         = useState([]);
@@ -113,8 +113,8 @@ const ShareModal = ({ visible, onClose, feed }) => {
     try {
       const response = await RepostController(postData, token);
       if (response.status === 200) {
-        const useStore = require('../../../repository/store').default;
-        const { feeds, updateFeedById } = useStore.getState();
+        const store = require('../../../repository/store').default;
+        const { feeds, updateFeedById } = store.getState();
         const currentFeed = feeds.feedsById[feed.id];
         if (currentFeed) {
           const newCount = response.data?.shares_count_new
@@ -124,12 +124,13 @@ const ShareModal = ({ visible, onClose, feed }) => {
         setCaption('');
         setSelectedTarget(null);
         onClose();
+        store.getState().showToast('Post shared', '📤');
       } else {
-        Alert.alert('Error', 'Could not share the post. Please try again.');
+        require('../../../repository/store').default.getState().showToast('Could not share. Try again.', '⚠️');
       }
     } catch (error) {
       console.warn("Share error:", error?.message);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      require('../../../repository/store').default.getState().showToast('Something went wrong. Try again.', '⚠️');
     } finally {
       setLoading(false);
     }
@@ -181,6 +182,20 @@ const ShareModal = ({ visible, onClose, feed }) => {
                 <TouchableOpacity onPress={handleNativeShare}><Ionicons name="logo-reddit"    size={28} color="#FF4500" /></TouchableOpacity>
                 <TouchableOpacity onPress={handleNativeShare}><Ionicons name="logo-pinterest" size={28} color="#E60023" /></TouchableOpacity>
               </View>
+
+              {/* Save as Image */}
+              {onSaveAsImage && (
+                <TouchableOpacity style={styles.saveImageRow} activeOpacity={0.82} onPress={() => { onClose(); setTimeout(onSaveAsImage, 280); }}>
+                  <View style={styles.saveImageIcon}>
+                    <Ionicons name="image-outline" size={20} color={BRAND} />
+                  </View>
+                  <View style={styles.saveImageText}>
+                    <Text style={styles.saveImageTitle}>Save as Image</Text>
+                    <Text style={styles.saveImageSub}>Export a branded post to your gallery</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={BRAND + '60'} />
+                </TouchableOpacity>
+              )}
 
               {/* Post to section header */}
               <Text style={styles.sectionLabel}>Post to</Text>
@@ -296,6 +311,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 22,
     paddingHorizontal: 4,
+  },
+
+  // Save as Image row
+  saveImageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BRAND + '08',
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: BRAND + '14',
+    gap: 12,
+  },
+  saveImageIcon: {
+    width: 38, height: 38, borderRadius: 11,
+    backgroundColor: BRAND + '14',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  saveImageText: { flex: 1 },
+  saveImageTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: BRAND,
+  },
+  saveImageSub: {
+    fontSize: 11,
+    color: Colors.secondaryText,
+    marginTop: 2,
   },
 
   // Section header
