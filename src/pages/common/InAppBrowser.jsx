@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
-import useWebViewSession, { REDIRECT_GUARD } from '../../hooks/useWebViewSession';
+import { buildWebViewUrl, REDIRECT_GUARD } from '../../hooks/useWebViewSession';
 import AuthenticatedWebView from '../../components/AuthenticatedWebView';
 import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme/colors';
@@ -30,34 +30,18 @@ export default function InAppBrowser() {
   const navigation = useNavigation();
   const route      = useRoute();
   const { top }    = useSafeAreaInsets();
-  const { token, user } = useAuth();
+  const { token } = useAuth();
 
   const { title = 'Hafrik', url = 'https://hafrik.com' } = route.params ?? {};
 
+  const authUrl = buildWebViewUrl(token, url);
+
   const webRef = useRef(null);
 
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(false);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [progress,  setProgress]  = useState(0);
-
-  const { ready, bridgeError, initSession, cookieJS } = useWebViewSession(token);
-
-  // ─── Inject user data before page loads ─────────────────────────────────
-  const injectedBeforeContent = useMemo(() => {
-    const userPayload = user ? (() => {
-      const payload = JSON.stringify({
-        id:       user.id        ?? null,
-        username: user.username  ?? null,
-        email:    user.email     ?? null,
-        name:     user.name ?? user.full_name ?? user.username ?? null,
-        avatar:   user.avatar ?? user.profile_picture ?? null,
-        token:    token ?? null,
-      });
-      return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;`;
-    })() : '';
-    return `${cookieJS}${userPayload}true;`;
-  }, [user, token, cookieJS]);
 
   const handleShare = async () => {
     try { await Share.share({ message: `${title} — ${url}`, url }); } catch {}
@@ -67,54 +51,6 @@ export default function InAppBrowser() {
     if (canGoBack) webRef.current?.goBack();
     else navigation.goBack();
   };
-
-  // Waiting screen
-  if (!ready && !bridgeError) {
-    return (
-      <View style={[styles.root, { paddingTop: top }]}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={21} color={Colors.white} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-            <Text style={styles.headerUrl} numberOfLines={1}>{url.replace(/^https?:\/\//, '')}</Text>
-          </View>
-          <View style={styles.headerBtn} />
-        </View>
-        <View style={styles.authWait}>
-          <ActivityIndicator size="large" color={ACCENT} />
-          <Text style={styles.authWaitText}>Authenticating…</Text>
-        </View>
-      </View>
-    );
-  }
-
-  // Bridge error screen
-  if (bridgeError) {
-    return (
-      <View style={[styles.root, { paddingTop: top }]}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={21} color={Colors.white} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
-          </View>
-          <View style={styles.headerBtn} />
-        </View>
-        <View style={styles.errorWrap}>
-          <Ionicons name="warning-outline" size={52} color={MUTED} />
-          <Text style={styles.errorTitle}>Session Error</Text>
-          <Text style={styles.errorSub}>{bridgeError}</Text>
-          <TouchableOpacity style={styles.retryBtn} activeOpacity={0.85} onPress={initSession}>
-            <Ionicons name="refresh" size={16} color={Colors.white} />
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.root, { paddingTop: top }]}>
@@ -157,9 +93,8 @@ export default function InAppBrowser() {
       ) : (
         <AuthenticatedWebView
           ref={webRef}
-          source={{ uri: url }}
+          source={{ uri: authUrl }}
           style={styles.webview}
-          injectedJavaScriptBeforeContentLoaded={injectedBeforeContent}
           injectedJavaScript={REDIRECT_GUARD}
           onLoadStart={() => { setLoading(true); setError(false); }}
           onLoadEnd={() => setLoading(false)}

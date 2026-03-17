@@ -1,160 +1,268 @@
-import React, { memo, useState, useRef, useEffect } from 'react';
+import React, { memo, useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View,
-  Dimensions,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
+  View, Dimensions, TouchableOpacity, StyleSheet,
+  Image, Text, Animated,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { Image as ExpoImage } from 'expo-image';
 import { Colors } from '../../../../theme/colors';
 
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
+const DEFAULT_IMAGE_W = SCREEN_W - 88;
+const RADIUS          = 16;
+const MAX_SINGLE_H    = 460;
+const GRID_GAP        = 3;
+
+// h/w ratio clamped between 0.5 (2:1 landscape) and 1.33 (4:3 portrait)
+const clampRatio = (w, h) => {
+  if (!(w > 0 && h > 0)) return null;
+  return Math.min(Math.max(h / w, 0.5), 1.33);
+};
+
 const withOpacity = (hex, opacity) => {
-  const normalized = (hex || "").replace("#", "");
-  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  const normalized = (hex || '').replace('#', '');
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0');
   return `#${normalized}${alpha}`;
 };
 
+// ─── FadeImage — fades in once loaded ────────────────────────────────────────
+const FadeImage = ({ uri, style, contentFit = 'cover' }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const onLoad = useCallback(() => {
+    Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }).start();
+  }, [opacity]);
 
-const { width: screenWidth } = Dimensions.get('window');
-// Feed right-column width: screen - container pad 32 - leftCol 44 - col gap 12
-const DEFAULT_IMAGE_W = screenWidth - 88;
+  return (
+    <Animated.View style={[style, { opacity, backgroundColor: Colors.neutral150 }]}>
+      <ExpoImage
+        source={{ uri }}
+        style={StyleSheet.absoluteFill}
+        contentFit={contentFit}
+        cachePolicy="memory-disk"
+        onLoad={onLoad}
+      />
+    </Animated.View>
+  );
+};
 
-// ─── PhotoPostContent ─────────────────────────────────────────────────────────
-// imageWidth: optional override (pass from comment screen for full-width context)
-// contentFit: 'cover' (feed — square crop) | 'contain' (post detail — full image)
-const PhotoPostContent = ({ media, onImagePress, imageWidth: imageWidthProp, contentFit = 'cover' }) => {
-  const validMedia = (media || []).filter(item => item?.url);
-  if (validMedia.length === 0) return null;
+// ─── SingleImage — natural aspect ratio ──────────────────────────────────────
+const SingleImage = ({ item, width, radius, maxHeight, onPress }) => {
+  const [height, setHeight] = useState(() => {
+    const r = clampRatio(item.width, item.height);
+    return r ? Math.min(width * r, maxHeight) : Math.min(width * 0.85, maxHeight);
+  });
 
-  const imgW       = imageWidthProp ?? DEFAULT_IMAGE_W;
-  const isMultiple = validMedia.length > 1;
+  useEffect(() => {
+    if (clampRatio(item.width, item.height) !== null) return;
+    if (!item.url) return;
+    Image.getSize(
+      item.url,
+      (w, h) => { const r = clampRatio(w, h); if (r) setHeight(Math.min(width * r, maxHeight)); },
+      () => {}
+    );
+  }, [item.url, item.width, item.height, width, maxHeight]);
 
-  const [activeIndex, setActiveIndex] = useState(0);
-  const scrollRef = useRef(null);
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={onPress}
+      style={{ borderRadius: radius, overflow: 'hidden' }}
+    >
+      <FadeImage uri={item.url} style={{ width, height }} />
+    </TouchableOpacity>
+  );
+};
 
-  const handleScroll = (event) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index   = Math.round(offsetX / imgW);
-    setActiveIndex(Math.max(0, Math.min(index, validMedia.length - 1)));
-  };
+// ─── GridImages — Facebook-style grid for feed cards ─────────────────────────
+// Layout rules:
+//   1 image  → full width (handled by SingleImage above)
+//   2 images → two equal columns
+//   3 images → one full-width top + two equal columns below
+//   4+       → one full-width top + two columns below (last cell shows "+N" overflow)
+const GridImages = ({ images, width, radius, onImagePress }) => {
+  const gridH     = Math.round(width * 0.62); // height for bottom row cells
+  const topH      = Math.round(width * 0.62); // height for the top / full-width cell
+  const halfW     = (width - GRID_GAP) / 2;
 
-  // Single image — render with natural aspect ratio
-  if (!isMultiple) {
+  const SHOW_MAX   = 3; // total cells to show before overflow badge
+  const total      = images.length;
+  const showImages = images.slice(0, SHOW_MAX);
+  const overflow   = total > SHOW_MAX ? total - SHOW_MAX : 0;
+
+  if (total === 2) {
+    // Two equal side-by-side
     return (
-      <View style={styles.container}>
-        <FlexibleImage
-          uri={validMedia[0].url}
-          width={imgW}
-          onPress={() => onImagePress?.(validMedia[0].url)}
-        />
+      <View style={[gs.row, { borderRadius: radius, overflow: 'hidden' }]}>
+        {images.map((item, i) => (
+          <TouchableOpacity key={i} activeOpacity={0.88} onPress={() => onImagePress?.(item.url)}>
+            <FadeImage uri={item.url} style={{ width: halfW, height: gridH }} />
+          </TouchableOpacity>
+        ))}
       </View>
     );
   }
 
-  // Multiple images — horizontal carousel with square crop
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-      >
-        {validMedia.map((item, index) => (
-          <ThreadImage
-            key={index}
-            uri={item.url}
-            width={imgW}
-            onPress={() => onImagePress?.(item.url)}
-            contentFit={contentFit}
-          />
-        ))}
-      </ScrollView>
+  // 3 or 4+ : full-width top + two columns below
+  const top      = showImages[0];
+  const bottoms  = showImages.slice(1); // at most 2 cells
 
+  return (
+    <View style={[{ borderRadius: radius, overflow: 'hidden' }]}>
+      {/* Top image */}
+      <TouchableOpacity activeOpacity={0.88} onPress={() => onImagePress?.(top.url)}>
+        <FadeImage uri={top.url} style={{ width, height: topH }} />
+      </TouchableOpacity>
+
+      {/* Bottom row */}
+      <View style={[gs.row, { marginTop: GRID_GAP }]}>
+        {bottoms.map((item, i) => {
+          const isLast       = i === bottoms.length - 1;
+          const showOverflow = isLast && overflow > 0;
+          return (
+            <TouchableOpacity
+              key={i}
+              activeOpacity={0.88}
+              onPress={() => onImagePress?.(item.url)}
+              style={{ marginLeft: i > 0 ? GRID_GAP : 0 }}
+            >
+              <FadeImage uri={item.url} style={{ width: halfW, height: gridH }} />
+              {showOverflow && (
+                <View style={gs.overflowOverlay}>
+                  <Text style={gs.overflowText}>+{overflow}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const gs = StyleSheet.create({
+  row: { flexDirection: 'row' },
+  overflowOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overflowText: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
+});
+
+// ─── CarouselImages — horizontal paging used in detail / full-width view ──────
+const CarouselImages = ({ images, width, radius, maxHeight, onImagePress }) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef(null);
+
+  const [carouselH, setCarouselH] = useState(() => {
+    const first = images[0];
+    const r = clampRatio(first.width, first.height);
+    return r ? Math.min(width * r, maxHeight) : Math.min(width * 0.85, maxHeight);
+  });
+
+  useEffect(() => {
+    const first = images[0];
+    if (clampRatio(first.width, first.height) !== null) return;
+    if (!first.url) return;
+    Image.getSize(
+      first.url,
+      (w, h) => { const r = clampRatio(w, h); if (r) setCarouselH(Math.min(width * r, maxHeight)); },
+      () => {}
+    );
+  }, [images, width, maxHeight]);
+
+  const handleScroll = useCallback((e) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / width);
+    setActiveIndex(Math.max(0, Math.min(idx, images.length - 1)));
+  }, [width, images.length]);
+
+  return (
+    <View>
+      <View style={{ borderRadius: radius, overflow: 'hidden' }}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
+          {images.map((item, i) => (
+            <TouchableOpacity
+              key={i}
+              activeOpacity={0.88}
+              onPress={() => onImagePress?.(item.url)}
+            >
+              <FadeImage uri={item.url} style={{ width, height: carouselH }} />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Dot indicators */}
       <View style={styles.dotsRow}>
-        {validMedia.map((_, i) => (
-          <View
-            key={i}
-            style={[styles.dot, i === activeIndex && styles.dotActive]}
-          />
+        {images.map((_, i) => (
+          <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
         ))}
       </View>
     </View>
   );
 };
 
-// ─── FlexibleImage — single image, natural aspect ratio ───────────────────────
-// Fetches the real w×h of the remote image and renders at full available width
-// with the correct height. Capped at 4:5 portrait to avoid very tall images.
-const MAX_ASPECT_RATIO = 0.5625; // 9:16 — absolute tallest we allow
-const MIN_ASPECT_RATIO = 0.5;    // wider than 2:1 landscape gets capped too
+// ─── PhotoPostContent ─────────────────────────────────────────────────────────
+const PhotoPostContent = ({ media, onImagePress, imageWidth: imageWidthProp }) => {
+  const validMedia = (media || []).filter(item => item?.url);
+  if (validMedia.length === 0) return null;
 
-const FlexibleImage = ({ uri, width, onPress }) => {
-  // Default to a pleasant 4:5 portrait while loading
-  const [aspectRatio, setAspectRatio] = useState(0.8);
-
-  useEffect(() => {
-    if (!uri) return;
-    Image.getSize(
-      uri,
-      (w, h) => {
-        if (w > 0 && h > 0) {
-          const ratio = h / w; // height-to-width ratio
-          // Clamp: no taller than 16:9, no wider than 2:1
-          const clamped = Math.min(Math.max(ratio, MIN_ASPECT_RATIO), 1 / MAX_ASPECT_RATIO);
-          setAspectRatio(clamped);
-        }
-      },
-      () => {} // silent on error, keep default
-    );
-  }, [uri]);
+  const imgW      = imageWidthProp ?? DEFAULT_IMAGE_W;
+  const isFullW   = imgW >= SCREEN_W - 2;   // true = detail screen, false = feed card
+  const imgRadius = isFullW ? 0 : RADIUS;
+  const imgMaxH   = isFullW ? SCREEN_H * 0.68 : MAX_SINGLE_H;
 
   return (
-    <TouchableOpacity activeOpacity={0.95} onPress={onPress}>
-      <ExpoImage
-        source={{ uri }}
-        style={{
-          width,
-          height: width * aspectRatio,
-          borderRadius: 12,
-          backgroundColor: Colors.neutral150,
-        }}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        transition={200}
-      />
-    </TouchableOpacity>
+    <View style={styles.container}>
+      {validMedia.length === 1 ? (
+        // Single image: same in both feed and detail
+        <SingleImage
+          item={validMedia[0]}
+          width={imgW}
+          radius={imgRadius}
+          maxHeight={imgMaxH}
+          onPress={() => onImagePress?.(validMedia[0].url)}
+        />
+      ) : isFullW ? (
+        // Detail screen: horizontal carousel with full natural size
+        <CarouselImages
+          images={validMedia}
+          width={imgW}
+          radius={imgRadius}
+          maxHeight={imgMaxH}
+          onImagePress={onImagePress}
+        />
+      ) : (
+        // Feed card: Facebook-style grid
+        <GridImages
+          images={validMedia}
+          width={imgW}
+          radius={imgRadius}
+          onImagePress={onImagePress}
+        />
+      )}
+    </View>
   );
 };
 
-// ─── ThreadImage — multi-image carousel item (square crop) ────────────────────
-const ThreadImage = ({ uri, onPress, width, contentFit = 'cover' }) => (
-  <TouchableOpacity activeOpacity={0.95} onPress={onPress}>
-    <ExpoImage
-      source={{ uri }}
-      style={{
-        width,
-        aspectRatio: 1,
-        borderRadius: 12,
-        backgroundColor: contentFit === 'contain' ? Colors.neutral900 : Colors.neutral150,
-      }}
-      contentFit={contentFit}
-      cachePolicy="memory-disk"
-      transition={200}
-    />
-  </TouchableOpacity>
-);
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 6,
-  },
+  container: { marginTop: 10 },
 
   dotsRow: {
     flexDirection: 'row',

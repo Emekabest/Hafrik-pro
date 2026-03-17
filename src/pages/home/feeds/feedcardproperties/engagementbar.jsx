@@ -277,7 +277,9 @@ const EngagementBar = ({
         {!commentsDisabled && (
           <TouchableOpacity style={styles.actionItem} onPress={onCommentPress} activeOpacity={0.7}>
             <SvgIcon name="comment" width={20} height={20} color={Colors.neutral700} />
-            <Text style={styles.actionLabel}>Comment</Text>
+            <Text style={styles.actionLabel}>
+              {Number(commentsCount) > 0 ? Number(commentsCount).toLocaleString() : 'Comment'}
+            </Text>
           </TouchableOpacity>
         )}
 
