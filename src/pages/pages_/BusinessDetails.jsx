@@ -340,6 +340,7 @@ export default function BusinessDetails({ route }) {
                 source={{ uri: page.cover }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
+                contentPosition="top"
                 cachePolicy="memory-disk"
               />
             ) : (

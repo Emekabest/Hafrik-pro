@@ -3,16 +3,19 @@
 //   • All tab: max 3 per section + "See all" button that switches to that tab
 //   • Individual tabs: max 5 items + inline "Show more" expansion
 //   • Debounced search (300 ms) + AsyncStorage recent searches
+//   • Auto-suggest dropdown (recent searches + live results) below search bar
 //   • Optimistic follow / join toggles
 //   • Reel detection → Reels2 with initialPostId
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, StyleSheet, StatusBar,
+  View, Text, StyleSheet, StatusBar,
+  TouchableOpacity, ScrollView,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import useStore from '../../repository/store';
 import { useAuth } from '../../AuthContext';
 import SearchSuggestionController from '../../controllers/searchsuggestioncontroller';
@@ -23,11 +26,18 @@ import {
 } from '../../components/search/SearchCards';
 import SearchEmptyState from '../../components/search/SearchEmptyState';
 import { Colors } from '../../theme/colors';
+import AppDetails from '../../helpers/appdetails';
 
 const RECENT_KEY = 'hafrik_recent_searches';
-const MAX_RECENT = 5;
-const ALL_SECTION_LIMIT = 3;   // max items shown per section in "All" tab
-const TAB_ITEM_LIMIT    = 5;   // max items shown in individual tabs before "Show more"
+const MAX_RECENT = 8;
+const ALL_SECTION_LIMIT = 3;
+const TAB_ITEM_LIMIT    = 5;
+
+const PRIMARY = Colors.primaryDark;
+const ACCENT  = Colors.primary;
+const DARK    = Colors.black;
+const WHITE   = Colors.white;
+const MUTED   = Colors.secondaryText;
 
 // tabIndex matches TABS array order: 0=All 1=People 2=Posts 3=Pages 4=Groups 5=Articles
 const SECTION_ORDER = [
@@ -38,6 +48,197 @@ const SECTION_ORDER = [
   { type: 'article', label: 'Articles', tabIndex: 5 },
 ];
 
+// Icon for each result type in the suggestion dropdown
+const TYPE_ICON = {
+  user:    'person-outline',
+  post:    'document-text-outline',
+  page:    'business-outline',
+  group:   'people-outline',
+  article: 'newspaper-outline',
+};
+
+// ─── SuggestionsDropdown ──────────────────────────────────────────────────────
+// Shown as a floating panel below the search header when the input is focused.
+// • Empty query  → recent searches list
+// • Has query    → live auto-suggest (top 6 items from debounced results)
+const SuggestionsDropdown = ({
+  query,
+  recentSearches,
+  results,
+  onRecentPress,
+  onRemoveRecent,
+  onClearAll,
+  onSuggestionPress,
+}) => {
+  const hasQuery = !!query?.trim();
+
+  // Auto-suggest: top 6 results, deduplicated by id+type
+  const suggestions = hasQuery
+    ? results.slice(0, 6)
+    : [];
+
+  if (!hasQuery && recentSearches.length === 0) return null;
+  if (hasQuery && suggestions.length === 0) return null;
+
+  return (
+    <View style={sdStyles.panel}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* ── Recent searches (empty query) ── */}
+        {!hasQuery && recentSearches.length > 0 && (
+          <>
+            <View style={sdStyles.headerRow}>
+              <View style={sdStyles.headerLeft}>
+                <Ionicons name="time-outline" size={14} color={MUTED} />
+                <Text style={sdStyles.headerLabel}>Recent</Text>
+              </View>
+              <TouchableOpacity onPress={onClearAll} activeOpacity={0.7}>
+                <Text style={sdStyles.clearAll}>Clear all</Text>
+              </TouchableOpacity>
+            </View>
+            {recentSearches.map((q, i) => (
+              <TouchableOpacity
+                key={`recent_${i}`}
+                style={sdStyles.row}
+                activeOpacity={0.75}
+                onPress={() => onRecentPress(q)}
+              >
+                <View style={sdStyles.iconWrap}>
+                  <Ionicons name="time-outline" size={15} color={MUTED + 'BF'} />
+                </View>
+                <Text style={sdStyles.rowText} numberOfLines={1}>{q}</Text>
+                <TouchableOpacity
+                  onPress={() => onRemoveRecent(q)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={15} color={MUTED + 'A0'} />
+                </TouchableOpacity>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {/* ── Live suggestions (has query) ── */}
+        {hasQuery && suggestions.length > 0 && (
+          <>
+            <View style={sdStyles.headerRow}>
+              <View style={sdStyles.headerLeft}>
+                <Ionicons name="search-outline" size={14} color={ACCENT} />
+                <Text style={sdStyles.headerLabel}>Suggestions</Text>
+              </View>
+            </View>
+            {suggestions.map((item, i) => {
+              const type  = (item.type || 'post').toLowerCase();
+              const icon  = TYPE_ICON[type] || 'search-outline';
+              const label = item.title || item.name || item.username || '';
+              const sub   = item.subtitle || item.username || item.about || '';
+              return (
+                <TouchableOpacity
+                  key={`sug_${item.id}_${i}`}
+                  style={sdStyles.row}
+                  activeOpacity={0.75}
+                  onPress={() => onSuggestionPress(item)}
+                >
+                  <View style={[sdStyles.iconWrap, { backgroundColor: ACCENT + '14' }]}>
+                    <Ionicons name={icon} size={15} color={ACCENT} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={sdStyles.rowText} numberOfLines={1}>{label}</Text>
+                    {!!sub && sub !== label && (
+                      <Text style={sdStyles.rowSub} numberOfLines={1}>{sub}</Text>
+                    )}
+                  </View>
+                  <Ionicons name="arrow-up-back-outline" size={13} color={MUTED + '80'} />
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+};
+
+const sdStyles = StyleSheet.create({
+  panel: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    backgroundColor: WHITE,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    maxHeight: 340,
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 12,
+    overflow: 'hidden',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: MUTED,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    fontFamily: AppDetails.fontFamily?.redex?.bold,
+  },
+  clearAll: {
+    fontSize: 12,
+    color: ACCENT,
+    fontWeight: '600',
+    fontFamily: AppDetails.fontFamily?.inter?.semiBold,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: DARK + '07',
+  },
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: Colors.surfaceTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowText: {
+    flex: 1,
+    fontSize: 14,
+    color: DARK,
+    fontFamily: AppDetails.fontFamily?.inter?.regular,
+  },
+  rowSub: {
+    fontSize: 11.5,
+    color: MUTED,
+    marginTop: 1,
+    fontFamily: AppDetails.fontFamily?.inter?.regular,
+  },
+});
+
+// ─── SearchScreen ─────────────────────────────────────────────────────────────
 const SearchScreen = () => {
   const navigation = useNavigation();
   const route      = useRoute();
@@ -55,8 +256,9 @@ const SearchScreen = () => {
   const [suggestedPeople, setSuggestedPeople] = useState([]);
   const [followedIds,     setFollowedIds]     = useState(new Set());
   const [joinedIds,       setJoinedIds]       = useState(new Set());
-  // Whether the current individual tab is showing all items (past the 5-item limit)
   const [showAllItems,    setShowAllItems]    = useState(false);
+  const [inputFocused,    setInputFocused]    = useState(false);
+  const [headerHeight,    setHeaderHeight]    = useState(0);
 
   const inputRef    = useRef(null);
   const debounceRef = useRef(null);
@@ -153,6 +355,11 @@ const SearchScreen = () => {
     });
   }, []);
 
+  const clearAllRecent = useCallback(() => {
+    setRecentSearches([]);
+    AsyncStorage.removeItem(RECENT_KEY);
+  }, []);
+
   // ── Navigation / back ──────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
     if (navigation.canGoBack()) navigation.goBack();
@@ -165,12 +372,12 @@ const SearchScreen = () => {
   // ── Item press ─────────────────────────────────────────────────────────────
   const handleItemPress = useCallback((item) => {
     saveRecent(searchQuery);
+    inputRef.current?.blur();
     const type = (item.type || '').toLowerCase();
     if (type === 'user')    return navigation.navigate('UserProfile',    { userId: item.id });
     if (type === 'page')    return navigation.navigate('BusinessDetails', { pageId: item.id });
     if (type === 'group')   return navigation.navigate('GroupDetails',    { groupId: item.id });
     if (type === 'article') return navigation.navigate('ArticleDetails',  { postId: item.id, title: item.title, link: item.link });
-    // Reels always open the full-screen Reels viewer
     if (type === 'reel' || type === 'video') {
       return navigation.navigate('Reels2', {
         initialReels: [item],
@@ -180,6 +387,25 @@ const SearchScreen = () => {
     }
     navigation.navigate('CommentScreen', { feedId: item.id });
   }, [navigation, saveRecent, searchQuery]);
+
+  // ── Suggestion tap (from dropdown) ────────────────────────────────────────
+  const handleSuggestionPress = useCallback((item) => {
+    saveRecent(item.title || item.name || item.username || searchQuery);
+    inputRef.current?.blur();
+    const type = (item.type || '').toLowerCase();
+    if (type === 'user')    return navigation.navigate('UserProfile',    { userId: item.id });
+    if (type === 'page')    return navigation.navigate('BusinessDetails', { pageId: item.id });
+    if (type === 'group')   return navigation.navigate('GroupDetails',    { groupId: item.id });
+    if (type === 'article') return navigation.navigate('ArticleDetails',  { postId: item.id, title: item.title });
+    navigation.navigate('PostDetail', { postId: item.id });
+  }, [navigation, saveRecent, searchQuery]);
+
+  // ── Recent item tap (from dropdown) ───────────────────────────────────────
+  const handleRecentPress = useCallback((q) => {
+    setSearchQuery(q);
+    saveRecent(q);
+    inputRef.current?.blur();
+  }, [setSearchQuery, saveRecent]);
 
   // ── Follow toggle (optimistic) ─────────────────────────────────────────────
   const handleFollowToggle = useCallback(async (item) => {
@@ -229,7 +455,6 @@ const SearchScreen = () => {
 
   // ── Build flat FlatList data ────────────────────────────────────────────────
   const buildListData = useCallback(() => {
-    // Loading: skeleton placeholders
     if (isLoading) {
       return [0, 1, 2, 3, 4].map(i => ({ _key: `sk_${i}`, _type: 'skeleton' }));
     }
@@ -276,7 +501,6 @@ const SearchScreen = () => {
 
       if (totalShown === 0) return [];
 
-      // Prepend results label
       data.unshift({
         _key: 'results_label',
         _type: 'results_label',
@@ -314,8 +538,7 @@ const SearchScreen = () => {
 
   // ── Render item ─────────────────────────────────────────────────────────────
   const renderItem = useCallback(({ item }) => {
-    // Structural items
-    if (item._type === 'skeleton')      return <SkeletonCard />;
+    if (item._type === 'skeleton')       return <SkeletonCard />;
     if (item._type === 'section_header') return <SectionHeader title={item.title} count={item.count} />;
     if (item._type === 'results_label')  return <ResultsLabel count={item.count} query={item.query} />;
     if (item._type === 'show_more') {
@@ -337,7 +560,6 @@ const SearchScreen = () => {
       );
     }
 
-    // Content cards
     const onPress = () => handleItemPress(item);
 
     if (item._type === 'user') return (
@@ -368,6 +590,12 @@ const SearchScreen = () => {
   const q         = searchQuery?.trim();
   const showEmpty = !isLoading && listData.length === 0;
 
+  // Show dropdown when focused AND (has recent searches on empty, or has suggestions while typing)
+  const showDropdown = inputFocused && (
+    (!q && recentSearches.length > 0) ||
+    (!!q && results.length > 0)
+  );
+
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" />
@@ -376,13 +604,30 @@ const SearchScreen = () => {
         inputRef={inputRef}
         searchQuery={searchQuery}
         onChangeText={(text) => { setSearchQuery(text); setShowAllItems(false); }}
-        onSubmit={() => saveRecent(searchQuery)}
+        onSubmit={() => { saveRecent(searchQuery); inputRef.current?.blur(); }}
         onBack={handleBack}
         onClear={() => { setSearchQuery(''); setResults([]); setShowAllItems(false); }}
         isLoading={isLoading}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        onFocusChange={setInputFocused}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       />
+
+      {/* ── Suggestions dropdown (recent + live) ── */}
+      {showDropdown && (
+        <View style={[styles.dropdownContainer, { top: headerHeight }]}>
+          <SuggestionsDropdown
+            query={q}
+            recentSearches={recentSearches}
+            results={results}
+            onRecentPress={handleRecentPress}
+            onRemoveRecent={removeRecent}
+            onClearAll={clearAllRecent}
+            onSuggestionPress={handleSuggestionPress}
+          />
+        </View>
+      )}
 
       <FlashList
         data={listData}
@@ -396,11 +641,13 @@ const SearchScreen = () => {
               onTrendingPress={(label) => {
                 setSearchQuery(label);
                 saveRecent(label);
+                inputRef.current?.blur();
               }}
               recentSearches={recentSearches}
               onRecentPress={(label) => {
                 setSearchQuery(label);
                 saveRecent(label);
+                inputRef.current?.blur();
               }}
               onRemoveRecent={removeRecent}
               suggestedPeople={suggestedPeople}
@@ -429,6 +676,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 60,
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 99,
   },
 });
 
