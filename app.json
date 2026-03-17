@@ -24,7 +24,13 @@
       }
     },
     "plugins": [
-      "expo-font",
+      ["expo-font", {
+        "fonts": [
+          "./assets/fonts/ionicons.ttf",
+          "./assets/fonts/material-community.ttf",
+          "./assets/fonts/feather.ttf"
+        ]
+      }],
       [
         "expo-video",
         {

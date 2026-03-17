@@ -28,6 +28,9 @@ import { ReadexPro_200ExtraLight,  ReadexPro_300Light, ReadexPro_400Regular, Rea
 import { ShadowsIntoLight_400Regular } from '@expo-google-fonts/shadows-into-light';
 import { Inter_300Light, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_400Regular_Italic, Inter_500Medium_Italic, Inter_600SemiBold_Italic } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold  } from "@expo-google-fonts/outfit";
+import IoniconsFont from './assets/fonts/ionicons.ttf';
+import MaterialCommunityIconsFont from './assets/fonts/material-community.ttf';
+import FeatherFont from './assets/fonts/feather.ttf';
 import GroupDetails from "./src/pages/groups/GroupDetails";
 import GuideScreen from './src/pages/GuideScreen';
 import JobsScreen from './src/pages/JobsScreen';
@@ -237,6 +240,11 @@ function AppNavigator() {
           'WorkSans-Bold': WorkSans_700Bold,
 
           'ShadowsIntoLight-Regular': ShadowsIntoLight_400Regular,
+
+          // Vector icon fonts – loaded here so they're ready before any icon renders
+          'ionicons': IoniconsFont,
+          'material-community': MaterialCommunityIconsFont,
+          'feather': FeatherFont,
       })
   
   

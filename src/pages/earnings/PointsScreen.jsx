@@ -434,6 +434,8 @@ export default function PointsScreen() {
     </>
   );
 
+
+
   return (
     // <View style={[ps.root, { paddingTop: insets.top }]}>
     //   {/* Top bar */}
@@ -463,6 +465,7 @@ export default function PointsScreen() {
     // </View>
     <View style={[ps.root, { paddingTop: insets.top, alignItems: 'center', justifyContent: 'center' }]}>
         <Text style={{color:"#fff"}}>Coming Soon</Text>
+        <Ionicons name="star" size={48} color="#fff" />
     </View>
   );
 }
