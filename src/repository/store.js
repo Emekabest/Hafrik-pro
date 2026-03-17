@@ -103,11 +103,22 @@ const useStore = create((set, get) => ({
     feeds: {
         ...state.feeds,
         feedsById: {
-             ...state.feeds.feedsById, 
-             [feedId]: updatedFeed 
+             ...state.feeds.feedsById,
+             [feedId]: updatedFeed
         }
     }
     })),
+
+    removeFeedById: (feedId) => set((state) => {
+        const feedsById = { ...state.feeds.feedsById };
+        delete feedsById[feedId];
+        // Also remove from every list that contains this id
+        const lists = {};
+        Object.entries(state.feeds.lists).forEach(([listName, ids]) => {
+            lists[listName] = ids.filter(id => String(id) !== String(feedId));
+        });
+        return { feeds: { ...state.feeds, feedsById, lists } };
+    }),
 
 
     addFeedsToList: (listName, feedsArray) => set((state) => {

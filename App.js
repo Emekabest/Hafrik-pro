@@ -64,6 +64,7 @@ import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen from './src/pages/settings/SettingsScreen';
 import SearchScreen from './src/pages/search/searchscreen';
 import EarningsScreen        from './src/pages/earnings/EarningsScreen';
+import PointsScreen          from './src/pages/earnings/PointsScreen';
 import MyPagesAndGroupsScreen   from './src/pages/mypages/MyPagesAndGroupsScreen';
 import JoinedCommunitiesScreen from './src/pages/communities/JoinedCommunitiesScreen';
 import LikedBusinessesScreen   from './src/pages/businesses/LikedBusinessesScreen';
@@ -71,6 +72,7 @@ import ExchangeHomeScreen    from './src/pages/exchange/ExchangeHomeScreen';
 import ExchangeConfirmScreen from './src/pages/exchange/ExchangeConfirmScreen';
 import ExchangeHistoryScreen from './src/pages/exchange/ExchangeHistoryScreen';
 import ExchangeAdminScreen   from './src/pages/exchange/ExchangeAdminScreen';
+import SavedPostsScreen      from './src/pages/saved/SavedPostsScreen';
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { NotificationProvider } from './context/notificationcontext';
@@ -364,7 +366,9 @@ function AppNavigator() {
               <Stack.Screen name="MyPagesAndGroups"    component={MyPagesAndGroupsScreen}   options={{ headerShown: false }} />
               <Stack.Screen name="JoinedCommunities" component={JoinedCommunitiesScreen}  options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="LikedBusinesses"   component={LikedBusinessesScreen}    options={{ headerShown: false, gestureEnabled: true }} />
-              <Stack.Screen name="Earnings"       component={EarningsScreen}        options={{ headerShown: false }} />
+              <Stack.Screen name="SavedPosts"        component={SavedPostsScreen}          options={{ headerShown: false, gestureEnabled: true }} />
+              <Stack.Screen name="Earnings"      component={EarningsScreen}   options={{ headerShown: false }} />
+              <Stack.Screen name="PointsScreen"  component={PointsScreen}     options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeHome"    component={ExchangeHomeScreen}    options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeConfirm" component={ExchangeConfirmScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} options={{ headerShown: false }} />

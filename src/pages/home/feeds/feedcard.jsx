@@ -5,6 +5,13 @@ import {
   TouchableOpacity,
   View,
   Animated,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import React, { memo, useMemo, useCallback, useState, useRef } from "react";
 import AppDetails from "../../../helpers/appdetails";
@@ -23,6 +30,8 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuth } from '../../../AuthContext';
 import { Colors } from '../../../theme/colors';
 import useStore from '../../../repository/store';
+import { editPost, deletePost } from '../../../api/feedApi';
+import { Alert } from 'react-native';
 import ToggleFeedController from '../../../controllers/tooglefeedcontroller';
 import { useDoubleTap } from '../../reels/useDoubleTap';
 import LinkPreview from '../../../components/LinkPreview';
@@ -82,6 +91,10 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   const [repostModalVisible,         setRepostModalVisible]         = useState(false);
   const [saveCollectionsModalVisible, setSaveCollectionsModalVisible] = useState(false);
   const [adultRevealed, setAdultRevealed] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editDraftText,    setEditDraftText]    = useState('');
+  const [editSaving,       setEditSaving]       = useState(false);
+  const [editError,        setEditError]        = useState('');
 
   // ── Double-tap heart animation ─────────────────────────────────────────────
   const heartScaleAnim   = useRef(new Animated.Value(0)).current;
@@ -263,6 +276,55 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     return (feed?.type === 'text' || feed?.type === '' || feed?.type === 'post') && !hasMedia;
   }, [feed?.type, hasMedia]);
 
+  // ── Edit post ─────────────────────────────────────────────────────────────
+  const handleEditOpen = useCallback(() => {
+    setEditDraftText(feed?.text ?? '');
+    setEditError('');
+    setEditModalVisible(true);
+  }, [feed?.text]);
+
+  const handleEditSave = useCallback(async () => {
+    const trimmed = editDraftText.trim();
+    if (!trimmed) { setEditError('Post text cannot be empty.'); return; }
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await editPost(feed?.id, trimmed, token);
+      // Optimistic update — patch text in global store without reload
+      const { feeds: storeFeeds, updateFeedById } = useStore.getState();
+      const current = storeFeeds.feedsById[feed?.id];
+      if (current) updateFeedById(feed.id, { ...current, text: trimmed });
+      setEditModalVisible(false);
+    } catch (err) {
+      setEditError(err?.message || 'Failed to save. Please try again.');
+    } finally {
+      setEditSaving(false);
+    }
+  }, [editDraftText, feed?.id, token]);
+
+  // ── Delete post ───────────────────────────────────────────────────────────
+  const handleDeletePost = useCallback(() => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePost(feed?.id, token);
+              useStore.getState().removeFeedById(feed?.id);
+            } catch (err) {
+              Alert.alert('Error', err?.message || 'Could not delete post. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }, [feed?.id, token]);
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const isReel = feed?.type === 'reel' || (
     feed?.media?.length === 1 &&
@@ -289,8 +351,14 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       navigation.navigate('ArticleDetails', { postId: feed?.id, title: feed?.payload?.title });
       return;
     }
+    // Shared article → open the original article in ArticleDetails
+    if (feed?.type === 'shared' && feed?.shared_post?.type === 'article') {
+      const orig = feed.shared_post;
+      navigation.navigate('ArticleDetails', { postId: orig.id, title: orig.payload?.title ?? orig.title });
+      return;
+    }
     navigation.navigate('PostDetail', { postId: feed?.id });
-  }, [feed?.id, feed?.type, feed?.payload?.title, navigation, onPostPress, isReel, feed]);
+  }, [feed?.id, feed?.type, feed?.payload?.title, feed?.shared_post, navigation, onPostPress, isReel, feed]);
 
   const handleOwnerPress = useCallback(() => {
     const route = getOwnerRoute(user);
@@ -461,10 +529,35 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           privacyIcon={privacyIcon}
           isBoosted={isBoosted}
           onFollow={isAnonymous ? undefined : handleFollow}
+          onEdit={handleEditOpen}
+          onDelete={handleDeletePost}
         />
 
-        {/* ── Adult content blur overlay ── */}
-        {isAdult ? (
+        {/* ── Group / Community creation card ── */}
+        {feed?.type === 'group' && (() => {
+          const groupId    = feed?.group_id ?? feed?.group?.id ?? null;
+          const groupName  = feed?.group?.name ?? feed?.group?.title ?? feed?.group_name ?? 'a community';
+          const handlePress = () => groupId && navigation.navigate('GroupDetails', { groupId });
+          return (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handlePress}
+              style={styles.groupCreationCard}
+            >
+              <View style={styles.groupCreationIconWrap}>
+                <Ionicons name="people" size={22} color={ACCENT} />
+              </View>
+              <View style={styles.groupCreationBody}>
+                <Text style={styles.groupCreationLabel}>Created a new community</Text>
+                <Text style={styles.groupCreationName} numberOfLines={1}>{groupName}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.neutral430 ?? '#999'} />
+            </TouchableOpacity>
+          );
+        })()}
+
+        {/* ── Adult content blur overlay + regular content (skip for group creation) ── */}
+        {feed?.type !== 'group' && (isAdult ? (
           <TouchableOpacity
             style={styles.adultOverlay}
             activeOpacity={0.85}
@@ -552,7 +645,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
               )
             ) : null}
           </>
-        )}
+        ))}
 
         {/* ── Hashtags ── */}
         {allTags.length > 0 ? (
@@ -621,6 +714,79 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
         onClose={() => setRepostModalVisible(false)}
         onRepostWithComment={() => { setRepostModalVisible(false); setShareModalVisible(true); }}
       />
+
+      {/* ── Edit Post Modal ── */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            style={editStyles.overlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={editStyles.sheet}>
+                {/* Handle bar */}
+                <View style={editStyles.handle} />
+
+                {/* Header */}
+                <View style={editStyles.header}>
+                  <Text style={editStyles.title}>Edit Post</Text>
+                  <TouchableOpacity
+                    onPress={() => setEditModalVisible(false)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close" size={22} color={Colors.neutral700} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Text input */}
+                <TextInput
+                  style={editStyles.input}
+                  value={editDraftText}
+                  onChangeText={setEditDraftText}
+                  multiline
+                  autoFocus
+                  placeholder="What's on your mind?"
+                  placeholderTextColor={Colors.secondaryText}
+                  textAlignVertical="top"
+                />
+
+                {/* Error */}
+                {!!editError && (
+                  <Text style={editStyles.errorText}>{editError}</Text>
+                )}
+
+                {/* Actions */}
+                <View style={editStyles.actions}>
+                  <TouchableOpacity
+                    style={editStyles.cancelBtn}
+                    onPress={() => setEditModalVisible(false)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={editStyles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[editStyles.saveBtn, editSaving && editStyles.saveBtnDisabled]}
+                    onPress={handleEditSave}
+                    activeOpacity={0.85}
+                    disabled={editSaving}
+                  >
+                    {editSaving
+                      ? <ActivityIndicator size="small" color={Colors.white} />
+                      : <Text style={editStyles.saveText}>Save</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* Save to Collections Modal */}
       <SaveCollectionsModal
@@ -787,6 +953,43 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
 
+  // ── Group creation card ────────────────────────────────────────────────────
+  groupCreationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: Colors.white,
+    gap: 10,
+  },
+  groupCreationIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: ACCENT + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupCreationBody: {
+    flex: 1,
+  },
+  groupCreationLabel: {
+    fontSize: 12,
+    color: Colors.secondaryText ?? '#888',
+    fontFamily: AppDetails.fontFamily?.body,
+  },
+  groupCreationName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: ACCENT,
+    fontFamily: AppDetails.fontFamily?.heading,
+    marginTop: 2,
+  },
+
   // ── Adult content overlay ──────────────────────────────────────────────────
   adultOverlay: {
     marginTop: 8,
@@ -808,10 +1011,103 @@ const styles = StyleSheet.create({
 
 });
 
+// ─── Edit Post Modal styles ───────────────────────────────────────────────────
+const editStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.48)',
+  },
+  sheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingTop: 12,
+  },
+  handle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: Colors.neutral200 ?? '#E0E0E0',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: Colors.black,
+    fontFamily: AppDetails.fontFamily?.heading,
+  },
+  input: {
+    minHeight: 120,
+    maxHeight: 220,
+    borderWidth: 1.5,
+    borderColor: Colors.borderLight ?? '#E8E8E8',
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 15,
+    color: Colors.black,
+    fontFamily: AppDetails.fontFamily?.body,
+    backgroundColor: Colors.surfaceTint ?? '#F8F8FC',
+    marginBottom: 10,
+  },
+  errorText: {
+    fontSize: 13,
+    color: Colors.error ?? '#E53935',
+    marginBottom: 10,
+    fontFamily: AppDetails.fontFamily?.body,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.borderLight ?? '#E0E0E0',
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.neutral700 ?? '#444',
+    fontFamily: AppDetails.fontFamily?.body,
+  },
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: BRAND,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
+  saveText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.white,
+    fontFamily: AppDetails.fontFamily?.body,
+  },
+});
+
 // ✅ memo includes entity so routing label changes still update card
 export default memo(FeedCard, (prev, next) => {
   return (
     prev.feed.id                 === next.feed.id                 &&
+    prev.feed.text               === next.feed.text               &&
     prev.feed.likes_count        === next.feed.likes_count        &&
     prev.feed.comments_count     === next.feed.comments_count     &&
     prev.feed.is_liked           === next.feed.is_liked           &&

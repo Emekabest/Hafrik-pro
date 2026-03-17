@@ -72,6 +72,8 @@ const SearchHeader = ({
   activeTab,
   onTabChange,
   inputRef,
+  onFocusChange,
+  onLayout,
 }) => {
   const { top } = useSafeAreaInsets();
   const [inputFocused, setInputFocused] = useState(false);
@@ -91,7 +93,7 @@ const SearchHeader = ({
   });
 
   return (
-    <View style={[styles.header, { paddingTop: top + 10 }]}>
+    <View style={[styles.header, { paddingTop: top + 10 }]} onLayout={onLayout}>
       {/* Decorative blobs */}
       <View style={styles.blob1} />
       <View style={styles.blob2} />
@@ -123,8 +125,8 @@ const SearchHeader = ({
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
+            onFocus={() => { setInputFocused(true); onFocusChange?.(true); }}
+            onBlur={() => { setInputFocused(false); onFocusChange?.(false); }}
             onSubmitEditing={onSubmit}
           />
           {isLoading ? (
