@@ -435,31 +435,34 @@ export default function PointsScreen() {
   );
 
   return (
-    <View style={[ps.root, { paddingTop: insets.top }]}>
-      {/* Top bar */}
-      <View style={ps.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.85} style={ps.backBtn}>
-          <Ionicons name="arrow-back" size={20} color={WHITE} />
-        </TouchableOpacity>
-        <Text style={ps.topTitle}>Hafrik Points</Text>
-        <View style={{ width: 38 }} />
-      </View>
+    // <View style={[ps.root, { paddingTop: insets.top }]}>
+    //   {/* Top bar */}
+    //   <View style={ps.topBar}>
+    //     <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.85} style={ps.backBtn}>
+    //       <Ionicons name="arrow-back" size={20} color={WHITE} />
+    //     </TouchableOpacity>
+    //     <Text style={ps.topTitle}>Hafrik Points</Text>
+    //     <View style={{ width: 38 }} />
+    //   </View>
 
-      <FlatList
-        style={ps.list}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
-        showsVerticalScrollIndicator={false}
-        data={transactions}
-        keyExtractor={(item) => String(item.log_id)}
-        renderItem={renderTxItem}
-        ListHeaderComponent={<ListHeader />}
-        ListFooterComponent={<ListFooter />}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.4}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={WHITE} />
-        }
-      />
+    //   <FlatList
+    //     style={ps.list}
+    //     contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+    //     showsVerticalScrollIndicator={false}
+    //     data={transactions}
+    //     keyExtractor={(item) => String(item.log_id)}
+    //     renderItem={renderTxItem}
+    //     ListHeaderComponent={<ListHeader />}
+    //     ListFooterComponent={<ListFooter />}
+    //     onEndReached={loadMore}
+    //     onEndReachedThreshold={0.4}
+    //     refreshControl={
+    //       <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={WHITE} />
+    //     }
+    //   />
+    // </View>
+    <View style={[ps.root, { paddingTop: insets.top, alignItems: 'center', justifyContent: 'center' }]}>
+        <Text style={{color:"#fff"}}>Coming Soon</Text>
     </View>
   );
 }
