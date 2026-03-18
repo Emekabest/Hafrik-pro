@@ -33,8 +33,9 @@ const Reels2 = () => {
   const isFocused       = useIsFocused();
   const setCurrentReel  = useStore((s) => s.setCurrentReel);
 
-  const [reels,     setReels]     = useState([]);
-  const [mode,      setMode]      = useState(initialMode);
+  const [reels,      setReels]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [mode,       setMode]       = useState(initialMode);
   const [itemHeight, setItemHeight] = useState(SCREEN_H);
   const hasSeededRef = useRef(false);
 
@@ -117,6 +118,7 @@ const Reels2 = () => {
         media: Array.isArray(r.media) ? (r.media[0] ?? null) : r.media,
       }));
       if (validReels.length > 0) {
+        setLoading(false);
         setReels([...validReels, { id: SKELETON_ID, type: 'skeleton' }]);
         // Autoplay the tapped reel immediately
         const targetReel = validReels[startIndex] ?? validReels[0];
@@ -137,8 +139,9 @@ const Reels2 = () => {
     }
 
     setReels([]);
+    setLoading(true);
     setCurrentReel({ shouldPlay: false, reelId: null });
-    doFetch(mode, seed, 1, false);
+    doFetch(mode, seed, 1, false).finally(() => setLoading(false));
   }, [mode, token]);   // intentionally omitting doFetch / setCurrentReel (stable refs)
 
   // ── Autoplay first reel once data arrives ─────────────────────────────────
@@ -217,6 +220,11 @@ const Reels2 = () => {
         onModeChange={handleModeChange}
         onSearchPress={() => navigation.navigate('SearchScreen')}
       />
+
+      {/* Initial loading skeleton — shown until first data arrives */}
+      {loading && reels.length === 0 && (
+        <SkeletonReelCard height={itemHeight} />
+      )}
 
       <FlatList
         ref={flatListRef}

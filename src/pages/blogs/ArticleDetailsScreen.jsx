@@ -116,15 +116,12 @@ async function saveBookmarksSet(set) {
   } catch {}
 }
 
-async function sendClapToApi({ postId, clapsToAdd, token }) {
+async function savePostToApi(postId, token) {
   try {
-    const form = new FormData();
-    form.append('post_id', String(postId));
-    form.append('claps', String(clapsToAdd));
-    const res = await fetch('https://hafrik.com/api/v1/article/clap.php', {
+    const res = await fetch('https://hafrik.com/api/v1/posts/save.php', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ post_id: postId }),
     });
     return res.ok;
   } catch {
@@ -167,10 +164,6 @@ export default function ArticleDetailsScreen({ navigation, route }) {
 
   // Bookmark
   const [bookmarked, setBookmarked] = useState(false);
-
-  // Claps (optimistic UI)
-  const [claps, setClaps] = useState(0);
-  const clapBurst = useRef(new Animated.Value(0)).current;
 
   // Likes
   const [likesCount, setLikesCount] = useState(0);
@@ -222,9 +215,6 @@ export default function ArticleDetailsScreen({ navigation, route }) {
         if (!mounted) return;
 
         setArticle(data);
-
-        // If API later returns claps_count, use it. For now default to 0.
-        setClaps(Number(data?.claps || data?.claps_count || 0));
 
         // Likes
         setLikesCount(Number(data?.likes_count || data?.likes || 0));
@@ -312,8 +302,10 @@ export default function ArticleDetailsScreen({ navigation, route }) {
 
     const set = await loadBookmarksSet();
     const id = String(postId);
+    const wasSaved = set.has(id);
 
-    if (set.has(id)) {
+    // Optimistic update
+    if (wasSaved) {
       set.delete(id);
       setBookmarked(false);
     } else {
@@ -321,7 +313,10 @@ export default function ArticleDetailsScreen({ navigation, route }) {
       setBookmarked(true);
     }
     await saveBookmarksSet(set);
-  }, [postId]);
+
+    // Sync to server (toggle — server handles saved/unsaved state)
+    savePostToApi(postId, token);
+  }, [postId, token]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -331,28 +326,6 @@ export default function ArticleDetailsScreen({ navigation, route }) {
       });
     } catch {}
   }, [article, navTitle]);
-
-  const handleClap = useCallback(async () => {
-    if (!postId) return;
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    // Optimistic add
-    setClaps((c) => c + 1);
-
-    // Burst animation
-    clapBurst.setValue(0);
-    Animated.timing(clapBurst, {
-      toValue: 1,
-      duration: 380,
-      useNativeDriver: true,
-    }).start();
-
-    // Fire and forget API call (batching can come later)
-    try {
-      await sendClapToApi({ postId, clapsToAdd: 1, token });
-    } catch {}
-  }, [postId, clapBurst]);
 
   const openRelated = useCallback((rel) => {
     if (!rel?.post_id) return;
@@ -423,20 +396,6 @@ export default function ArticleDetailsScreen({ navigation, route }) {
   const stickyOpacity = stickyAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 1],
-  });
-
-  // Clap burst animation styles
-  const burstScale = clapBurst.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.75, 1.25],
-  });
-  const burstOpacity = clapBurst.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, 1, 0],
-  });
-  const burstTranslate = clapBurst.interpolate({
-    inputRange: [0, 1],
-    outputRange: [10, -24],
   });
 
   return (
@@ -624,32 +583,10 @@ export default function ArticleDetailsScreen({ navigation, route }) {
               </Text>
             </Pressable>
 
-            <Pressable style={styles.actionBtn} onPress={handleClap}>
-              <Ionicons name="hand-left-outline" size={18} color={BRAND} />
-              <Text style={styles.actionTxt}>Clap</Text>
-
-              {/* burst */}
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.clapBurst,
-                  {
-                    opacity: burstOpacity,
-                    transform: [
-                      { translateY: burstTranslate },
-                      { scale: burstScale },
-                    ],
-                  },
-                ]}
-              >
-                <Text style={styles.clapBurstTxt}>+1</Text>
-              </Animated.View>
+            <Pressable style={styles.actionBtn} onPress={handleShare}>
+              <Ionicons name="share-outline" size={18} color={BRAND} />
+              <Text style={styles.actionTxt}>Share</Text>
             </Pressable>
-
-            <View style={styles.clapCountPill}>
-              <Ionicons name="sparkles-outline" size={14} color={ACCENT} />
-              <Text style={styles.clapCountTxt}>{formatNumber(claps)}</Text>
-            </View>
           </View>
 
           {/* Snippet (full) */}
@@ -785,11 +722,15 @@ export default function ArticleDetailsScreen({ navigation, route }) {
         </View>
       </Animated.ScrollView>
 
-      {/* Floating “Clap” + “Bookmark” + “Share to Timeline” */}
+      {/* Floating action row: Like + Save + Share */}
       <View style={[styles.fabRow, { paddingBottom: Math.max(18, bottom + 10) }]}>
-        <TouchableOpacity style={styles.fab} onPress={handleClap} activeOpacity={0.9}>
-          <Ionicons name={'hand-left-outline'} size={20} color={WHITE} />
-          <Text style={styles.fabTxt}>Clap</Text>
+        <TouchableOpacity
+          style={[styles.fab, isLiked && styles.fabSaved]}
+          onPress={handleLike}
+          activeOpacity={0.9}
+        >
+          <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={20} color={WHITE} />
+          <Text style={styles.fabTxt}>{likesCount > 0 ? formatNumber(likesCount) : 'Like'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -980,29 +921,6 @@ const styles = StyleSheet.create({
   },
   actionTxt: { fontSize: 12.5, fontWeight: '900', color: BRAND },
   actionTxtActive: { color: WHITE },
-
-  clapCountPill: {
-    marginLeft: 'auto',
-    backgroundColor: ACCENT + '1F',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  clapCountTxt: { fontSize: 12, fontWeight: '900', color: ACCENT },
-
-  clapBurst: {
-    position: 'absolute',
-    right: 8,
-    top: -6,
-    backgroundColor: WARM + 'F2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  clapBurstTxt: { color: WHITE, fontWeight: '900', fontSize: 11 },
 
   snippetBox: {
     backgroundColor: WHITE,

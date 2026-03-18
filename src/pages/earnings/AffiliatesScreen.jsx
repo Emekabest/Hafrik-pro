@@ -1,8 +1,8 @@
-// src/pages/earnings/AffiliatesScreen.jsx — Affiliates detail screen
+// src/pages/earnings/AffiliatesScreen.jsx
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Animated, Alert, Share,
+  RefreshControl, Animated, Share,
   Clipboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,45 +14,116 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
 import AppDetails from '../../helpers/appdetails';
-import { getWalletBalance, withdrawAffiliates } from '../../api/walletApi';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
-const BG     = Colors.background ?? '#F7F8FA';
+const BG     = '#F7F8FA';
 const CARD   = Colors.white;
-const BORDER = Colors.borderSoft ?? Colors.border;
 const TEXT_H = Colors.black;
 const TEXT_M = Colors.secondaryText;
 const WHITE  = Colors.white;
-const PURPLE = Colors.purple ?? '#9c27b0';
-const VIOLET = '#6d28d9';
 const GREEN  = Colors.success ?? '#22c55e';
+const GOLD   = '#f59e0b';
+const ORANGE = '#f97316';
+const DEEP_O = '#ea580c';
 
 const FONT_B = AppDetails?.fontFamily?.redex?.bold    ?? 'System';
 const FONT_R = AppDetails?.fontFamily?.inter?.regular ?? 'System';
 const FONT_M = AppDetails?.fontFamily?.inter?.medium  ?? 'System';
 
+const API_URL = 'https://hafrik.com/api/v1/affiliates/index.php';
+const AVA_FB  = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+
 const fmtMoney = (n) =>
   `¥${Number(n ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const AVA_FB = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+// ─── Skeleton block ────────────────────────────────────────────────────────────
+const SkeletonBlock = ({ width, height, radius = 8, style }) => {
+  const anim = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1,   duration: 700, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return (
+    <Animated.View
+      style={[{ width, height, borderRadius: radius, backgroundColor: '#E0E0E0', opacity: anim }, style]}
+    />
+  );
+};
+
+// ─── Referral skeleton row ─────────────────────────────────────────────────────
+const RefSkeleton = () => (
+  <View style={sk.row}>
+    <SkeletonBlock width={42} height={42} radius={21} />
+    <View style={{ flex: 1, gap: 7 }}>
+      <SkeletonBlock width={120} height={12} />
+      <SkeletonBlock width={80}  height={10} />
+    </View>
+    <SkeletonBlock width={48} height={12} radius={6} />
+  </View>
+);
+
+// ─── Level card ───────────────────────────────────────────────────────────────
+const LevelCard = ({ level, reward, description, color, bg }) => (
+  <View style={[as.levelCard, { backgroundColor: bg }]}>
+    <View style={[as.levelBadge, { backgroundColor: color + '22' }]}>
+      <Text style={[as.levelBadgeTxt, { color }]}>L{level}</Text>
+    </View>
+    <Text style={[as.levelReward, { color }]}>{fmtMoney(reward)}</Text>
+    <Text style={as.levelDesc}>{description}</Text>
+  </View>
+);
 
 // ─── Referral row ──────────────────────────────────────────────────────────────
-const ReferralRow = ({ item }) => (
-  <View style={as.refRow}>
-    <ExpoImage
-      source={{ uri: item.avatar || AVA_FB }}
-      style={as.refAvatar}
-      contentFit="cover"
-    />
+const ReferralRow = ({ item, isFirst }) => (
+  <View style={[as.refRow, !isFirst && as.refRowBorder]}>
+    <View style={as.refAvaWrap}>
+      <ExpoImage
+        source={{ uri: item.avatar || item.picture || AVA_FB }}
+        style={as.refAvatar}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+      />
+    </View>
     <View style={as.refMid}>
-      <Text style={as.refName} numberOfLines={1}>{item.name ?? item.username}</Text>
-      <Text style={as.refJoined} numberOfLines={1}>Joined {item.joined_at ?? ''}</Text>
+      <View style={as.refNameRow}>
+        <Text style={as.refUsername} numberOfLines={1}>
+          {item.username ?? item.name ?? '—'}
+        </Text>
+        {(item.verified === true || item.verified === '1' || item.verified === 1) && (
+          <Ionicons name="checkmark-circle" size={14} color={ACCENT} style={{ marginLeft: 4 }} />
+        )}
+      </View>
+      {!!item.name && item.name !== item.username && (
+        <Text style={as.refFullName} numberOfLines={1}>{item.name}</Text>
+      )}
     </View>
     <View style={as.refRight}>
-      <Text style={as.refEarned}>{fmtMoney(item.earned ?? 0)}</Text>
+      <Text style={[as.refEarned, Number(item.earnings ?? item.earned ?? 0) > 0 && { color: GREEN }]}>
+        {fmtMoney(item.earnings ?? item.earned ?? 0)}
+      </Text>
       <Text style={as.refEarnedLabel}>earned</Text>
     </View>
+  </View>
+);
+
+// ─── Empty state ───────────────────────────────────────────────────────────────
+const EmptyReferrals = ({ onShare }) => (
+  <View style={as.emptyWrap}>
+    <LinearGradient colors={[GOLD + '20', ORANGE + '10']} style={as.emptyIllustration}>
+      <Ionicons name="people-outline" size={44} color={GOLD} />
+    </LinearGradient>
+    <Text style={as.emptyTitle}>No referrals yet</Text>
+    <Text style={as.emptySub}>Share your link to start earning when friends join Hafrik</Text>
+    <TouchableOpacity style={as.emptyAction} onPress={onShare} activeOpacity={0.85}>
+      <Ionicons name="share-social-outline" size={16} color={WHITE} />
+      <Text style={as.emptyActionTxt}>Share My Link</Text>
+    </TouchableOpacity>
   </View>
 );
 
@@ -62,290 +133,416 @@ export default function AffiliatesScreen() {
   const { token, user } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const [balance,    setBalance]    = useState(null);
+  const [data,       setData]       = useState(null);
   const [loading,    setLoading]    = useState(true);
+  const [refLoading, setRefLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [copied,     setCopied]     = useState(false);
 
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const heroAnim  = useRef(new Animated.Value(0)).current;
+  const bodyAnim  = useRef(new Animated.Value(0)).current;
+  const bodySlide = useRef(new Animated.Value(20)).current;
 
-  const referralLink = `https://hafrik.com/ref/${user?.username ?? user?.id ?? ''}`;
+  const fallbackLink = `https://hafrik.com/?ref=${user?.username ?? user?.id ?? ''}`;
+  const referralLink = data?.referral_link || fallbackLink;
 
-  const fetchBalance = useCallback(async () => {
+  // ── Fetch ──────────────────────────────────────────────────────────────────
+  const fetchData = useCallback(async () => {
     try {
-      const json = await getWalletBalance(token);
-      if (json?.status === 'success') setBalance(json.data);
+      const res  = await fetch(API_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json?.status === 'success' && json?.data) {
+        setData(json.data);
+      }
     } catch { /* silent */ }
     setLoading(false);
+    setRefLoading(false);
   }, [token]);
 
   useEffect(() => {
-    fetchBalance().then(() => {
+    fetchData().then(() => {
       Animated.parallel([
-        Animated.timing(fadeAnim,  { toValue: 1, duration: 480, useNativeDriver: true }),
-        Animated.spring(scaleAnim, { toValue: 1, friction: 6,   useNativeDriver: true }),
+        Animated.timing(heroAnim, { toValue: 1, duration: 420, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.delay(120),
+          Animated.parallel([
+            Animated.timing(bodyAnim,  { toValue: 1, duration: 400, useNativeDriver: true }),
+            Animated.spring(bodySlide, { toValue: 0, friction: 8, tension: 80, useNativeDriver: true }),
+          ]),
+        ]),
       ]).start();
     });
   }, [token]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchBalance();
+    await fetchData();
     setRefreshing(false);
-  }, [fetchBalance]);
+  }, [fetchData]);
 
+  // ── Actions ────────────────────────────────────────────────────────────────
   const handleCopy = useCallback(() => {
     Clipboard.setString(referralLink);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2400);
   }, [referralLink]);
 
   const handleShare = useCallback(async () => {
     try {
       await Share.share({
-        message: `Join Hafrik and earn points together! Sign up with my link:\n${referralLink}`,
+        message: `Join Hafrik and start earning! Sign up with my link:\n${referralLink}`,
         url: referralLink,
       });
     } catch { /* silent */ }
   }, [referralLink]);
 
-  const affiliateBal  = balance?.affiliate_balance  ?? 0;
-  const totalReferrals = balance?.total_referrals   ?? 0;
-  const totalEarned   = balance?.total_affiliate_earned ?? affiliateBal;
+  // ── Data ───────────────────────────────────────────────────────────────────
+  const balance       = data?.balance        ?? 0;
+  const totalReferrals = data?.total_referrals ?? 0;
+  const levels        = Array.isArray(data?.levels)
+    ? data.levels
+    : [
+        { level: 1, reward: '0.15', description: 'Direct referral' },
+        { level: 2, reward: '0.10', description: "Referral's referral" },
+        { level: 3, reward: '0.05', description: 'Extended network' },
+      ];
+  const referrals = Array.isArray(data?.referrals) ? data.referrals : [];
 
-  // Placeholder referral list — real data would come from a dedicated API
-  const referrals = balance?.referrals ?? [];
+  const LEVEL_COLORS = [
+    { color: GOLD,   bg: GOLD   + '0E' },
+    { color: ORANGE, bg: ORANGE + '0E' },
+    { color: DEEP_O, bg: DEEP_O + '0E' },
+  ];
 
   return (
-    <View style={[as.root, { paddingTop: insets.top }]}>
-      {/* Top bar */}
-      <View style={as.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={as.backBtn} activeOpacity={0.85}>
-          <Ionicons name="arrow-back" size={20} color={WHITE} />
-        </TouchableOpacity>
-        <Text style={as.topTitle}>Affiliates</Text>
-        <View style={{ width: 38 }} />
-      </View>
-
+    <View style={as.root}>
       <ScrollView
-        style={as.scroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={WHITE} />}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={GOLD} />
+        }
       >
-        {/* ── Hero balance card ── */}
-        <Animated.View style={[as.heroWrap, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+        {/* ── Hero (merged header + balance) ── */}
+        <Animated.View style={{ opacity: heroAnim }}>
           <LinearGradient
-            colors={[PURPLE, VIOLET, '#1e1b4b']}
-            style={as.heroGrad}
+            colors={[GOLD, ORANGE, DEEP_O]}
+            style={[as.hero, { paddingTop: insets.top + 8 }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <View style={as.heroBubble1} />
-            <View style={as.heroBubble2} />
-            <Text style={as.heroLabel}>Affiliate Balance</Text>
-            {loading
-              ? <ActivityIndicator color={WHITE} size="large" style={{ marginVertical: 14 }} />
-              : <Text style={as.heroAmount}>{fmtMoney(affiliateBal)}</Text>
-            }
-            <View style={as.heroStats}>
-              <View style={as.heroStat}>
-                <Text style={as.heroStatVal}>{totalReferrals}</Text>
-                <Text style={as.heroStatLabel}>Referrals</Text>
-              </View>
-              <View style={as.heroStatDivider} />
-              <View style={as.heroStat}>
-                <Text style={as.heroStatVal}>{fmtMoney(totalEarned)}</Text>
-                <Text style={as.heroStatLabel}>Total Earned</Text>
-              </View>
+            <View style={as.heroOrb1} />
+            <View style={as.heroOrb2} />
+            <View style={as.heroOrb3} />
+
+            {/* Nav */}
+            <View style={as.heroNav}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={as.heroBack} activeOpacity={0.85}>
+                <Ionicons name="arrow-back" size={20} color={WHITE} />
+              </TouchableOpacity>
+              <Text style={as.heroNavTitle}>Affiliates</Text>
+              <View style={{ width: 38 }} />
             </View>
+
+            {/* Balance */}
+            <Text style={as.heroEyebrow}>TOTAL EARNED</Text>
+            {loading ? (
+              <View style={{ marginVertical: 12 }}>
+                <SkeletonBlock width={140} height={48} radius={10} style={{ backgroundColor: WHITE + '30' }} />
+              </View>
+            ) : (
+              <Text style={as.heroAmount}>{fmtMoney(balance)}</Text>
+            )}
+
+            {/* Referral count pill */}
+            <View style={as.heroPill}>
+              <Ionicons name="people" size={13} color={WHITE + 'CC'} />
+              <Text style={as.heroPillTxt}>
+                {loading ? '—' : `${totalReferrals} Referral${totalReferrals !== 1 ? 's' : ''}`}
+              </Text>
+            </View>
+
+            <Text style={as.heroTagline}>
+              Earn rewards when your friends join Hafrik using your link
+            </Text>
           </LinearGradient>
         </Animated.View>
 
-        {/* ── Withdraw button ── */}
-        <TouchableOpacity
-          style={as.withdrawBtn}
-          activeOpacity={0.85}
-          onPress={() =>
-            Alert.alert(
-              'Withdraw Affiliate Balance',
-              'Go to Wallet to move your affiliate earnings to your wallet balance.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Open Wallet', onPress: () => navigation.navigate('WalletScreen') },
-              ]
-            )
-          }
-        >
-          <LinearGradient colors={[GREEN, '#16a34a']} style={as.withdrawGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Ionicons name="card-outline" size={18} color={WHITE} />
-            <Text style={as.withdrawText}>Move to Wallet</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        {/* ── Body ── */}
+        <Animated.View style={{ opacity: bodyAnim, transform: [{ translateY: bodySlide }] }}>
 
-        {/* ── Referral link card ── */}
-        <View style={as.card}>
-          <View style={as.cardHeader}>
-            <View style={[as.cardIconWrap, { backgroundColor: PURPLE + '18' }]}>
-              <Ionicons name="link" size={16} color={PURPLE} />
-            </View>
-            <Text style={as.cardTitle}>Your Referral Link</Text>
-          </View>
-          <View style={as.linkBox}>
-            <Text style={as.linkText} numberOfLines={1}>{referralLink}</Text>
-          </View>
-          <View style={as.linkActions}>
-            <TouchableOpacity
-              style={[as.linkBtn, { backgroundColor: copied ? GREEN + '18' : PURPLE + '12' }]}
-              onPress={handleCopy}
-              activeOpacity={0.8}
-            >
-              <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color={copied ? GREEN : PURPLE} />
-              <Text style={[as.linkBtnText, { color: copied ? GREEN : PURPLE }]}>
-                {copied ? 'Copied!' : 'Copy Link'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[as.linkBtn, { backgroundColor: ACCENT + '12' }]}
-              onPress={handleShare}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="share-social-outline" size={16} color={ACCENT} />
-              <Text style={[as.linkBtnText, { color: ACCENT }]}>Share</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ── How it works ── */}
-        <View style={as.card}>
-          <View style={as.cardHeader}>
-            <View style={[as.cardIconWrap, { backgroundColor: ACCENT + '15' }]}>
-              <Ionicons name="information-circle-outline" size={16} color={ACCENT} />
-            </View>
-            <Text style={as.cardTitle}>How It Works</Text>
-          </View>
-          {[
-            { icon: 'share-social', text: 'Share your unique referral link with friends' },
-            { icon: 'person-add',   text: 'They sign up and join Hafrik' },
-            { icon: 'star',         text: 'You earn points & affiliate credits for each sign-up' },
-            { icon: 'wallet',       text: 'Move affiliate earnings to your wallet anytime' },
-          ].map((step, i) => (
-            <View key={i} style={as.howRow}>
-              <View style={as.howNum}>
-                <Text style={as.howNumText}>{i + 1}</Text>
+          {/* ── Referral Link card ── */}
+          <View style={as.card}>
+            <View style={as.cardHeader}>
+              <View style={[as.cardIconWrap, { backgroundColor: GOLD + '18' }]}>
+                <Ionicons name="link" size={15} color={GOLD} />
               </View>
-              <View style={[as.howIconWrap, { backgroundColor: PURPLE + '14' }]}>
-                <Ionicons name={step.icon} size={15} color={PURPLE} />
-              </View>
-              <Text style={as.howText}>{step.text}</Text>
+              <Text style={as.cardTitle}>Your Referral Link</Text>
             </View>
-          ))}
-        </View>
-
-        {/* ── Referral list ── */}
-        <View style={as.card}>
-          <View style={as.cardHeader}>
-            <View style={[as.cardIconWrap, { backgroundColor: PURPLE + '18' }]}>
-              <Ionicons name="people-outline" size={16} color={PURPLE} />
+            <View style={as.linkBox}>
+              <Text style={as.linkText} numberOfLines={1}>{referralLink}</Text>
             </View>
-            <Text style={as.cardTitle}>People You Referred</Text>
-            {totalReferrals > 0 && <Text style={as.refCount}>{totalReferrals}</Text>}
+            <View style={as.linkBtns}>
+              <TouchableOpacity
+                style={[as.linkBtn, { backgroundColor: copied ? GREEN + '14' : GOLD + '14' }]}
+                onPress={handleCopy}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={copied ? 'checkmark-circle' : 'copy-outline'} size={16} color={copied ? GREEN : GOLD} />
+                <Text style={[as.linkBtnTxt, { color: copied ? GREEN : GOLD }]}>
+                  {copied ? 'Copied!' : 'Copy Link'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[as.linkBtn, { backgroundColor: ACCENT + '12' }]}
+                onPress={handleShare}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="share-social-outline" size={16} color={ACCENT} />
+                <Text style={[as.linkBtnTxt, { color: ACCENT }]}>Share</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          {loading ? (
-            <ActivityIndicator color={PURPLE} style={{ paddingVertical: 24 }} />
-          ) : referrals.length === 0 ? (
-            <View style={as.emptyRef}>
-              <Ionicons name="people-outline" size={34} color={BORDER} />
-              <Text style={as.emptyText}>No referrals yet</Text>
-              <Text style={as.emptySub}>Share your link to start earning from referrals</Text>
+
+          {/* ── Invite CTA ── */}
+          <TouchableOpacity style={as.inviteBtn} onPress={handleShare} activeOpacity={0.88}>
+            <LinearGradient
+              colors={[GOLD, ORANGE]}
+              style={as.inviteBtnGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="person-add-outline" size={18} color={WHITE} />
+              <Text style={as.inviteBtnTxt}>Invite &amp; Earn</Text>
+              <Ionicons name="arrow-forward" size={16} color={WHITE + 'CC'} />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* ── Levels (horizontal scroll) ── */}
+          <View style={as.sectionLabel}>
+            <View style={as.sectionAccent} />
+            <Text style={as.sectionTxt}>HOW IT WORKS</Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={as.levelsScroll}
+          >
+            {levels.map((lv, i) => {
+              const palette = LEVEL_COLORS[i] ?? LEVEL_COLORS[0];
+              return (
+                <LevelCard
+                  key={i}
+                  level={lv.level ?? i + 1}
+                  reward={lv.reward ?? lv.amount ?? 0}
+                  description={lv.description ?? lv.label ?? ''}
+                  color={palette.color}
+                  bg={palette.bg}
+                />
+              );
+            })}
+
+            {/* Info card at end */}
+            <View style={[as.levelCard, { backgroundColor: '#F0F0F5', width: 150 }]}>
+              <Ionicons name="information-circle-outline" size={22} color={TEXT_M} />
+              <Text style={[as.levelReward, { color: TEXT_M, fontSize: 13 }]}>More levels</Text>
+              <Text style={as.levelDesc}>coming soon</Text>
             </View>
-          ) : (
-            referrals.map((item, i) => <ReferralRow key={i} item={item} />)
-          )}
-        </View>
+          </ScrollView>
+
+          {/* ── Move to Wallet ── */}
+          <TouchableOpacity
+            style={as.moveBtn}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('WalletScreen')}
+          >
+            <LinearGradient
+              colors={[GREEN, '#16a34a']}
+              style={as.moveBtnGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="wallet-outline" size={17} color={WHITE} />
+              <Text style={as.moveBtnTxt}>Move Balance to Wallet</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* ── Referral List ── */}
+          <View style={as.sectionLabel}>
+            <View style={as.sectionAccent} />
+            <Text style={as.sectionTxt}>YOUR REFERRALS</Text>
+            {!refLoading && totalReferrals > 0 && (
+              <View style={as.countPill}>
+                <Text style={as.countPillTxt}>{totalReferrals}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={as.refCard}>
+            {refLoading ? (
+              <>
+                <RefSkeleton />
+                <RefSkeleton />
+                <RefSkeleton />
+              </>
+            ) : referrals.length === 0 ? (
+              <EmptyReferrals onShare={handleShare} />
+            ) : (
+              referrals.map((item, i) => (
+                <ReferralRow key={item.id ?? i} item={item} isFirst={i === 0} />
+              ))
+            )}
+          </View>
+
+        </Animated.View>
       </ScrollView>
     </View>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const as = StyleSheet.create({
-  root:  { flex: 1, backgroundColor: BRAND },
-  topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
-  },
-  backBtn: {
-    width: 38, height: 38, borderRadius: 14,
-    backgroundColor: WHITE + '1A', alignItems: 'center', justifyContent: 'center',
-  },
-  topTitle: { fontSize: 17, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
-  scroll:   { flex: 1, backgroundColor: BG, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
+  root: { flex: 1, backgroundColor: BG },
 
   // Hero
-  heroWrap:    { marginHorizontal: 16, marginTop: 20 },
-  heroGrad:    { borderRadius: 24, padding: 24, overflow: 'hidden' },
-  heroBubble1: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: WHITE + '08', top: -60, right: -40 },
-  heroBubble2: { position: 'absolute', width: 110, height: 110, borderRadius: 55, backgroundColor: WHITE + '08', bottom: -30, left: -20 },
-  heroLabel:   { fontSize: 12, color: WHITE + 'B0', fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', fontFamily: FONT_R },
-  heroAmount:  { fontSize: 40, fontWeight: '900', color: WHITE, fontFamily: FONT_B, marginTop: 4, letterSpacing: -1.5 },
-  heroStats:   { flexDirection: 'row', marginTop: 18, gap: 0 },
-  heroStat:    { flex: 1, alignItems: 'center' },
-  heroStatDivider: { width: 1, backgroundColor: WHITE + '30', marginVertical: 4 },
-  heroStatVal: { fontSize: 18, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
-  heroStatLabel: { fontSize: 11, color: WHITE + 'AA', fontFamily: FONT_R, marginTop: 2 },
+  hero: {
+    paddingHorizontal: 22, paddingBottom: 28, overflow: 'hidden',
+    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+    shadowColor: ORANGE, shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3, shadowRadius: 20, elevation: 12,
+  },
+  heroOrb1: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: WHITE + '0A', top: -80, right: -60 },
+  heroOrb2: { position: 'absolute', width: 140, height: 140, borderRadius: 70,  backgroundColor: WHITE + '07', bottom: -50, left: -40 },
+  heroOrb3: { position: 'absolute', width: 80,  height: 80,  borderRadius: 40,  backgroundColor: WHITE + '06', top: 20, left: 30 },
 
-  // Withdraw button
-  withdrawBtn:  { marginHorizontal: 16, marginTop: 16, borderRadius: 16, overflow: 'hidden' },
-  withdrawGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
-  withdrawText: { fontSize: 14, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
+  heroNav: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: 22,
+  },
+  heroBack: {
+    width: 38, height: 38, borderRadius: 13,
+    backgroundColor: WHITE + '1E', alignItems: 'center', justifyContent: 'center',
+  },
+  heroNavTitle: { fontSize: 16, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
+
+  heroEyebrow: {
+    fontSize: 10, color: WHITE + '90', fontWeight: '700',
+    letterSpacing: 1.6, textTransform: 'uppercase', fontFamily: FONT_R,
+  },
+  heroAmount: {
+    fontSize: 48, fontWeight: '900', color: WHITE,
+    fontFamily: FONT_B, letterSpacing: -2, marginTop: 4, marginBottom: 10,
+  },
+  heroPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: WHITE + '18', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6, marginBottom: 14,
+  },
+  heroPillTxt: { fontSize: 13, fontWeight: '700', color: WHITE, fontFamily: FONT_M },
+  heroTagline: { fontSize: 12.5, color: WHITE + 'BB', fontFamily: FONT_R, lineHeight: 18 },
+
+  // Section labels
+  sectionLabel: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 20, marginTop: 22, marginBottom: 10,
+  },
+  sectionAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: GOLD },
+  sectionTxt:    { fontSize: 11, fontWeight: '800', color: TEXT_M, letterSpacing: 1.4, fontFamily: FONT_B, flex: 1 },
+  countPill:     { backgroundColor: GOLD + '20', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  countPillTxt:  { fontSize: 11, fontWeight: '800', color: GOLD, fontFamily: FONT_B },
 
   // Cards
   card: {
     marginHorizontal: 16, marginTop: 16,
     backgroundColor: CARD, borderRadius: 20,
-    paddingTop: 18, paddingBottom: 16,
+    paddingTop: 18, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 10, elevation: 2,
+    shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, marginBottom: 14 },
+  cardHeader:   { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, marginBottom: 12 },
   cardIconWrap: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontSize: 15, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, flex: 1 },
-  refCount:  { fontSize: 12, color: PURPLE, fontWeight: '800', fontFamily: FONT_B },
+  cardTitle:    { fontSize: 15, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, flex: 1 },
 
   // Referral link
   linkBox: {
-    backgroundColor: BG, borderRadius: 12, marginHorizontal: 18,
-    paddingHorizontal: 14, paddingVertical: 11, marginBottom: 12,
+    backgroundColor: '#F7F8FA', borderRadius: 12, borderWidth: 1, borderColor: '#EBEBEB',
+    marginHorizontal: 18, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12,
   },
-  linkText: { fontSize: 12.5, color: TEXT_M, fontFamily: FONT_R },
-  linkActions: { flexDirection: 'row', gap: 10, paddingHorizontal: 18 },
-  linkBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, paddingVertical: 10 },
-  linkBtnText: { fontSize: 13, fontWeight: '700', fontFamily: FONT_M },
+  linkText:    { fontSize: 12.5, color: TEXT_M, fontFamily: FONT_R },
+  linkBtns:    { flexDirection: 'row', gap: 10, paddingHorizontal: 18, paddingBottom: 18 },
+  linkBtn:     { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, paddingVertical: 11 },
+  linkBtnTxt:  { fontSize: 13, fontWeight: '700', fontFamily: FONT_M },
 
-  // How it works
-  howRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, marginBottom: 12 },
-  howNum: { width: 22, height: 22, borderRadius: 11, backgroundColor: PURPLE + '20', alignItems: 'center', justifyContent: 'center' },
-  howNumText: { fontSize: 11, fontWeight: '900', color: PURPLE, fontFamily: FONT_B },
-  howIconWrap: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  howText: { flex: 1, fontSize: 13, color: TEXT_H, lineHeight: 18, fontFamily: FONT_R },
+  // Invite CTA
+  inviteBtn:     { marginHorizontal: 16, marginTop: 12, borderRadius: 18, overflow: 'hidden' },
+  inviteBtnGrad: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, paddingVertical: 16,
+    shadowColor: ORANGE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12,
+  },
+  inviteBtnTxt: { fontSize: 15, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
 
-  // Referral rows
-  refRow: {
+  // Level cards (horizontal scroll)
+  levelsScroll: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
+  levelCard: {
+    width: 130, borderRadius: 18, padding: 16, gap: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  levelBadge:    { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  levelBadgeTxt: { fontSize: 14, fontWeight: '900', fontFamily: FONT_B },
+  levelReward:   { fontSize: 22, fontWeight: '900', fontFamily: FONT_B, marginTop: 2 },
+  levelDesc:     { fontSize: 11.5, color: TEXT_M, fontFamily: FONT_R, lineHeight: 16 },
+
+  // Move to wallet
+  moveBtn:     { marginHorizontal: 16, marginTop: 12, borderRadius: 16, overflow: 'hidden' },
+  moveBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+  moveBtnTxt:  { fontSize: 14, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
+
+  // Referral list
+  refCard: {
+    marginHorizontal: 16, marginBottom: 8,
+    backgroundColor: CARD, borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
+  },
+  refRow:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 18 },
+  refRowBorder: { borderTopWidth: 1, borderTopColor: '#F3F3F3' },
+  refAvaWrap:   { position: 'relative' },
+  refAvatar:    { width: 44, height: 44, borderRadius: 22 },
+  refMid:       { flex: 1 },
+  refNameRow:   { flexDirection: 'row', alignItems: 'center' },
+  refUsername:  { fontSize: 14, fontWeight: '700', color: TEXT_H, fontFamily: FONT_B },
+  refFullName:  { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, marginTop: 2 },
+  refRight:     { alignItems: 'flex-end' },
+  refEarned:    { fontSize: 14, fontWeight: '800', color: TEXT_M, fontFamily: FONT_B },
+  refEarnedLabel: { fontSize: 10, color: TEXT_M + 'AA', fontFamily: FONT_R, marginTop: 1 },
+
+  // Empty state
+  emptyWrap: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 28, gap: 10 },
+  emptyIllustration: {
+    width: 80, height: 80, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  emptyTitle:     { fontSize: 16, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  emptySub:       { fontSize: 13, color: TEXT_M, textAlign: 'center', fontFamily: FONT_R, lineHeight: 20 },
+  emptyAction:    {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: 6, backgroundColor: GOLD, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 11,
+  },
+  emptyActionTxt: { fontSize: 13, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
+});
+
+// ─── Skeleton styles ──────────────────────────────────────────────────────────
+const sk = StyleSheet.create({
+  row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 12, paddingHorizontal: 18,
-    borderTopWidth: 1, borderTopColor: BORDER + '55',
+    paddingVertical: 14, paddingHorizontal: 18,
+    borderTopWidth: 1, borderTopColor: '#F3F3F3',
   },
-  refAvatar: { width: 40, height: 40, borderRadius: 20 },
-  refMid:    { flex: 1 },
-  refName:   { fontSize: 13.5, fontWeight: '700', color: TEXT_H, fontFamily: FONT_B },
-  refJoined: { fontSize: 11.5, color: TEXT_M, marginTop: 2, fontFamily: FONT_R },
-  refRight:  { alignItems: 'flex-end' },
-  refEarned: { fontSize: 13, fontWeight: '800', color: GREEN, fontFamily: FONT_B },
-  refEarnedLabel: { fontSize: 10, color: TEXT_M, fontFamily: FONT_R, marginTop: 1 },
-
-  // Empty
-  emptyRef:  { alignItems: 'center', paddingVertical: 32, gap: 8, paddingHorizontal: 24 },
-  emptyText: { fontSize: 14, color: TEXT_M, fontWeight: '600', fontFamily: FONT_M },
-  emptySub:  { fontSize: 12, color: TEXT_M, textAlign: 'center', fontFamily: FONT_R, lineHeight: 18 },
 });
