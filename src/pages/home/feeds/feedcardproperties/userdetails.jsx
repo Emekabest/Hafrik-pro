@@ -17,7 +17,7 @@ const withOpacity = (hex, opacity) => {
 const ACCENT = Colors.primary;
 const MUTED  = Colors.secondaryText;
 
-const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress, feelingText, privacyIcon, onEdit, onDelete }) => {
+const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress, feelingText, privacyIcon, onEdit, onDelete, isOwner = false }) => {
     const navigation = useNavigation();
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
 
@@ -116,6 +116,7 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
                 onClose={() => setOptionsModalVisible(false)}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                isOwner={isOwner}
             />
         </View>
     );
@@ -214,6 +215,7 @@ export default memo(UserDetails, (prev, next) => {
         prev.feelingText               === next.feelingText               &&
         prev.privacyIcon               === next.privacyIcon               &&
         prev.onEdit                    === next.onEdit                    &&
-        prev.onDelete                  === next.onDelete
+        prev.onDelete                  === next.onDelete                  &&
+        prev.isOwner                   === next.isOwner
     );
 });

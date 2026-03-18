@@ -145,16 +145,11 @@ const AddComment = forwardRef(({ user, feedId, token, replyingTo, onCancelReply,
 });
 
 const cs = StyleSheet.create({
-  // In-flow wrapper (no longer absolute)
+  // In-flow wrapper
   wrapper: {
-    backgroundColor: Colors.white,
-    borderTopWidth: 0.5,
-    borderTopColor: withOpacity(Colors.black, 0.08),
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
 
   // Reply banner
@@ -171,39 +166,34 @@ const cs = StyleSheet.create({
   replyBannerTxt: { flex: 1, fontSize: 12.5, color: BRAND },
   replyClose:     { padding: 2 },
 
-  // Input row — 16px horizontal padding, vertically centered
+  // Input row
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    gap: Spacing.sm + 4, // 12px between elements
+    padding: 10,
+    gap: 10,
   },
   avatar: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: Colors.borderLightAlt,
-    borderWidth: 1.5,
-    borderColor: withOpacity(Colors.primaryDark, 0.12),
   },
   inputBox: {
     flex: 1,
-    minHeight: 38, maxHeight: 100,
-    backgroundColor: CREAM,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: withOpacity(Colors.primaryDark, 0.12),
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    minHeight: 40, maxHeight: 100,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 22,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     justifyContent: 'center',
   },
-  input: { fontSize: 14.5, color: Colors.textStrongDeep, lineHeight: 20 },
+  input: { fontSize: 14, color: Colors.textStrongDeep, lineHeight: 20 },
 
   sendBtn: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.borderLightAlt,
     alignItems: 'center', justifyContent: 'center',
   },
-  sendBtnActive: { backgroundColor: ACCENT },
+  sendBtnActive: { backgroundColor: BRAND },
 });
 
 export default AddComment;

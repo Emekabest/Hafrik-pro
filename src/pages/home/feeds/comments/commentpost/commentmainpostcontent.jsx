@@ -264,7 +264,7 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
 
 
 
-            <View style={{ marginHorizontal:isMultimediapostMode ? 0 : horizontalPadding }}>
+            <View>
                  {post.type === 'shared'   ? (
   
                      <CommentSharedPostItem post={post.shared_post} isLeaving={isLeaving} parentFeedId={post.id} />
@@ -310,9 +310,8 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                         return (
                             <PhotoPostContent
                                 media={post.media}
-                                imageWidth={screenWidth - horizontalPadding * 2}
+                                imageWidth={screenWidth}
                                 onImagePress={(url) => setViewingImage(url)}
-                                contentFit="contain"
                             />
                         );
                     }
@@ -405,6 +404,8 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         paddingTop: 15,
         paddingBottom: 5,
+        backgroundColor: '#fff',
+        marginBottom: 8,
     },
 
     // ── Author row ────────────────────────────────────────────────────────────

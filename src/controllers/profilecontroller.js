@@ -253,8 +253,8 @@ const UploadProfileImageController = async(media, token, api) => {
         //   formData.append('type', media.fileType);
           formData.append('file', {
             uri: media.uri,
-            type:  "image/jpeg",
-            name: media.fileName
+            type: media.mimeType || 'image/jpeg',
+            name: media.fileName || `upload_${Date.now()}.jpg`,
           });
 
 

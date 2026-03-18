@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../AuthContext';
-import useWebViewSession, { REDIRECT_GUARD } from '../../hooks/useWebViewSession';
+import { buildWebViewUrl, REDIRECT_GUARD } from '../../hooks/useWebViewSession';
 import AuthenticatedWebView from '../../components/AuthenticatedWebView';
 import { Colors } from '../../theme/colors';
 
@@ -27,16 +27,16 @@ const BRAND = Colors.primaryDark;
 
 export default function MarketplaceWebviewScreen({ navigation, route }) {
   const { url, title } = route.params || {};
-  const { token, user } = useAuth();
+  const { token } = useAuth();
 
   const webViewRef = useRef(null);
+
+  const authUrl = buildWebViewUrl(token, url || 'https://hafrik.com/marketplace');
 
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(false);
   const [canGoBack,  setCanGoBack]  = useState(false);
-  const [currentUrl, setCurrentUrl] = useState(url || 'https://hafrik.com/marketplace');
-
-  const { ready, bridgeError, initSession, cookieJS } = useWebViewSession(token);
+  const [currentUrl, setCurrentUrl] = useState(authUrl);
 
   const handleBack = () => {
     if (canGoBack && webViewRef.current) webViewRef.current.goBack();
@@ -57,42 +57,6 @@ export default function MarketplaceWebviewScreen({ navigation, route }) {
     return () => handler.remove();
   }, [canGoBack]);
 
-  // Guards
-  if (!token || !user) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <Ionicons name="lock-closed-outline" size={48} color={BRAND} />
-        <Text style={styles.lockTitle}>Login Required</Text>
-        <Text style={styles.lockSub}>Please log in to view this listing.</Text>
-        <TouchableOpacity style={styles.goBack} onPress={() => navigation.goBack()}>
-          <Text style={styles.goBackText}>Go Back</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  if (bridgeError) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <Ionicons name="warning-outline" size={48} color={Colors.warningCoral} />
-        <Text style={styles.lockTitle}>Session Error</Text>
-        <Text style={styles.lockSub}>{bridgeError}</Text>
-        <TouchableOpacity style={styles.goBack} onPress={initSession}>
-          <Text style={styles.goBackText}>Retry</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  if (!ready) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" color={BRAND} />
-        <Text style={styles.lockSub}>Authenticating…</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.white }}>
       <StatusBar barStyle="dark-content" />
@@ -111,7 +75,6 @@ export default function MarketplaceWebviewScreen({ navigation, route }) {
         ref={webViewRef}
         source={{ uri: currentUrl }}
         style={{ flex: 1 }}
-        injectedJavaScriptBeforeContentLoaded={cookieJS || 'true;'}
         injectedJavaScript={REDIRECT_GUARD}
         onLoadStart={() => { setLoading(true); setError(false); }}
         onLoadEnd={() => setLoading(false)}
