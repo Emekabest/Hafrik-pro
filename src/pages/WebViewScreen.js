@@ -1,5 +1,5 @@
 // src/pages/WebViewScreen.js
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,44 +13,27 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../AuthContext';
-import useWebViewSession, { REDIRECT_GUARD } from '../hooks/useWebViewSession';
+import { buildWebViewUrl, REDIRECT_GUARD } from '../hooks/useWebViewSession';
 import AuthenticatedWebView from '../components/AuthenticatedWebView';
 import { Colors } from '../theme';
 
-const BRAND   = Colors.primaryDark;
-const WHITE   = Colors.white;
-const DARK    = Colors.black;
-const MUTED   = Colors.secondaryText;
-const BORDER  = Colors.border;
-const WARNING = Colors.warning;
+const BRAND  = Colors.primaryDark;
+const WHITE  = Colors.white;
+const DARK   = Colors.black;
+const MUTED  = Colors.secondaryText;
+const BORDER = Colors.border;
 
 const WebViewScreen = ({ navigation, route }) => {
   const { url, title } = route.params || {};
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const webViewRef = useRef(null);
+
+  const authUrl = buildWebViewUrl(token, url || 'https://hafrik.com');
 
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState(false);
   const [canGoBack,  setCanGoBack]  = useState(false);
-  const [currentUrl, setCurrentUrl] = useState(url || 'https://hafrik.com');
-
-  const { ready, bridgeError, initSession, cookieJS } = useWebViewSession(token);
-
-  // ─── Inject user data before page loads ──────────────────────────────────
-  const injectedBeforeContent = useMemo(() => {
-    const userPayload = user ? (() => {
-      const payload = JSON.stringify({
-        id:       user.id        ?? null,
-        username: user.username  ?? null,
-        email:    user.email     ?? null,
-        name:     user.name ?? user.full_name ?? user.username ?? null,
-        avatar:   user.avatar ?? user.profile_picture ?? null,
-        token:    token ?? null,
-      });
-      return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;`;
-    })() : '';
-    return `${cookieJS}${userPayload}true;`;
-  }, [user, token, cookieJS]);
+  const [currentUrl, setCurrentUrl] = useState(authUrl);
 
   // ─── Navigation handlers ──────────────────────────────────────────────────
   const handleLoadStart = () => { setLoading(true);  setError(false); };
@@ -81,53 +64,6 @@ const WebViewScreen = ({ navigation, route }) => {
     return () => handler.remove();
   }, [canGoBack]);
 
-  // ─── Guard: no token ──────────────────────────────────────────────────────
-  if (!token || !user) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.centeredContainer}>
-          <Ionicons name="lock-closed-outline" size={64} color={BRAND} />
-          <Text style={styles.titleText}>Authentication Required</Text>
-          <Text style={styles.subText}>Please log in to access this content</Text>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Auth')}>
-            <Text style={styles.primaryBtnText}>Go to Login</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // ─── Guard: bridge failed ─────────────────────────────────────────────────
-  if (bridgeError) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.centeredContainer}>
-          <Ionicons name="warning-outline" size={64} color={WARNING} />
-          <Text style={styles.titleText}>Session Error</Text>
-          <Text style={styles.subText}>{bridgeError}</Text>
-          <TouchableOpacity style={styles.primaryBtn} onPress={initSession}>
-            <Text style={styles.primaryBtnText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // ─── Guard: waiting for cookies ───────────────────────────────────────────
-  if (!ready) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.centeredContainer}>
-          <ActivityIndicator size="large" color={BRAND} />
-          <Text style={styles.subText}>Authenticating…</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   // ─── Main WebView ─────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
@@ -147,7 +83,6 @@ const WebViewScreen = ({ navigation, route }) => {
         ref={webViewRef}
         source={{ uri: currentUrl }}
         style={styles.webview}
-        injectedJavaScriptBeforeContentLoaded={injectedBeforeContent}
         injectedJavaScript={REDIRECT_GUARD}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
@@ -168,7 +103,7 @@ const WebViewScreen = ({ navigation, route }) => {
 
       {error && (
         <View style={styles.overlay}>
-          <Ionicons name="warning-outline" size={64} color={WARNING} />
+          <Ionicons name="warning-outline" size={64} color={MUTED} />
           <Text style={styles.titleText}>Connection Error</Text>
           <Text style={styles.subText}>Check your connection and try again.</Text>
           <TouchableOpacity style={styles.primaryBtn} onPress={handleReload}>

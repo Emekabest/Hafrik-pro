@@ -84,7 +84,7 @@ const getOwnerRoute = (feedUser) => {
 // ─── FeedCard ─────────────────────────────────────────────────────────────────
 const FeedCard = ({ feed, isVisible, onPostPress }) => {
   const navigation       = useNavigation();
-  const { token }        = useAuth();
+  const { token, user: authUser } = useAuth();
   const [shareModalVisible,          setShareModalVisible]          = useState(false);
   const [saveImageModalVisible,      setSaveImageModalVisible]      = useState(false);
   const [reactionsModalVisible,      setReactionsModalVisible]      = useState(false);
@@ -102,6 +102,9 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
 
   // ── Anonymous check ───────────────────────────────────────────────────────
   const isAnonymous = !!feed?.is_anonymous;
+
+  // ── Ownership check ───────────────────────────────────────────────────────
+  const isOwner = !isAnonymous && !!authUser?.id && String(feed?.user?.id) === String(authUser?.id);
 
   // ── User ──────────────────────────────────────────────────────────────────
   const user = useMemo(() => {
@@ -531,6 +534,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           onFollow={isAnonymous ? undefined : handleFollow}
           onEdit={handleEditOpen}
           onDelete={handleDeletePost}
+          isOwner={isOwner}
         />
 
         {/* ── Group / Community creation card ── */}

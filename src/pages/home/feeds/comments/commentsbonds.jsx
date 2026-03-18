@@ -255,15 +255,20 @@ const cs = StyleSheet.create({
   // Card
   card: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: withOpacity(Colors.black, 0.05),
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 12,
+    marginHorizontal: 12,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   avatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: Colors.borderLightAlt, marginRight: 12, marginTop: 2,
-    borderWidth: 1.5, borderColor: withOpacity(Colors.primaryDark, 0.12),
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: Colors.borderLightAlt, marginRight: 10, marginTop: 2,
   },
   cardBody: { flex: 1 },
 

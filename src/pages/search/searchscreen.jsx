@@ -69,13 +69,13 @@ const SuggestionsDropdown = ({
   onRemoveRecent,
   onClearAll,
   onSuggestionPress,
+  onDismiss,
 }) => {
   const hasQuery = !!query?.trim();
 
-  // Auto-suggest: top 6 results, deduplicated by id+type
-  const suggestions = hasQuery
-    ? results.slice(0, 6)
-    : [];
+  // Auto-suggest: top 5 results
+  const suggestions = hasQuery ? results.slice(0, 5) : [];
+  const hasMore     = hasQuery && results.length > 5;
 
   if (!hasQuery && recentSearches.length === 0) return null;
   if (hasQuery && suggestions.length === 0) return null;
@@ -152,11 +152,23 @@ const SuggestionsDropdown = ({
                       <Text style={sdStyles.rowSub} numberOfLines={1}>{sub}</Text>
                     )}
                   </View>
-                  <Ionicons name="arrow-up-back-outline" size={13} color={MUTED + '80'} />
+                  <Ionicons name="return-up-back-outline" size={13} color={MUTED + '80'} />
                 </TouchableOpacity>
               );
             })}
           </>
+        )}
+
+        {/* ── "See all results" dismiss button ── */}
+        {hasMore && (
+          <TouchableOpacity
+            style={sdStyles.seeAll}
+            onPress={onDismiss}
+            activeOpacity={0.75}
+          >
+            <Text style={sdStyles.seeAllText}>See all results</Text>
+            <Ionicons name="arrow-forward" size={13} color={ACCENT} />
+          </TouchableOpacity>
         )}
       </ScrollView>
     </View>
@@ -172,7 +184,7 @@ const sdStyles = StyleSheet.create({
     backgroundColor: WHITE,
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
-    maxHeight: 340,
+    maxHeight: 260,
     shadowColor: PRIMARY,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
@@ -235,6 +247,21 @@ const sdStyles = StyleSheet.create({
     color: MUTED,
     marginTop: 1,
     fontFamily: AppDetails.fontFamily?.inter?.regular,
+  },
+  seeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: DARK + '0A',
+    backgroundColor: ACCENT + '08',
+  },
+  seeAllText: {
+    fontSize: 13,
+    color: ACCENT,
+    fontWeight: '700',
   },
 });
 
@@ -590,11 +617,8 @@ const SearchScreen = () => {
   const q         = searchQuery?.trim();
   const showEmpty = !isLoading && listData.length === 0;
 
-  // Show dropdown when focused AND (has recent searches on empty, or has suggestions while typing)
-  const showDropdown = inputFocused && (
-    (!q && recentSearches.length > 0) ||
-    (!!q && results.length > 0)
-  );
+  // Show dropdown only while user is actively typing (query non-empty + results ready)
+  const showDropdown = inputFocused && !!q && results.length > 0;
 
   return (
     <View style={styles.screen}>
@@ -625,6 +649,7 @@ const SearchScreen = () => {
             onRemoveRecent={removeRecent}
             onClearAll={clearAllRecent}
             onSuggestionPress={handleSuggestionPress}
+            onDismiss={() => inputRef.current?.blur()}
           />
         </View>
       )}

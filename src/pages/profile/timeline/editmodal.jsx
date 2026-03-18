@@ -512,52 +512,51 @@ const EditModal = ({ visible, onClose, userDetails, onProfileUpdated }) => {
     const tabProps = { form, setField, genderOption, countryOption, relationshipOption, metadata, setPickerState };
 
     return (
-        <>
-            <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-                <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-                    <StatusBar barStyle="dark-content" />
+        <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+            <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+                <StatusBar barStyle="dark-content" />
 
-                    {/* Header */}
-                    <LinearGradient
-                        colors={Colors.gradientPrimary}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.header}
+                {/* Header */}
+                <LinearGradient
+                    colors={Colors.gradientPrimary}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.header}
+                >
+                    <TouchableOpacity onPress={onClose} style={styles.headerIconBtn} activeOpacity={0.8}>
+                        <Ionicons name="close" size={22} color={Colors.white} />
+                    </TouchableOpacity>
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerTitle}>Edit Profile</Text>
+                        {syncing ? (
+                            <ActivityIndicator size="small" color={Colors.white + 'CC'} style={{ marginLeft: 6 }} />
+                        ) : null}
+                    </View>
+                    <TouchableOpacity
+                        onPress={handleSaveUpdate}
+                        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+                        activeOpacity={0.85}
+                        disabled={saving}
                     >
-                        <TouchableOpacity onPress={onClose} style={styles.headerIconBtn} activeOpacity={0.8}>
-                            <Ionicons name="close" size={22} color={Colors.white} />
-                        </TouchableOpacity>
-                        <View style={styles.headerCenter}>
-                            <Text style={styles.headerTitle}>Edit Profile</Text>
-                            {syncing ? (
-                                <ActivityIndicator size="small" color={Colors.white + 'CC'} style={{ marginLeft: 6 }} />
-                            ) : null}
-                        </View>
-                        <TouchableOpacity
-                            onPress={handleSaveUpdate}
-                            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-                            activeOpacity={0.85}
-                            disabled={saving}
-                        >
-                            {saving ? <ActivityIndicator size="small" color={BRAND} /> : <Text style={styles.saveButtonText}>Save</Text>}
-                        </TouchableOpacity>
-                    </LinearGradient>
+                        {saving ? <ActivityIndicator size="small" color={BRAND} /> : <Text style={styles.saveButtonText}>Save</Text>}
+                    </TouchableOpacity>
+                </LinearGradient>
 
-                    {/* Tab bar */}
-                    <TabBar activeTab={activeTab} onSelect={setActiveTab} />
+                {/* Tab bar */}
+                <TabBar activeTab={activeTab} onSelect={setActiveTab} />
 
-                    {/* Tab content */}
-                    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                        {activeTab === 'personal'  && <PersonalTab  {...tabProps} />}
-                        {activeTab === 'about'     && <AboutTab     {...tabProps} />}
-                        {activeTab === 'location'  && <LocationTab  {...tabProps} />}
-                        {activeTab === 'work'      && <WorkTab      {...tabProps} />}
-                        {activeTab === 'education' && <EducationTab {...tabProps} />}
-                        {activeTab === 'social'    && <SocialTab    {...tabProps} />}
-                    </KeyboardAvoidingView>
-                </SafeAreaView>
-            </Modal>
+                {/* Tab content */}
+                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                    {activeTab === 'personal'  && <PersonalTab  {...tabProps} />}
+                    {activeTab === 'about'     && <AboutTab     {...tabProps} />}
+                    {activeTab === 'location'  && <LocationTab  {...tabProps} />}
+                    {activeTab === 'work'      && <WorkTab      {...tabProps} />}
+                    {activeTab === 'education' && <EducationTab {...tabProps} />}
+                    {activeTab === 'social'    && <SocialTab    {...tabProps} />}
+                </KeyboardAvoidingView>
+            </SafeAreaView>
 
+            {/* Picker modal rendered INSIDE the parent modal so it stacks correctly on iOS */}
             <OptionPickerModal
                 visible={!!pickerState.key}
                 title={pickerState.title}
@@ -567,7 +566,7 @@ const EditModal = ({ visible, onClose, userDetails, onProfileUpdated }) => {
                 onSelect={handlePickerSelect}
                 onClose={() => setPickerState({ key: null, title: '', searchable: false })}
             />
-        </>
+        </Modal>
     );
 };
 

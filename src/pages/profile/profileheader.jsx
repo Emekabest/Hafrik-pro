@@ -99,10 +99,13 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
             }
 
             const asset = result.assets[0];
+            const mimeType = asset.mimeType || 'image/jpeg';
+            const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg').replace('heic', 'jpg').replace('heif', 'jpg') || 'jpg';
             const imageDataFromGallery = {
                 id: Date.now() + Math.random(),
                 uri: asset.uri,
-                fileName: asset.fileName || "thumbnail.jpg",
+                fileName: asset.fileName || `upload_${Date.now()}.${ext}`,
+                mimeType,
                 type: asset.type || "image",
                 uploading: true,
                 loading: true,
@@ -126,7 +129,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     
                     if (mode === "cover"){
                         console.log("Cover image uploaded successfully..");
-                        const url = response.data?.cover_url || response.data?.url || response.data?.cover;
+                        const url = response.data?.image || response.data?.cover_url || response.data?.url || response.data?.cover;
                         if (url) {
                             const separator = url.includes('?') ? '&' : '?';
                             const newUri = `${url}${separator}t=${timestamp}`;
@@ -138,7 +141,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     }
                     else if (mode === "avatar"){
                         console.log("Profile image uploaded successfully");
-                        const url = response.data?.avatar_url || response.data?.url || response.data?.avatar;
+                        const url = response.data?.image || response.data?.avatar_url || response.data?.url || response.data?.avatar;
                         if (url) {
                             const separator = url.includes('?') ? '&' : '?';
                             const newUri = `${url}${separator}t=${timestamp}`;
@@ -164,9 +167,12 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
 
             }
             catch(error){
-                // console.error("Error uploading cover image:", error);
-                console.log("Error uploading cover image:", error);
-                setCoverImage(prev => ({ ...prev, uploading: false, loading: false }));
+                console.log("Error uploading image:", error);
+                if (mode === 'cover') {
+                    setCoverImage(prev => ({ ...prev, uploading: false, loading: false }));
+                } else if (mode === 'avatar') {
+                    setAvatarImage(prev => ({ ...prev, uploading: false, loading: false }));
+                }
             }
             
 
@@ -207,7 +213,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     <View style={[styles.coverActions, coverImage?.uploading && { opacity: 0.5, pointerEvents: 'none' }]}>
                         <TouchableOpacity 
                             disabled={coverImage?.uploading}
-                            onPress={() => pickImageFromGallery("cover", "https://hafrik.com/api/v1/users/update_cover.php")} 
+                            onPress={() => setTimeout(() => pickImageFromGallery("cover", "https://hafrik.com/api/v1/users/update_cover.php"), 100)}
                             style={styles.actionButton} 
                             activeOpacity={0.8}
                         >
@@ -380,7 +386,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                                 <View style={styles.sheetHandle} />
                                 <Text style={styles.sheetTitle}>Profile Photo</Text>
 
-                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => { setAvatarOptionsVisible(false); pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'); }}>
+                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => { setAvatarOptionsVisible(false); setTimeout(() => pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'), 400); }}>
                                     <View style={[styles.sheetOptionIcon, { backgroundColor: withOpacity(ACCENT, 0.12) }]}> 
                                         <Ionicons name="image-outline" size={20} color={ACCENT} />
                                     </View>

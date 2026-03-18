@@ -6,16 +6,13 @@
  *   title  {string}  — header title shown to the user
  *
  * Auto-login:
- *   If the URL is on hafrik.com the bridge endpoint is called with the
- *   user's Bearer token. PHPSESSID and session_token are set via
- *   CookieManager at the native level so the user is already logged in
- *   when the page loads — no reload needed.
+ *   All URLs are routed through the webview-login endpoint which validates
+ *   the JWT token, creates a PHP session, and redirects to the target page.
  */
 
 import React, {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -33,7 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
-import useWebViewSession, { REDIRECT_GUARD } from '../../hooks/useWebViewSession';
+import { buildWebViewUrl, REDIRECT_GUARD } from '../../hooks/useWebViewSession';
 import AuthenticatedWebView from '../../components/AuthenticatedWebView';
 import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme/colors';
@@ -45,22 +42,15 @@ const withOpacity = (hex, opacity) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-const HAFRIK_HOST = 'hafrik.com';
-const BRAND       = Colors.primaryDark;
-const ACCENT      = Colors.primary;
-const MUTED       = Colors.secondaryText;
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const MUTED  = Colors.secondaryText;
 
 const USER_AGENT = Platform.select({
   ios:     'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 HafrikApp/1.0',
   android: 'Mozilla/5.0 (Linux; Android 12; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36 HafrikApp/1.0',
   default: 'HafrikApp/1.0',
 });
-
-/** True if the URL lives on hafrik.com (needs auto-login). */
-const isHafrikUrl = (url = '') => {
-  try { return new URL(url).hostname.endsWith(HAFRIK_HOST); }
-  catch { return false; }
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reusable header
@@ -114,18 +104,17 @@ function CenterState({ icon, iconColor, title, sub, btnLabel, onBtn }) {
 // MAIN SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 export default function UniversalWebView() {
-  const navigation      = useNavigation();
-  const route           = useRoute();
-  const { top }         = useSafeAreaInsets();
-  const { token, user } = useAuth();
+  const navigation  = useNavigation();
+  const route       = useRoute();
+  const { top }     = useSafeAreaInsets();
+  const { token }   = useAuth();
 
   const {
     url   = 'https://hafrik.com',
     title = 'Hafrik',
   } = route.params ?? {};
 
-  // Only run the bridge if the URL belongs to hafrik.com and we have a token
-  const needsAuth = !!token && isHafrikUrl(url);
+  const authUrl = buildWebViewUrl(token, url);
 
   const webRef = useRef(null);
 
@@ -133,24 +122,6 @@ export default function UniversalWebView() {
   const [error,     setError]     = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [canGoBack, setCanGoBack] = useState(false);
-
-  const { ready, bridgeError, initSession, cookieJS } = useWebViewSession(token, { skip: !needsAuth });
-
-  // ── JS injected BEFORE page content loads ─────────────────────────────────
-  const injectedBeforeContent = useMemo(() => {
-    const userPayload = user ? (() => {
-      const payload = JSON.stringify({
-        id:       user.id        ?? null,
-        username: user.username  ?? null,
-        email:    user.email     ?? null,
-        name:     user.name ?? user.full_name ?? user.username ?? null,
-        avatar:   user.avatar ?? user.profile_picture ?? null,
-        token:    token ?? null,
-      });
-      return `window.hafrikNativeUser=${payload};window.hafrikNativeApp=true;`;
-    })() : '';
-    return `${cookieJS}${userPayload}true;`;
-  }, [user, token, cookieJS]);
 
   // ── Android hardware back button ───────────────────────────────────────────
   const handleBack = useCallback(() => {
@@ -176,33 +147,6 @@ export default function UniversalWebView() {
     webRef.current?.reload();
   }, []);
 
-  // ── Render: waiting for session credentials ────────────────────────────────
-  if (needsAuth && !ready && !bridgeError) {
-    return (
-      <View style={[s.root, { paddingTop: top }]}>
-        <BrowserHeader title={title} url={url} onBack={() => navigation.goBack()} onShare={null} />
-        <CenterState icon="key-outline" iconColor={ACCENT} sub="Signing you in…" />
-      </View>
-    );
-  }
-
-  // ── Render: bridge / auth error ────────────────────────────────────────────
-  if (bridgeError) {
-    return (
-      <View style={[s.root, { paddingTop: top }]}>
-        <BrowserHeader title={title} url={url} onBack={() => navigation.goBack()} onShare={null} />
-        <CenterState
-          icon="warning-outline"
-          title="Session Error"
-          sub={bridgeError}
-          btnLabel="Retry"
-          onBtn={initSession}
-        />
-      </View>
-    );
-  }
-
-  // ── Render: main browser ───────────────────────────────────────────────────
   return (
     <View style={[s.root, { paddingTop: top }]}>
       <BrowserHeader title={title} url={url} onBack={handleBack} onShare={handleShare} />
@@ -225,9 +169,8 @@ export default function UniversalWebView() {
       ) : (
         <AuthenticatedWebView
           ref={webRef}
-          source={{ uri: url }}
+          source={{ uri: authUrl }}
           style={s.webview}
-          injectedJavaScriptBeforeContentLoaded={injectedBeforeContent}
           injectedJavaScript={REDIRECT_GUARD}
           onLoadStart={() => { setLoading(true); setError(false); }}
           onLoadEnd={() => setLoading(false)}

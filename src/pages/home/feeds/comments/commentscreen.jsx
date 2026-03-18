@@ -57,7 +57,7 @@ const PostListHeader = React.memo(({
       <View style={cs.sectionHead}>
         <View style={cs.sectionLine} />
         <Text style={cs.sectionTitle}>
-          {commentCount > 0 ? `Comments (${commentCount})` : 'Comments'}
+          {commentCount > 0 ? `${commentCount} Comments` : 'Comments'}
         </Text>
         <View style={cs.sectionLine} />
         {commentsLoading && (
@@ -284,7 +284,7 @@ const CommentScreen = ({ route }) => {
 };
 
 const cs = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.white },
+  root: { flex: 1, backgroundColor: '#F6F7F9' },
 
   loaderWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
@@ -294,7 +294,7 @@ const cs = StyleSheet.create({
     alignItems: 'center',
     height: 52,
     paddingHorizontal: Spacing.md,
-    backgroundColor: Colors.white,
+    backgroundColor: '#F6F7F9',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: withOpacity(Colors.primaryDark, 0.10),
   },
@@ -312,12 +312,13 @@ const cs = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
 
-  // ── Section header (centered divider with "Comments") ─────────────────────
+  // ── Section header ────────────────────────────────────────────────────────
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10,
   },
   sectionLine: {
     flex: 1,
@@ -325,15 +326,13 @@ const cs = StyleSheet.create({
     backgroundColor: withOpacity(Colors.primaryDark, 0.12),
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
-    color: MUTED,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    color: DARK,
     paddingHorizontal: 12,
   },
 
-  listContent: { paddingBottom: 24 },
+  listContent: { paddingBottom: 24, backgroundColor: '#F6F7F9' },
 
   emptyWrap:  { paddingVertical: 40, alignItems: 'center', gap: 6 },
   emptyTitle: { fontSize: 15, fontWeight: '800', color: Colors.mutedBlueGraySoft },

@@ -1,7 +1,7 @@
 // src/pages/blogs/ArticlesScreen.jsx
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
   StatusBar, TextInput, ActivityIndicator, Image, RefreshControl, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -150,7 +150,7 @@ export default function ArticlesScreen({ navigation }) {
     let mounted = true;
     setSectionsLoading(true);
     Promise.all([fetchTrendingArticles(10), fetchMostReadWeekArticles(10)])
-      .then(([t, w]) => { if (mounted) { setTrending(t); setMostRead(w); } })
+      .then(([t, w]) => { if (mounted) { setTrending([...t].sort(() => Math.random() - 0.5)); setMostRead(w); } })
       .catch(() => {})
       .finally(() => { if (mounted) setSectionsLoading(false); });
     return () => { mounted = false; };
@@ -187,7 +187,7 @@ export default function ArticlesScreen({ navigation }) {
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     Promise.all([fetchTrendingArticles(10), fetchMostReadWeekArticles(10)])
-      .then(([t, w]) => { setTrending(t); setMostRead(w); })
+      .then(([t, w]) => { setTrending([...t].sort(() => Math.random() - 0.5)); setMostRead(w); })
       .catch(() => {});
     fetchPage(1, search, true);
   }, [search, fetchPage]);
@@ -346,26 +346,33 @@ export default function ArticlesScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={st.root}>
+    <View style={st.root}>
       <StatusBar barStyle="light-content" backgroundColor={BRAND} />
 
       {/* Flat header — back only */}
-      <View style={[st.header, { paddingTop: top + 8 }]}>
+      <View style={[st.header, { paddingTop: top + 12 }]}>
         <View style={st.headerTop}>
-          <TouchableOpacity style={st.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={20} color={WHITE} />
-          </TouchableOpacity>
-          <View style={st.headerLogoWrap} pointerEvents="none">
+          {/* Left — fixed width to balance right side */}
+          <View style={st.headerSide}>
+            <TouchableOpacity style={st.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={20} color={WHITE} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Center — logo truly centered */}
+          <View style={st.headerCenter} pointerEvents="none">
             <Image source={require('../../assl.js/Layer 3.png')} style={st.headerLogo} resizeMode="contain" />
           </View>
-          <View style={{ flex: 1 }} />
-          {isVerified && (
-            <TouchableOpacity style={st.createBtn} onPress={() => navigation.navigate('CreateArticle')} activeOpacity={0.85}>
-              <Ionicons name="create-outline" size={15} color={WHITE} />
-              <Text style={st.createBtnTxt}>Write</Text>
-            </TouchableOpacity>
-          )}
-          {!isVerified && <View style={{ width: 36 }} />}
+
+          {/* Right — same fixed width as left */}
+          <View style={[st.headerSide, { alignItems: 'flex-end' }]}>
+            {isVerified && (
+              <TouchableOpacity style={st.createBtn} onPress={() => navigation.navigate('CreateArticle')} activeOpacity={0.85}>
+                <Ionicons name="create-outline" size={15} color={WHITE} />
+                <Text style={st.createBtnTxt}>Write</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
 
@@ -403,7 +410,7 @@ export default function ArticlesScreen({ navigation }) {
           )
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -418,7 +425,9 @@ const st = StyleSheet.create({
     shadowColor: BRAND, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.22, shadowRadius: 10, elevation: 8,
   },
-  headerTop:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerTop:      { flexDirection: 'row', alignItems: 'center' },
+  headerSide:     { width: 80 },
+  headerCenter:   { flex: 1, alignItems: 'center' },
   backBtn:        { width: 36, height: 36, borderRadius: 18, backgroundColor: ON_DARK_14, alignItems: 'center', justifyContent: 'center' },
   headerLogoWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   headerLogo:     { height: 26, width: 110 },
