@@ -156,36 +156,23 @@ const gs = StyleSheet.create({
   },
 });
 
-// ─── CarouselImages — horizontal paging used in detail / full-width view ──────
-const CarouselImages = ({ images, width, radius, maxHeight, onImagePress }) => {
+// ─── CarouselImages — full-width horizontal paging for post detail ────────────
+// Uses contain (no cropping) so all image content is visible.
+const DETAIL_CAROUSEL_H = Math.round(SCREEN_H * 0.46);
+
+const CarouselImages = ({ images, width, radius, onImagePress }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef(null);
-
-  const [carouselH, setCarouselH] = useState(() => {
-    const first = images[0];
-    const r = clampRatio(first.width, first.height);
-    return r ? Math.min(width * r, maxHeight) : Math.min(width * 0.85, maxHeight);
-  });
-
-  useEffect(() => {
-    const first = images[0];
-    if (clampRatio(first.width, first.height) !== null) return;
-    if (!first.url) return;
-    Image.getSize(
-      first.url,
-      (w, h) => { const r = clampRatio(w, h); if (r) setCarouselH(Math.min(width * r, maxHeight)); },
-      () => {}
-    );
-  }, [images, width, maxHeight]);
+  const n = images.length;
 
   const handleScroll = useCallback((e) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / width);
-    setActiveIndex(Math.max(0, Math.min(idx, images.length - 1)));
-  }, [width, images.length]);
+    setActiveIndex(Math.max(0, Math.min(idx, n - 1)));
+  }, [width, n]);
 
   return (
     <View>
-      <View style={{ borderRadius: radius, overflow: 'hidden' }}>
+      <View style={{ borderRadius: radius, overflow: 'hidden', backgroundColor: Colors.black }}>
         <ScrollView
           ref={scrollRef}
           horizontal
@@ -198,21 +185,35 @@ const CarouselImages = ({ images, width, radius, maxHeight, onImagePress }) => {
           {images.map((item, i) => (
             <TouchableOpacity
               key={i}
-              activeOpacity={0.88}
+              activeOpacity={0.92}
               onPress={() => onImagePress?.(item.url)}
+              style={{ width, height: DETAIL_CAROUSEL_H, backgroundColor: Colors.black }}
             >
-              <FadeImage uri={item.url} style={{ width, height: carouselH }} />
+              <FadeImage
+                uri={item.url}
+                style={{ width, height: DETAIL_CAROUSEL_H }}
+                contentFit="contain"
+              />
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* "1 / N" counter badge — top right */}
+        {n > 1 && (
+          <View style={styles.counterBadge}>
+            <Text style={styles.counterText}>{activeIndex + 1} / {n}</Text>
+          </View>
+        )}
       </View>
 
-      {/* Dot indicators */}
-      <View style={styles.dotsRow}>
-        {images.map((_, i) => (
-          <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
-        ))}
-      </View>
+      {/* Dot strip */}
+      {n > 1 && (
+        <View style={styles.dotsRow}>
+          {images.map((_, i) => (
+            <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
+          ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -263,6 +264,22 @@ const PhotoPostContent = ({ media, onImagePress, imageWidth: imageWidthProp }) =
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { marginTop: 10 },
+
+  counterBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  counterText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
 
   dotsRow: {
     flexDirection: 'row',

@@ -603,17 +603,30 @@ const Feeds = ({
           />
         );
 
-      case 'feed':
+      case 'feed': {
+        const rawPost = item.data;
+
+        let createdAt = rawPost.created || rawPost.time;
+
+        if (createdAt && !createdAt.includes('T')) {
+          createdAt = createdAt.replace(' ', 'T') + 'Z';
+        }
+
+        const normalizedPost = {
+          ...rawPost,
+          created: createdAt,
+        };
+
         return (
           <View style={styles.feedCardWrapper}>
-            {/* read from ref so this callback stays stable (no visibleFeedId dep) */}
             <FeedCard
-              feed={item.data}
-              isVisible={visibleFeedIdRef.current === item.data.id}
+              feed={normalizedPost}
+              isVisible={visibleFeedIdRef.current === normalizedPost.id}
               onPostPress={onPostPress}
             />
           </View>
         );
+      }
 
       case 'peoplecard':
         return <PeopleYouMayKnow people={item.data} />;
