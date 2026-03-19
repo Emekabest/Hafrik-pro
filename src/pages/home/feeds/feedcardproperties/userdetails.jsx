@@ -50,6 +50,8 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
 
     const handleCtxPress = postContext ? onPostContextPress : handleLegacyContextPress;
 
+    // console.log(elapsedTime, feed.created, feed.id)
+
     return (
         <View style={styles.firstSection}>
             <View style={styles.nameSection}>
@@ -90,6 +92,8 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
                         </>
                     )}
                 </View>
+
+
 
                 {/* ── Line 3: Timestamp + privacy ── */}
                 <View style={styles.elapsedRow}>
