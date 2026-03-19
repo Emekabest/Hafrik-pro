@@ -1,4 +1,4 @@
-import axios from "axios"
+import apiClient from '../api/apiClient';
 
 
 const getUserPostInteractionController = async(post_id, token)=>{
@@ -7,11 +7,7 @@ const getUserPostInteractionController = async(post_id, token)=>{
 
 
     try{
-        const response = await axios.get(API_URL, {
-            headers:{
-                    Authorization: `Bearer ${token}`        
-            }
-        })
+        const response = await apiClient.get(API_URL)
 
     
         return {status:response.status, data:response.data.data}

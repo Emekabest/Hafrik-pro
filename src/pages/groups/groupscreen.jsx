@@ -14,7 +14,7 @@ import { Colors } from '../../theme';
 import { useTheme } from '../../theme/ThemeContext';
 
 // ─── API imports ─────────────────────────────────────────────────────────────
-import { getGroups, getCategories, joinGroup, leaveGroup } from './services/groupApi';
+import { getGroups, getCategories, toggleGroupMembership } from './services/groupApi';
 import PostFeedController from '../../controllers/postfeedcontroller';
 import CreateModal from './CreateModal';
 
@@ -301,12 +301,19 @@ const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
     if (joining) return;
     setJoining(true);
     const was = isMember;
+    // Optimistic update
+    setIsMember(!was);
+    setMemberCount((c) => was ? Math.max(0, c - 1) : c + 1);
     try {
-      if (was) { await leaveGroup(group.id, token); setIsMember(false); setMemberCount((c) => Math.max(0, c - 1)); }
-      else     { await joinGroup(group.id, token);  setIsMember(true);  setMemberCount((c) => c + 1); }
+      const res = await toggleGroupMembership(group.id, was ? 'leave' : 'join');
+      // Reconcile with server response: { group_id, is_joined, members }
+      const d = res?.data ?? res;
+      if (d?.is_joined !== undefined) setIsMember(!!d.is_joined);
+      if (d?.members   !== undefined) setMemberCount(Number(d.members) || 0);
     } catch {
       Alert.alert('Error', 'Could not update membership. Please try again.');
       setIsMember(was);
+      setMemberCount((c) => was ? c + 1 : Math.max(0, c - 1));
     } finally {
       setJoining(false);
     }
@@ -517,10 +524,31 @@ const CommunitiesScreen = () => {
   const [refreshing,    setRefreshing]    = useState(false);
   const [postModalGroup, setPostModalGroup] = useState(null);
 
+  // Refs so the stable loadGroups callback always reads current filter/search
+  const groupFilterRef = useRef(groupFilter);
+  const searchRef      = useRef(search);
+  groupFilterRef.current = groupFilter;
+  searchRef.current      = search;
+
   const loadGroups = useCallback(async (page = 1, replace = false) => {
     try {
       setGroupsLoad(true);
-      const res = await getGroups(page, 15, {}, token);
+      const filter = groupFilterRef.current;
+      const query  = searchRef.current;
+
+      const params = {};
+      if (filter === 'My Groups')  params.joined    = 1;
+      else if (filter === 'Suggested') params.suggested = 1;
+      else if (filter !== 'All') {
+        // Category filter — pass category id if we have it, otherwise name
+        const cat = categories.find(
+          (c) => cleanText(c.name ?? c.category_name ?? '') === filter
+        );
+        if (cat?.id) params.category = cat.id;
+      }
+      if (query.trim()) params.search = query.trim();
+
+      const res = await getGroups(page, 15, params);
       if (res?.status === 'success') {
         const items = res.data?.data ?? res.data ?? [];
         setGroups((p) => (replace ? items : [...p, ...items]));
@@ -532,7 +560,7 @@ const CommunitiesScreen = () => {
     } finally {
       setGroupsLoad(false);
     }
-  }, [token]);
+  }, [categories]); // stable — reads filter/search via refs
 
   const loadCategories = useCallback(async () => {
     try {
@@ -554,10 +582,34 @@ const CommunitiesScreen = () => {
     }
   }, [token]);
 
+  // Initial load
   useEffect(() => {
     loadGroups(1, true);
     loadCategories();
   }, []); // eslint-disable-line
+
+  // Reload when tab filter changes (joined/suggested/category handled server-side)
+  const firstFilterRender = useRef(true);
+  useEffect(() => {
+    if (firstFilterRender.current) { firstFilterRender.current = false; return; }
+    setGroups([]);
+    setGroupsPage(1);
+    setGroupsMore(true);
+    loadGroups(1, true);
+  }, [groupFilter]); // eslint-disable-line
+
+  // Reload on search change (debounced)
+  const firstSearchRender = useRef(true);
+  useEffect(() => {
+    if (firstSearchRender.current) { firstSearchRender.current = false; return; }
+    const t = setTimeout(() => {
+      setGroups([]);
+      setGroupsPage(1);
+      setGroupsMore(true);
+      loadGroups(1, true);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search]); // eslint-disable-line
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -565,30 +617,18 @@ const CommunitiesScreen = () => {
     setRefreshing(false);
   }, [loadGroups]);
 
-  const filteredGroups = useMemo(() => {
-    let r = groups;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      r = r.filter((g) =>
-        cleanText(g.title ?? '').toLowerCase().includes(q) ||
-        cleanText(g.about ?? '').toLowerCase().includes(q) ||
-        cleanText(g.category ?? '').toLowerCase().includes(q)
-      );
-    }
-    if (groupFilter === 'My Groups') {
-      r = r.filter((g) => g.is_joined === true || g.is_joined === 1 || g._isMember === true);
-    } else if (groupFilter !== 'All') {
-      r = r.filter((g) => cleanText(g.category ?? '').toLowerCase() === groupFilter.toLowerCase());
-    }
-    return [...r].sort((a, b) => (b.is_promoted ? 1 : 0) - (a.is_promoted ? 1 : 0));
-  }, [groups, search, groupFilter]);
+  // Server handles joined/suggested/search/category — only sort locally
+  const filteredGroups = useMemo(
+    () => [...groups].sort((a, b) => (b.is_promoted ? 1 : 0) - (a.is_promoted ? 1 : 0)),
+    [groups]
+  );
 
   const handlePostInGroup = useCallback((group) => {
     setPostModalGroup(group);
   }, []);
 
   const joinedCount = useMemo(
-    () => groups.filter((g) => g.is_joined === true || g.is_joined === 1 || g._isMember).length,
+    () => groups.filter((g) => g.is_joined === true || g.is_joined === 1).length,
     [groups]
   );
 
@@ -603,10 +643,10 @@ const CommunitiesScreen = () => {
     [navigation, handlePostInGroup]
   );
 
-  // Filter chips: All + My Groups + category names
+  // Filter chips: All + My Groups + Suggested + category names
   const filterChips = useMemo(() => {
     const catNames = categories.map((c) => cleanText(c.name ?? c.category_name ?? '')).filter(Boolean);
-    return ['All', 'My Groups', ...catNames];
+    return ['All', 'My Groups', 'Suggested', ...catNames];
   }, [categories]);
 
   return (
@@ -721,6 +761,9 @@ const CommunitiesScreen = () => {
                     {chip === 'My Groups' && (
                       <Ionicons name={on ? 'people' : 'people-outline'} size={12} color={on ? WHITE : MUTED} style={{ marginRight: 4 }} />
                     )}
+                    {chip === 'Suggested' && (
+                      <Ionicons name={on ? 'star' : 'star-outline'} size={12} color={on ? WHITE : MUTED} style={{ marginRight: 4 }} />
+                    )}
                     <Text style={[gs.filterChipTxt, on && gs.filterChipTxtOn]}>{chip}</Text>
                   </TouchableOpacity>
                 );
@@ -749,8 +792,14 @@ const CommunitiesScreen = () => {
               <View style={gs.emptyCircle}>
                 <Ionicons name="people-outline" size={36} color={MUTED} />
               </View>
-              <Text style={gs.emptyTitle}>No communities found</Text>
-              <Text style={gs.emptySub}>Try adjusting your search or filters</Text>
+              <Text style={gs.emptyTitle}>
+                {groupFilter === 'My Groups' ? 'No joined groups yet' : 'Discover Groups'}
+              </Text>
+              <Text style={gs.emptySub}>
+                {groupFilter === 'My Groups'
+                  ? 'Join a community to see it here'
+                  : 'Try adjusting your search or filters'}
+              </Text>
             </View>
           )
         }

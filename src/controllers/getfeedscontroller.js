@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+import apiClient from '../api/apiClient';
 
 const GetFeedsController = async (url, token, page = 1) => {
 
@@ -18,11 +18,8 @@ const GetFeedsController = async (url, token, page = 1) => {
   const API_URL = parsedUrl.toString();
 
   try {
-    const response = await axios.get(API_URL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache',
-      },
+    const response = await apiClient.get(API_URL, {
+      headers: { 'Cache-Control': 'no-cache' },
     });
     
     const json = response.data;

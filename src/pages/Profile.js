@@ -21,6 +21,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../AuthContext';
 import * as ImagePicker from 'expo-image-picker';
+import apiClient from '../api/apiClient';
 import { Colors } from '../theme';
 
 const { width } = Dimensions.get('window');
@@ -180,20 +181,18 @@ const Profile = () => {
         : 'https://hafrik.com/api/v1/users/update_cover.php';
       
       // Upload to the specific endpoint
-      const uploadResponse = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-        body: formData,
+      const uploadResponse = await apiClient.post(endpoint, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-
-      const uploadData = await uploadResponse.json();
+      const uploadData = uploadResponse.data;
       console.log('Upload response:', uploadData);
 
-      if (uploadData.status === 'success') {
+      const uploadOk =
+        uploadData?.status === 'success' || uploadData?.status === 1 ||
+        uploadData?.status === true || uploadResponse.status === 200;
+
+      if (uploadOk) {
         // Get the new image URL/path from response
         const imagePath = uploadData.data?.path || uploadData.data?.url || uploadData.data?.[imageType];
         

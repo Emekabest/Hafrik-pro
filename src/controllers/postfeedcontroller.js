@@ -1,14 +1,9 @@
-import axios from "axios";
+import apiClient from '../api/apiClient';
 
 // ─── Single unified endpoint for all post types and targets ───────────────────
 const API_URL = 'https://hafrik.com/api/v1/posts/create.php';
 
 const PostFeedController = async (postData, token) => {
-
-    const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type':  'application/json',
-    };
 
     // Normalize type: frontend uses 'text', backend expects 'post'
     const normalizedType = postData?.type === 'text' ? 'post' : postData?.type;
@@ -33,7 +28,7 @@ const PostFeedController = async (postData, token) => {
     console.log('=========================');
 
     try {
-        const response = await axios.post(API_URL, body, { headers });
+        const response = await apiClient.post(API_URL, body);
 
         console.log('CREATE POST RESPONSE status:', response.status);
         console.log('CREATE POST RESPONSE data:', JSON.stringify(response.data));

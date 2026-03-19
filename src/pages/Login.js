@@ -25,7 +25,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
-import axios from 'axios';
+import apiClient from '../api/apiClient';
 import { useAuth } from '../AuthContext';
 import AppDetails from '../helpers/appdetails';
 import { Colors } from '../theme/colors';
@@ -524,7 +524,7 @@ const AuthScreen = () => {
         : `${API_BASE}/register.php`;
 
       const payload = mode === 'login'
-        ? { username: form.username.trim() || form.email.trim(), password: form.password }
+        ? { login: form.username.trim() || form.email.trim(), password: form.password }
         : {
             full_name:    form.fullName.trim(),
             username:     form.username.trim(),
@@ -535,18 +535,16 @@ const AuthScreen = () => {
             country_name: form.country?.name,
           };
 
-      const res = await axios.post(endpoint, payload, {
-        timeout: 12000,
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      });
+      const res = await apiClient.post(endpoint, payload);
 
       if (res.data.status === 'success') {
-        const token = res.data.data?.token;
-        let user    = res.data.data?.user;
+        const token        = res.data.data?.token;
+        const sessionToken = res.data.data?.session_token ?? null;
+        let user           = res.data.data?.user;
         if (Array.isArray(user)) user = user[0];
         if (!token || !user) throw new Error('Invalid server response');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await login(user, token);
+        await login(user, token, sessionToken);
 
         const msg = {
           token: expoPushToken,
@@ -580,21 +578,19 @@ const AuthScreen = () => {
     if (socialLoading) return;
     setSocialLoading(provider);
     try {
-      const res = await axios.post(`${API_BASE}/social_login.php`, {
+      const res = await apiClient.post(`${API_BASE}/social_login.php`, {
         provider,
         id_token: idToken,
         ...userData,
-      }, {
-        timeout: 12000,
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       });
       if (res.data.status === 'success') {
-        const authToken = res.data.data?.token;
-        let user = res.data.data?.user;
+        const authToken    = res.data.data?.token;
+        const sessionToken = res.data.data?.session_token ?? null;
+        let user           = res.data.data?.user;
         if (Array.isArray(user)) user = user[0];
         if (!authToken || !user) throw new Error('Invalid server response');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await login(user, authToken);
+        await login(user, authToken, sessionToken);
         navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

@@ -1,4 +1,4 @@
-import axios from "axios";
+import apiClient from '../../api/apiClient';
 
 const GetCountriesController = async(token)=>{
 
@@ -6,11 +6,7 @@ const GetCountriesController = async(token)=>{
 
 
     try{
-        const response = await axios.get(API_URL, {
-            headers:{
-                    Authorization: `Bearer ${token}`        
-            }
-        })
+        const response = await apiClient.get(API_URL)
 
 
         return {status:response.status, data:response.data.data}

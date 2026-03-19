@@ -19,7 +19,7 @@ import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, CommonActions } from "@react-navigation/native";
-import axios from "axios";
+import apiClient from '../../api/apiClient';
 
 import AppDetails from "../../helpers/appdetails";
 import { useAuth } from "../../AuthContext";
@@ -112,9 +112,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
 
   const fetchBalance = useCallback(async () => {
     try {
-      const res = await axios.get("https://hafrik.com/api/v1/balance/balance.php", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiClient.get("https://hafrik.com/api/v1/balance/balance.php");
       if (res.data?.status === "success") {
         setWallet(res.data.data.wallet);
         setPoints(res.data.data.points);

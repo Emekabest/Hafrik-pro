@@ -1,4 +1,4 @@
-import axios from "axios"
+import apiClient from '../api/apiClient';
 
 /**
  * Toggle save / unsave a post.
@@ -10,12 +10,7 @@ const ToggleSaveController = async(post_id, token)=>{
     const API_URL = `https://hafrik.com/api/v1/feed/save.php`;
 
     try{
-        const response = await axios.post(API_URL, { post_id }, {
-            headers:{
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-            }
-        })
+        const response = await apiClient.post(API_URL, { post_id })
 
         return {status:response.status, data:response.data?.data ?? response.data}
     }

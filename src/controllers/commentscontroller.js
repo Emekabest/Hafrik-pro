@@ -1,4 +1,4 @@
-import axios from "axios"
+import apiClient from '../api/apiClient';
 
 const COMMENTS_URL = `https://hafrik.com/api/v1/feed/comments.php`;
 
@@ -9,15 +9,10 @@ const COMMENTS_URL = `https://hafrik.com/api/v1/feed/comments.php`;
  */
 const AddCommentController = async(post_id, comment, token)=>{
     try {
-        const response = await axios.post(COMMENTS_URL, {
+        const response = await apiClient.post(COMMENTS_URL, {
             action: 'comment',
             post_id,
             text: comment,
-        }, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
         });
         return { status: response.status, data: response.data?.data ?? response.data };
     } catch(error) {
@@ -31,16 +26,11 @@ const AddCommentController = async(post_id, comment, token)=>{
  */
 const AddReplyController = async(post_id, comment_id, text, token)=>{
     try {
-        const response = await axios.post(COMMENTS_URL, {
+        const response = await apiClient.post(COMMENTS_URL, {
             action: 'reply',
             post_id,
             comment_id,
             text,
-        }, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
         });
         return { status: response.status, data: response.data?.data ?? response.data };
     } catch(error) {
@@ -55,14 +45,9 @@ const AddReplyController = async(post_id, comment_id, text, token)=>{
  */
 const LikeCommentController = async(comment_id, token)=>{
     try {
-        const response = await axios.post(COMMENTS_URL, {
+        const response = await apiClient.post(COMMENTS_URL, {
             action: 'like',
             comment_id,
-        }, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
         });
         return { status: response.status, data: response.data?.data ?? response.data };
     } catch(error) {
@@ -76,12 +61,8 @@ const LikeCommentController = async(comment_id, token)=>{
  */
 const DeleteCommentController = async(comment_id, token)=>{
     try {
-        const response = await axios.delete(COMMENTS_URL, {
+        const response = await apiClient.delete(COMMENTS_URL, {
             data: { comment_id },
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
         });
         return { status: response.status, data: response.data?.data ?? response.data };
     } catch(error) {
@@ -95,11 +76,8 @@ const DeleteCommentController = async(comment_id, token)=>{
  */
 const GetCommentsController = async(post_id, token, page = 1, limit = 10)=>{
     try {
-        const response = await axios.get(COMMENTS_URL, {
+        const response = await apiClient.get(COMMENTS_URL, {
             params: { post_id, page, limit },
-            headers: {
-                Authorization: `Bearer ${token}`,
-            }
         });
         // Handle both { data: { data: [...] } } and { data: [...] } shapes
         const raw = response.data?.data;
@@ -116,11 +94,8 @@ const GetCommentsController = async(post_id, token, page = 1, limit = 10)=>{
  */
 const GetRepliesController = async(comment_id, token)=>{
     try {
-        const response = await axios.get(COMMENTS_URL, {
+        const response = await apiClient.get(COMMENTS_URL, {
             params: { comment_id },
-            headers: {
-                Authorization: `Bearer ${token}`,
-            }
         });
         const raw = response.data?.data;
         const replies = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];

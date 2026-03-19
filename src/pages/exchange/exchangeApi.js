@@ -1,31 +1,21 @@
-import axios from 'axios';
+import apiClient from '../../api/apiClient';
 
-const BASE = 'https://hafrik.com/api/v1/exchange';
-
-const make = (token) =>
-  axios.create({
-    baseURL: BASE,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    timeout: 15000,
-  });
+const BASE = '/exchange';
 
 export const getRates = (token) =>
-  make(token).get('/rates_get.php');
+  apiClient.get(`${BASE}/rates_get.php`);
 
 export const getBanks = (token) =>
-  make(token).get('/banks_list.php');
+  apiClient.get(`${BASE}/banks_list.php`);
 
 export const createOrder = (token, data) =>
-  make(token).post('/order_create.php', data);
+  apiClient.post(`${BASE}/order_create.php`, data);
 
 export const getMyOrders = (token, page = 1) =>
-  make(token).get(`/orders_my.php?page=${page}`);
+  apiClient.get(`${BASE}/orders_my.php`, { params: { page } });
 
 export const getAdminOrders = (token, status = '', page = 1) =>
-  make(token).get(`/orders_admin.php?status=${encodeURIComponent(status)}&page=${page}`);
+  apiClient.get(`${BASE}/orders_admin.php`, { params: { status, page } });
 
 export const orderAction = (token, data) =>
-  make(token).post('/order_action.php', data);
+  apiClient.post(`${BASE}/order_action.php`, data);
