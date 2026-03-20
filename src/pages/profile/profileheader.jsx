@@ -234,7 +234,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     <View style={[styles.coverActions, coverImage?.uploading && { opacity: 0.5, pointerEvents: 'none' }]}>
                         <TouchableOpacity 
                             disabled={coverImage?.uploading}
-                            onPress={() => setTimeout(() => pickImageFromGallery("cover", "https://hafrik.com/api/v1/users/update_cover.php"), 100)}
+                            onPress={() => pickImageFromGallery("cover", "https://hafrik.com/api/v1/users/update_cover.php")}
                             style={styles.actionButton} 
                             activeOpacity={0.8}
                         >
@@ -461,7 +461,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                                 <View style={styles.sheetHandle} />
                                 <Text style={styles.sheetTitle}>Profile Photo</Text>
 
-                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => { setAvatarOptionsVisible(false); setTimeout(() => pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'), 400); }}>
+                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => { setAvatarOptionsVisible(false); pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'); }}>
                                     <View style={[styles.sheetOptionIcon, { backgroundColor: withOpacity(ACCENT, 0.12) }]}> 
                                         <Ionicons name="image-outline" size={20} color={ACCENT} />
                                     </View>
