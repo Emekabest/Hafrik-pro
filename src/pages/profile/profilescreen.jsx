@@ -12,6 +12,7 @@ import Followers from './followers';
 import ProfileHeader from './profileheader';
 import DrawerNavigation from '../home/drawernavigation';
 import Photos from './photos';
+import Videos from './videos';
 import BusinessPages from './businesspages/BusinessPages';
 import Communities from './Communities';
 import ProgressBarLoader from '../progressbarloader';
@@ -57,11 +58,12 @@ const ProfileScreen = () => {
     // ])
 
     const tabs = useRef([
-        {label: "Timeline", value: "timeline", icon: "home-outline"},
-        {label: "Followers", value: "followers", icon: "people-outline"},
-        {label: "Media", value: "photos", icon: "images-outline"},
-        {label: "Pages", value: "business_pages", icon: "flag-outline"},
-        {label: "Communities", value: "communities", icon: "globe-outline"},
+        {label: "Timeline",  value: "timeline",       icon: "home-outline"},
+        {label: "Followers", value: "followers",       icon: "people-outline"},
+        {label: "Photos",    value: "photos",          icon: "image-outline"},
+        {label: "Videos",    value: "videos",          icon: "videocam-outline"},
+        {label: "Business",  value: "business_pages",  icon: "storefront-outline"},
+        {label: "Communities", value: "communities",   icon: "globe-outline"},
     ])
 
 
@@ -213,6 +215,18 @@ const ProfileScreen = () => {
                     {
                         activeTab.value === 'photos' && (
                             <Photos
+                                header={profileHeader}
+                                tabs={tabs.current}
+                                activeTab={activeTab}
+                                onTabChange={handleTabChange}
+                                userId={userId}
+                            />
+                        )
+                    }
+
+                    {
+                        activeTab.value === 'videos' && (
+                            <Videos
                                 header={profileHeader}
                                 tabs={tabs.current}
                                 activeTab={activeTab}

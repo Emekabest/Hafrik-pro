@@ -7,7 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import axios from 'axios';
+import apiClient from '../../../../api/apiClient';
 
 import CommentMainPostContent from './commentpost/commentmainpostcontent';
 import { useAuth } from '../../../../AuthContext';
@@ -34,11 +34,7 @@ const MUTED  = Colors.secondaryText;
 // Fire-and-forget — track that user viewed this post
 const trackView = async (postId, token) => {
   try {
-    await axios.post(
-      `${BASE}/api/v1/feed/add_view.php`,
-      { post_id: postId },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    await apiClient.post('/feed/add_view.php', { post_id: postId });
   } catch { /* silent */ }
 };
 

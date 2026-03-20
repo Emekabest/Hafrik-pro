@@ -1,4 +1,4 @@
-import axios from "axios"
+import apiClient from '../api/apiClient';
 
 const RepostController = async(postData, token)=>{
 
@@ -9,12 +9,7 @@ const RepostController = async(postData, token)=>{
 
 
     try{
-        const response = await axios.post(API_URL , postData, {
-            headers:{
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-            }
-        })
+        const response = await apiClient.post(API_URL, postData)
 
     
         return {status:response.status, data:response.data}

@@ -1,6 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
-import { useEffect } from "react";
+import apiClient from '../api/apiClient';
 
 const API_BASE = "https://hafrik.com/api/v1";
 const EDIT_PROFILE_URL = `${API_BASE}/users/update_profile.php`;
@@ -118,24 +117,18 @@ const normaliseProfileFieldResponse = (payload) => {
     };
 };
 
-const ProfileHeaderController = async(token) => {
-    
-    try{
-        const response = await axios.get("https://hafrik.com/api/v1/users/profile.php", {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-
-
-        return {status: response.status, data: response.data.data};
+const ProfileHeaderController = async(token, userId = null) => {
+    try {
+        const url = userId
+            ? `https://hafrik.com/api/v1/users/profile.php?user_id=${userId}`
+            : 'https://hafrik.com/api/v1/users/profile.php';
+        const response = await apiClient.get(url);
+        // Normalize: handle both { data: { user, counts, viewer } } and { user, counts, viewer }
+        const data = response.data?.data ?? response.data;
+        return { status: response.status, data };
+    } catch (error) {
+        return { status: error.response?.status || 500, data: null };
     }
-    catch(error){
-
-        return {status: error.response?.status || 500, data: null};
-    }
-
 }
 
 
@@ -158,36 +151,30 @@ const getProfileAvatarController = async(token) => {
 
 
 const UpdateProfileController = async(token, newProfileData) => {
-    try{
-        // Always convert to FormData so PHP can read via $_POST
-        let dataToSend;
-        if (newProfileData instanceof FormData) {
-            dataToSend = newProfileData;
-        } else {
-            const fd = new FormData();
-            Object.entries(newProfileData).forEach(([key, value]) => {
-                if (value !== null && value !== undefined) {
-                    fd.append(key, String(value));
-                }
-            });
-            dataToSend = fd;
-        }
-        const response = await axios.post(EDIT_PROFILE_URL, dataToSend, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'multipart/form-data',
-            },
+    try {
+        // Build a clean JSON payload — only include non-empty fields
+        let payload = {};
+        const source = newProfileData instanceof FormData
+            ? Object.fromEntries(newProfileData.entries())
+            : newProfileData;
+        Object.entries(source).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && value !== '') {
+                payload[key] = value;
+            }
         });
+
+        const response = await apiClient.post(EDIT_PROFILE_URL, payload);
+
+        // Re-fetch from API after update — never trust local state (per API spec)
+        const refreshed = await ProfileHeaderController(token);
+        const freshUser = refreshed.data?.user ?? response.data?.data ?? response.data;
 
         return {
             status: response.status,
-            message: response.data?.message || '',
-            data: normaliseProfileUser(response.data?.data || response.data),
+            message: response.data?.message || 'Profile updated successfully',
+            data: normaliseProfileUser(freshUser),
         };
-
-    }
-    catch(error){
-
+    } catch (error) {
         return {
             status: error.response?.status || 500,
             message: error.response?.data?.message || 'Failed to update profile',
@@ -198,23 +185,25 @@ const UpdateProfileController = async(token, newProfileData) => {
 
 const GetEditableProfileController = async(token) => {
     try {
-        // Use the profile GET endpoint — safer than POSTing to the update endpoint
-        const response = await axios.get("https://hafrik.com/api/v1/users/profile.php", {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-
+        const res = await ProfileHeaderController(token);
+        if (!res.data) {
+            return {
+                status: res.status,
+                message: 'Failed to load profile',
+                data: null,
+            };
+        }
+        // res.data is { user, counts, viewer } — extract the user object
+        const user = res.data?.user ?? res.data;
         return {
-            status: response.status,
-            message: response.data?.message || '',
-            data: normaliseProfileUser(response.data?.data?.user || response.data?.data || response.data),
+            status: res.status,
+            message: '',
+            data: normaliseProfileUser(user),
         };
     } catch (error) {
         return {
-            status: error.response?.status || 500,
-            message: error.response?.data?.message || 'Failed to load editable profile',
+            status: 500,
+            message: 'Failed to load editable profile',
             data: null,
         };
     }
@@ -222,12 +211,7 @@ const GetEditableProfileController = async(token) => {
 
 const GetProfileFieldController = async(token) => {
     try {
-        const response = await axios.get(PROFILE_FIELDS_URL, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
+        const response = await apiClient.get(PROFILE_FIELDS_URL);
 
         return {
             status: response.status,
@@ -260,17 +244,20 @@ const UploadProfileImageController = async(media, token, api) => {
 
         
 
-          const response = await axios.post(api, formData, {
-             headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'multipart/form-data',
-             },
+          const response = await apiClient.post(api, formData, {
+             headers: { 'Content-Type': 'multipart/form-data' },
         })
 
         console.log("Upload response:", response.data);
 
+        const apiStatus = response.data?.status;
+        const normalizedStatus =
+            apiStatus === 'success' || apiStatus === 1 || apiStatus === true || response.status === 200
+                ? 'success'
+                : 'error';
+        const data = response.data?.data ?? response.data;
 
-        return {status:response.data.status, data:response.data.data}
+        return { status: normalizedStatus, data };
 
     }
     catch(error){
@@ -306,12 +293,7 @@ const ProfileTimelineController = async(API_URL, token, page = 1) => {
 
 
     try {
-        const response = await axios.get(mainUrl, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        });
+        const response = await apiClient.get(mainUrl);
 
         // Handle both unified API shape and legacy shape
         const json = response.data;
@@ -337,12 +319,7 @@ const FollowersController = async(token, userId, path) => {
 
     try{
         
-        const response = await axios.get(`https://hafrik.com/api/v1/users/${path}?user_id=${userId}`,{
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        })
+        const response = await apiClient.get(`https://hafrik.com/api/v1/users/${path}?user_id=${userId}`)
 
         return {status: response.status, data: response.data.data.data};
 
@@ -358,12 +335,7 @@ const ProfileProductsController = async(token, userId, page = 1) => {
 
      try{
         
-        const response = await axios.get(`https://hafrik.com/api/v1/users/profile_products.php?user_id=${userId}&page=${page}`,{
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        })
+        const response = await apiClient.get(`https://hafrik.com/api/v1/users/profile_products.php?user_id=${userId}&page=${page}`)
 
         return {status: response.status, data: response.data.data.data};
 
@@ -380,12 +352,7 @@ const ProfilePagesController = async(token, userId, page = 1) => {
 
      try{
         
-        const response = await axios.get(`https://hafrik.com/api/v1/users/profile_pages.php?user_id=${userId}&page=${page}`,{
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        })
+        const response = await apiClient.get(`https://hafrik.com/api/v1/users/profile_pages.php?user_id=${userId}&page=${page}`)
 
         return {status: response.status, data: response.data.data.data};
 
@@ -400,12 +367,7 @@ const ProfilePagesController = async(token, userId, page = 1) => {
 
 const UserFollowingController = async(token, userId, page = 1, limit = 10) => {
     try {
-        const response = await axios.get(`https://hafrik.com/api/v1/users/user_following.php?user_id=${userId}&page=${page}&limit=${limit}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        });
+        const response = await apiClient.get(`https://hafrik.com/api/v1/users/user_following.php?user_id=${userId}&page=${page}&limit=${limit}`);
         return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
     } catch (error) {
         return { status: error.response?.status || 500, data: null };
@@ -414,12 +376,7 @@ const UserFollowingController = async(token, userId, page = 1, limit = 10) => {
 
 const UserFollowersController = async(token, userId, page = 1, limit = 10) => {
     try {
-        const response = await axios.get(`https://hafrik.com/api/v1/users/user_followers.php?user_id=${userId}&page=${page}&limit=${limit}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        });
+        const response = await apiClient.get(`https://hafrik.com/api/v1/users/user_followers.php?user_id=${userId}&page=${page}&limit=${limit}`);
         return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
     } catch (error) {
         return { status: error.response?.status || 500, data: null };
@@ -428,12 +385,7 @@ const UserFollowersController = async(token, userId, page = 1, limit = 10) => {
 
 const UserMediaController = async(token, userId, page = 1, limit = 10) => {
     try {
-        const response = await axios.get(`https://hafrik.com/api/v1/users/user_media.php?user_id=${userId}&page=${page}&limit=${limit}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        });
+        const response = await apiClient.get(`https://hafrik.com/api/v1/users/user_media.php?user_id=${userId}&page=${page}&limit=${limit}`);
         return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
     } catch (error) {
         return { status: error.response?.status || 500, data: null };
@@ -442,12 +394,7 @@ const UserMediaController = async(token, userId, page = 1, limit = 10) => {
 
 const UserCommunitiesController = async(token, userId, page = 1, limit = 5) => {
     try {
-        const response = await axios.get(`https://hafrik.com/api/v1/users/user_communities.php?user_id=${userId}&page=${page}&limit=${limit}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        });
+        const response = await apiClient.get(`https://hafrik.com/api/v1/users/user_communities.php?user_id=${userId}&page=${page}&limit=${limit}`);
         return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
     } catch (error) {
         return { status: error.response?.status || 500, data: null };
@@ -456,12 +403,7 @@ const UserCommunitiesController = async(token, userId, page = 1, limit = 5) => {
 
 const UserReelsController = async(token, userId, page = 1, limit = 10) => {
     try {
-        const response = await axios.get(`https://hafrik.com/api/v1/users/user_reels.php?user_id=${userId}&page=${page}&limit=${limit}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        });
+        const response = await apiClient.get(`https://hafrik.com/api/v1/users/user_reels.php?user_id=${userId}&page=${page}&limit=${limit}`);
         return { status: response.status, data: response.data?.data?.data || response.data?.data || [] };
     } catch (error) {
         return { status: error.response?.status || 500, data: null };

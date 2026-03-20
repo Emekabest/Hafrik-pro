@@ -1,4 +1,4 @@
-import axios from "axios";
+import apiClient from '../api/apiClient';
 
 
 /**
@@ -23,11 +23,8 @@ const UploadMediaController = async(media, token, onProgress, uploadType)=>{
           });
 
 
-          const response = await axios.post(API_URL, formData, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "multipart/form-data",
-            },
+          const response = await apiClient.post(API_URL, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
                 if (onProgress && progressEvent.total) {
                     onProgress(progressEvent);

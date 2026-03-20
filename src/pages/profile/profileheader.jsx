@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Modal, Dimensions, StatusBar, TouchableWithoutFeedback } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Text, Modal, TouchableWithoutFeedback, Alert, Linking } from "react-native";
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,7 +22,6 @@ const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
 const TEAL   = Colors.tealAccent;
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const formatCount = (n) => {
     if (!n) return '0';
@@ -54,6 +53,19 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
     const biography = userDetails?.bio || userDetails?.about_me || userDetails?.biography || userDetails?.user_biography || '';
     const countryLabel = userDetails?.country_name || userDetails?.country_label || userDetails?.user_country_name || userDetails?.country || '';
     const cityLabel = userDetails?.current_city || userDetails?.city || userDetails?.user_current_city || '';
+    const roleLabel = userDetails?.role || '';
+    const originLabel = userDetails?.origin || userDetails?.hometown || userDetails?.from || '';
+    const dobLabel = userDetails?.dob || userDetails?.date_of_birth || '';
+    const monetizationEnabled = !!userDetails?.monetization_enabled;
+
+    const formatDob = (dob) => {
+        if (!dob) return '';
+        try {
+            const d = new Date(dob);
+            if (isNaN(d.getTime())) return dob;
+            return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        } catch { return dob; }
+    };
 
     useEffect(()=>{
         if (userDetails?.cover) {
@@ -81,7 +93,22 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
         try {
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permission.granted) {
-                console.warn('Media library permission not granted');
+                if (!permission.canAskAgain) {
+                    Alert.alert(
+                        'Permission Required',
+                        'Photo library access is disabled. Please enable it in your device Settings to choose a profile photo.',
+                        [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                        ]
+                    );
+                } else {
+                    Alert.alert(
+                        'Permission Denied',
+                        'We need access to your photo library to update your profile picture.',
+                        [{ text: 'OK' }]
+                    );
+                }
                 return;
             }
 
@@ -183,12 +210,6 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
 
 
 
-    const handleUploadCover = () => {
-
-        // https://hafrik.com/api/v1/users/update_avatar.php'
-
-    }
-
 
 
 
@@ -280,8 +301,9 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
 
             {/* ── Name + Username ── */}
             <View style={styles.userInfoSection}>
+                {/* Name row */}
                 <View style={styles.nameRow}>
-                    <Text style={styles.fullNameText}>
+                    <Text style={styles.fullNameText} numberOfLines={1}>
                         {userDetails
                             ? (userDetails.full_name || `${userDetails.first_name || ''} ${userDetails.last_name || ''}`.trim() || 'Hafrik User')
                             : (user?.full_name || 'Hafrik User')}
@@ -292,29 +314,54 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                         </View>
                     ) : null}
                 </View>
+
+                {/* Role badge — only shown if role exists */}
+                {!!roleLabel && (
+                    <View style={styles.roleBadgeRow}>
+                        <View style={styles.roleBadge}>
+                            <Ionicons name="briefcase-outline" size={11} color={ACCENT} />
+                            <Text style={styles.roleBadgeText}>{roleLabel}</Text>
+                        </View>
+                    </View>
+                )}
+
                 <Text style={styles.usernameText}>@{userDetails?.username || user?.username || 'username'}</Text>
 
-                {/* Bio placeholder */}
-                {biography ? (
+                {/* Bio — multi-line, no truncation */}
+                {!!biography && (
                     <Text style={styles.bioText}>{biography}</Text>
-                ) : null}
+                )}
 
-                {/* Quick info chips */}
+                {/* Info chips — only rendered if value exists */}
                 <View style={styles.infoChipsRow}>
-                    <View style={styles.infoChip}>
-                        <Ionicons 
-                            name={getGender(userDetails?.gender).toLowerCase() === 'female' ? 'female' : 'male'} 
-                            size={13} 
-                            color={ACCENT} 
-                        />
-                        <Text style={styles.infoChipText}>{getGender(userDetails?.gender)}</Text>
-                    </View>
+                    {!!getGender(userDetails?.gender) && getGender(userDetails?.gender) !== 'Unknown' && (
+                        <View style={styles.infoChip}>
+                            <Ionicons
+                                name={getGender(userDetails?.gender).toLowerCase() === 'female' ? 'female-outline' : 'male-outline'}
+                                size={13}
+                                color={ACCENT}
+                            />
+                            <Text style={styles.infoChipText}>{getGender(userDetails?.gender)}</Text>
+                        </View>
+                    )}
                     {!!(cityLabel || countryLabel) && (
                         <View style={styles.infoChip}>
                             <Ionicons name="location-outline" size={13} color={ACCENT} />
                             <Text style={styles.infoChipText}>
-                                {[cityLabel, countryLabel].filter(Boolean).join(', ')}
+                                Lives in {[cityLabel, countryLabel].filter(Boolean).join(', ')}
                             </Text>
+                        </View>
+                    )}
+                    {!!originLabel && (
+                        <View style={styles.infoChip}>
+                            <Ionicons name="home-outline" size={13} color={ACCENT} />
+                            <Text style={styles.infoChipText}>From {originLabel}</Text>
+                        </View>
+                    )}
+                    {!!dobLabel && (
+                        <View style={styles.infoChip}>
+                            <Ionicons name="calendar-outline" size={13} color={ACCENT} />
+                            <Text style={styles.infoChipText}>{formatDob(dobLabel)}</Text>
                         </View>
                     )}
                     {groupsCount > 0 && (
@@ -357,16 +404,44 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     </TouchableOpacity>
                 ) : (
                     <View style={styles.actionButtonsRow}>
-                        <TouchableOpacity style={[styles.followButton, isFollowing && styles.followingButton]} activeOpacity={0.8}>
-                            <Ionicons name={isFollowing ? "checkmark" : "person-add-outline"} size={16} color={isFollowing ? ACCENT : Colors.white} />
+                        {/* Follow / Following toggle */}
+                        <TouchableOpacity
+                            style={[styles.followButton, isFollowing && styles.followingButton]}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons
+                                name={isFollowing ? 'checkmark' : 'person-add-outline'}
+                                size={15}
+                                color={isFollowing ? ACCENT : Colors.white}
+                            />
                             <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
                                 {isFollowing ? 'Following' : 'Follow'}
                             </Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.messageButton} activeOpacity={0.8}>
-                            <Ionicons name="chatbubble-outline" size={16} color={BRAND} />
+
+                        {/* Message */}
+                        <TouchableOpacity style={styles.iconActionBtn} activeOpacity={0.8}>
+                            <Ionicons name="chatbubble-outline" size={17} color={BRAND} />
+                        </TouchableOpacity>
+
+                        {/* Gift */}
+                        <TouchableOpacity style={styles.iconActionBtn} activeOpacity={0.8}>
+                            <Ionicons name="gift-outline" size={17} color={BRAND} />
+                        </TouchableOpacity>
+
+                        {/* More */}
+                        <TouchableOpacity style={styles.iconActionBtn} activeOpacity={0.8}>
+                            <Ionicons name="ellipsis-horizontal" size={17} color={BRAND} />
                         </TouchableOpacity>
                     </View>
+                )}
+
+                {/* Send a Tip — only shown when monetization_enabled */}
+                {monetizationEnabled && !isOwner && (
+                    <TouchableOpacity style={styles.sendTipButton} activeOpacity={0.85}>
+                        <Ionicons name="diamond-outline" size={17} color={Colors.white} />
+                        <Text style={styles.sendTipText}>Send a Tip</Text>
+                    </TouchableOpacity>
                 )}
             </View>
 
@@ -613,6 +688,60 @@ const styles = StyleSheet.create({
         marginLeft: 5,
         fontFamily: AppDetails.fontFamily?.body,
         fontWeight: '500',
+    },
+
+    // ── Role badge ────────────────────────────────────────────────
+    roleBadgeRow: {
+        marginTop: 4,
+        marginBottom: 2,
+    },
+    roleBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        backgroundColor: withOpacity(ACCENT, 0.1),
+        borderWidth: 1,
+        borderColor: withOpacity(ACCENT, 0.25),
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        gap: 5,
+    },
+    roleBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: ACCENT,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+
+    // ── Send a Tip ────────────────────────────────────────────────
+    sendTipButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: TEAL,
+        borderRadius: 12,
+        height: 44,
+        marginTop: 10,
+        gap: 8,
+    },
+    sendTipText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: Colors.white,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
+
+    // ── Icon-only action button (Message / Gift / More) ───────────
+    iconActionBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: Colors.surfaceCool,
+        borderWidth: 1,
+        borderColor: Colors.borderSoft,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     // ── Action buttons ────────────────────────────────────────────

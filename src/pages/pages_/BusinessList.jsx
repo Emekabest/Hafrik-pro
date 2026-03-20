@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   View, Text, FlatList, ActivityIndicator, StyleSheet,
-  TouchableOpacity, TextInput, Image, ScrollView, StatusBar,
+  TouchableOpacity, TextInput, Image, ScrollView, StatusBar, Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useStore from "../../repository/store";
-import { getBusinessList, getBusinessCategories } from "./Businessapi";
+import { getBusinessList, getBusinessCategories, toggleFollowBusiness } from "./Businessapi";
 import CreateModal from "../groups/CreateModal";
 import { Colors } from "../../theme";
 
@@ -20,13 +20,11 @@ const BORDER     = Colors.border;
 const MUTED      = Colors.secondaryText;
 const DARK       = Colors.black;
 const WHITE      = Colors.white;
-const ON_DARK_04 = WHITE + '0A';
 const ON_DARK_10 = WHITE + '1A';
 const ON_DARK_14 = WHITE + '24';
 const ON_DARK_15 = WHITE + '26';
 const ON_DARK_40 = WHITE + '66';
 const ON_DARK_55 = WHITE + '8C';
-const ACCENT_S08 = ACCENT + '14';
 
 const decodeHtml = (text = '') =>
   String(text)
@@ -48,22 +46,95 @@ const isRealImage = (url) =>
   typeof url === 'string' && url.trim().length > 6 &&
   !url.includes('default-avatar') && !url.includes('blank_profile');
 
+// ─── Category Dropdown Modal ───────────────────────────────────────────────────
+const CategoryDropdown = ({ visible, categories, activeCat, onSelect, onClose }) => (
+  <Modal
+    visible={visible}
+    transparent
+    animationType="fade"
+    onRequestClose={onClose}
+  >
+    <TouchableOpacity style={dd.overlay} activeOpacity={1} onPress={onClose}>
+      <View style={dd.sheet}>
+        <View style={dd.sheetHeader}>
+          <Text style={dd.sheetTitle}>Filter by Category</Text>
+          <TouchableOpacity onPress={onClose} style={dd.closeBtn}>
+            <Ionicons name="close" size={20} color={DARK} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={dd.list}>
+          {/* All option */}
+          <TouchableOpacity
+            style={[dd.item, activeCat === null && dd.itemOn]}
+            onPress={() => { onSelect(null); onClose(); }}
+            activeOpacity={0.75}
+          >
+            <View style={[dd.itemDot, activeCat === null && dd.itemDotOn]} />
+            <Text style={[dd.itemTxt, activeCat === null && dd.itemTxtOn]}>All Categories</Text>
+            {activeCat === null && <Ionicons name="checkmark" size={16} color={ACCENT} />}
+          </TouchableOpacity>
+          {categories.map((cat) => {
+            const id = cat.id ?? cat.category_id;
+            const on = activeCat === id;
+            return (
+              <TouchableOpacity
+                key={`cat-${id}`}
+                style={[dd.item, on && dd.itemOn]}
+                onPress={() => { onSelect(id); onClose(); }}
+                activeOpacity={0.75}
+              >
+                <View style={[dd.itemDot, on && dd.itemDotOn]} />
+                <Text style={[dd.itemTxt, on && dd.itemTxtOn]} numberOfLines={1}>
+                  {cat.name ?? cat.title ?? ''}
+                </Text>
+                {on && <Ionicons name="checkmark" size={16} color={ACCENT} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    </TouchableOpacity>
+  </Modal>
+);
+
 // ─── Business Card ────────────────────────────────────────────────────────────
-const BusinessCard = ({ business, onOpen, user }) => {
+const BusinessCard = ({ business, onOpen, user, categoryName }) => {
   const openComposer = useStore((s) => s.openComposer);
 
-  const isVerified  = business.verified_value === 1 || business.verified === true;
-  const isOwner     =
+  const isVerified = business.verified_value === 1 || business.verified === true;
+  const isOwner    =
     business.is_owner === true || business.is_owner === 1 ||
     (user?.id && String(business.user_id) === String(user.id));
 
-  const title     = cleanText(business.title ?? '');
-  const about     = cleanText(business.about ?? '');
-  const location  = cleanText(business.location ?? '');
-  const category  = cleanText(business.category ?? business.page_category ?? '');
-  const avatar    = business.avatar ?? null;
-  const cover     = business.cover ?? business.banner ?? null;
-  const followers = fmtCount(business.followers_count ?? business.likes_count ?? 0);
+  const [isLiked,    setIsLiked]    = useState(!!(business.is_liked));
+  const [likeCount,  setLikeCount]  = useState(Number(business.likes ?? 0));
+  const [likeLoading, setLikeLoading] = useState(false);
+  const likeRef = useRef({ isLiked, likeLoading });
+  likeRef.current = { isLiked, likeLoading };
+
+  const handleLike = useCallback(async (e) => {
+    e.stopPropagation?.();
+    const { isLiked: was, likeLoading: busy } = likeRef.current;
+    if (busy) return;
+    setLikeLoading(true);
+    setIsLiked(!was);
+    setLikeCount(c => was ? Math.max(0, c - 1) : c + 1);
+    try {
+      const res = await toggleFollowBusiness(business.id, was ? 'unlike' : 'like');
+      const d   = res?.data ?? res;
+      if (d?.is_liked != null) setIsLiked(!!d.is_liked);
+      if (d?.likes    != null) setLikeCount(Number(d.likes) || 0);
+    } catch {
+      setIsLiked(was);
+      setLikeCount(c => was ? c + 1 : Math.max(0, c - 1));
+    }
+    setLikeLoading(false);
+  }, [business.id]);
+
+  const title  = cleanText(business.title ?? '');
+  const about  = cleanText(business.about ?? '');
+  const avatar = business.avatar ?? null;
+  const cover  = business.cover ?? business.banner ?? null;
 
   return (
     <TouchableOpacity style={bs.card} activeOpacity={0.88} onPress={() => onOpen?.(business)}>
@@ -103,20 +174,12 @@ const BusinessCard = ({ business, onOpen, user }) => {
                 </View>
               )}
             </View>
-            <View style={bs.metaRow}>
-              {!!category && (
-                <View style={bs.catTagPill}>
-                  <Ionicons name="pricetag-outline" size={9} color={ACCENT} />
-                  <Text style={bs.catTagTxt} numberOfLines={1}>{category}</Text>
-                </View>
-              )}
-              {!!location && (
-                <View style={bs.metaItem}>
-                  <Ionicons name="location-outline" size={11} color={MUTED} />
-                  <Text style={bs.metaTxt} numberOfLines={1}>{location}</Text>
-                </View>
-              )}
-            </View>
+            {!!categoryName && (
+              <View style={bs.catTagPill}>
+                <Ionicons name="pricetag-outline" size={9} color={ACCENT} />
+                <Text style={bs.catTagTxt} numberOfLines={1}>{categoryName}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -129,8 +192,8 @@ const BusinessCard = ({ business, onOpen, user }) => {
       {/* Footer */}
       <View style={bs.footer}>
         <View style={bs.followerRow}>
-          <Ionicons name="people-outline" size={13} color={MUTED} />
-          <Text style={bs.followerTxt}>{followers} followers</Text>
+          <Ionicons name="heart-outline" size={13} color={MUTED} />
+          <Text style={bs.followerTxt}>{fmtCount(likeCount)} likes</Text>
         </View>
         {isOwner ? (
           <View style={bs.footerRight}>
@@ -146,9 +209,25 @@ const BusinessCard = ({ business, onOpen, user }) => {
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={bs.viewBtn} onPress={() => onOpen?.(business)} activeOpacity={0.85}>
-            <Text style={bs.viewBtnTxt}>View</Text>
-          </TouchableOpacity>
+          <View style={bs.footerRight}>
+            <TouchableOpacity
+              style={[bs.likeBtn, isLiked && bs.likedBtn]}
+              onPress={handleLike}
+              activeOpacity={0.85}
+              disabled={likeLoading}
+            >
+              {likeLoading
+                ? <ActivityIndicator size="small" color={isLiked ? MUTED : WHITE} style={{ width: 52 }} />
+                : <>
+                    <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={13} color={isLiked ? MUTED : WHITE} />
+                    <Text style={[bs.likeBtnTxt, isLiked && bs.likedBtnTxt]}>{isLiked ? 'Liked' : 'Like'}</Text>
+                  </>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={bs.viewBtn} onPress={() => onOpen?.(business)} activeOpacity={0.85}>
+              <Text style={bs.viewBtnTxt}>View</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </TouchableOpacity>
@@ -184,16 +263,33 @@ export default function BusinessList() {
   const { token, user } = useAuth();
   const { top } = useSafeAreaInsets();
 
-  const [pages,       setPages]      = useState([]);
-  const [loading,     setLoading]    = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page,        setPage]       = useState(1);
-  const [hasMore,     setHasMore]    = useState(true);
-  const [search,      setSearch]     = useState('');
-  const [categories,  setCategories] = useState([]);
-  const [activeCat,   setActiveCat]  = useState(null);
-  const [showCreate,  setShowCreate] = useState(false);
-  const [refreshing,  setRefreshing] = useState(false);
+  const [pages,        setPages]       = useState([]);
+  const [loading,      setLoading]     = useState(true);
+  const [loadingMore,  setLoadingMore] = useState(false);
+  const [page,         setPage]        = useState(1);
+  const [hasMore,      setHasMore]     = useState(true);
+  const [search,       setSearch]      = useState('');
+  const [categories,   setCategories]  = useState([]);
+  const [activeCat,    setActiveCat]   = useState(null);   // numeric category id or null
+  const [showCatModal, setShowCatModal]= useState(false);
+  const [showCreate,   setShowCreate]  = useState(false);
+  const [refreshing,   setRefreshing]  = useState(false);
+  const [activeFilter, setActiveFilter]= useState('all'); // 'all' | 'following' | 'managed'
+
+  const activeFilterRef = useRef('all');
+  activeFilterRef.current = activeFilter;
+
+  // Map category id → name for card display
+  const catMap = useMemo(() => {
+    const m = {};
+    categories.forEach(c => {
+      const id = c.id ?? c.category_id;
+      if (id != null) m[id] = c.name ?? c.title ?? '';
+    });
+    return m;
+  }, [categories]);
+
+  const activeCatName = activeCat != null ? (catMap[activeCat] ?? '') : '';
 
   useEffect(() => {
     loadCategories();
@@ -224,12 +320,16 @@ export default function BusinessList() {
     try {
       const filters = {};
       if (query?.trim()) filters.search = query.trim();
-      const res = await getBusinessList(pageNum, 15, filters, token);
+      const filter = activeFilterRef.current;
+      if (filter === 'following') filters.suggested = 1;
+      else if (filter === 'managed') filters.managed = 1;
+      const res = await getBusinessList(pageNum, 20, filters, token);
       if (res?.status === 'success') {
+        // Actual response: { data: { page, limit, data: [...] } }
         const items = Array.isArray(res.data?.data) ? res.data.data
           : Array.isArray(res.data) ? res.data : [];
         setPages(prev => replace || pageNum === 1 ? items : [...prev, ...items]);
-        setHasMore(items.length >= 15);
+        setHasMore(items.length >= 20);
         setPage(pageNum);
       }
     } catch (e) { console.log('BusinessList loadPages:', e); }
@@ -242,22 +342,24 @@ export default function BusinessList() {
     loadPages(1, text, true);
   }, []); // eslint-disable-line
 
-  const handleCategory = useCallback((catId) => {
-    setActiveCat(prev => prev === catId ? null : catId);
+  const handleFilter = useCallback((key) => {
+    setActiveFilter(key);
+    activeFilterRef.current = key;
+    setPages([]); setPage(1); setHasMore(true);
+    setTimeout(() => loadPages(1, search, true), 0);
+  }, [search]); // eslint-disable-line
+
+  const handleSelectCat = useCallback((id) => {
+    setActiveCat(id);
   }, []);
 
+  // Client-side filter by category (category is a numeric ID in the API response)
   const filteredPages = useMemo(() => {
     if (activeCat == null) return pages;
-    const catObj = categories.find(c => (c.id ?? c.category_id) === activeCat);
-    const catName = (catObj?.name ?? catObj?.title ?? '').toLowerCase().trim();
-    return pages.filter(p => {
-      if (p.category_id === activeCat || p.page_category_id === activeCat) return true;
-      const pCat = (p.category ?? p.page_category ?? '').toLowerCase().trim();
-      return catName.length > 0 && pCat === catName;
-    });
-  }, [pages, activeCat, categories]);
+    return pages.filter(p => p.category === activeCat || p.category_id === activeCat);
+  }, [pages, activeCat]);
 
-  // Inject ad every 5 business cards
+  // Inject ad every 5 cards
   const processedPages = useMemo(() => {
     const result = [];
     filteredPages.forEach((item, i) => {
@@ -311,6 +413,7 @@ export default function BusinessList() {
             <BusinessCard
               business={item}
               user={user}
+              categoryName={catMap[item.category] ?? ''}
               onOpen={(b) => navigation.navigate('BusinessDetails', { pageId: b.id })}
             />
           );
@@ -331,14 +434,6 @@ export default function BusinessList() {
                   <View style={bs.heroLiveDot} />
                   <Text style={bs.heroLiveText}>BUSINESS DIRECTORY</Text>
                 </View>
-                {pages.filter(p => p.verified_value === 1 || p.verified === true).length > 0 && (
-                  <View style={bs.heroCountPill}>
-                    <Ionicons name="shield-checkmark" size={10} color={WHITE + 'BF'} />
-                    <Text style={bs.heroCountText}>
-                      {fmtCount(pages.filter(p => p.verified_value === 1 || p.verified === true).length)} Verified
-                    </Text>
-                  </View>
-                )}
               </View>
 
               <Text style={bs.heroTitle}>Discover African{'\n'}Businesses.</Text>
@@ -353,19 +448,12 @@ export default function BusinessList() {
                 </View>
                 <View style={bs.heroStatDivider} />
                 <View style={bs.heroStatItem}>
-                  <Text style={bs.heroStatNum}>
-                    {fmtCount(pages.filter(p => p.verified_value === 1 || p.verified === true).length)}
-                  </Text>
-                  <Text style={bs.heroStatLabel}>Verified</Text>
-                </View>
-                <View style={bs.heroStatDivider} />
-                <View style={bs.heroStatItem}>
                   <Text style={bs.heroStatNum}>{fmtCount(categories.length)}</Text>
                   <Text style={bs.heroStatLabel}>Categories</Text>
                 </View>
               </View>
 
-              {/* ── Search (below stats) ── */}
+              {/* ── Search ── */}
               <View style={bs.heroSearch}>
                 <Ionicons name="search-outline" size={16} color={ON_DARK_55} style={{ marginRight: 8 }} />
                 <TextInput
@@ -386,36 +474,51 @@ export default function BusinessList() {
               </View>
             </View>
 
-            {/* ── Categories ── */}
-            {categories.length > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={bs.catRow}
-                keyboardShouldPersistTaps="handled"
+            {/* ── Filter row: tabs + category dropdown ── */}
+            <View style={bs.filterBar}>
+              {/* Filter tabs */}
+              <View style={bs.filterTabs}>
+                {[
+                  { key: 'all',       label: 'All' },
+                  { key: 'following', label: 'Following' },
+                  { key: 'managed',   label: 'I Manage' },
+                ].map(({ key, label }) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[bs.filterChip, activeFilter === key && bs.filterChipOn]}
+                    onPress={() => handleFilter(key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[bs.filterTxt, activeFilter === key && bs.filterTxtOn]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Category dropdown button */}
+              <TouchableOpacity
+                style={[bs.catDropBtn, activeCat != null && bs.catDropBtnOn]}
+                onPress={() => setShowCatModal(true)}
+                activeOpacity={0.8}
               >
-                <TouchableOpacity
-                  style={[bs.catChip, activeCat === null && bs.catChipOn]}
-                  onPress={() => handleCategory(null)} activeOpacity={0.75}
-                >
-                  <Text style={[bs.catTxt, activeCat === null && bs.catTxtOn]}>All</Text>
-                </TouchableOpacity>
-                {categories.map((cat, idx) => {
-                  const id = cat.id ?? cat.category_id;
-                  const on = activeCat === id;
-                  return (
-                    <TouchableOpacity key={`cat-${id}-${idx}`} style={[bs.catChip, on && bs.catChipOn]} onPress={() => handleCategory(id)} activeOpacity={0.75}>
-                      <Text style={[bs.catTxt, on && bs.catTxtOn]}>{cat.name ?? cat.title}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
+                <Ionicons name="pricetag-outline" size={13} color={activeCat != null ? WHITE : BRAND} />
+                <Text style={[bs.catDropTxt, activeCat != null && bs.catDropTxtOn]} numberOfLines={1}>
+                  {activeCatName || 'Category'}
+                </Text>
+                <Ionicons name="chevron-down" size={13} color={activeCat != null ? WHITE : MUTED} />
+              </TouchableOpacity>
+            </View>
 
             {/* ── Section label ── */}
             <View style={bs.sectionBar}>
               <View style={bs.sectionAccent} />
-              <Text style={bs.sectionBarText}>ALL BUSINESSES</Text>
+              <Text style={bs.sectionBarText}>
+                {activeCatName ? activeCatName.toUpperCase() : 'ALL BUSINESSES'}
+              </Text>
+              {activeCat != null && (
+                <TouchableOpacity onPress={() => setActiveCat(null)} style={bs.clearCat}>
+                  <Ionicons name="close-circle" size={15} color={MUTED} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         }
@@ -439,6 +542,15 @@ export default function BusinessList() {
         }
       />
 
+      {/* ── Category Dropdown Modal ── */}
+      <CategoryDropdown
+        visible={showCatModal}
+        categories={categories}
+        activeCat={activeCat}
+        onSelect={handleSelectCat}
+        onClose={() => setShowCatModal(false)}
+      />
+
       <CreateModal
         visible={showCreate}
         type="business"
@@ -446,7 +558,7 @@ export default function BusinessList() {
         token={token}
         user={user}
         onClose={() => setShowCreate(false)}
-        onCreated={() => loadPages(1, search, activeCat, true)}
+        onCreated={() => loadPages(1, search, true)}
       />
     </View>
   );
@@ -470,11 +582,20 @@ const bs = StyleSheet.create({
   createBtnTxt: { fontSize: 12, fontWeight: '800', color: WHITE },
   heroSearch:   { flexDirection: 'row', alignItems: 'center', backgroundColor: ON_DARK_10, borderRadius: 100, borderWidth: 1, borderColor: ON_DARK_15, paddingHorizontal: 14, height: 44, marginTop: 16 },
   searchInput:  { flex: 1, color: WHITE, fontSize: 13 },
-  catRow:       { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  catChip:      { height: 32, paddingHorizontal: 14, borderRadius: 100, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
-  catChipOn:    { backgroundColor: BRAND, borderColor: BRAND },
-  catTxt:       { fontSize: 12, fontWeight: '600', color: MUTED },
-  catTxtOn:     { color: WHITE },
+
+  // ── Filter bar ──
+  filterBar:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  filterTabs:   { flex: 1, flexDirection: 'row', gap: 8 },
+  filterChip:   { height: 34, paddingHorizontal: 14, borderRadius: 100, backgroundColor: CARD, borderWidth: 1.5, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
+  filterChipOn: { backgroundColor: ACCENT, borderColor: ACCENT },
+  filterTxt:    { fontSize: 12, fontWeight: '700', color: MUTED },
+  filterTxtOn:  { color: WHITE },
+
+  // ── Category dropdown button ──
+  catDropBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5, height: 34, paddingHorizontal: 12, borderRadius: 100, backgroundColor: CARD, borderWidth: 1.5, borderColor: BORDER, maxWidth: 130 },
+  catDropBtnOn: { backgroundColor: BRAND, borderColor: BRAND },
+  catDropTxt:   { fontSize: 12, fontWeight: '700', color: BRAND, flex: 1 },
+  catDropTxtOn: { color: WHITE },
 
   listContent: { paddingBottom: 100, gap: 14 },
 
@@ -490,8 +611,6 @@ const bs = StyleSheet.create({
   heroLivePill:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: WHITE + '1F', borderWidth: 1, borderColor: WHITE + '29', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   heroLiveDot:    { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
   heroLiveText:   { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: WHITE + 'BF' },
-  heroCountPill:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: WHITE + '1F', borderWidth: 1, borderColor: WHITE + '1F', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  heroCountText:  { fontSize: 11, fontWeight: '700', color: WHITE + 'BF' },
   heroTitle:      { fontSize: 28, fontWeight: '900', color: WHITE, lineHeight: 34 },
   heroSub:        { marginTop: 8, fontSize: 13, lineHeight: 19, color: WHITE + 'A6' },
   heroStats: {
@@ -500,15 +619,16 @@ const bs = StyleSheet.create({
     borderWidth: 1, borderColor: WHITE + '1A',
     paddingVertical: 13, paddingHorizontal: 16,
   },
-  heroStatItem:   { flex: 1, alignItems: 'center' },
-  heroStatNum:    { fontSize: 18, fontWeight: '900', color: WHITE },
-  heroStatLabel:  { fontSize: 10, color: WHITE + '88', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  heroStatDivider:{ width: 1, height: 30, backgroundColor: WHITE + '22' },
+  heroStatItem:    { flex: 1, alignItems: 'center' },
+  heroStatNum:     { fontSize: 18, fontWeight: '900', color: WHITE },
+  heroStatLabel:   { fontSize: 10, color: WHITE + '88', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  heroStatDivider: { width: 1, height: 30, backgroundColor: WHITE + '22' },
 
   // ── Section label ──
-  sectionBar:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  sectionAccent:  { width: 3, height: 14, borderRadius: 2, backgroundColor: ACCENT },
-  sectionBarText: { fontSize: 11, fontWeight: '800', color: MUTED, letterSpacing: 1.5 },
+  sectionBar:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  sectionAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: ACCENT },
+  sectionBarText:{ fontSize: 11, fontWeight: '800', color: MUTED, letterSpacing: 1.5, flex: 1 },
+  clearCat:      { padding: 2 },
 
   // ── Card ──
   card: {
@@ -530,11 +650,8 @@ const bs = StyleSheet.create({
   title:         { fontSize: 15, fontWeight: '900', color: DARK, flex: 1 },
   ownerPill:     { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: ACCENT + '18', borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
   ownerPillTxt:  { fontSize: 10, color: ACCENT, fontWeight: '700' },
-  metaRow:       { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  metaItem:      { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  catTagPill:    { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: ACCENT + '12', borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2 },
+  catTagPill:    { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: ACCENT + '12', borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start' },
   catTagTxt:     { fontSize: 10, color: ACCENT, fontWeight: '700' },
-  metaTxt:       { fontSize: 11, color: MUTED },
   desc:          { fontSize: 13, color: MUTED, lineHeight: 19 },
 
   // ── Footer ──
@@ -546,12 +663,16 @@ const bs = StyleSheet.create({
   postBtnTxt:   { fontSize: 12, fontWeight: '700', color: ACCENT },
   viewBtn:      { backgroundColor: BRAND, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 100, alignItems: 'center' },
   viewBtnTxt:   { fontSize: 12, fontWeight: '800', color: WHITE },
+  likeBtn:      { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: BRAND, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 100 },
+  likedBtn:     { backgroundColor: CREAM, borderWidth: 1.5, borderColor: BORDER },
+  likeBtnTxt:   { fontSize: 12, fontWeight: '800', color: WHITE },
+  likedBtnTxt:  { color: MUTED },
 
   // ── Empty ──
-  emptyWrap:    { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 14 },
-  emptyCircle:  { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT + '18' },
-  emptyTitle:   { fontSize: 16, fontWeight: '800', color: DARK },
-  emptySub:     { fontSize: 12, color: MUTED, textAlign: 'center' },
+  emptyWrap:   { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 14 },
+  emptyCircle: { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT + '18' },
+  emptyTitle:  { fontSize: 16, fontWeight: '800', color: DARK },
+  emptySub:    { fontSize: 12, color: MUTED, textAlign: 'center' },
 });
 
 const adst = StyleSheet.create({
@@ -569,4 +690,32 @@ const adst = StyleSheet.create({
   adSub:      { fontSize: 12, color: MUTED, lineHeight: 17, marginBottom: 7 },
   cta:        { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ctaTxt:     { fontSize: 12, fontWeight: '800', color: ACCENT },
+});
+
+// ─── Dropdown styles ──────────────────────────────────────────────────────────
+const dd = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: DARK + '55',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: CARD,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    maxHeight: '65%',
+    paddingBottom: 30,
+  },
+  sheetHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER,
+  },
+  sheetTitle: { fontSize: 16, fontWeight: '800', color: DARK },
+  closeBtn:   { width: 32, height: 32, borderRadius: 16, backgroundColor: CREAM, alignItems: 'center', justifyContent: 'center' },
+  list:       { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
+  item:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
+  itemOn:     { /* no bg change — checkmark indicates selection */ },
+  itemDot:    { width: 8, height: 8, borderRadius: 4, backgroundColor: BORDER },
+  itemDotOn:  { backgroundColor: ACCENT },
+  itemTxt:    { flex: 1, fontSize: 14, color: DARK, fontWeight: '500' },
+  itemTxtOn:  { color: BRAND, fontWeight: '700' },
 });

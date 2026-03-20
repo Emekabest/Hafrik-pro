@@ -4,7 +4,7 @@ import {
   ActivityIndicator, StyleSheet, TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
+import apiClient from '../../../../api/apiClient';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../../../theme/colors';
 
@@ -81,10 +81,7 @@ const ReactionsModal = ({ visible, postId, token, reactions, onClose, currentUse
       const params = { post_id: postId, page: pg, limit: 20 };
       if (tab !== 'all') params.reaction = tab;
 
-      const res = await axios.get(API_URL, {
-        params,
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiClient.get(API_URL, { params });
       const items = Array.isArray(res.data?.data) ? res.data.data : [];
       if (pg === 1) {
         setData(items);

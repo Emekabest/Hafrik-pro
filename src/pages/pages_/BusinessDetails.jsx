@@ -131,8 +131,10 @@ export default function BusinessDetails({ route }) {
     try {
       const payload = await getBusinessDetails(pageId, token);
       if (payload?.status === "success") {
-        setPageData(payload.data);
-        setFollowing(!!(payload.data.is_following));
+        // API returns data directly (no page wrapper): { id, title, likes, is_liked, avatar, cover, ... }
+        const pageData = payload.data;
+        setPageData(pageData);
+        setFollowing(!!(pageData?.is_liked));
       }
     } catch {}
     setLoadingPage(false);
@@ -148,7 +150,8 @@ export default function BusinessDetails({ route }) {
           ? payload.data.data
           : Array.isArray(payload.data) ? payload.data : [];
         setPosts(prev => pNum === 1 ? feedPosts : [...prev, ...feedPosts]);
-        if (pNum === 1 && payload.data?.is_following != null) setFollowing(!!(payload.data.is_following));
+        if (pNum === 1 && payload.data?.is_liked != null) setFollowing(!!(payload.data.is_liked));
+        else if (pNum === 1 && payload.data?.is_following != null) setFollowing(!!(payload.data.is_following));
         const tp = payload.data?.total_pages ?? null;
         if (tp != null) setHasMore(pNum < tp);
         else if (feedPosts.length < 10) setHasMore(false);
@@ -171,13 +174,17 @@ export default function BusinessDetails({ route }) {
     setFollowLoading(true);
     setFollowing(!curFollowing);
     try {
-      const res = await toggleFollowBusiness(pageId, token);
-      if (res?.data?.is_following != null) setFollowing(!!(res.data.is_following));
+      const res = await toggleFollowBusiness(pageId, curFollowing ? 'unlike' : 'like');
+      const d = res?.data ?? res;
+      if (d?.is_liked     != null) setFollowing(!!d.is_liked);
+      else if (d?.is_following != null) setFollowing(!!d.is_following);
+      const newCount = d?.likes ?? d?.followers;
+      if (newCount != null) setPageData(p => p ? { ...p, likes: Number(newCount) } : p);
     } catch {
       setFollowing(followRef.current.following);
     }
     setFollowLoading(false);
-  }, [pageId, token]);
+  }, [pageId]);
 
   const handleCall = useCallback(() => {
     const phone = page?.phone || page?.phone_number || page?.contact_phone || page?.mobile;
@@ -328,7 +335,7 @@ export default function BusinessDetails({ route }) {
     const isVerified = page.verified === true || page.verified === 1 || page.verified_value === 1;
     const phone      = cleanText(page.phone || page.phone_number || page.contact_phone || page.mobile) || "";
     const postsCount    = Number(page.posts_count ?? 0);
-    const followersCount = Number(page.followers_count ?? page.likes_count ?? 0);
+    const followersCount = Number(page.likes ?? page.followers ?? page.followers_count ?? page.likes_count ?? 0);
 
     return (
       <View>

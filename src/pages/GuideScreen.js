@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import axios from 'axios';
 import { Colors } from '../theme/colors';
+import apiClient from '../api/apiClient';
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || "").replace("#", "");
@@ -45,14 +45,7 @@ const CATEGORY_ID_MAP = {
 
 const categories = ['All', ...Object.keys(CATEGORY_ID_MAP)];
 
-const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 15000,
-  headers: {
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  },
-});
+const api = apiClient;
 
 const cleanText = (t = '') =>
   String(t)

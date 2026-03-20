@@ -1,4 +1,4 @@
-import axios from "axios";
+import apiClient from '../api/apiClient';
 
 
 const SearchSuggestionController = async(query, token)=>{
@@ -7,11 +7,7 @@ const SearchSuggestionController = async(query, token)=>{
 
         const API_URL = `https://hafrik.com/api/v1/search/index.php?q=${query}`;
 
-        const response = await axios.get(API_URL, {
-            headers:{
-                    Authorization: `Bearer ${token}`
-            }
-        })
+        const response = await apiClient.get(API_URL)
 
         // console.log(response.data);
 
