@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+import apiClient from '../api/apiClient';
 
 
 
@@ -14,7 +14,7 @@ const GetBannersController = async () => {
         : `https://hafrik.com/api/v1/home/banners.php`;
 
     try {
-        const response = await axios.get(API_URL);
+        const response = await apiClient.get(API_URL);
 
         return {status: response.status, data: response.data.data};
     } catch (error) {

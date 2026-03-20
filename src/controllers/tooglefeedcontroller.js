@@ -1,4 +1,4 @@
-import axios from "axios"
+import apiClient from '../api/apiClient';
 
 /**
  * React to a post.
@@ -12,12 +12,7 @@ const ToggleFeedController = async(post_id, token, reaction = 'like')=>{
     const API_URL = `https://hafrik.com/api/v1/feed/react.php`;
 
     try{
-        const response = await axios.post(API_URL, { post_id, reaction }, {
-            headers:{
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-            }
-        })
+        const response = await apiClient.post(API_URL, { post_id, reaction })
 
         return {status:response.status, data:response.data?.data ?? response.data}
     }

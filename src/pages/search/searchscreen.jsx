@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import apiClient from '../../api/apiClient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import useStore from '../../repository/store';
@@ -305,9 +305,7 @@ const SearchScreen = () => {
   // ── Suggested people (idle — no query) ────────────────────────────────────
   useEffect(() => {
     if (searchQuery?.trim()) return;
-    axios.get('https://hafrik.com/api/v1/people/list.php?limit=5', {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(res => {
+    apiClient.get('https://hafrik.com/api/v1/people/list.php?limit=5').then(res => {
       const people =
         res.data?.data    ||
         res.data?.people  ||
@@ -443,11 +441,7 @@ const SearchScreen = () => {
       return next;
     });
     try {
-      await axios.post(
-        'https://hafrik.com/api/v1/people/follow_toggle.php',
-        { user_id: id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await apiClient.post('https://hafrik.com/api/v1/people/follow_toggle.php', { user_id: id });
     } catch (_) {
       setFollowedIds(prev => {
         const next = new Set(prev);
@@ -466,11 +460,7 @@ const SearchScreen = () => {
       return next;
     });
     try {
-      await axios.post(
-        'https://hafrik.com/api/v1/groups/join_toggle.php',
-        { group_id: id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await apiClient.post('https://hafrik.com/api/v1/groups/join_toggle.php', { group_id: id });
     } catch (_) {
       setJoinedIds(prev => {
         const next = new Set(prev);

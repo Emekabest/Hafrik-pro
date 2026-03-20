@@ -1,4 +1,4 @@
-import axios from "axios"
+import apiClient from '../api/apiClient';
 
 
 const GetReelsController = async(token, page = 1, reelSeed) => {
@@ -6,11 +6,8 @@ const GetReelsController = async(token, page = 1, reelSeed) => {
 
 
     try{
-        const response = await axios.get(`https://hafrik.com/api/v1/reels/list.php?page=${page}&limit=10&mode=for_you&seed=${reelSeed}`, {
-            headers:{
-                    Authorization: `Bearer ${token}`,
-                    'Cache-Control': 'no-cache'
-            }
+        const response = await apiClient.get(`https://hafrik.com/api/v1/reels/list.php?page=${page}&limit=10&mode=for_you&seed=${reelSeed}`, {
+            headers: { 'Cache-Control': 'no-cache' },
         });
 
         return {status: response.status, data: response.data.data.data};

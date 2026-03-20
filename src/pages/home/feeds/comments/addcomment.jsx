@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
 import { AddCommentController, AddReplyController } from '../../../../controllers/commentscontroller';
 import { Colors } from '../../../../theme/colors';
 import useStore from '../../../../repository/store';

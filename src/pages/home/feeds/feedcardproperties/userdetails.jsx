@@ -3,7 +3,7 @@ import AppDetails from "../../../../helpers/appdetails";
 import SvgIcon from "../../../../assl.js/svg/svg";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import CalculateElapsedTime from "../../../../helpers/calculateelapsedtime";
+import moment from 'moment';
 import { memo, useMemo, useState } from "react";
 import OptionsModal from "../options.jsx";
 import { Colors } from '../../../../theme/colors';
@@ -21,7 +21,7 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
     const navigation = useNavigation();
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
 
-    const elapsedTime = useMemo(() => CalculateElapsedTime(feed.created), [feed.created]);
+    const elapsedTime = useMemo(() => feed.created ? moment(feed.created).fromNow() : '', [feed.created]);
 
     // Context from feed.context (legacy group / event on same post object)
     const legacyContext = useMemo(() => {

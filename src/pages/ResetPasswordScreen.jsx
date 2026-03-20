@@ -77,7 +77,7 @@ const Field = ({ label, error, children }) => (
 // ─── Main screen ──────────────────────────────────────────────────────────────
 const ResetPasswordScreen = ({ route, navigation }) => {
   const { top } = useSafeAreaInsets();
-  const { email, code } = route.params || {};
+  const { email, reset_key } = route.params || {};
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -122,13 +122,18 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     if (!validate()) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/reset_password.php`, {
+      const response = await fetch(`${API_BASE}/reset.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code, new_password: newPassword }),
+        body: JSON.stringify({
+          email,
+          reset_key,
+          password:  newPassword,
+          confirm:   confirmPassword,
+        }),
       });
       const data = await response.json();
-      if (data.success) {
+      if (data.status === 'success') {
         setDone(true);
         showSuccess();
         setTimeout(() => navigation.navigate('Login'), 2200);

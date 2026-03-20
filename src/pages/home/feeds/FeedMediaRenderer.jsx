@@ -243,97 +243,88 @@ const FeedReelPlayer = memo(({ item, isVisible, feedId }) => {
   );
 });
 
-// ─── Carousel — all photos slide one-by-one, natural aspect ratio ─────────────
-const MAX_H_RATIO = 16 / 9;
-const MIN_H_RATIO = 0.5;
-
-// Module-level size cache: persists for the lifetime of the JS bundle
-const sizeCache = {};
-
-const DEFAULT_H = Math.round(MEDIA_W * 0.8);
-
-function calcHeight(w, h) {
-  if (!w || !h) return DEFAULT_H;
-  const ratio   = h / w;
-  const clamped = Math.min(Math.max(ratio, MIN_H_RATIO), MAX_H_RATIO);
-  return Math.round(MEDIA_W * clamped);
-}
+// ─── ImageGrid — Threads-style feed layout (cover, no in-feed carousel) ────────
+// 1 image  → full width, natural aspect ratio (cover)
+// 2 images → two equal columns side by side (cover)
+// 3 images → full-width top + two equal columns below (cover)
+// 4+       → full-width top + two columns below, last cell shows "+N" badge
+const GRID_GAP   = 3;
+const HALF_W     = (MEDIA_W - GRID_GAP) / 2;
+const GRID_CELL_H = Math.round(HALF_W * 0.88);
+const GRID_R     = 12;
 
 const ImageGrid = memo(({ media }) => {
   const n = media.length;
   if (n === 0) return null;
 
-  const firstUrl = media[0]?.url;
+  const singleH = Math.round(MEDIA_W * 0.72);
 
-  // Lazy-init from cache so already-seen images render immediately at the right height
-  const initH = (firstUrl && sizeCache[firstUrl]) || DEFAULT_H;
-  const [imgH, setImgH] = useState(initH);
-  // Animated value drives the container height — smooth transition on first reveal
-  const animH = useRef(new Animated.Value(initH)).current;
+  // ── Single image ────────────────────────────────────────────────────────────
+  if (n === 1) {
+    return (
+      <ExpoImage
+        source={{ uri: media[0].url }}
+        style={{ width: MEDIA_W, height: singleH, borderRadius: GRID_R }}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={200}
+      />
+    );
+  }
 
-  const [activeIndex, setActiveIndex] = useState(0);
-  const scrollRef = useRef(null);
+  // ── Two images side by side ─────────────────────────────────────────────────
+  if (n === 2) {
+    return (
+      <View style={{ flexDirection: 'row', gap: GRID_GAP, borderRadius: GRID_R, overflow: 'hidden' }}>
+        {media.map((item, i) => (
+          <ExpoImage
+            key={i}
+            source={{ uri: item.url }}
+            style={{ width: HALF_W, height: GRID_CELL_H }}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={200}
+          />
+        ))}
+      </View>
+    );
+  }
 
-  // Called by ExpoImage when the first image finishes decoding — provides real dimensions
-  // with zero extra network round-trips. Only fires once per unique URL (cache guard).
-  const handleFirstLoad = useCallback(({ source }) => {
-    if (!firstUrl || sizeCache[firstUrl]) return;
-    const px = calcHeight(source?.width, source?.height);
-    sizeCache[firstUrl] = px;
-    setImgH(px);
-    Animated.timing(animH, {
-      toValue:         px,
-      duration:        220,
-      useNativeDriver: false,
-    }).start();
-  }, [firstUrl, animH]);
-
-  const handleScroll = useCallback((e) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / MEDIA_W);
-    setActiveIndex(Math.max(0, Math.min(idx, n - 1)));
-  }, [n]);
+  // ── Three or more: full top + two-column bottom row ──────────────────────────
+  const top      = media[0];
+  const bottoms  = media.slice(1, 3);
+  const overflow = n > 3 ? n - 3 : 0;
 
   return (
-    <View>
-      {/* Animated container — height grows smoothly on first load */}
-      <Animated.View style={{ height: animH, borderRadius: 12, overflow: 'hidden' }}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          decelerationRate="fast"
-          scrollEventThrottle={16}
-          onScroll={handleScroll}
-          style={{ flex: 1 }}
-        >
-          {media.map((item, i) => (
-            <ExpoImage
-              key={i}
-              source={{ uri: item.url }}
-              style={{ width: MEDIA_W, height: imgH, backgroundColor: Colors.neutral150 }}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              transition={180}
-              onLoad={i === 0 ? handleFirstLoad : undefined}
-            />
-          ))}
-        </ScrollView>
-      </Animated.View>
-
-      {/* Counter badge top-right + dots at bottom */}
-      {n > 1 && (
-        <>
-          <View style={styles.slideCounter}>
-            <Text style={styles.slideCounterTxt}>{activeIndex + 1}/{n}</Text>
-          </View>
-          <View style={styles.dotsRow}>
-            {media.map((_, i) => (
-              <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
-            ))}
-          </View>
-        </>
-      )}
+    <View style={{ borderRadius: GRID_R, overflow: 'hidden' }}>
+      <ExpoImage
+        source={{ uri: top.url }}
+        style={{ width: MEDIA_W, height: Math.round(MEDIA_W * 0.56) }}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={200}
+      />
+      <View style={{ flexDirection: 'row', gap: GRID_GAP, marginTop: GRID_GAP }}>
+        {bottoms.map((item, i) => {
+          const isLast = i === bottoms.length - 1 && overflow > 0;
+          return (
+            <View key={i} style={{ flex: 1 }}>
+              <ExpoImage
+                source={{ uri: item.url }}
+                style={{ height: GRID_CELL_H }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={200}
+              />
+              {isLast && (
+                <View style={styles.overflowBadge}>
+                  <Text style={styles.overflowTxt}>+{overflow}</Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 });
@@ -492,41 +483,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // ── Carousel dots ──────────────────────────────────────────────────────────
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  // ── Grid overflow badge ("+N more" on last cell) ────────────────────────────
+  overflowBadge: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: withOpacity(Colors.black, 0.55),
     alignItems: 'center',
-    marginTop: 8,
-    gap: 4,
+    justifyContent: 'center',
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: withOpacity(Colors.black, 0.18),
-  },
-  dotActive: {
-    width: 18,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
-  },
-
-  // ── Slide counter badge (top-right) ────────────────────────────────────────
-  slideCounter: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: withOpacity(Colors.black, 0.52),
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  slideCounterTxt: {
+  overflowTxt: {
     color: Colors.white,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -1,
   },
 });
 

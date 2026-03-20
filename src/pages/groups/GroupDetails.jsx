@@ -15,9 +15,10 @@ import useStore from '../../repository/store';
 import FeedCard from '../home/feeds/feedcard';
 import GroupMedia from './GroupMedia';
 import { Colors } from '../../theme/colors';
+import apiClient from '../../api/apiClient';
 import {
   getGroupDetails, getGroupFeed, getGroupMembers,
-  joinGroup, leaveGroup,
+  toggleGroupMembership,
 } from './services/groupApi';
 
 const withOpacity = (hex, opacity) => {
@@ -92,16 +93,12 @@ const ComposeModal = ({ visible, group, token, onClose, onPosted }) => {
     if (!text.trim()) return;
     setPosting(true);
     try {
-      const body = new FormData();
-      body.append('content',  text.trim());
-      body.append('group_id', String(group?.id ?? ''));
-      body.append('type',     'text');
-      const res  = await fetch('https://hafrik.com/api/v1/feed/create.php', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body,
+      const res = await apiClient.post('https://hafrik.com/api/v1/feed/create.php', {
+        content:  text.trim(),
+        group_id: group?.id,
+        type:     'text',
       });
-      const json = await res.json().catch(() => ({}));
+      const json = res.data;
       if (json?.status === 'success' || json?.data?.id) {
         onPosted && onPosted(json.data);
         setText('');
@@ -279,6 +276,13 @@ export default function GroupDetails({ route }) {
   const openComposer  = useStore((s) => s.openComposer);
   const refreshSignal = useStore((s) => s.refreshSignal);
 
+  const normaliseList = (res) => {
+    const d = res?.data;
+    if (Array.isArray(d?.data)) return d.data;
+    if (Array.isArray(d))       return d;
+    return [];
+  };
+
   const [group,           setGroup]           = useState(null);
   const [posts,           setPosts]           = useState([]);
   const [members,         setMembers]         = useState([]);
@@ -323,27 +327,24 @@ export default function GroupDetails({ route }) {
 
   const loadData = async () => {
     const [gRes, fRes, mRes] = await Promise.all([
-      getGroupDetails(groupId, token),
-      getGroupFeed(groupId, 1, 20, token),
-      getGroupMembers(groupId, 1, 50, token),
+      getGroupDetails(groupId),
+      getGroupFeed(groupId, 1, 20),
+      getGroupMembers(groupId, 1, 50),
     ]);
     if (gRes?.status === 'success') {
-      setGroup(gRes.data);
-      const d = gRes.data;
-      setIsMember(
-        d?.is_joined === true || d?.is_joined === 1 ||
-        d?.is_member === true || d?.is_member === 1 ||
-        d?._isMember === true
-      );
+      // API shape: { status, data: { group: { ... } } }
+      const d = gRes.data?.group ?? gRes.data;
+      setGroup(d);
+      setIsMember(d?.is_joined === true || d?.is_joined === 1 || d?.is_member === true || d?.is_member === 1);
     }
     if (fRes?.status === 'success') {
-      const data = Array.isArray(fRes.data?.data) ? fRes.data.data : (Array.isArray(fRes.data) ? fRes.data : []);
+      const data = normaliseList(fRes);
       setPosts(data);
       setFeedPage(1);
       setFeedHasMore(data.length === 20);
     }
     if (mRes?.status === 'success') {
-      const data = Array.isArray(mRes.data?.data) ? mRes.data.data : (Array.isArray(mRes.data) ? mRes.data : []);
+      const data = normaliseList(mRes);
       setMembers(data);
       setMembersPage(1);
       setMembersHasMore(data.length === 50);
@@ -357,9 +358,9 @@ export default function GroupDetails({ route }) {
     setFeedLoadingMore(true);
     const nextPage = feedPage + 1;
     try {
-      const res = await getGroupFeed(groupId, nextPage, 20, token);
+      const res = await getGroupFeed(groupId, nextPage, 20);
       if (res?.status === 'success') {
-        const data = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        const data = normaliseList(res);
         if (data.length > 0) {
           setPosts((prev) => [...prev, ...data]);
           setFeedPage(nextPage);
@@ -376,9 +377,9 @@ export default function GroupDetails({ route }) {
     if (!membersHasMore) return;
     const nextPage = membersPage + 1;
     try {
-      const res = await getGroupMembers(groupId, nextPage, 50, token);
+      const res = await getGroupMembers(groupId, nextPage, 50);
       if (res?.status === 'success') {
-        const data = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        const data = normaliseList(res);
         if (data.length > 0) {
           setMembers((prev) => [...prev, ...data]);
           setMembersPage(nextPage);
@@ -403,26 +404,26 @@ export default function GroupDetails({ route }) {
     if (joining) return;
     setJoining(true);
     const was = isMember;
+    // Optimistic update
+    setIsMember(!was);
+    setGroup((g) => g ? { ...g, members: Math.max(0, (Number(g.members) || 0) + (was ? -1 : 1)) } : g);
     try {
-      if (was) { await leaveGroup(groupId, token); setIsMember(false); }
-      else     { await joinGroup(groupId, token);  setIsMember(true);  }
+      const res = await toggleGroupMembership(groupId, was ? 'leave' : 'join');
+      // Reconcile with server response: { group_id, is_joined, members }
+      const d = res?.data ?? res;
+      if (d?.is_joined !== undefined) setIsMember(!!d.is_joined);
+      if (d?.members   !== undefined) setGroup((g) => g ? { ...g, members: Number(d.members) || 0 } : g);
     } catch {
       Alert.alert('Error', 'Could not update membership.');
       setIsMember(was);
+      setGroup((g) => g ? { ...g, members: Math.max(0, (Number(g.members) || 0) + (was ? 1 : -1)) } : g);
     } finally {
       setJoining(false);
     }
   };
 
-  const openGroupComposer = useCallback(() => {
-    openComposer({
-      locked: true,
-      _type: 'group',
-      id: group?.id ?? groupId,
-      title: group?.title,
-      avatar: group?.avatar,
-    });
-  }, [openComposer, groupId, group?.id, group?.title, group?.avatar]);
+  const [showCompose, setShowCompose] = useState(false);
+  const openGroupComposer = useCallback(() => setShowCompose(true), []);
 
   const coverTranslate = scrollY.interpolate({
     inputRange: [0, 180], outputRange: [0, -60], extrapolate: 'clamp',
@@ -688,6 +689,23 @@ export default function GroupDetails({ route }) {
         />
       )}
 
+      <ComposeModal
+        visible={showCompose}
+        group={group}
+        token={token}
+        onClose={() => setShowCompose(false)}
+        onPosted={(newPost) => {
+          setShowCompose(false);
+          if (newPost) {
+            setPosts((prev) => [newPost, ...prev]);
+          } else {
+            // Re-fetch feed so new post appears
+            getGroupFeed(groupId, 1, 20).then((res) => {
+              if (res?.status === 'success') setPosts(normaliseList(res));
+            }).catch(() => {});
+          }
+        }}
+      />
     </View>
   );
 }

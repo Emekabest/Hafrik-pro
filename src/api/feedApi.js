@@ -1,9 +1,9 @@
 /**
  * feedApi.js — Hafrik Feed API helpers
- * All requests are authenticated via Authorization: Bearer <token>
+ * All requests are authenticated automatically via apiClient interceptor.
  */
 
-const API_BASE = 'https://hafrik.com';
+import apiClient from './apiClient';
 
 // ─── Edit Post ────────────────────────────────────────────────────────────────
 export const editPost = async (postId, text, token) => {
@@ -11,15 +11,10 @@ export const editPost = async (postId, text, token) => {
   form.append('post_id', String(postId));
   form.append('text',    text);
 
-  const res = await fetch(`${API_BASE}/api/v1/feed/edit.php`, {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body:    form,
+  const res = await apiClient.post('/feed/edit.php', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
-
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.error || 'Failed to edit post');
-  return json;
+  return res.data;
 };
 
 // ─── Delete Post ──────────────────────────────────────────────────────────────
@@ -27,25 +22,16 @@ export const deletePost = async (postId, token) => {
   const form = new FormData();
   form.append('post_id', String(postId));
 
-  const res = await fetch(`${API_BASE}/api/v1/feed/delete.php`, {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body:    form,
+  const res = await apiClient.post('/feed/delete.php', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
-
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.error || 'Failed to delete post');
-  return json;
+  return res.data;
 };
 
 // ─── Get Saved Posts ──────────────────────────────────────────────────────────
 export const getSavedPosts = async (token, page = 1, limit = 10) => {
-  const res = await fetch(
-    `${API_BASE}/api/v1/feed/saved.php?page=${page}&limit=${limit}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.error || 'Failed to fetch saved posts');
-  return json;
+  const res = await apiClient.get('/feed/saved.php', {
+    params: { page, limit },
+  });
+  return res.data;
 };

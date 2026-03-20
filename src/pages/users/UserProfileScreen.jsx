@@ -382,15 +382,41 @@ export default function UserProfileScreen({ navigation, route }) {
   const fetchProfile = useCallback(async () => {
     if (!userId) return;
     try {
-      const res  = await fetch(BASE_URL + '/api/v1/users/view.php?user_id=' + userId,
-        { headers: { Authorization: 'Bearer ' + token } });
+      const res  = await fetch(
+        BASE_URL + '/api/v1/users/profile.php?user_id=' + userId,
+        { headers: { Authorization: 'Bearer ' + token } },
+      );
+
+      // Unauthorized → redirect to login
+      if (res.status === 401) {
+        navigation.replace('Login');
+        return;
+      }
+
       const json = await res.json();
-      const p    = json?.data ?? json?.user ?? null;
-      setProfile(p);
-      setIsFollowing(!!(p?.is_following ?? p?.following ?? (p?.follow_status === 1)));
+
+      // Normalize: handle { data: { user, counts, viewer } } and { user, counts, viewer }
+      const payload  = json?.data ?? json;
+      const user     = payload?.user ?? payload ?? null;
+      const counts   = payload?.counts ?? {};
+      const viewer   = payload?.viewer ?? {};
+
+      // Merge everything into one flat object so existing field references still work
+      const merged = {
+        ...user,
+        posts_count:     counts?.posts     ?? user?.posts_count     ?? 0,
+        followers_count: counts?.followers ?? user?.followers_count ?? 0,
+        following_count: counts?.following ?? user?.following_count ?? 0,
+        is_following:    viewer?.is_following ?? false,
+        is_owner:        viewer?.is_owner     ?? false,
+        is_mutual:       viewer?.is_mutual    ?? false,
+      };
+
+      setProfile(merged);
+      setIsFollowing(!!merged.is_following);
     } catch (e) { console.warn('fetchProfile', e); }
     setProfileLoad(false);
-  }, [userId, token]);
+  }, [userId, token, navigation]);
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
@@ -551,8 +577,8 @@ export default function UserProfileScreen({ navigation, route }) {
   const follCount   = fmtCount(profile?.followers_count ?? 0);
   const followCount = fmtCount(profile?.following_count ?? 0);
   const isVerified  = !!(profile?.verified ?? profile?.is_verified);
-  // Ownership: compare authenticated user id against loaded profile id
-  const isOwn       = !!(authUser?.id && profile?.id && String(authUser.id) === String(profile.id));
+  // Ownership: prefer viewer.is_owner from API, fall back to ID comparison
+  const isOwn       = !!(profile?.is_owner ?? (authUser?.id && profile?.id && String(authUser.id) === String(profile.id)));
 
   const ts      = activeTab !== 'followers' && tabState.current[activeTab] ? tabState.current[activeTab] : { data: [], loading: false, hasMore: false, page: 1 };
   const tabData = activeTab === 'followers' ? followersList : ts.data;
