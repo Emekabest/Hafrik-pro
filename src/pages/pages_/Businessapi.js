@@ -1,8 +1,13 @@
 import apiClient from '../../api/apiClient';
 
-export const getBusinessList = async (page = 1, limit = 10, filters = {}, token) => {
+/* =========================
+   LIST BUSINESSES
+========================= */
+export const getBusinessList = async (page = 1, limit = 10, filters = {}) => {
   try {
-    const response = await apiClient.get('/business/list.php', { params: { page, limit, ...filters } });
+    const response = await apiClient.get('/business/list.php', {
+      params: { page, limit, ...filters },
+    });
     return response.data;
   } catch (error) {
     console.log('BUSINESS API ERROR (getBusinessList):', error?.response?.data || error);
@@ -10,9 +15,14 @@ export const getBusinessList = async (page = 1, limit = 10, filters = {}, token)
   }
 };
 
-export const getBusinessDetails = async (businessId, token) => {
+/* =========================
+   BUSINESS DETAILS
+========================= */
+export const getBusinessDetails = async (businessId) => {
   try {
-    const response = await apiClient.get('/business/view.php', { params: { page_id: businessId } });
+    const response = await apiClient.get('/business/view.php', {
+      params: { page_id: businessId }, // backend uses page_id
+    });
     return response.data;
   } catch (error) {
     console.log('BUSINESS API ERROR (getBusinessDetails):', error?.response?.data || error);
@@ -20,10 +30,18 @@ export const getBusinessDetails = async (businessId, token) => {
   }
 };
 
-export const getBusinessFeed = async (pageId, page = 1, limit = 10, token) => {
+/* =========================
+   BUSINESS FEED (🔥 FIXED)
+========================= */
+export const getBusinessFeed = async (pageId, page = 1, limit = 10) => {
   try {
     const response = await apiClient.get('/feed/list.php', {
-      params: { get: 'posts_page', id: pageId, page, limit },
+      params: {
+        get: 'posts_page',   // 🔥 IMPORTANT
+        id: pageId,          // page_id
+        page,
+        limit,
+      },
     });
     return response.data;
   } catch (error) {
@@ -32,7 +50,9 @@ export const getBusinessFeed = async (pageId, page = 1, limit = 10, token) => {
   }
 };
 
-// POST /business/like.php  { page_id, action: "like" | "unlike" }
+/* =========================
+   FOLLOW / UNFOLLOW
+========================= */
 export const toggleFollowBusiness = async (businessId, action = 'like') => {
   try {
     const response = await apiClient.post('/business/like.php', {
@@ -46,11 +66,13 @@ export const toggleFollowBusiness = async (businessId, action = 'like') => {
   }
 };
 
-// Convenience aliases
 export const followBusiness   = (businessId) => toggleFollowBusiness(businessId, 'like');
 export const unfollowBusiness = (businessId) => toggleFollowBusiness(businessId, 'unlike');
 
-export const getBusinessCategories = async (token) => {
+/* =========================
+   CATEGORIES
+========================= */
+export const getBusinessCategories = async () => {
   try {
     const response = await apiClient.get('/business/categories.php');
     return response.data;
@@ -60,7 +82,10 @@ export const getBusinessCategories = async (token) => {
   }
 };
 
-export const createPagePost = async (payload, token) => {
+/* =========================
+   CREATE POST (PAGE/BUSINESS)
+========================= */
+export const createPagePost = async (payload) => {
   try {
     const response = await apiClient.post('/feed/create.php', payload);
     return response.data;

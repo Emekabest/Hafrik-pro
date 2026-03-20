@@ -321,14 +321,17 @@ export default function BusinessList() {
       const filters = {};
       if (query?.trim()) filters.search = query.trim();
       const filter = activeFilterRef.current;
-      if (filter === 'following') filters.suggested = 1;
-      else if (filter === 'managed') filters.managed = 1;
+      if (filter === 'managed') filters.managed = 1;
       const res = await getBusinessList(pageNum, 20, filters, token);
       if (res?.status === 'success') {
-        // Actual response: { data: { page, limit, data: [...] } }
-        const items = Array.isArray(res.data?.data) ? res.data.data
-          : Array.isArray(res.data) ? res.data : [];
-        setPages(prev => replace || pageNum === 1 ? items : [...prev, ...items]);
+        const items = Array.isArray(res?.data?.data)
+          ? res.data.data
+          : [];
+
+        setPages(prev =>
+          replace || pageNum === 1 ? items : [...prev, ...items]
+        );
+
         setHasMore(items.length >= 20);
         setPage(pageNum);
       }
