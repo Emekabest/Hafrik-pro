@@ -58,6 +58,7 @@ export const AuthProvider = ({ children }) => {
         AsyncStorage.getItem('hafrik_onboarding_step'),
       ]);
 
+      console.log("TOKEN LOADED FROM STORAGE:", storedToken);
       if (storedToken && storedUser) {
         const userData = JSON.parse(storedUser);
         setToken(storedToken);
@@ -89,26 +90,18 @@ export const AuthProvider = ({ children }) => {
     await AsyncStorage.removeItem('hafrik_pending_email');
   }, []);
 
-  const login = useCallback(async (userData, authToken, sessionToken = null) => {
+  const login = useCallback(async (userData, authToken) => {
     try {
-      // Decode JWT to extract the real session_token used for API Authorization headers
-      const decoded   = decodeJwt(authToken);
-      const realToken = decoded?.token ?? sessionToken ?? authToken;
-      console.log('🔑 login() decoded JWT:', decoded ? 'OK' : 'FAILED — using raw token');
-      console.log('🔑 TOKEN TO STORE (first 40):', realToken?.slice(0, 40));
-
-      // Write to AsyncStorage FIRST — state updates run after so no render
+      // Always store the JWT (token field) — NOT session_token.
+      // The backend expects: Authorization: Bearer <JWT>
+      // Write to AsyncStorage FIRST — state updates after so no render
       // can observe token in state before it exists in storage.
-      await AsyncStorage.setItem('hafrik_token', realToken);
+      console.log("TOKEN SAVED TO STORAGE:", authToken);
+      await AsyncStorage.setItem('hafrik_token', authToken);
       await AsyncStorage.setItem('hafrik_user', JSON.stringify(userData ?? {}));
 
-      // Confirm write succeeded
-      const saved = await AsyncStorage.getItem('hafrik_token');
-      console.log('✅ Token confirmed in AsyncStorage:', saved ? 'YES' : 'FAILED ❌');
-
-      // Now safe to update React state
       setUser(userData ?? null);
-      setToken(realToken);
+      setToken(authToken);
     } catch (error) {
       console.error('❌ Error storing auth data:', error);
       throw error;

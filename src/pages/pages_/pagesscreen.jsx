@@ -1290,25 +1290,26 @@ export default function DiscoveryScreen() {
 
   // ── Load people from dedicated endpoint ────────────────────────────────────
   const loadPeople = useCallback(async () => {
+    if (!token) return;
     if (peopleAbortRef.current) peopleAbortRef.current.abort();
     const ctrl = new AbortController();
     peopleAbortRef.current = ctrl;
     setPeopleLoading(true);
     const timer = addTimeout(ctrl, 8000);
     try {
-      const res = await fetch(`${BASE_URL}/api/v1/people/list.php?page=1&limit=10`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      console.log("TOKEN:", token);
+      console.log("AUTH HEADER:", `Bearer ${token}`);
+      const res = await fetch(`${BASE_URL}/api/v1/people/list.php?limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
         signal: ctrl.signal,
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      console.log('[People] API raw response:', JSON.stringify(json)?.slice(0, 400));
-      // Response shape: { status, data: { page, limit, data: [...users] } }
-      const list = json?.data?.data ?? [];
-      console.log('[People] parsed list length:', list.length, '| first item:', list[0]);
+      // Response shape: { status, data: { data: [...users] } } or { data: [...users] }
+      const list = json?.data?.data ?? json?.data ?? [];
       setPeople(Array.isArray(list) ? list : []);
     } catch (e) {
       if (e?.name !== 'AbortError') {
-        console.warn('[People] fetch error:', e?.message);
         setPeople([]);
       }
     } finally {

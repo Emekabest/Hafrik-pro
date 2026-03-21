@@ -604,32 +604,28 @@ const AuthScreen = () => {
       if (res.data.status === 'success') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+        // Both login and register return the same format: res.data.data.{token, session_token, user}
+        const authData  = res.data.data;
+        const authToken = authData?.token; // JWT — must be used in Authorization header
+        let   authUser  = authData?.user;
+        if (Array.isArray(authUser)) authUser = authUser[0];
+
+        console.log("JWT FROM SERVER:", res.data.data.token);
+        console.log("SESSION FROM SERVER:", res.data.data.session_token);
+
+        if (!authToken) {
+          Alert.alert('Error', 'No token received from server. Please try again.');
+          return;
+        }
+
+        await AsyncStorage.multiRemove(['hafrik_token', 'hafrik_user', 'hafrik_session_token']);
+        await login(authUser ?? {}, authToken);
+
         if (mode === 'register') {
-          const payload         = res.data.data?.data ?? res.data.data ?? res.data;
-          const regToken        = payload?.token;
-          const regSessionToken = payload?.session_token ?? null;
-          let   regUser         = payload?.user;
-          if (Array.isArray(regUser)) regUser = regUser[0];
-
-          if (!regToken) {
-            Alert.alert('Registration Error', 'No token received. Please try again.');
-            return;
-          }
-
-          // Clear any stale session, then save the new one
-          await AsyncStorage.multiRemove(['hafrik_token', 'hafrik_user', 'hafrik_session_token']);
-          await login(regUser ?? {}, regToken, regSessionToken);
           await AsyncStorage.setItem('hafrik_onboarding_step', '2');
-
-          // Email verification is disabled — go straight to onboarding
           navigation.replace('OnboardingAvatar');
         } else {
-          const token        = res.data.data?.token;
-          const sessionToken = res.data.data?.session_token ?? null;
-          let user           = res.data.data?.user;
-          if (Array.isArray(user)) user = user[0];
-          if (!token || !user) throw new Error('Invalid server response');
-          await login(user, token, sessionToken);
+          if (!authUser) throw new Error('Invalid server response');
 
           const msg = { token: expoPushToken, title: 'Hafrik', body: 'Welcome back to Hafrik' };
           PushNotificationController(msg);
@@ -666,13 +662,14 @@ const AuthScreen = () => {
         ...userData,
       });
       if (res.data.status === 'success') {
-        const authToken    = res.data.data?.token;
-        const sessionToken = res.data.data?.session_token ?? null;
-        let user           = res.data.data?.user;
+        const authToken = res.data.data?.token; // JWT — must be used in Authorization header
+        let user        = res.data.data?.user;
         if (Array.isArray(user)) user = user[0];
         if (!authToken || !user) throw new Error('Invalid server response');
+        console.log("JWT FROM SERVER:", res.data.data?.token);
+        console.log("SESSION FROM SERVER:", res.data.data?.session_token);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await login(user, authToken, sessionToken);
+        await login(user, authToken);
         navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

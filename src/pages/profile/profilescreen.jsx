@@ -69,9 +69,12 @@ const ProfileScreen = () => {
 
 
         useEffect(() => {
+        if (!isFocused) return;
         const getProfileData = async () => {
             setLoading(true);
             try {
+                console.log("TOKEN:", token);
+                console.log("AUTH HEADER:", `Bearer ${token}`);
                 const response = await ProfileHeaderController(token);
                 if (response && response.data) {
 
@@ -86,7 +89,7 @@ const ProfileScreen = () => {
             }//
         }
         getProfileData();
-    }, [token]);
+    }, [token, isFocused]);
 
 
 
