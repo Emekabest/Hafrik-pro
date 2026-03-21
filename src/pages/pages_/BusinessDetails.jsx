@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import {
   View, Text, FlatList, ActivityIndicator, StyleSheet,
   TouchableOpacity, Animated, Dimensions, Linking, Share,
-  ScrollView,
+  ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,7 +11,10 @@ import { Image as ExpoImage } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../AuthContext";
 import useStore from "../../repository/store";
-import { getBusinessDetails, getBusinessFeed, toggleFollowBusiness } from "./Businessapi";
+import { getBusinessDetails, getBusinessFeed, followBusiness, unfollowBusiness, updatePage } from "./Businessapi";
+import PostComposerModal from "../home/PostComposerModal";
+import * as ImagePicker from "expo-image-picker";
+import UploadMediaController from "../../controllers/uploadmediacontroller";
 import FeedCard from "../home/feeds/feedcard.jsx";
 import { Colors } from "../../theme";
 
@@ -37,16 +40,16 @@ const defaultAvatar = "https://hafrik.com/default-avatar.png";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const decodeHtml = (str) => {
-  if (!str) return str;
-  return str
+  if (str == null) return '';
+  return String(str)
     .replace(/&#039;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ")
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
 };
 
 const cleanText = (str) => {
-  if (!str) return str;
-  return decodeHtml(str.replace(/<\/?[^>]+(>|$)/g, "").trim());
+  if (str == null) return '';
+  return decodeHtml(String(str).replace(/<\/?[^>]+(>|$)/g, "").trim());
 };
 
 const fmtCount = (n) => {
@@ -81,8 +84,10 @@ export default function BusinessDetails({ route }) {
   const navigation   = useNavigation();
   const { token, user } = useAuth();
   const { top }      = useSafeAreaInsets();
-  const openComposer = useStore((s) => s.openComposer);
-  const refreshSignal = useStore((s) => s.refreshSignal);
+  const openComposer       = useStore((s) => s.openComposer);
+  const refreshSignal      = useStore((s) => s.refreshSignal);
+  const lastCreatedPost    = useStore((s) => s.lastCreatedPost);
+  const clearLastCreatedPost = useStore((s) => s.clearLastCreatedPost);
 
   const [page,          setPageData]     = useState(null);
   const [posts,         setPosts]        = useState([]);
@@ -95,6 +100,13 @@ export default function BusinessDetails({ route }) {
   const [followLoading, setFollowLoading] = useState(false);
   const [activeTab,     setActiveTab]    = useState("posts");
   const [aboutExpanded, setAboutExpanded] = useState(false);
+  const [showEdit,       setShowEdit]      = useState(false);
+  const [editTitle,      setEditTitle]     = useState('');
+  const [editAbout,      setEditAbout]     = useState('');
+  const [editSaving,     setEditSaving]    = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover,  setUploadingCover]  = useState(false);
+  const [feedFilter,     setFeedFilter]    = useState('all');
 
   const followRef = useRef({ following: false, followLoading: false });
   followRef.current = { following, followLoading };
@@ -107,10 +119,63 @@ export default function BusinessDetails({ route }) {
     page.is_owner === true || page.is_owner === 1 ||
     (user?.id && String(page.user_id) === String(user.id))
   );
+  const isAdmin = !!page && (page.is_admin === true || page.is_admin === 1);
+  const canPost = isOwner || isAdmin || page?.can_post === true || page?.can_post === 1;
 
   const openPageComposer = useCallback(() => {
-    openComposer({ _type: "page", id: pageId, title: page?.title, avatar: page?.avatar, locked: true });
+    openComposer({ target_type: "page", target_id: pageId, title: page?.title, avatar: page?.avatar, locked: true });
   }, [openComposer, pageId, page?.title, page?.avatar]);
+
+  const openEditModal = useCallback(() => {
+    setEditTitle(page?.title ?? '');
+    setEditAbout(page?.about ?? '');
+    setShowEdit(true);
+  }, [page?.title, page?.about]);
+
+  const handleUpdatePage = useCallback(async () => {
+    if (editSaving) return;
+    setEditSaving(true);
+    try {
+      const res = await updatePage({ page_id: pageId, title: editTitle.trim(), about: editAbout.trim() });
+      if (res?.status === 'success' || res?.data) {
+        setPageData(p => p ? { ...p, title: editTitle.trim(), about: editAbout.trim() } : p);
+        setShowEdit(false);
+      }
+    } catch (e) {
+      console.log('UPDATE PAGE ERROR:', e);
+    }
+    setEditSaving(false);
+  }, [pageId, editTitle, editAbout, editSaving]);
+
+  const feedFilterRef = useRef('all');
+  feedFilterRef.current = feedFilter;
+
+  const pickAndUploadImage = useCallback(async (field) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: field === 'cover' ? [16, 9] : [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (field === 'avatar') setUploadingAvatar(true);
+    else setUploadingCover(true);
+    try {
+      const up = await UploadMediaController(
+        { uri: asset.uri, fileName: asset.fileName || 'image.jpg', type: asset.mimeType || 'image/jpeg' },
+        token, null, 'photo',
+      );
+      if (up?.status === 'success' && up?.data?.url) {
+        await updatePage({ page_id: pageId, [field]: up.data.url });
+        setPageData(p => p ? { ...p, [field]: up.data.url } : p);
+      }
+    } catch (e) { console.log('pickAndUploadImage error:', e); }
+    if (field === 'avatar') setUploadingAvatar(false);
+    else setUploadingCover(false);
+  }, [pageId, token]);
 
   const prevRefreshSignal = useRef(0);
   useEffect(() => {
@@ -119,6 +184,18 @@ export default function BusinessDetails({ route }) {
       loadFeed(1);
     }
   }, [refreshSignal]);
+
+  // Optimistic prepend when a new post is created for this page
+  useEffect(() => {
+    if (!lastCreatedPost) return;
+    const { post, target_type, target_id } = lastCreatedPost;
+    if (target_type === 'page' && String(target_id) === String(pageId)) {
+      setPosts(prev => [post, ...prev.filter(p => p.id !== post.id)]);
+      setPageData(p => p ? { ...p, posts: (Number(p.posts ?? 0) + 1) } : p);
+      setActiveTab('posts');
+    }
+    clearLastCreatedPost();
+  }, [lastCreatedPost]);
 
   useEffect(() => {
     if (pageId) {
@@ -129,22 +206,30 @@ export default function BusinessDetails({ route }) {
 
   const loadPage = async () => {
     try {
-      const payload = await getBusinessDetails(pageId, token);
-      if (payload?.status === "success") {
-        // API returns data directly (no page wrapper): { id, title, likes, is_liked, avatar, cover, ... }
-        const pageData = payload.data;
+      const pageData = await getBusinessDetails(pageId);
+      if (pageData) {
         setPageData(pageData);
-        setFollowing(!!(pageData?.is_liked));
+        setFollowing(!!(pageData.is_liked));
       }
     } catch {}
     setLoadingPage(false);
   };
 
-  const loadFeed = async (pNum) => {
+  const handleFeedFilter = useCallback((f) => {
+    setFeedFilter(f);
+    feedFilterRef.current = f;
+    setPosts([]);
+    setPageNum(1);
+    setHasMore(true);
+    loadFeed(1, f);
+  }, []); // eslint-disable-line
+
+  const loadFeed = async (pNum, filter) => {
+    const activeFilter = filter ?? feedFilterRef.current;
     if (pNum === 1) setLoadingFeed(true);
     else setLoadingMore(true);
     try {
-      const payload = await getBusinessFeed(pageId, pNum, 10, token);
+      const payload = await getBusinessFeed(pageId, pNum, 10, activeFilter);
       if (payload?.status === "success") {
         const feedPosts = Array.isArray(payload.data?.data)
           ? payload.data.data
@@ -174,12 +259,9 @@ export default function BusinessDetails({ route }) {
     setFollowLoading(true);
     setFollowing(!curFollowing);
     try {
-      const res = await toggleFollowBusiness(pageId, curFollowing ? 'unlike' : 'like');
-      const d = res?.data ?? res;
-      if (d?.is_liked     != null) setFollowing(!!d.is_liked);
-      else if (d?.is_following != null) setFollowing(!!d.is_following);
-      const newCount = d?.likes ?? d?.followers;
-      if (newCount != null) setPageData(p => p ? { ...p, likes: Number(newCount) } : p);
+      const d = await (curFollowing ? unfollowBusiness(pageId) : followBusiness(pageId));
+      if (d?.is_liked != null) setFollowing(!!d.is_liked);
+      if (d?.likes    != null) setPageData(p => p ? { ...p, likes: Number(d.likes) } : p);
     } catch {
       setFollowing(followRef.current.following);
     }
@@ -334,7 +416,7 @@ export default function BusinessDetails({ route }) {
     const handle     = cleanText(page.name) || "";
     const isVerified = page.verified === true || page.verified === 1 || page.verified_value === 1;
     const phone      = cleanText(page.phone || page.phone_number || page.contact_phone || page.mobile) || "";
-    const postsCount    = Number(page.posts_count ?? 0);
+    const postsCount    = Number(page.posts ?? page.posts_count ?? 0);
     const followersCount = Number(page.likes ?? page.followers ?? page.followers_count ?? page.likes_count ?? 0);
 
     return (
@@ -354,11 +436,16 @@ export default function BusinessDetails({ route }) {
               <View style={[StyleSheet.absoluteFill, { backgroundColor: BRAND }]} />
             )}
           </Animated.View>
-          {/* Bottom scrim for avatar blending */}
-          <LinearGradient
-            colors={["transparent", BLACK + "44"]}
-            style={StyleSheet.absoluteFill}
-          />
+          <LinearGradient colors={["transparent", BLACK + "44"]} style={StyleSheet.absoluteFill} />
+          {/* Edit cover — owner/admin only */}
+          {(isOwner || isAdmin) && (
+            <TouchableOpacity style={st.editCoverBtn} onPress={() => pickAndUploadImage('cover')} activeOpacity={0.8}>
+              {uploadingCover
+                ? <ActivityIndicator size="small" color={WHITE} />
+                : <Ionicons name="camera" size={18} color={WHITE} />
+              }
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── Profile row: avatar (overlapping cover) + stats ── */}
@@ -374,6 +461,15 @@ export default function BusinessDetails({ route }) {
               <View style={st.verifiedDot}>
                 <Ionicons name="checkmark-circle" size={20} color={ACCENT} />
               </View>
+            )}
+            {/* Edit avatar — owner/admin only */}
+            {(isOwner || isAdmin) && (
+              <TouchableOpacity style={st.editAvatarBtn} onPress={() => pickAndUploadImage('avatar')} activeOpacity={0.8}>
+                {uploadingAvatar
+                  ? <ActivityIndicator size="small" color={WHITE} style={{ width: 26, height: 26 }} />
+                  : <Ionicons name="camera" size={13} color={WHITE} />
+                }
+              </TouchableOpacity>
             )}
           </View>
 
@@ -412,14 +508,24 @@ export default function BusinessDetails({ route }) {
 
         {/* ── CTA buttons ── */}
         <View style={st.ctaRow}>
-          {isOwner ? (
+          {/* Edit Page — owner or admin */}
+          {(isOwner || isAdmin) && (
+            <TouchableOpacity style={st.editBtn} onPress={openEditModal} activeOpacity={0.85}>
+              <Ionicons name="settings-outline" size={15} color={BRAND} />
+              <Text style={st.editBtnText}>Edit Page</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Create Post — owner or admin (can_post) */}
+          {canPost ? (
             <TouchableOpacity style={st.primaryBtn} onPress={openPageComposer} activeOpacity={0.85}>
               <View style={st.primaryBtnGrad}>
                 <Ionicons name="create-outline" size={16} color={WHITE} />
-                <Text style={st.primaryBtnText}>Write Post</Text>
+                <Text style={st.primaryBtnText}>Create Post</Text>
               </View>
             </TouchableOpacity>
           ) : (
+            /* Follow — non-owner, non-admin */
             <TouchableOpacity
               style={st.primaryBtn}
               onPress={handleFollow}
@@ -430,20 +536,14 @@ export default function BusinessDetails({ route }) {
                 <View style={st.followingBtn}>
                   {followLoading
                     ? <ActivityIndicator size="small" color={TEXT_M} />
-                    : <>
-                        <Ionicons name="checkmark" size={16} color={TEXT_M} />
-                        <Text style={st.followingBtnText}>Following</Text>
-                      </>
+                    : <><Ionicons name="checkmark" size={16} color={TEXT_M} /><Text style={st.followingBtnText}>Following</Text></>
                   }
                 </View>
               ) : (
                 <View style={st.primaryBtnGrad}>
                   {followLoading
                     ? <ActivityIndicator size="small" color={WHITE} />
-                    : <>
-                        <Ionicons name="add" size={17} color={WHITE} />
-                        <Text style={st.primaryBtnText}>Follow</Text>
-                      </>
+                    : <><Ionicons name="add" size={17} color={WHITE} /><Text style={st.primaryBtnText}>Follow</Text></>
                   }
                 </View>
               )}
@@ -503,10 +603,24 @@ export default function BusinessDetails({ route }) {
                 <Ionicons name="send" size={16} color={ACCENT} />
               </TouchableOpacity>
             )}
-            <View style={st.feedLabel}>
-              <View style={st.feedLabelDot} />
-              <Text style={st.feedLabelText}>LATEST POSTS</Text>
-              {loadingFeed && <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 8 }} />}
+            {/* Feed filter tabs */}
+            <View style={st.feedFilterRow}>
+              {[
+                { key: 'all',    label: 'All' },
+                { key: 'photos', label: 'Photos' },
+                { key: 'video',  label: 'Videos' },
+                { key: 'reel',   label: 'Reels' },
+              ].map(({ key, label }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[st.feedFilterChip, feedFilter === key && st.feedFilterChipOn]}
+                  onPress={() => handleFeedFilter(key)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[st.feedFilterTxt, feedFilter === key && st.feedFilterTxtOn]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+              {loadingFeed && <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 4 }} />}
             </View>
           </>
         )}
@@ -514,9 +628,11 @@ export default function BusinessDetails({ route }) {
     );
   }, [
     loadingPage, page, following, followLoading, aboutExpanded,
-    loadingFeed, isOwner, activeTab, coverScale,
-    openPageComposer, handleCall, handleWhatsApp, handleFollow,
-    handleWebsite, handleShare, aboutTab, contactTab,
+    loadingFeed, isOwner, isAdmin, activeTab, coverScale,
+    uploadingAvatar, uploadingCover, feedFilter,
+    openPageComposer, openEditModal, handleCall, handleWhatsApp, handleFollow,
+    handleWebsite, handleShare, handleFeedFilter, pickAndUploadImage,
+    aboutTab, contactTab,
   ]);
 
   const [visiblePostId, setVisiblePostId] = useState(null);
@@ -578,6 +694,68 @@ export default function BusinessDetails({ route }) {
           ) : null
         }
       />
+
+      {/* ── Composer (must be mounted here so it renders on this screen) ── */}
+      <PostComposerModal />
+
+      {/* ── Edit Page Modal ── */}
+      <Modal
+        visible={showEdit}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEdit(false)}
+        statusBarTranslucent
+      >
+        <KeyboardAvoidingView
+          style={st.editOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={st.editSheet}>
+            <View style={st.editHeader}>
+              <Text style={st.editTitle}>Edit Page</Text>
+              <TouchableOpacity onPress={() => setShowEdit(false)} style={st.editCloseBtn} activeOpacity={0.7}>
+                <Ionicons name="close" size={20} color={TEXT_H} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={st.editBody}>
+              <Text style={st.editLabel}>Page Name</Text>
+              <TextInput
+                style={st.editInput}
+                value={editTitle}
+                onChangeText={setEditTitle}
+                placeholder="Enter page name"
+                placeholderTextColor={TEXT_M}
+                returnKeyType="next"
+              />
+
+              <Text style={st.editLabel}>About</Text>
+              <TextInput
+                style={[st.editInput, st.editInputMulti]}
+                value={editAbout}
+                onChangeText={setEditAbout}
+                placeholder="Describe your business"
+                placeholderTextColor={TEXT_M}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[st.editSaveBtn, editSaving && { opacity: 0.6 }]}
+              onPress={handleUpdatePage}
+              disabled={editSaving}
+              activeOpacity={0.85}
+            >
+              {editSaving
+                ? <ActivityIndicator size="small" color={WHITE} />
+                : <Text style={st.editSaveTxt}>Save Changes</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -798,4 +976,79 @@ const st = StyleSheet.create({
   loaderText: { color: TEXT_M, fontSize: 14, fontFamily: "ReadexPro-Regular" },
   empty: { alignItems: "center", paddingVertical: 60, gap: 10 },
   emptyText: { fontSize: 14, color: TEXT_M, fontFamily: "ReadexPro-Regular" },
+
+  // ── Edit Page button (small, beside Create Post) ──
+  editBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 14, paddingVertical: 11,
+    borderRadius: 100, borderWidth: 1.5, borderColor: BORDER,
+    backgroundColor: BG,
+  },
+  editBtnText: { fontSize: 13, fontWeight: "700", color: BRAND, fontFamily: "ReadexPro-Bold" },
+
+  // ── Edit Modal ──
+  editOverlay: {
+    flex: 1, justifyContent: "flex-end", backgroundColor: BLACK + "55",
+  },
+  editSheet: {
+    backgroundColor: CARD,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingBottom: 32,
+    maxHeight: "80%",
+  },
+  editHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER,
+  },
+  editTitle:    { fontSize: 16, fontWeight: "800", color: TEXT_H, fontFamily: "ReadexPro-Bold" },
+  editCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: BG, alignItems: "center", justifyContent: "center" },
+  editBody:     { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, gap: 6 },
+  editLabel:    { fontSize: 12, fontWeight: "700", color: TEXT_M, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4, fontFamily: "ReadexPro-Bold" },
+  editInput: {
+    backgroundColor: BG, borderRadius: 12, borderWidth: 1, borderColor: BORDER,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 14, color: TEXT_H, fontFamily: "ReadexPro-Regular",
+    marginBottom: 16,
+  },
+  editInputMulti: { minHeight: 100, textAlignVertical: "top" },
+  editSaveBtn: {
+    marginHorizontal: 20, marginTop: 8,
+    backgroundColor: BRAND, borderRadius: 100,
+    paddingVertical: 14, alignItems: "center",
+  },
+  editSaveTxt: { fontSize: 15, fontWeight: "800", color: WHITE, fontFamily: "ReadexPro-Bold" },
+
+  // ── Cover edit button ──
+  // ── Feed filter ──
+  feedFilterRow: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 14, paddingVertical: 10,
+    gap: 8, backgroundColor: BG,
+  },
+  feedFilterChip: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100,
+    backgroundColor: CARD, borderWidth: 1.5, borderColor: BORDER,
+  },
+  feedFilterChipOn: { backgroundColor: BRAND, borderColor: BRAND },
+  feedFilterTxt:    { fontSize: 12, fontWeight: "700", color: TEXT_M, fontFamily: "ReadexPro-Bold" },
+  feedFilterTxtOn:  { color: WHITE },
+
+  // ── Cover edit button ──
+  editCoverBtn: {
+    position: "absolute", bottom: 10, right: 12,
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: BLACK + "66",
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5, borderColor: WHITE + "55",
+  },
+
+  // ── Avatar edit button ──
+  editAvatarBtn: {
+    position: "absolute", bottom: -2, right: -2,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: BRAND,
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 2, borderColor: WHITE,
+  },
 });

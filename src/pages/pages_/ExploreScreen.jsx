@@ -142,7 +142,7 @@ const BusinessCard = memo(({ item, onPress }) => {
     setIsFollowing(!was);
     setLikeCount(c => was ? Math.max(0, c - 1) : c + 1);
     try {
-      const res = await toggleFollowBusiness(item.id, was ? 'unfollow' : 'follow');
+      const res = await toggleFollowBusiness(item.id, was ? 'unlike' : 'like');
       const d   = res?.data ?? res;
       if (d?.is_liked     != null) setIsFollowing(!!d.is_liked);
       else if (d?.is_following != null) setIsFollowing(!!d.is_following);

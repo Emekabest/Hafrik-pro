@@ -11,16 +11,24 @@
  *   onClose   {() => void}
  *   onCreated {(data) => void}
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
   TextInput, ScrollView, ActivityIndicator, Alert,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../../theme';
+
+const BASE_URL = 'https://hafrik.com/api/v1';
+
+const LANGUAGES = [
+  'English','French','Arabic','Portuguese','Swahili','Hausa','Yoruba','Igbo',
+  'Amharic','Zulu','Xhosa','Somali','Afrikaans','Tigrinya','Mandarin','Spanish',
+  'German','Italian','Hindi','Other',
+];
 
 const BRAND        = Colors.primaryDark;
 const ACCENT       = Colors.primary;
@@ -66,15 +74,43 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
   const [username,  setUsername]  = useState('');
   const [about,     setAbout]     = useState('');
   const [privacy,   setPrivacy]   = useState('public');
-  const [category,  setCategory]  = useState('');
-  const [country,   setCountry]   = useState('');
+  // category / country / language stored as { id, name } or string
+  const [category,  setCategory]  = useState(null);
+  const [country,   setCountry]   = useState(null);
   const [language,  setLanguage]  = useState('');
   const [saving,    setSaving]    = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Fetched data
+  const [categoriesList,  setCategoriesList]  = useState([]);
+  const [countriesList,   setCountriesList]   = useState([]);
+  const [fetchingMeta,    setFetchingMeta]    = useState(false);
+
+  // Picker modals
+  const [showCatPicker,  setShowCatPicker]  = useState(false);
+  const [showCntPicker,  setShowCntPicker]  = useState(false);
+  const [showLangPicker, setShowLangPicker] = useState(false);
+
+  // Fetch categories + countries when modal opens for business
+  useEffect(() => {
+    if (!visible || isCommunity) return;
+    setFetchingMeta(true);
+    Promise.all([
+      fetch(`${BASE_URL}/business/categories.php`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json()).catch(() => ({})),
+      fetch(`${BASE_URL}/location/countries.php`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json()).catch(() => ({})),
+    ]).then(([catRes, cntRes]) => {
+      const cats = Array.isArray(catRes?.data) ? catRes.data : [];
+      const cnts = Array.isArray(cntRes?.data) ? cntRes.data : [];
+      setCategoriesList(cats);
+      setCountriesList(cnts);
+    }).finally(() => setFetchingMeta(false));
+  }, [visible, isCommunity, token]);
+
   const reset = () => {
     setName(''); setUsername(''); setAbout(''); setPrivacy('public');
-    setCategory(''); setCountry(''); setLanguage(''); setFormError('');
+    setCategory(null); setCountry(null); setLanguage(''); setFormError('');
   };
   const handleClose = () => { reset(); onClose(); };
 
@@ -98,8 +134,8 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
       setFormError('Please choose a unique username (no spaces).');
       return;
     }
-    if (!isCommunity && !category.trim()) {
-      setFormError('Please enter a category for your business page.');
+    if (!isCommunity && !category) {
+      setFormError('Please select a category for your business page.');
       return;
     }
     setSaving(true);
@@ -114,8 +150,8 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
       if (isCommunity) {
         body.append('privacy', privacy);
       } else {
-        body.append('category', category.trim());
-        if (country.trim())  body.append('country',  country.trim());
+        body.append('category', String(category?.id ?? category));
+        if (country)         body.append('country',  String(country?.id ?? country));
         if (language.trim()) body.append('language', language.trim());
       }
       const res  = await fetch(endpoint, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body });
@@ -144,9 +180,70 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
     }
   };
 
+  // ── Reusable picker modal ─────────────────────────────────────────────────────
+  const PickerModal = useCallback(({ pickerVisible, title, items, onSelect, onClose: closePicker, selected, labelKey = 'name' }) => (
+    <Modal visible={pickerVisible} transparent animationType="fade" onRequestClose={closePicker}>
+      <TouchableOpacity style={cr.overlay} activeOpacity={1} onPress={closePicker} />
+      <View style={cr.pickerSheet}>
+        <View style={cr.pickerHeader}>
+          <Text style={cr.pickerTitle}>{title}</Text>
+          <TouchableOpacity onPress={closePicker} style={cr.pickerClose}>
+            <Ionicons name="close" size={18} color={DARK} />
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={items}
+          keyExtractor={(item, i) => String(item?.id ?? item?.category_id ?? item ?? i)}
+          style={{ maxHeight: 340 }}
+          renderItem={({ item }) => {
+            const label = typeof item === 'string' ? item : (item[labelKey] ?? item.title ?? item.category_name ?? String(item));
+            const isSelected = typeof item === 'string' ? item === selected : (item.id ?? item.category_id) === (selected?.id ?? selected?.category_id);
+            return (
+              <TouchableOpacity
+                style={[cr.pickerItem, isSelected && cr.pickerItemOn]}
+                onPress={() => { onSelect(item); closePicker(); }}
+                activeOpacity={0.75}
+              >
+                <Text style={[cr.pickerItemTxt, isSelected && cr.pickerItemTxtOn]}>{label}</Text>
+                {isSelected && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </Modal>
+  ), []);
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <TouchableOpacity style={cr.overlay} activeOpacity={1} onPress={handleClose} />
+
+      <PickerModal
+        pickerVisible={showCatPicker}
+        title="Select Category"
+        items={categoriesList}
+        selected={category}
+        labelKey="name"
+        onSelect={setCategory}
+        onClose={() => setShowCatPicker(false)}
+      />
+      <PickerModal
+        pickerVisible={showCntPicker}
+        title="Select Country"
+        items={countriesList}
+        selected={country}
+        labelKey="name"
+        onSelect={setCountry}
+        onClose={() => setShowCntPicker(false)}
+      />
+      <PickerModal
+        pickerVisible={showLangPicker}
+        title="Select Language"
+        items={LANGUAGES}
+        selected={language}
+        onSelect={setLanguage}
+        onClose={() => setShowLangPicker(false)}
+      />
       <KeyboardAvoidingView
         style={cr.kavWrap}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -213,20 +310,44 @@ const CreateModal = ({ visible, type, navigation, token, user, onClose, onCreate
                   ) : (
                     <>
                       <Text style={cr.label}>Category *</Text>
-                      <TextInput
-                        style={cr.input} value={category} onChangeText={setCategory}
-                        placeholder="e.g. Restaurant, Retail, Services…" placeholderTextColor={MUTED} maxLength={80}
-                      />
+                      <TouchableOpacity
+                        style={[cr.pickerBtn, category && cr.pickerBtnOn]}
+                        onPress={() => setShowCatPicker(true)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[cr.pickerTxt, !category && cr.pickerPlaceholder]}>
+                          {category
+                            ? (category.name ?? category.title ?? String(category))
+                            : (fetchingMeta ? 'Loading categories…' : 'Select a category')}
+                        </Text>
+                        <Ionicons name="chevron-down" size={15} color={category ? BRAND : MUTED} />
+                      </TouchableOpacity>
+
                       <Text style={cr.label}>Country</Text>
-                      <TextInput
-                        style={cr.input} value={country} onChangeText={setCountry}
-                        placeholder="e.g. Nigeria" placeholderTextColor={MUTED} maxLength={80}
-                      />
+                      <TouchableOpacity
+                        style={[cr.pickerBtn, country && cr.pickerBtnOn]}
+                        onPress={() => setShowCntPicker(true)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[cr.pickerTxt, !country && cr.pickerPlaceholder]}>
+                          {country
+                            ? (country.name ?? String(country))
+                            : (fetchingMeta ? 'Loading countries…' : 'Select a country')}
+                        </Text>
+                        <Ionicons name="chevron-down" size={15} color={country ? BRAND : MUTED} />
+                      </TouchableOpacity>
+
                       <Text style={cr.label}>Language</Text>
-                      <TextInput
-                        style={cr.input} value={language} onChangeText={setLanguage}
-                        placeholder="e.g. English" placeholderTextColor={MUTED} maxLength={80}
-                      />
+                      <TouchableOpacity
+                        style={[cr.pickerBtn, language && cr.pickerBtnOn]}
+                        onPress={() => setShowLangPicker(true)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[cr.pickerTxt, !language && cr.pickerPlaceholder]}>
+                          {language || 'Select a language'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={15} color={language ? BRAND : MUTED} />
+                      </TouchableOpacity>
                     </>
                   )}
                   {!!formError && (
@@ -357,4 +478,42 @@ const cr = StyleSheet.create({
   applyTxt:  { fontSize: 14, fontWeight: '800', color: WHITE },
   maybeTxt:  { fontSize: 13, color: MUTED, textAlign: 'center', fontWeight: '500' },
   errorTxt:  { fontSize: 13, color: '#E53935', marginTop: 10, fontWeight: '500' },
+
+  // ── Picker button (replaces TextInput for category/country/language) ──
+  pickerBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: Colors.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: Colors.background,
+  },
+  pickerBtnOn:      { borderColor: BRAND },
+  pickerTxt:        { fontSize: 14, color: DARK, flex: 1 },
+  pickerPlaceholder:{ color: MUTED },
+
+  // ── Picker modal sheet ──
+  pickerSheet: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: WHITE, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    paddingBottom: 30,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1, shadowRadius: 12, elevation: 16,
+  },
+  pickerHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 18, paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border,
+  },
+  pickerTitle: { fontSize: 15, fontWeight: '800', color: DARK },
+  pickerClose: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center',
+  },
+  pickerItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border,
+  },
+  pickerItemOn:    { backgroundColor: ACCENT + '0D' },
+  pickerItemTxt:   { fontSize: 14, color: DARK, fontWeight: '500', flex: 1 },
+  pickerItemTxtOn: { color: BRAND, fontWeight: '700' },
 });

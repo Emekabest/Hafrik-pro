@@ -493,12 +493,20 @@ const DeltaIndicator = memo(({ delta }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Ranked trending post card (leaderboard style)
 // ─────────────────────────────────────────────────────────────────────────────
+const sumReactions = (r) => {
+  if (!r || typeof r !== 'object') return 0;
+  return Object.entries(r).reduce((s, [k, v]) => k !== 'total' ? s + Number(v || 0) : s, 0);
+};
+
 const RankedTrendingCard = memo(({ item, rank, rankDelta, onPress }) => {
-  const thumb    = item?.thumbnail ?? item?.image ?? item?.cover ?? null;
+  const thumb    = item?.media?.[0]?.thumbnail ?? item?.media?.[0]?.url
+                ?? item?.thumbnail ?? item?.image ?? item?.cover ?? null;
   const username = decodeHtml(item?.username ?? item?.user?.username ?? item?.name ?? 'User');
   const title    = decodeHtml(item?.title ?? item?.text ?? item?.caption ?? '');
-  const likes    = Number(item?.likes_count ?? item?.likes ?? 0);
+  const reactions = sumReactions(item?.reactions);
+  const likes    = reactions || Number(item?.likes_count ?? item?.likes ?? 0);
   const comments = Number(item?.comments_count ?? item?.comments ?? 0);
+  const views    = Number(item?.views ?? 0);
   const avatar   = item?.user?.avatar ?? item?.avatar ?? null;
 
   return (
@@ -542,6 +550,12 @@ const RankedTrendingCard = memo(({ item, rank, rankDelta, onPress }) => {
             <Ionicons name="chatbubble-outline" size={11} color={MUTED} />
             <Text style={ss.rtStatText}>{comments.toLocaleString()}</Text>
           </View>
+          {views > 0 && (
+            <View style={ss.rtStat}>
+              <Ionicons name="eye-outline" size={11} color={MUTED} />
+              <Text style={ss.rtStatText}>{views.toLocaleString()}</Text>
+            </View>
+          )}
         </View>
       </View>
           
@@ -555,11 +569,14 @@ const RankedTrendingCard = memo(({ item, rank, rankDelta, onPress }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const PostPreviewSheet = ({ visible, post, onClose, onViewFull }) => {
   if (!visible || !post) return null;
-  const thumb    = post?.thumbnail ?? post?.image ?? post?.cover ?? null;
+  const thumb    = post?.media?.[0]?.thumbnail ?? post?.media?.[0]?.url
+                ?? post?.thumbnail ?? post?.image ?? post?.cover ?? null;
   const username = decodeHtml(post?.username ?? post?.user?.username ?? '');
   const title    = decodeHtml(post?.title ?? post?.text ?? post?.caption ?? '');
-  const likes    = Number(post?.likes_count ?? post?.likes ?? 0);
+  const reactions = sumReactions(post?.reactions);
+  const likes    = reactions || Number(post?.likes_count ?? post?.likes ?? 0);
   const comments = Number(post?.comments_count ?? post?.comments ?? 0);
+  const views    = Number(post?.views ?? 0);
   const avatar   = post?.user?.avatar ?? post?.avatar ?? null;
 
   return (
@@ -589,12 +606,18 @@ const PostPreviewSheet = ({ visible, post, onClose, onViewFull }) => {
         <View style={ss.previewStatsRow}>
           <View style={ss.previewStat}>
             <Ionicons name="heart" size={14} color="#ef4444" />
-            <Text style={ss.previewStatText}>{likes.toLocaleString()} likes</Text>
+            <Text style={ss.previewStatText}>{likes.toLocaleString()} reactions</Text>
           </View>
           <View style={ss.previewStat}>
             <Ionicons name="chatbubble-ellipses" size={14} color={ACCENT} />
             <Text style={ss.previewStatText}>{comments.toLocaleString()} comments</Text>
           </View>
+          {views > 0 && (
+            <View style={ss.previewStat}>
+              <Ionicons name="eye" size={14} color={MUTED} />
+              <Text style={ss.previewStatText}>{views.toLocaleString()} views</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity style={ss.previewViewBtn} onPress={onViewFull} activeOpacity={0.88}>
           <Text style={ss.previewViewBtnText}>View Full Post</Text>

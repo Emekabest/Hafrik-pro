@@ -224,7 +224,7 @@ const CommentScreen = ({ route }) => {
       {/* ── Content + Comment bar wrapped in KAV ────────────────────────────── */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         keyboardVerticalOffset={kavOffset}
       >
         {loading ? (

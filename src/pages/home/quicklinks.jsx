@@ -43,6 +43,12 @@ const items = [
     colors: [ACCENT, Colors.tealMint],
   },
   {
+    label: "Articles",
+    icon: (active) => <Ionicons name="newspaper" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "ArticlesScreen",
+    colors: [Colors.violet, Colors.violetDeep],
+  },
+  {
     label: "Events",
     icon: (active) => <MaterialCommunityIcons name="calendar-star" size={20} color={active ? Colors.white : BRAND} />,
     screen: "EventsScreen",
@@ -53,12 +59,6 @@ const items = [
     icon: (active) => <MaterialCommunityIcons name="briefcase" size={20} color={active ? Colors.white : BRAND} />,
     screen: "JobsScreen",
     colors: [Colors.pinkBright, Colors.pinkDeep],
-  },
-  {
-    label: "Articles",
-    icon: (active) => <Ionicons name="newspaper" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "ArticlesScreen",
-    colors: [Colors.violet, Colors.violetDeep],
   },
 ];
 

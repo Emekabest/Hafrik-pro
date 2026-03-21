@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  FlatList, Image, ActivityIndicator,
-  Alert, ScrollView, StatusBar, Modal, KeyboardAvoidingView,
-  Platform, TouchableWithoutFeedback, Keyboard,
+  FlatList, Image, ActivityIndicator, ScrollView,
+  StatusBar, Modal, TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,8 +13,7 @@ import { Colors } from '../../theme';
 import { useTheme } from '../../theme/ThemeContext';
 
 // ─── API imports ─────────────────────────────────────────────────────────────
-import { getGroups, getCategories, toggleGroupMembership } from './services/groupApi';
-import PostFeedController from '../../controllers/postfeedcontroller';
+import { getGroups, getCategories, joinGroup, leaveGroup } from './services/groupApi';
 import CreateModal from './CreateModal';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -24,7 +22,7 @@ const ACCENT         = Colors.primary;
 const CREAM          = Colors.background;
 const MUTED          = Colors.secondaryText;
 const DARK           = Colors.black;
-const BORDER         = BRAND + '14';
+
 const CARD           = Colors.white;
 const WHITE          = Colors.white;
 const BLACK          = Colors.black;
@@ -69,370 +67,47 @@ const isRealImage = (url) =>
   typeof url === 'string' && url.trim().length > 6 &&
   !url.includes('default-avatar') && !url.includes('blank_profile');
 
-// ─── Group Post Modal ─────────────────────────────────────────────────────────
-const GroupPostModal = ({ visible, group, onClose, onPosted }) => {
-  const { token, user } = useAuth();
-  const navigation      = useNavigation();
-  const { bottom }      = useSafeAreaInsets();
-  const inputRef        = useRef(null);
-  const [text, setText]       = useState('');
-  const [posting, setPosting] = useState(false);
 
-  useEffect(() => {
-    if (visible) {
-      setText('');
-      setTimeout(() => inputRef.current?.focus(), 300);
-    }
-  }, [visible]);
-
-  const handlePost = async () => {
-    if (!text.trim() || posting) return;
-    setPosting(true);
-    try {
-      const result = await PostFeedController(
-        { type: 'text', text: text.trim(), target_type: 'group', target_id: group?.id },
-        token
-      );
-      if (result?.status === 'success') {
-        onPosted?.();
-      } else {
-        Alert.alert('Error', result?.message || 'Could not post. Please try again.');
-      }
-    } catch {
-      Alert.alert('Error', 'Could not post. Please try again.');
-    } finally {
-      setPosting(false);
-    }
-  };
-
-  const goToProfile = () => {
-    if (!user?.id) return;
-    onClose();
-    setTimeout(() => {
-      navigation.navigate('UserProfile', { userId: user.id, username: user.username ?? '' });
-    }, 250);
-  };
-
-  const avatar    = group?.avatar ?? null;
-  const groupName = group?.title ? cleanText(group.title) : 'Group';
-  const category  = cleanText(group?.category ?? '');
-  const canPost   = text.trim().length > 0;
-
-  const userInitials = (
-    (user?.first_name?.[0] ?? user?.full_name?.[0] ?? user?.username?.[0] ?? '?').toUpperCase()
-  );
-  const userAvatar = user?.avatar ?? user?.profile_picture ?? null;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={pm.overlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={pm.sheet}
-          >
-            {/* ── Handle ── */}
-            <View style={pm.handle} />
-
-            {/* ── Group context header ── */}
-            <View style={pm.groupHeader}>
-              {isRealImage(avatar) ? (
-                <Image source={{ uri: avatar }} style={pm.groupAvatar} resizeMode="cover" />
-              ) : (
-                <View style={[pm.groupAvatar, pm.groupAvatarFb]}>
-                  <Ionicons name="people" size={16} color={WHITE} />
-                </View>
-              )}
-              <View style={pm.groupInfo}>
-                <Text style={pm.groupName} numberOfLines={1}>{groupName}</Text>
-                {!!category && <Text style={pm.groupCat} numberOfLines={1}>{category}</Text>}
-              </View>
-              <View style={pm.membersOnlyBadge}>
-                <Ionicons name="lock-closed" size={10} color={ACCENT} />
-                <Text style={pm.membersOnlyTxt}>Members only</Text>
-              </View>
-            </View>
-
-            <View style={pm.divider} />
-
-            {/* ── Composer row ── */}
-            <View style={pm.composerRow}>
-              <TouchableOpacity onPress={goToProfile} activeOpacity={0.8}>
-                {isRealImage(userAvatar) ? (
-                  <Image source={{ uri: userAvatar }} style={pm.userAvatar} resizeMode="cover" />
-                ) : (
-                  <View style={pm.userAvatar}>
-                    <Text style={pm.userInitials}>{userInitials}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              <View style={pm.inputWrap}>
-                <Text style={pm.postingAs} numberOfLines={1}>
-                  {user?.full_name ?? user?.first_name ?? user?.username ?? 'You'}
-                </Text>
-                <TextInput
-                  ref={inputRef}
-                  style={pm.input}
-                  placeholder={`Share something with ${groupName}…`}
-                  placeholderTextColor={MUTED + 'AA'}
-                  value={text}
-                  onChangeText={setText}
-                  multiline
-                  maxLength={1000}
-                  autoCapitalize="sentences"
-                  autoCorrect
-                  textAlignVertical="top"
-                />
-              </View>
-            </View>
-
-            {text.length > 800 && (
-              <Text style={pm.charCount}>{1000 - text.length} remaining</Text>
-            )}
-
-            {/* ── Footer ── */}
-            <View style={[pm.footer, { paddingBottom: bottom + 12 }]}>
-              <TouchableOpacity style={pm.cancelBtn} onPress={onClose} activeOpacity={0.7}>
-                <Text style={pm.cancelTxt}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[pm.postBtn, !canPost && pm.postBtnDisabled]}
-                onPress={handlePost}
-                disabled={!canPost || posting}
-                activeOpacity={0.85}
-              >
-                {posting
-                  ? <ActivityIndicator size="small" color={WHITE} />
-                  : (
-                    <>
-                      <Ionicons name="send" size={14} color={WHITE} />
-                      <Text style={pm.postTxt}>Post</Text>
-                    </>
-                  )
-                }
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
-  );
-};
-
-// ─── Group Post Modal Styles ──────────────────────────────────────────────────
-const pm = StyleSheet.create({
-  overlay: {
-    flex: 1, justifyContent: 'flex-end',
-    backgroundColor: BLACK + '60',
-  },
-  sheet: {
-    backgroundColor: WHITE,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingTop: 10, paddingHorizontal: 16,
-    minHeight: 320,
-    shadowColor: BLACK, shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12, shadowRadius: 20, elevation: 20,
-  },
-  handle: {
-    width: 38, height: 4, borderRadius: 2,
-    backgroundColor: MUTED + '55', alignSelf: 'center', marginBottom: 14,
-  },
-  groupHeader:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  groupAvatar:     { width: 40, height: 40, borderRadius: 12 },
-  groupAvatarFb:   { backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' },
-  groupInfo:       { flex: 1 },
-  groupName:       { fontSize: 14, fontWeight: '800', color: DARK },
-  groupCat:        { fontSize: 11, color: MUTED, marginTop: 1 },
-  membersOnlyBadge:{
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: ACCENT + '14', borderRadius: 100,
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderWidth: 1, borderColor: ACCENT + '30',
-  },
-  membersOnlyTxt:  { fontSize: 10, fontWeight: '700', color: ACCENT },
-  divider:         { height: 1, backgroundColor: BRAND + '14', marginBottom: 14 },
-  composerRow:     { flexDirection: 'row', gap: 12, minHeight: 120, marginBottom: 8 },
-  userAvatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0, overflow: 'hidden',
-  },
-  userInitials:    { fontSize: 13, fontWeight: '900', color: WHITE },
-  inputWrap:       { flex: 1 },
-  postingAs:       { fontSize: 12, fontWeight: '800', color: DARK, marginBottom: 4 },
-  input: {
-    flex: 1, fontSize: 15, color: DARK, lineHeight: 22,
-    minHeight: 90,
-  },
-  charCount:       { fontSize: 11, color: MUTED, textAlign: 'right', marginBottom: 8 },
-  footer:          { flexDirection: 'row', gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: BRAND + '14' },
-  cancelBtn: {
-    flex: 1, height: 46, borderRadius: 100, borderWidth: 1.5, borderColor: BRAND + '40',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  cancelTxt:       { fontSize: 14, fontWeight: '700', color: MUTED },
-  postBtn: {
-    flex: 2, height: 46, borderRadius: 100, backgroundColor: BRAND,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-  },
-  postBtnDisabled: { backgroundColor: MUTED + '55' },
-  postTxt:         { fontSize: 14, fontWeight: '800', color: WHITE },
-});
-
-// ─── Community Card ───────────────────────────────────────────────────────────
-const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
-  const { token } = useAuth();
-  const [joining,     setJoining]     = useState(false);
-  const [isMember,    setIsMember]    = useState(group.is_joined === true || group.is_joined === 1 || group._isMember === true);
-  const [memberCount, setMemberCount] = useState(group.members_count ?? group.members ?? 0);
-
-  useEffect(() => {
-    setIsMember(group.is_joined === true || group.is_joined === 1 || group._isMember === true);
-    setMemberCount(group.members_count ?? group.members ?? 0);
-  }, [group.is_joined, group._isMember, group.members_count, group.members]);
-
-  const handleJoinLeave = async () => {
-    if (joining) return;
-    setJoining(true);
-    const was = isMember;
-    // Optimistic update
-    setIsMember(!was);
-    setMemberCount((c) => was ? Math.max(0, c - 1) : c + 1);
-    try {
-      const res = await toggleGroupMembership(group.id, was ? 'leave' : 'join');
-      // Reconcile with server response: { group_id, is_joined, members }
-      const d = res?.data ?? res;
-      if (d?.is_joined !== undefined) setIsMember(!!d.is_joined);
-      if (d?.members   !== undefined) setMemberCount(Number(d.members) || 0);
-    } catch {
-      Alert.alert('Error', 'Could not update membership. Please try again.');
-      setIsMember(was);
-      setMemberCount((c) => was ? c + 1 : Math.max(0, c - 1));
-    } finally {
-      setJoining(false);
-    }
-  };
-
-  const title    = cleanText(group.title ?? '');
-  const about    = cleanText(group.about ?? '');
-  const category = cleanText(group.category ?? '');
-  const cover    = group.cover ?? group.banner ?? null;
-  const avatar   = group.avatar ?? null;
-  const promoted = !!group.is_promoted;
-  const private_ = group.privacy === 'private' || group.type === 'private';
+// ─── Community Card (horizontal list) ────────────────────────────────────────
+const CommunityCard = ({ item, onJoinToggle, onOpen }) => {
+  const title   = cleanText(item.title ?? '');
+  const avatar  = item.avatar ?? null;
+  const members = item.members ?? item.members_count ?? 0;
+  const joined  = item.is_joined === true || item.is_joined === 1;
 
   return (
     <View style={cc.card}>
-      {/* ── Cover ── */}
-      <TouchableOpacity style={cc.coverWrap} activeOpacity={0.92} onPress={() => onOpen?.(group)}>
-        {isRealImage(cover) ? (
-          <Image source={{ uri: cover }} style={cc.cover} resizeMode="cover" />
+      {/* Single row: avatar | info | join btn | chevron */}
+      <TouchableOpacity style={cc.row} activeOpacity={0.88} onPress={onOpen}>
+        {/* Avatar */}
+        {isRealImage(avatar) ? (
+          <Image source={{ uri: avatar }} style={cc.avatar} resizeMode="cover" />
         ) : (
-          <LinearGradient
-            colors={[BRAND, ACCENT, COVER_TINT]}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={cc.cover}
-          >
-            <View style={cc.coverFallbackIcon}>
-              <Ionicons name="people-outline" size={36} color={WHITE + '55'} />
-            </View>
+          <LinearGradient colors={[BRAND, ACCENT]} style={[cc.avatar, cc.avatarFb]}>
+            <Ionicons name="people" size={22} color={WHITE} />
           </LinearGradient>
         )}
 
-        {/* Gradient fade for text legibility */}
-        <LinearGradient
-          colors={['transparent', SCRIM_STRONG]}
-          style={cc.coverFade}
-        />
-
-        {/* Top badges */}
-        <View style={cc.topBadges}>
-          {promoted && (
-            <View style={cc.featBadge}>
-              <Ionicons name="star" size={9} color={FEATURE_GOLD} />
-              <Text style={cc.featTxt}>Featured</Text>
-            </View>
-          )}
-          {private_ && (
-            <View style={cc.privBadge}>
-              <Ionicons name="lock-closed" size={10} color={WHITE} />
-            </View>
-          )}
+        {/* Info */}
+        <View style={cc.info}>
+          <Text style={cc.title} numberOfLines={1}>{title || 'Community'}</Text>
+          <Text style={cc.members}>{fmtCount(members)} Members</Text>
         </View>
 
-        {/* Name + member count */}
-        <View style={cc.coverBottom}>
-          <Text style={cc.coverTitle} numberOfLines={1}>{title || 'Community'}</Text>
-          <View style={cc.coverMeta}>
-            <Ionicons name="people" size={12} color={ON_DARK_80} />
-            <Text style={cc.coverMetaTxt}>{fmtCount(memberCount)} members</Text>
-            {isMember && (
-              <View style={cc.joinedPill}>
-                <Ionicons name="checkmark-circle" size={11} color={ACCENT} />
-                <Text style={cc.joinedTxt}>Joined</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-
-      {/* ── Body ── */}
-      <View style={cc.body}>
-        <View style={cc.bodyTop}>
-          <View style={cc.avatarWrap}>
-            {isRealImage(avatar) ? (
-              <Image source={{ uri: avatar }} style={cc.avatar} resizeMode="cover" />
-            ) : (
-              <LinearGradient colors={[BRAND, ACCENT]} style={[cc.avatar, cc.avatarFb]}>
-                <Ionicons name="people" size={18} color={WHITE} />
-              </LinearGradient>
-            )}
-          </View>
-          {!!category && (
-            <View style={cc.catChip}>
-              <Text style={cc.catTxt}>{category}</Text>
-            </View>
-          )}
-        </View>
-        {!!about && (
-          <View style={cc.aboutWrap}>
-            <Text style={cc.aboutLabel}>About</Text>
-            <Text style={cc.about} numberOfLines={3}>{about}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* ── Footer ── */}
-      <View style={cc.footer}>
-        {isMember ? (
-          <TouchableOpacity style={cc.postBtn} activeOpacity={0.8} onPress={() => onPostInGroup?.(group)}>
-            <Ionicons name="create-outline" size={13} color={ACCENT} />
-            <Text style={cc.postTxt}>Post in group</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={cc.hintRow}>
-            <Ionicons name="chatbubbles-outline" size={13} color={MUTED} />
-            <Text style={cc.hintTxt}>{private_ ? 'Private group' : 'Open community'}</Text>
-          </View>
-        )}
+        {/* Join / Joined button — stops propagation so tap doesn't open group */}
         <TouchableOpacity
-          style={[cc.joinBtn, isMember && cc.leaveBtn]}
-          onPress={handleJoinLeave}
-          disabled={joining}
+          style={joined ? cc.joinedBtn : cc.joinBtn}
+          onPress={(e) => { e.stopPropagation(); onJoinToggle(item); }}
           activeOpacity={0.85}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
         >
-          {joining
-            ? <ActivityIndicator size="small" color={isMember ? BRAND : WHITE} />
-            : <Text style={[cc.joinTxt, isMember && cc.leaveTxt]}>{isMember ? 'Leave' : 'Join Group'}</Text>
-          }
+          <Text style={joined ? cc.joinedText : cc.joinText}>
+            {joined ? '✓ Joined' : '+ Join'}
+          </Text>
         </TouchableOpacity>
-      </View>
+
+        <Ionicons name="chevron-forward" size={16} color={MUTED + '80'} />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -440,70 +115,76 @@ const CommunityCard = ({ group, onOpen, onPostInGroup }) => {
 // ─── Community Card Styles ────────────────────────────────────────────────────
 const cc = StyleSheet.create({
   card: {
-    backgroundColor: CARD, borderRadius: 20, overflow: 'hidden',
+    backgroundColor: CARD,
+    borderRadius: 14,
     marginHorizontal: 14,
-    borderWidth: 1, borderColor: BRAND_SOFT_07,
-    shadowColor: BLACK, shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
+    borderWidth: 1,
+    borderColor: BRAND_SOFT_07,
+    shadowColor: BLACK,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    overflow: 'hidden',
   },
-  coverWrap:         { height: 140, position: 'relative', overflow: 'hidden' },
-  cover:             { width: '100%', height: '100%' },
-  coverFallbackIcon: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  coverFade:         { position: 'absolute', bottom: 0, left: 0, right: 0, height: 100 },
-  topBadges:  { position: 'absolute', top: 10, left: 12, flexDirection: 'row', gap: 6, alignItems: 'center' },
-  featBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: BLACK + '85', borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 12,
   },
-  featTxt:    { fontSize: 9, fontWeight: '900', color: FEATURE_GOLD, letterSpacing: 0.3 },
-  privBadge: {
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: SCRIM_MEDIUM, alignItems: 'center', justifyContent: 'center',
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
   },
-  coverBottom:  { position: 'absolute', bottom: 0, left: 14, right: 14, paddingBottom: 12 },
-  coverTitle:   { fontSize: 16, fontWeight: '900', color: WHITE, marginBottom: 5, textShadowColor: BLACK + '80', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  coverMeta:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  coverMetaTxt: { fontSize: 11, color: ON_DARK_85, fontWeight: '600' },
-  joinedPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: ACCENT_SOFT_26, borderRadius: 100,
-    paddingHorizontal: 7, paddingVertical: 2,
-    borderWidth: 1, borderColor: ACCENT_SOFT_50,
+  avatarFb: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  joinedTxt:  { fontSize: 10, fontWeight: '800', color: ACCENT },
-  body:       { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 8 },
-  bodyTop:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  avatarWrap: {
-    width: 46, height: 46, borderRadius: 13, overflow: 'hidden',
-    borderWidth: 3, borderColor: WHITE, marginTop: -26,
-    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.14, shadowRadius: 8, elevation: 4,
+  info: {
+    flex: 1,
+    gap: 3,
   },
-  avatar:   { width: '100%', height: '100%' },
-  avatarFb: { alignItems: 'center', justifyContent: 'center' },
-  catChip:  { backgroundColor: ACCENT + '18', borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
-  catTxt:   { fontSize: 10, fontWeight: '800', color: TEXT_ACCENT },
-  aboutWrap:  { backgroundColor: BRAND + '07', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, marginTop: 2 },
-  aboutLabel: { fontSize: 9, fontWeight: '800', color: ACCENT, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 },
-  about:    { fontSize: 13, color: TEXT_SUBDUED, lineHeight: 20 },
-  footer: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 11,
-    borderTopWidth: 1, borderTopColor: BRAND_SOFT_07, gap: 10,
+  title: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: DARK,
+    lineHeight: 19,
   },
+  members: {
+    fontSize: 12,
+    color: MUTED,
+    fontWeight: '500',
+  },
+  joinBtn: {
+    backgroundColor: BRAND,
+    borderRadius: 100,
+    paddingHorizontal: 22,
+    paddingVertical: 9,
+  },
+  joinedBtn: {
+    backgroundColor: ACCENT,
+    borderRadius: 100,
+    paddingHorizontal: 22,
+    paddingVertical: 9,
+  },
+  joinText:   { fontSize: 13, fontWeight: '800', color: WHITE },
+  joinedText: { fontSize: 13, fontWeight: '800', color: WHITE },
   postBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: ACCENT_SOFT_09, borderRadius: 100,
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: ACCENT_SOFT_22,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 100,
+    paddingVertical: 9,
+    backgroundColor: ACCENT + '12',
+    borderWidth: 1,
+    borderColor: ACCENT + '30',
   },
-  postTxt:  { fontSize: 12, fontWeight: '700', color: ACCENT },
-  hintRow:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  hintTxt:  { fontSize: 12, color: MUTED },
-  joinBtn:  { backgroundColor: BRAND, borderRadius: 100, paddingHorizontal: 20, paddingVertical: 9, alignItems: 'center', minWidth: 95 },
-  leaveBtn: { backgroundColor: WHITE, borderWidth: 1.5, borderColor: BRAND },
-  joinTxt:  { fontSize: 12, fontWeight: '900', color: WHITE },
-  leaveTxt: { color: BRAND },
+  postTxt: { fontSize: 13, fontWeight: '700', color: ACCENT },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -513,46 +194,49 @@ const CommunitiesScreen = () => {
   const { token, user } = useAuth();
   const { colors: tc }  = useTheme();
 
-  const [showCreate,    setShowCreate]    = useState(false);
-  const [groups,        setGroups]        = useState([]);
-  const [groupsLoad,    setGroupsLoad]    = useState(true);
-  const [groupsPage,    setGroupsPage]    = useState(1);
-  const [groupsMore,    setGroupsMore]    = useState(true);
-  const [groupFilter,   setGroupFilter]   = useState('All');
-  const [categories,    setCategories]    = useState([]);
-  const [search,        setSearch]        = useState('');
-  const [refreshing,    setRefreshing]    = useState(false);
-  const [postModalGroup, setPostModalGroup] = useState(null);
+  const TABS = [
+    { key: 'discover', label: 'Discover' },
+    { key: 'joined',   label: 'Joined Communities' },
+    { key: 'managed',  label: 'My Communities' },
+  ];
 
-  // Refs so the stable loadGroups callback always reads current filter/search
-  const groupFilterRef = useRef(groupFilter);
-  const searchRef      = useRef(search);
-  groupFilterRef.current = groupFilter;
-  searchRef.current      = search;
+  const [showCreate,       setShowCreate]       = useState(false);
+  const [groups,           setGroups]           = useState([]);
+  const [groupsLoad,       setGroupsLoad]       = useState(true);
+  const [groupsPage,       setGroupsPage]       = useState(1);
+  const [groupsMore,       setGroupsMore]       = useState(true);
+  const [activeTab,        setActiveTab]        = useState('discover');
+  const [categories,       setCategories]       = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showCatPicker,    setShowCatPicker]    = useState(false);
+  const [search,           setSearch]           = useState('');
+  const [refreshing,       setRefreshing]       = useState(false);
+
+  const activeTabRef       = useRef(activeTab);
+  const searchRef          = useRef(search);
+  const selectedCatRef     = useRef(selectedCategory);
+  activeTabRef.current     = activeTab;
+  searchRef.current        = search;
+  selectedCatRef.current   = selectedCategory;
 
   const loadGroups = useCallback(async (page = 1, replace = false) => {
     try {
       setGroupsLoad(true);
-      const filter = groupFilterRef.current;
-      const query  = searchRef.current;
+      const tab   = activeTabRef.current;
+      const query = searchRef.current;
+      const cat   = selectedCatRef.current;
 
       const params = {};
-      if (filter === 'My Groups')  params.joined    = 1;
-      else if (filter === 'Suggested') params.suggested = 1;
-      else if (filter !== 'All') {
-        // Category filter — pass category id if we have it, otherwise name
-        const cat = categories.find(
-          (c) => cleanText(c.name ?? c.category_name ?? '') === filter
-        );
-        if (cat?.id) params.category = cat.id;
-      }
-      if (query.trim()) params.search = query.trim();
+      if (tab === 'joined')  params.joined  = 1;
+      if (tab === 'managed') params.managed = 1;
+      if (cat?.id)           params.category_id = cat.id;
+      if (query.trim())      params.search  = query.trim();
 
-      const res = await getGroups(page, 15, params);
+      const res = await getGroups(page, 20, params);
       if (res?.status === 'success') {
-        const items = res.data?.data ?? res.data ?? [];
+        const items = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
         setGroups((p) => (replace ? items : [...p, ...items]));
-        setGroupsMore(items.length >= 15);
+        setGroupsMore(items.length >= 20);
         setGroupsPage(page);
       }
     } catch (e) {
@@ -560,22 +244,14 @@ const CommunitiesScreen = () => {
     } finally {
       setGroupsLoad(false);
     }
-  }, [categories]); // stable — reads filter/search via refs
+  }, []);
 
   const loadCategories = useCallback(async () => {
     try {
       const res = await getCategories(token);
       if (res?.status === 'success') {
         const raw = Array.isArray(res.data) ? res.data : [];
-        const seen = new Set();
-        const parents = raw.filter(cat => {
-          const id = cat.id ?? cat.category_id;
-          if (seen.has(id)) return false;
-          seen.add(id);
-          const parentId = cat.parent_id ?? cat.parent ?? null;
-          return parentId == null || parentId === 0 || parentId === '0';
-        });
-        setCategories(parents.sort((a, b) => (Number(b.group_count) || 0) - (Number(a.group_count) || 0)));
+        setCategories(raw);
       }
     } catch (e) {
       console.log('[Communities] loadCategories error:', e);
@@ -588,15 +264,26 @@ const CommunitiesScreen = () => {
     loadCategories();
   }, []); // eslint-disable-line
 
-  // Reload when tab filter changes (joined/suggested/category handled server-side)
-  const firstFilterRender = useRef(true);
+  // Reload when tab changes
+  const firstTabRender = useRef(true);
   useEffect(() => {
-    if (firstFilterRender.current) { firstFilterRender.current = false; return; }
+    if (firstTabRender.current) { firstTabRender.current = false; return; }
+    setSelectedCategory(null); // reset category on tab switch
     setGroups([]);
     setGroupsPage(1);
     setGroupsMore(true);
     loadGroups(1, true);
-  }, [groupFilter]); // eslint-disable-line
+  }, [activeTab]); // eslint-disable-line
+
+  // Reload when category changes
+  const firstCatRender = useRef(true);
+  useEffect(() => {
+    if (firstCatRender.current) { firstCatRender.current = false; return; }
+    setGroups([]);
+    setGroupsPage(1);
+    setGroupsMore(true);
+    loadGroups(1, true);
+  }, [selectedCategory]); // eslint-disable-line
 
   // Reload on search change (debounced)
   const firstSearchRender = useRef(true);
@@ -617,15 +304,37 @@ const CommunitiesScreen = () => {
     setRefreshing(false);
   }, [loadGroups]);
 
-  // Server handles joined/suggested/search/category — only sort locally
-  const filteredGroups = useMemo(
-    () => [...groups].sort((a, b) => (b.is_promoted ? 1 : 0) - (a.is_promoted ? 1 : 0)),
-    [groups]
-  );
+  // ── Optimistic join/leave — state lives here, card is pure display ──────────
+  const handleJoinToggle = useCallback(async (item) => {
+    const isJoining = !(item.is_joined === true || item.is_joined === 1);
 
-  const handlePostInGroup = useCallback((group) => {
-    setPostModalGroup(group);
+    // Optimistic update
+    setGroups(prev => prev.map(c =>
+      c.id === item.id
+        ? { ...c, is_joined: isJoining, members: isJoining ? (c.members ?? 0) + 1 : Math.max(0, (c.members ?? 0) - 1) }
+        : c
+    ));
+
+    try {
+      const res = await (isJoining ? joinGroup(item.id) : leaveGroup(item.id));
+      const updated = res?.data;
+      if (updated) {
+        setGroups(prev => prev.map(c =>
+          c.id === item.id
+            ? { ...c, is_joined: updated.is_joined, members: updated.members }
+            : c
+        ));
+      }
+    } catch {
+      // Rollback
+      setGroups(prev => prev.map(c =>
+        c.id === item.id
+          ? { ...c, is_joined: !isJoining, members: isJoining ? Math.max(0, (c.members ?? 0) - 1) : (c.members ?? 0) + 1 }
+          : c
+      ));
+    }
   }, []);
+
 
   const joinedCount = useMemo(
     () => groups.filter((g) => g.is_joined === true || g.is_joined === 1).length,
@@ -635,19 +344,13 @@ const CommunitiesScreen = () => {
   const renderGroup = useCallback(
     ({ item }) => (
       <CommunityCard
-        group={item}
-        onOpen={(g) => navigation.navigate('GroupDetails', { groupId: g.id })}
-        onPostInGroup={handlePostInGroup}
+        item={item}
+        onJoinToggle={handleJoinToggle}
+        onOpen={() => navigation.navigate('GroupDetails', { groupId: item.id })}
       />
     ),
-    [navigation, handlePostInGroup]
+    [handleJoinToggle, navigation]
   );
-
-  // Filter chips: All + My Groups + Suggested + category names
-  const filterChips = useMemo(() => {
-    const catNames = categories.map((c) => cleanText(c.name ?? c.category_name ?? '')).filter(Boolean);
-    return ['All', 'My Groups', 'Suggested', ...catNames];
-  }, [categories]);
 
   return (
     <View style={[gs.root, { backgroundColor: tc.background ?? CREAM }]}>
@@ -672,8 +375,8 @@ const CommunitiesScreen = () => {
 
       {/* ── List ── */}
       <FlatList
-        data={filteredGroups}
-        keyExtractor={(item) => String(item.id)}
+        data={groups}
+        keyExtractor={(item, index) => `${item.id ?? index}_${index}`}
         renderItem={renderGroup}
         contentContainerStyle={gs.listContent}
         showsVerticalScrollIndicator={false}
@@ -684,7 +387,7 @@ const CommunitiesScreen = () => {
         onEndReachedThreshold={0.4}
         ListHeaderComponent={
           <View>
-            {/* ── Hero ── */}
+            {/* ── Hero — DO NOT TOUCH ── */}
             <View style={gs.heroBlock}>
               <View style={gs.heroPills}>
                 <View style={gs.heroLivePill}>
@@ -742,44 +445,37 @@ const CommunitiesScreen = () => {
               </View>
             </View>
 
-            {/* ── Filter chips ── */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={gs.filterRow}
-              keyboardShouldPersistTaps="handled"
-            >
-              {filterChips.map((chip, idx) => {
-                const on = groupFilter === chip;
+            {/* ── 3 Tabs ── */}
+            <View style={gs.tabsRow}>
+              {TABS.map((tab) => {
+                const on = activeTab === tab.key;
                 return (
                   <TouchableOpacity
-                    key={`chip-${chip}-${idx}`}
-                    style={[gs.filterChip, on && gs.filterChipOn]}
-                    onPress={() => setGroupFilter(chip)}
+                    key={tab.key}
+                    style={[gs.tab, on && gs.tabOn]}
+                    onPress={() => setActiveTab(tab.key)}
                     activeOpacity={0.75}
                   >
-                    {chip === 'My Groups' && (
-                      <Ionicons name={on ? 'people' : 'people-outline'} size={12} color={on ? WHITE : MUTED} style={{ marginRight: 4 }} />
-                    )}
-                    {chip === 'Suggested' && (
-                      <Ionicons name={on ? 'star' : 'star-outline'} size={12} color={on ? WHITE : MUTED} style={{ marginRight: 4 }} />
-                    )}
-                    <Text style={[gs.filterChipTxt, on && gs.filterChipTxtOn]}>{chip}</Text>
+                    <Text style={[gs.tabTxt, on && gs.tabTxtOn]}>{tab.label}</Text>
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
-
-            {/* ── Section label ── */}
-            <View style={gs.sectionBar}>
-              <View style={gs.sectionAccent} />
-              <Text style={gs.sectionBarText}>
-                {groupFilter === 'All' ? 'ALL COMMUNITIES' : groupFilter.toUpperCase()}
-              </Text>
-              {filteredGroups.length > 0 && (
-                <Text style={gs.sectionCount}>{filteredGroups.length}</Text>
-              )}
             </View>
+
+            {/* ── Category dropdown ── */}
+            {activeTab === 'discover' && categories.length > 0 && (
+              <TouchableOpacity
+                style={gs.catBtn}
+                onPress={() => setShowCatPicker(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="grid-outline" size={14} color={selectedCategory ? ACCENT : MUTED} />
+                <Text style={[gs.catBtnTxt, selectedCategory && gs.catBtnTxtOn]} numberOfLines={1}>
+                  {selectedCategory ? cleanText(selectedCategory.name ?? selectedCategory.category_name ?? '') : 'All Categories'}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={selectedCategory ? ACCENT : MUTED} />
+              </TouchableOpacity>
+            )}
           </View>
         }
         ListEmptyComponent={
@@ -793,12 +489,14 @@ const CommunitiesScreen = () => {
                 <Ionicons name="people-outline" size={36} color={MUTED} />
               </View>
               <Text style={gs.emptyTitle}>
-                {groupFilter === 'My Groups' ? 'No joined groups yet' : 'Discover Groups'}
+                {activeTab === 'joined'  ? 'No joined communities yet' :
+                 activeTab === 'managed' ? 'No communities created yet' :
+                 'No communities found'}
               </Text>
               <Text style={gs.emptySub}>
-                {groupFilter === 'My Groups'
-                  ? 'Join a community to see it here'
-                  : 'Try adjusting your search or filters'}
+                {activeTab === 'joined'  ? 'Join a community to see it here' :
+                 activeTab === 'managed' ? 'Create one using the button above' :
+                 'Try adjusting your search'}
               </Text>
             </View>
           )
@@ -820,15 +518,57 @@ const CommunitiesScreen = () => {
         onCreated={() => loadGroups(1, true)}
       />
 
-      <GroupPostModal
-        visible={postModalGroup !== null}
-        group={postModalGroup}
-        onClose={() => setPostModalGroup(null)}
-        onPosted={() => {
-          setPostModalGroup(null);
-          Alert.alert('Posted!', 'Your post has been shared with the group.');
-        }}
-      />
+
+      {/* ── Category Picker Modal ── */}
+      <Modal
+        visible={showCatPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCatPicker(false)}
+        statusBarTranslucent
+      >
+        <TouchableWithoutFeedback onPress={() => setShowCatPicker(false)}>
+          <View style={gs.catOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={gs.catSheet}>
+                <View style={gs.catHandle} />
+                <Text style={gs.catSheetTitle}>Filter by Category</Text>
+
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {/* All option */}
+                  <TouchableOpacity
+                    style={[gs.catItem, !selectedCategory && gs.catItemOn]}
+                    onPress={() => { setSelectedCategory(null); setShowCatPicker(false); }}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="grid" size={16} color={!selectedCategory ? ACCENT : MUTED} />
+                    <Text style={[gs.catItemTxt, !selectedCategory && gs.catItemTxtOn]}>All Categories</Text>
+                    {!selectedCategory && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
+                  </TouchableOpacity>
+
+                  {categories.map((cat, idx) => {
+                    const name = cleanText(cat.name ?? cat.category_name ?? '');
+                    const on   = selectedCategory?.id === (cat.id ?? cat.category_id);
+                    return (
+                      <TouchableOpacity
+                        key={`cat_${cat.id ?? cat.category_id ?? idx}`}
+                        style={[gs.catItem, on && gs.catItemOn]}
+                        onPress={() => { setSelectedCategory(cat); setShowCatPicker(false); }}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="people-outline" size={16} color={on ? ACCENT : MUTED} />
+                        <Text style={[gs.catItemTxt, on && gs.catItemTxtOn]}>{name}</Text>
+                        {cat.group_count ? <Text style={gs.catItemCount}>{fmtCount(cat.group_count)}</Text> : null}
+                        {on && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -851,14 +591,77 @@ const gs = StyleSheet.create({
   createBtn:    { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ACCENT, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100 },
   createBtnTxt: { fontSize: 12, fontWeight: '800', color: WHITE },
 
-  listContent: { paddingBottom: 100, gap: 14 },
+  listContent: { paddingBottom: 100, gap: 10 },
+
+  // ── Tabs ──
+  tabsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: CARD,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND_SOFT_07,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 9,
+    borderRadius: 100,
+    backgroundColor: BRAND_SOFT_07,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  tabOn: {
+    backgroundColor: BRAND,
+    borderColor: BRAND,
+  },
+  tabTxt:   { fontSize: 11, fontWeight: '700', color: MUTED },
+  tabTxtOn: { color: WHITE },
+
+  // ── Category dropdown button ──
+  catBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    backgroundColor: CARD,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BRAND_SOFT_07,
+  },
+  catBtnTxt:   { flex: 1, fontSize: 13, color: MUTED, fontWeight: '600' },
+  catBtnTxtOn: { color: ACCENT, fontWeight: '700' },
+
+  // ── Category picker modal ──
+  catOverlay:  { flex: 1, justifyContent: 'flex-end', backgroundColor: BLACK + '55' },
+  catSheet: {
+    backgroundColor: WHITE,
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    paddingTop: 10, maxHeight: '65%',
+  },
+  catHandle:   { width: 36, height: 4, borderRadius: 2, backgroundColor: MUTED + '44', alignSelf: 'center', marginBottom: 12 },
+  catSheetTitle: { fontSize: 14, fontWeight: '800', color: DARK, paddingHorizontal: 18, marginBottom: 8 },
+  catItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 18, paddingVertical: 13,
+    borderBottomWidth: 1, borderBottomColor: BRAND_SOFT_07,
+  },
+  catItemOn:   { backgroundColor: ACCENT + '0D' },
+  catItemTxt:  { flex: 1, fontSize: 14, color: DARK, fontWeight: '600' },
+  catItemTxtOn:{ color: ACCENT, fontWeight: '800' },
+  catItemCount:{ fontSize: 12, color: MUTED },
 
   // ── Hero ──
   heroBlock: {
     backgroundColor: BRAND,
     paddingHorizontal: 18, paddingTop: 18, paddingBottom: 24,
     borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
-    overflow: 'hidden', marginBottom: 4,
+    overflow: 'hidden', marginBottom: 0,
   },
   heroPills:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   heroLivePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: ON_DARK_10, borderWidth: 1, borderColor: ON_DARK_15, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
@@ -886,21 +689,6 @@ const gs = StyleSheet.create({
   },
   searchInput: { flex: 1, color: WHITE, fontSize: 13 },
 
-  // ── Filter chips ──
-  filterRow:       { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  filterChip:      { height: 32, paddingHorizontal: 14, borderRadius: 100, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
-  filterChipOn:    { backgroundColor: BRAND, borderColor: BRAND },
-  filterChipTxt:   { fontSize: 12, fontWeight: '600', color: MUTED },
-  filterChipTxtOn: { color: WHITE },
-
-  // ── Section label ──
-  sectionBar:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  sectionAccent:  { width: 3, height: 14, borderRadius: 2, backgroundColor: ACCENT },
-  sectionBarText: { fontSize: 11, fontWeight: '800', color: MUTED, letterSpacing: 1.5, flex: 1 },
-  sectionCount:   { fontSize: 11, fontWeight: '700', color: ACCENT },
-
-  // ── Card (margin so hero is edge-to-edge) ──
-  cardWrap: { marginHorizontal: 14 },
 
   // ── Empty ──
   emptyWrap:   { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 14 },

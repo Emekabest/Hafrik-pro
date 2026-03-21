@@ -52,6 +52,17 @@ const useStore = create((set, get) => ({
     refreshSignal: 0,
     triggerRefresh: () => set((state) => ({ refreshSignal: state.refreshSignal + 1 })),
 
+    // ── Welcome modal (shown once after new registration) ────────────────────
+    showWelcomeModal: false,
+    setShowWelcomeModal: (v) => set({ showWelcomeModal: v }),
+
+    // ── Newly created post (for optimistic prepend) ───────────────────────────
+    // Shape: { post, target_type, target_id } | null
+    lastCreatedPost: null,
+    setLastCreatedPost: (post, target_type, target_id) =>
+        set({ lastCreatedPost: { post, target_type, target_id } }),
+    clearLastCreatedPost: () => set({ lastCreatedPost: null }),
+
 
     /** Background Upload Section ............................................... */
     // activeUpload shape: { id, phase, pct, done, total, label, error }  or null
