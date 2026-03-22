@@ -53,6 +53,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const [feeds,         setFeeds]         = useState([]);
   const [version,       setVersion]       = useState(0);
   const [refreshing,    setRefreshing]    = useState(false);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [peopleList,    setPeopleList]    = useState([]);
   const [adsList,       setAdsList]       = useState([]);
   const [bizList,       setBizList]       = useState([]);
@@ -116,13 +117,17 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   // ── Hard load (clears list and reloads page 1) ─────────────────────────────
   const getFeeds = useCallback(async (url) => {
     clearFeedsList_store(feedsName);
-    const response = await GetFeedsController(url, token, 1);
-    const feedsArray = Array.isArray(response?.data) ? response.data : [];
-    if (response?.status === 200) {
-      addFeedsToList_store(feedsName, feedsArray);
-      if (response.meta) {
-        setFeedsMeta_store(feedsName, response.meta);
+    try {
+      const response = await GetFeedsController(url, token, 1);
+      const feedsArray = Array.isArray(response?.data) ? response.data : [];
+      if (response?.status === 200) {
+        addFeedsToList_store(feedsName, feedsArray);
+        if (response.meta) {
+          setFeedsMeta_store(feedsName, response.meta);
+        }
       }
+    } finally {
+      setInitialFetchDone(true);
     }
   }, [token, feedsName]);
 
@@ -158,6 +163,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
 
   // ── Re-fetch when API URL changes (tab switch or filter change) ──────────
   useEffect(() => {
+    setInitialFetchDone(false);
     setVersion(v => v + 1);
     getFeeds(apiUrl);
   }, [apiUrl]);
@@ -325,6 +331,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
         feedsName={feedsName}
         combinedData={combinedData}
         feeds={feeds}
+        initialDataLoaded={initialFetchDone}
         API_URL={apiUrl}
         feedsController={GetFeedsController}
         stickyHeaderIndices={[]}
