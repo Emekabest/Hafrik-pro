@@ -121,8 +121,9 @@ const ForgotPasswordScreen = ({ navigation }) => {
       </LinearGradient>
 
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>

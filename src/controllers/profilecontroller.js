@@ -124,7 +124,21 @@ const ProfileHeaderController = async(token, userId = null) => {
             : 'https://hafrik.com/api/v1/users/profile.php';
         const response = await apiClient.get(url);
         // Normalize: handle both { data: { user, counts, viewer } } and { user, counts, viewer }
-        const data = response.data?.data ?? response.data;
+        const raw = response.data?.data ?? response.data;
+
+        // Flatten nested location object into the user before normalising
+        let normalizedUser = raw?.user;
+        if (normalizedUser) {
+            const loc = normalizedUser.location || {};
+            normalizedUser = normaliseProfileUser({
+                ...normalizedUser,
+                current_city: normalizedUser.current_city || loc.current_city || '',
+                hometown:     normalizedUser.hometown     || loc.hometown     || '',
+                country_id:   normalizedUser.country_id   || loc.country_id   || '',
+            });
+        }
+
+        const data = raw ? { ...raw, user: normalizedUser } : null;
         return { status: response.status, data };
     } catch (error) {
         return { status: error.response?.status || 500, data: null };

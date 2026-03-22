@@ -199,7 +199,7 @@ const BusinessCard = ({ business, onOpen, user, categoryName }) => {
           <View style={bs.footerRight}>
             <TouchableOpacity
               style={bs.postBtn} activeOpacity={0.8}
-              onPress={() => openComposer({ _type: 'page', id: business.id, title, avatar: avatar ?? undefined, locked: true })}
+              onPress={() => openComposer({ target_type: 'page', target_id: business.id, title, avatar: avatar ?? undefined, locked: true })}
             >
               <Ionicons name="create-outline" size={13} color={ACCENT} />
               <Text style={bs.postBtnTxt}>Post</Text>
@@ -264,6 +264,7 @@ export default function BusinessList() {
   const { top } = useSafeAreaInsets();
 
   const [pages,        setPages]       = useState([]);
+  const [totalCount,   setTotalCount]  = useState(0);
   const [loading,      setLoading]     = useState(true);
   const [loadingMore,  setLoadingMore] = useState(false);
   const [page,         setPage]        = useState(1);
@@ -278,6 +279,8 @@ export default function BusinessList() {
 
   const activeFilterRef = useRef('all');
   activeFilterRef.current = activeFilter;
+  const activeCatRef = useRef(null);
+  activeCatRef.current = activeCat;
 
   // Map category id → name for card display
   const catMap = useMemo(() => {
@@ -319,19 +322,20 @@ export default function BusinessList() {
     else setLoadingMore(true);
     try {
       const filters = {};
-      if (query?.trim()) filters.search = query.trim();
+      if (query?.trim())              filters.search    = query.trim();
       const filter = activeFilterRef.current;
-      if (filter === 'following') filters.suggested = 1;
-      else if (filter === 'managed') filters.managed = 1;
-      const res = await getBusinessList(pageNum, 20, filters, token);
-      if (res?.status === 'success') {
-        // Actual response: { data: { page, limit, data: [...] } }
-        const items = Array.isArray(res.data?.data) ? res.data.data
-          : Array.isArray(res.data) ? res.data : [];
-        setPages(prev => replace || pageNum === 1 ? items : [...prev, ...items]);
-        setHasMore(items.length >= 20);
-        setPage(pageNum);
-      }
+      if (filter === 'following')     filters.liked     = 1;
+      if (filter === 'suggested')     filters.suggested = 1;
+      if (filter === 'verified')      filters.verified  = 1;
+      if (filter === 'managed')       filters.managed   = 1;
+      if (activeCatRef.current != null) filters.category = activeCatRef.current;
+      const res  = await getBusinessList(pageNum, filters);
+      const list = Array.isArray(res?.data?.data) ? res.data.data : [];
+      const total = Number(res?.data?.total ?? res?.data?.total_count ?? list.length);
+      setPages(prev => replace || pageNum === 1 ? list : [...prev, ...list]);
+      if (pageNum === 1) setTotalCount(total);
+      setHasMore(list.length >= 20);
+      setPage(pageNum);
     } catch (e) { console.log('BusinessList loadPages:', e); }
     setLoading(false);
     setLoadingMore(false);
@@ -351,25 +355,22 @@ export default function BusinessList() {
 
   const handleSelectCat = useCallback((id) => {
     setActiveCat(id);
-  }, []);
+    activeCatRef.current = id;
+    setPages([]); setPage(1); setHasMore(true);
+    setTimeout(() => loadPages(1, search, true), 0);
+  }, [search]); // eslint-disable-line
 
-  // Client-side filter by category (category is a numeric ID in the API response)
-  const filteredPages = useMemo(() => {
-    if (activeCat == null) return pages;
-    return pages.filter(p => p.category === activeCat || p.category_id === activeCat);
-  }, [pages, activeCat]);
-
-  // Inject ad every 5 cards
+  // Inject ad every 5 cards (category now filtered server-side)
   const processedPages = useMemo(() => {
     const result = [];
-    filteredPages.forEach((item, i) => {
+    pages.forEach((item, i) => {
       result.push(item);
-      if ((i + 1) % 5 === 0 && i + 1 < filteredPages.length) {
+      if ((i + 1) % 5 === 0 && i + 1 < pages.length) {
         result.push({ _isAd: true, id: `ad-${i}` });
       }
     });
     return result;
-  }, [filteredPages]);
+  }, [pages]);
 
   const handleLoadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
@@ -443,7 +444,7 @@ export default function BusinessList() {
 
               <View style={bs.heroStats}>
                 <View style={bs.heroStatItem}>
-                  <Text style={bs.heroStatNum}>{fmtCount(pages.length)}</Text>
+                  <Text style={bs.heroStatNum}>{fmtCount(totalCount || pages.length)}</Text>
                   <Text style={bs.heroStatLabel}>Listed</Text>
                 </View>
                 <View style={bs.heroStatDivider} />
@@ -481,7 +482,8 @@ export default function BusinessList() {
                 {[
                   { key: 'all',       label: 'All' },
                   { key: 'following', label: 'Following' },
-                  { key: 'managed',   label: 'I Manage' },
+                  { key: 'suggested', label: 'Suggested' },
+                  { key: 'verified',  label: 'Verified' },
                 ].map(({ key, label }) => (
                   <TouchableOpacity
                     key={key}

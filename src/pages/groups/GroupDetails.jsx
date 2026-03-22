@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, Image,
-  ActivityIndicator, Dimensions, Animated, Alert, Modal, TextInput,
-  KeyboardAvoidingView, Platform, ScrollView, StatusBar,
+  ActivityIndicator, Dimensions, Animated, Alert,
+  ScrollView, StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,91 +84,6 @@ const isRealImg = (url) =>
   typeof url === 'string' && url.trim().length > 6 &&
   !url.includes('default-avatar') && !url.includes('blank_profile');
 
-// ── Post-in-group compose modal ───────────────────────────────────────────────
-const ComposeModal = ({ visible, group, token, onClose, onPosted }) => {
-  const [text,    setText]    = useState('');
-  const [posting, setPosting] = useState(false);
-
-  const submit = async () => {
-    if (!text.trim()) return;
-    setPosting(true);
-    try {
-      const res = await apiClient.post('https://hafrik.com/api/v1/feed/create.php', {
-        content:  text.trim(),
-        group_id: group?.id,
-        type:     'text',
-      });
-      const json = res.data;
-      if (json?.status === 'success' || json?.data?.id) {
-        onPosted && onPosted(json.data);
-        setText('');
-        onClose();
-      } else {
-        Alert.alert('Oops!', json?.message ?? 'Could not post. Try again.');
-      }
-    } catch {
-      Alert.alert('Error', 'Network error. Please try again.');
-    } finally {
-      setPosting(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={cs.modalOverlay}
-      >
-        <View style={cs.modalSheet}>
-          <View style={cs.handle} />
-          <View style={cs.modalHeader}>
-            <TouchableOpacity onPress={onClose} style={cs.modalClose}>
-              <Ionicons name="close" size={20} color={MUTED} />
-            </TouchableOpacity>
-            <Text style={cs.modalTitle}>Post in {cleanText(group?.title ?? 'Group')}</Text>
-            <TouchableOpacity
-              style={[cs.postBtn, (!text.trim() || posting) && cs.postBtnDisabled]}
-              onPress={submit}
-              disabled={!text.trim() || posting}
-            >
-              {posting
-                ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Text style={cs.postBtnTxt}>Post</Text>
-              }
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={cs.textArea}
-            placeholder={`Share something with ${cleanText(group?.title ?? 'this group')}…`}
-            placeholderTextColor={MUTED}
-            multiline
-            value={text}
-            onChangeText={setText}
-            autoFocus
-            scrollEnabled
-            textAlignVertical="top"
-          />
-          <View style={cs.modalActions}>
-            <TouchableOpacity
-              style={cs.mediaAction}
-              onPress={() => Alert.alert('Coming soon', 'Photo upload coming soon.')}
-            >
-              <Ionicons name="image-outline" size={22} color={BRAND} />
-              <Text style={cs.mediaActionTxt}>Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={cs.mediaAction}
-              onPress={() => Alert.alert('Coming soon', 'Video upload coming soon.')}
-            >
-              <Ionicons name="videocam-outline" size={22} color={BRAND} />
-              <Text style={cs.mediaActionTxt}>Video</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-};
 
 // ── Member row ────────────────────────────────────────────────────────────────
 const MemberRow = ({ item, index, onPress }) => {
@@ -273,8 +188,10 @@ export default function GroupDetails({ route }) {
   const navigation    = useNavigation();
   const { top }       = useSafeAreaInsets();
   const { token }     = useAuth();
-  const openComposer  = useStore((s) => s.openComposer);
-  const refreshSignal = useStore((s) => s.refreshSignal);
+  const openComposer       = useStore((s) => s.openComposer);
+  const refreshSignal      = useStore((s) => s.refreshSignal);
+  const lastCreatedPost    = useStore((s) => s.lastCreatedPost);
+  const clearLastCreatedPost = useStore((s) => s.clearLastCreatedPost);
 
   const normaliseList = (res) => {
     const d = res?.data;
@@ -309,8 +226,8 @@ export default function GroupDetails({ route }) {
   useEffect(() => {
     if (autoCompose && isMember) openComposer({
       locked: true,
-      _type: 'group',
-      id: group?.id ?? groupId,
+      target_type: 'group',
+      target_id: group?.id ?? groupId,
       title: group?.title,
       avatar: group?.avatar,
     });
@@ -324,6 +241,17 @@ export default function GroupDetails({ route }) {
       loadData();
     }
   }, [refreshSignal]);
+
+  // Optimistic prepend when a new post is created for this group
+  useEffect(() => {
+    if (!lastCreatedPost) return;
+    const { post, target_type, target_id } = lastCreatedPost;
+    if (target_type === 'group' && String(target_id) === String(groupId)) {
+      setPosts(prev => [post, ...prev.filter(p => p.id !== post.id)]);
+      setActiveTab(0); // switch to Posts tab
+    }
+    clearLastCreatedPost();
+  }, [lastCreatedPost]);
 
   const loadData = async () => {
     const [gRes, fRes, mRes] = await Promise.all([
@@ -422,8 +350,15 @@ export default function GroupDetails({ route }) {
     }
   };
 
-  const [showCompose, setShowCompose] = useState(false);
-  const openGroupComposer = useCallback(() => setShowCompose(true), []);
+  const openGroupComposer = useCallback(() => {
+    openComposer({
+      locked:      true,
+      target_type: 'group',
+      target_id:   group?.id ?? groupId,
+      title:       group?.title,
+      avatar:      group?.avatar,
+    });
+  }, [openComposer, group, groupId]);
 
   const coverTranslate = scrollY.interpolate({
     inputRange: [0, 180], outputRange: [0, -60], extrapolate: 'clamp',
@@ -689,23 +624,6 @@ export default function GroupDetails({ route }) {
         />
       )}
 
-      <ComposeModal
-        visible={showCompose}
-        group={group}
-        token={token}
-        onClose={() => setShowCompose(false)}
-        onPosted={(newPost) => {
-          setShowCompose(false);
-          if (newPost) {
-            setPosts((prev) => [newPost, ...prev]);
-          } else {
-            // Re-fetch feed so new post appears
-            getGroupFeed(groupId, 1, 20).then((res) => {
-              if (res?.status === 'success') setPosts(normaliseList(res));
-            }).catch(() => {});
-          }
-        }}
-      />
     </View>
   );
 }

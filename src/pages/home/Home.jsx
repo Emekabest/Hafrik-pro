@@ -6,6 +6,8 @@ import {
   StatusBar,
   TouchableOpacity,
   Animated,
+  Modal,
+  Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,10 +36,12 @@ const HomePage = ({ route, navigation }) => {
   const { token } = useAuth();
   const isFocused = useIsFocused();
 
-  const tabletMode      = useStore((state) => state.tabletMode);
-  const tabletDimension = useStore((state) => state.tabletDimension);
-  const openComposer    = useStore((state) => state.openComposer);
-  const openCreateMenu  = useStore((state) => state.openCreateMenu);
+  const tabletMode         = useStore((state) => state.tabletMode);
+  const tabletDimension    = useStore((state) => state.tabletDimension);
+  const openComposer       = useStore((state) => state.openComposer);
+  const openCreateMenu     = useStore((state) => state.openCreateMenu);
+  const showWelcomeModal   = useStore((state) => state.showWelcomeModal);
+  const setShowWelcomeModal = useStore((state) => state.setShowWelcomeModal);
 
   const homeViewHeight = height - (AppDetails.headerHeight + AppDetails.mainTabNavigatorHeight + (tabletMode ? StatusBar.currentHeight : 0));
 
@@ -201,6 +205,54 @@ const HomePage = ({ route, navigation }) => {
 
       {isFocused && <PostComposerModal />}
       <CreateMenuSheet />
+
+      {/* ── Welcome modal (shown once after new registration) ── */}
+      <Modal
+        visible={showWelcomeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowWelcomeModal(false)}
+        statusBarTranslucent
+      >
+        <View style={welcome.overlay}>
+          <View style={welcome.card}>
+            {/* Globe pill */}
+            <View style={welcome.globePill}>
+              <Text style={welcome.globe}>🌍</Text>
+            </View>
+
+            <Text style={welcome.heading}>Welcome to Hafrik</Text>
+            <Text style={welcome.sub}>
+              Connect with Africans and foreigners around the world.
+            </Text>
+            <Text style={welcome.body}>
+              Join communities, discover businesses, and share your experience.
+            </Text>
+
+            {/* Feature pills */}
+            <View style={welcome.pillRow}>
+              {[
+                { emoji: '👥', label: 'Communities' },
+                { emoji: '🏪', label: 'Businesses' },
+                { emoji: '✍️', label: 'Share & Post' },
+              ].map(({ emoji, label }) => (
+                <View key={label} style={welcome.pill}>
+                  <Text style={welcome.pillEmoji}>{emoji}</Text>
+                  <Text style={welcome.pillLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={welcome.cta}
+              activeOpacity={0.88}
+              onPress={() => setShowWelcomeModal(false)}
+            >
+              <Text style={welcome.ctaText}>Explore Hafrik</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -232,6 +284,106 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
 
+});
+
+// ─── Welcome modal styles ─────────────────────────────────────────────────────
+const welcome = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: Colors.black + 'AA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  card: {
+    width: '100%',
+    backgroundColor: Colors.white,
+    borderRadius: 28,
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 28,
+    alignItems: 'center',
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  globePill: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.primaryDark + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  globe: { fontSize: 38 },
+  heading: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: Colors.primaryDark,
+    fontFamily: 'ReadexPro-Bold',
+    textAlign: 'center',
+    marginBottom: 10,
+    letterSpacing: -0.4,
+  },
+  sub: {
+    fontSize: 15,
+    color: Colors.black,
+    fontWeight: '600',
+    fontFamily: 'ReadexPro-Medium',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  body: {
+    fontSize: 13,
+    color: Colors.secondaryText,
+    fontFamily: 'ReadexPro-Regular',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 22,
+  },
+  pillRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 26,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.surfaceTint,
+    borderRadius: 100,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  pillEmoji: { fontSize: 14 },
+  pillLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+    fontFamily: 'ReadexPro-Bold',
+  },
+  cta: {
+    width: '100%',
+    backgroundColor: Colors.primaryDark,
+    borderRadius: 100,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  ctaText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: Colors.white,
+    fontFamily: 'ReadexPro-Bold',
+    letterSpacing: 0.2,
+  },
 });
 
 export default HomePage;

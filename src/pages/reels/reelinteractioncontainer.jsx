@@ -135,121 +135,118 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   }, [userId, navigation]);
 
   return (
-    <View style={styles.overlay}>
-      <View style={[styles.panel, { paddingBottom: panelBottom }]}>
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
 
-        {/* ── Left: username · caption · music ─────────────────────────── */}
-        <View style={styles.leftSide}>
+      {/* ── Left: username · caption · music — anchored bottom-left ──────── */}
+      <View style={[styles.captionArea, { bottom: panelBottom + 8 }]} pointerEvents="box-none">
 
-          {/* Username + verified + time */}
-          <TouchableOpacity style={styles.userRow} activeOpacity={0.8} onPress={handleOpenProfile}>
-            {user?.verified ? (
-              <Ionicons name="checkmark-circle" size={14} color={ACCENT} style={{ marginRight: 4 }} />
-            ) : null}
-            <Text style={styles.username} numberOfLines={1}>
-              @{user?.username}
-            </Text>
-            <Text style={styles.time}> · {CalculateElapsedTime(created)}</Text>
-          </TouchableOpacity>
-
-          {/* Caption */}
-          {cleanCaption ? (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setCaptionExpanded(e => !e)}
-            >
-              <Text
-                style={styles.caption}
-                numberOfLines={captionExpanded ? undefined : 2}
-              >
-                {cleanCaption}
-              </Text>
-              {isCaptionLong ? (
-                <Text style={styles.captionToggle}>
-                  {captionExpanded ? 'less' : 'more'}
-                </Text>
-              ) : null}
-            </TouchableOpacity>
+        {/* Username + verified + time */}
+        <TouchableOpacity style={styles.userRow} activeOpacity={0.8} onPress={handleOpenProfile}>
+          {user?.verified ? (
+            <Ionicons name="checkmark-circle" size={14} color={ACCENT} style={{ marginRight: 4 }} />
           ) : null}
+          <Text style={styles.username} numberOfLines={1}>
+            @{user?.username}
+          </Text>
+          <Text style={styles.time}> · {CalculateElapsedTime(created)}</Text>
+        </TouchableOpacity>
 
-          {/* Music row — TikTok-style */}
-          <View style={styles.musicRow}>
-            <View style={styles.musicDisc}>
-              <Ionicons name="musical-notes" size={10} color={Colors.white} />
-            </View>
-            <Text style={styles.musicLabel} numberOfLines={1}>
-              {audioLabel}
-            </Text>
-          </View>
-
-        </View>
-
-        {/* ── Right: avatar + follow + engagement icons ─────────────────── */}
-        <View style={styles.rightSide}>
-
-          {/* Avatar with follow badge */}
-          <View style={styles.avatarWrapper}>
-            <TouchableOpacity activeOpacity={0.85} onPress={handleOpenProfile}>
-              <View style={styles.avatarRing}>
-                <ExpoImage
-                  source={{ uri: user?.avatar }}
-                  style={styles.avatar}
-                  cachePolicy="memory-disk"
-                  contentFit="cover"
-                />
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={[styles.followBtn, following && styles.followBtnActive]}
-              onPress={handleFollow}
+        {/* Caption */}
+        {cleanCaption ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setCaptionExpanded(e => !e)}
+          >
+            <Text
+              style={styles.caption}
+              numberOfLines={captionExpanded ? undefined : 2}
             >
-              <Ionicons
-                name={following ? 'checkmark' : 'add'}
-                size={13}
-                color={Colors.white}
-              />
-            </TouchableOpacity>
+              {cleanCaption}
+            </Text>
+            {isCaptionLong ? (
+              <Text style={styles.captionToggle}>
+                {captionExpanded ? 'less' : 'more'}
+              </Text>
+            ) : null}
+          </TouchableOpacity>
+        ) : null}
+
+        {/* Music row — TikTok-style */}
+        <View style={styles.musicRow}>
+          <View style={styles.musicDisc}>
+            <Ionicons name="musical-notes" size={10} color={Colors.white} />
           </View>
-
-          {/* Like / Comment / Bookmark / Share */}
-          <ReelEngagementBar
-            postId={postId}
-            userId={userId}
-            token={token}
-            liked={liked}
-            likesCount={likesCount}
-            onLikePress={handleReaction}
-            myReaction={myReaction}
-            reactions={reactions}
-            commentCount={comments_count}
-            isSavedInitial={!!is_saved}
-          />
-
+          <Text style={styles.musicLabel} numberOfLines={1}>
+            {audioLabel}
+          </Text>
         </View>
+
       </View>
+
+      {/* ── Right: avatar + follow + engagement — anchored bottom-right ───── */}
+      <View style={[styles.actionsArea, { bottom: panelBottom + 8 }]}>
+
+        {/* Avatar with follow badge */}
+        <View style={styles.avatarWrapper}>
+          <TouchableOpacity activeOpacity={0.85} onPress={handleOpenProfile}>
+            <View style={styles.avatarRing}>
+              <ExpoImage
+                source={{ uri: user?.avatar }}
+                style={styles.avatar}
+                cachePolicy="memory-disk"
+                contentFit="cover"
+              />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[styles.followBtn, following && styles.followBtnActive]}
+            onPress={handleFollow}
+          >
+            <Ionicons
+              name={following ? 'checkmark' : 'add'}
+              size={13}
+              color={Colors.white}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Like / Comment / Bookmark / Share */}
+        <ReelEngagementBar
+          postId={postId}
+          userId={userId}
+          token={token}
+          liked={liked}
+          likesCount={likesCount}
+          onLikePress={handleReaction}
+          myReaction={myReaction}
+          reactions={reactions}
+          commentCount={comments_count}
+          isSavedInitial={!!is_saved}
+        />
+
+      </View>
+
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
+  // ── Caption — bottom-left, clears the right-side action column ───────────
+  captionArea: {
+    position: 'absolute',
+    left: 12,
+    right: 80,   // leave room for the 62px action column + 12px gap
     zIndex: 3,
   },
-  panel: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 12,
-  },
 
-  // ── Left column ──────────────────────────────────────────────────────────
-  leftSide: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingRight: 12,
-    paddingBottom: 6,
+  // ── Actions — bottom-right, independent of caption width ─────────────────
+  actionsArea: {
+    position: 'absolute',
+    right: 12,
+    width: 62,
+    alignItems: 'center',
+    zIndex: 3,
   },
   userRow: {
     flexDirection: 'row',
@@ -306,14 +303,6 @@ const styles = StyleSheet.create({
     fontFamily: 'WorkSans_500Medium',
     flex: 1,
     ...TEXT_SHADOW,
-  },
-
-  // ── Right column ─────────────────────────────────────────────────────────
-  rightSide: {
-    width: 62,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 4,
   },
 
   // Avatar

@@ -1,7 +1,7 @@
 import React, { forwardRef, useState, useEffect, useRef, useImperativeHandle } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Image,
-  StyleSheet, Platform, Alert,
+  StyleSheet, Platform, Alert, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,9 +38,18 @@ const MUTED  = Colors.secondaryText;
  */
 const AddComment = forwardRef(({ user, feedId, token, replyingTo, onCancelReply, onPosted }, ref) => {
   const { bottom } = useSafeAreaInsets();
-  const [commentText, setCommentText] = useState('');
-  const [posting,     setPosting]     = useState(false);
+  const [commentText,     setCommentText]     = useState('');
+  const [posting,         setPosting]         = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   useImperativeHandle(ref, () => ({
     focus: () => inputRef.current?.focus(),
@@ -90,8 +99,9 @@ const AddComment = forwardRef(({ user, feedId, token, replyingTo, onCancelReply,
 
   const canSend = commentText.trim().length > 0;
 
-  // bottom safe area: use inset on devices with a home bar, minimum 8px padding
-  const safeBottom = Math.max(bottom, 8);
+  // Only add safe-area bottom when keyboard is hidden (home indicator area).
+  // When keyboard is visible the KAV already placed us above it — no extra padding needed.
+  const safeBottom = keyboardVisible ? 0 : Math.max(bottom, 8);
 
   return (
     <View style={[cs.wrapper, { paddingBottom: safeBottom }]}>

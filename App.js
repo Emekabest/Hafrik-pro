@@ -79,6 +79,11 @@ import ExchangeConfirmScreen from './src/pages/exchange/ExchangeConfirmScreen';
 import ExchangeHistoryScreen from './src/pages/exchange/ExchangeHistoryScreen';
 import ExchangeAdminScreen   from './src/pages/exchange/ExchangeAdminScreen';
 import SavedPostsScreen      from './src/pages/saved/SavedPostsScreen';
+// import VerifyEmailScreen from './src/pages/onboarding/VerifyEmailScreen'; // re-enable with email verification
+import UploadAvatarScreen     from './src/pages/onboarding/UploadAvatarScreen';
+import FollowScreen           from './src/pages/onboarding/FollowScreen';
+import SelectCountryScreen    from './src/pages/onboarding/SelectCountryScreen';
+import WelcomeScreen          from './src/pages/onboarding/WelcomeScreen';
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { NotificationProvider } from './context/notificationcontext';
@@ -253,7 +258,7 @@ function AppNavigator() {
   
   
   const [isFontStored, setIsFontStored] = useState(false);
-  const { user, token, loading } = useAuth();
+  const { user, token, loading, onboardingStep } = useAuth();
 
   // Start badge polling once the user is authenticated
   const startBadgePolling = useSharedStore((s) => s.startBadgePolling);
@@ -298,6 +303,23 @@ function AppNavigator() {
       }).start(handleSplashFadeDone);
     }
   }, [isAppReady, splashDone, splashOpacity, handleSplashFadeDone]);
+
+  // Resume onboarding if user is logged in but hasn't completed it
+  useEffect(() => {
+    if (loading || !isAppReady) return;
+    if (!user || !token) return;
+    if (onboardingStep >= 6) return; // 6 = completed
+    const routeMap = {
+      2: 'OnboardingAvatar',   // registered
+      3: 'OnboardingFollow',   // avatar done
+      4: 'OnboardingCountry',  // followed people/pages/communities
+      5: 'OnboardingWelcome',  // country selected
+    };
+    const screen = routeMap[onboardingStep];
+    if (screen) {
+      navigationRef.current?.reset({ index: 0, routes: [{ name: screen }] });
+    }
+  }, [isAppReady, user, token, onboardingStep, loading]);
 
   if (shouldBlockAppRender) {
     return splashNode;
@@ -387,6 +409,14 @@ function AppNavigator() {
               <Stack.Screen name="ExchangeConfirm" component={ExchangeConfirmScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeAdmin"   component={ExchangeAdminScreen}   options={{ headerShown: false }} />
+
+              {/* ── Onboarding flow ── */}
+              {/* ── Onboarding: Avatar → Follow → Country → Welcome ── */}
+              {/* VerifyEmail disabled — re-enable when email verification is turned back on */}
+              <Stack.Screen name="OnboardingAvatar"  component={UploadAvatarScreen}  options={{ headerShown: false, gestureEnabled: false }} />
+              <Stack.Screen name="OnboardingFollow"  component={FollowScreen}         options={{ headerShown: false, gestureEnabled: false }} />
+              <Stack.Screen name="OnboardingCountry" component={SelectCountryScreen}  options={{ headerShown: false, gestureEnabled: false }} />
+              <Stack.Screen name="OnboardingWelcome" component={WelcomeScreen}        options={{ headerShown: false, gestureEnabled: false }} />
             </Stack.Navigator>
         </SafeAreaView>
 

@@ -161,7 +161,20 @@ export async function startBackgroundUpload({
 
         if (response.status === 'success' || response.httpStatus === 200) {
             completeUpload();
-            triggerRefresh();
+
+            // Try optimistic prepend — if API returned the full post object use it;
+            // otherwise fall back to triggerRefresh so the feed reloads.
+            const createdPost = response.data?.post ?? response.data;
+            if (createdPost && createdPost.id) {
+                useStore.getState().setLastCreatedPost(
+                    createdPost,
+                    postBody.target_type ?? 'profile',
+                    postBody.target_id   ?? null,
+                );
+            } else {
+                triggerRefresh();
+            }
+
             // Auto-dismiss after 2.5 s
             setTimeout(() => {
                 useStore.getState().clearUpload();
