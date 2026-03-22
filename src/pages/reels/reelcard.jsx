@@ -156,6 +156,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
           {/* ── Video ─────────────────────────────────────────────────────── */}
           <ReelMedia
             videoUrl={reel.media?.video_url}
+            thumbnailUrl={reel.media?.thumbnail_url ?? reel.media?.image ?? null}
             isActive={isActive}
             isPaused={isPaused}
             isMuted={isMuted}
@@ -181,12 +182,14 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
           {/* ── Centre pause / play flash (auto-hides) ───────────────────── */}
           <Animated.View
             style={[
-              styles.indicator,
+              styles.indicatorOverlay,
               { opacity: indicatorOpacity, transform: [{ scale: indicatorScale }] },
             ]}
             pointerEvents="none"
           >
-            <Ionicons name={pauseIcon} size={58} color={withOpacity(Colors.white, 0.92)} />
+            <View style={styles.indicatorCircle}>
+              <Ionicons name={pauseIcon} size={58} color={withOpacity(Colors.white, 0.92)} />
+            </View>
           </Animated.View>
 
           {/* ── Mute button — top-right, below header ────────────────────── */}
@@ -240,19 +243,24 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 5,
   },
-  // Centre play/pause flash
-  indicator: {
+  // Centre play/pause flash — overlay fills screen, content is centered inside
+  indicatorOverlay: {
     position: 'absolute',
-    alignSelf: 'center',
-    top: '40%',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  indicatorCircle: {
     width: 84,
     height: 84,
-    marginLeft: -42,
     borderRadius: 42,
     backgroundColor: withOpacity(Colors.black, 0.38),
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 20,
   },
   // Mute button — top-right
   muteWrap: {

@@ -205,6 +205,16 @@ const Reels2 = () => {
     setMode(newMode);
   }, [setCurrentReel]);
 
+  // ── Momentum scroll → sync active index + Zustand as belt-and-suspenders ─
+  const onMomentumScrollEnd = useCallback((e) => {
+    const index = Math.round(e.nativeEvent.contentOffset.y / itemHeight);
+    activeIndexRef.current = index;
+    const reel = reelsRef.current[index];
+    if (reel && reel.type !== 'skeleton') {
+      setCurrentReel({ shouldPlay: true, reelId: reel.id });
+    }
+  }, [itemHeight, setCurrentReel]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   const renderItem = useCallback(({ item }) => {
     if (item?.type === 'skeleton') return <SkeletonReelCard height={itemHeight} />;
@@ -239,10 +249,13 @@ const Reels2 = () => {
         getItemLayout={getItemLayout}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
+        onMomentumScrollEnd={onMomentumScrollEnd}
         removeClippedSubviews
-        initialNumToRender={Math.min(startIndex + 2, 4)}
+        // windowSize=3 → renders current ± 1 reel; those cells mount their
+        // video players immediately, buffering before the user swipes to them.
+        windowSize={3}
+        initialNumToRender={3}
         maxToRenderPerBatch={2}
-        windowSize={5}
         initialScrollIndex={initialReels?.length > 0 ? startIndex : undefined}
         onScrollToIndexFailed={(info) => {
           setTimeout(() => {

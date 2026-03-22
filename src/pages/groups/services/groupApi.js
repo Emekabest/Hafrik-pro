@@ -3,7 +3,7 @@ import apiClient from '../../../api/apiClient';
 const BASE = 'https://hafrik.com/api/v1/communities';
 
 // ── List groups (explore / joined / suggested / search) ───────────────────────
-// filters: { joined: 1 } | { suggested: 1 } | { search: "..." } | { category: id }
+// filters: { joined: 1 } | { suggested: 1 } | { search: "..." } | { category_id: id }
 export const getGroups = async (page = 1, limit = 15, filters = {}) => {
   const response = await apiClient.get(`${BASE}/list.php`, {
     params: { page, limit, ...filters },
@@ -26,10 +26,9 @@ export const getGroupDetails = async (groupId) => {
 };
 
 // ── Group feed ────────────────────────────────────────────────────────────────
-// Correct endpoint: /communities/group_feed.php (NOT /feed/list.php)
 export const getGroupFeed = async (groupId, page = 1, limit = 10) => {
-  const response = await apiClient.get(`${BASE}/group_feed.php`, {
-    params: { group_id: groupId, page, limit },
+  const response = await apiClient.get('https://hafrik.com/api/v1/feed/list.php', {
+    params: { get: 'posts_group', id: groupId, page, limit },
   });
   return response.data;
 };
@@ -51,19 +50,19 @@ export const getGroupMedia = async (groupId, type = 'all', page = 1, limit = 24)
 };
 
 // ── Join / Leave ──────────────────────────────────────────────────────────────
-// Single endpoint with action: "join" | "leave"
-// Response: { group_id, is_joined, members }
-export const toggleGroupMembership = async (groupId, action = 'join') => {
-  const response = await apiClient.post(`${BASE}/join.php`, {
-    group_id: groupId,
-    action,
-  });
+export const joinGroup = async (groupId) => {
+  const response = await apiClient.post(`${BASE}/join.php`, { group_id: groupId });
   return response.data;
 };
 
-// Convenience aliases
-export const joinGroup  = (groupId) => toggleGroupMembership(groupId, 'join');
-export const leaveGroup = (groupId) => toggleGroupMembership(groupId, 'leave');
+export const leaveGroup = async (groupId) => {
+  const response = await apiClient.post(`${BASE}/leave.php`, { group_id: groupId });
+  return response.data;
+};
+
+// Kept for any legacy callers
+export const toggleGroupMembership = (groupId, action = 'join') =>
+  action === 'join' ? joinGroup(groupId) : leaveGroup(groupId);
 
 // ── Create ────────────────────────────────────────────────────────────────────
 export const createGroup = async (payload) => {

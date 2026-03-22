@@ -53,10 +53,12 @@ const apiClient = axios.create({
 // ── Request interceptor — attach JWT ──────────────────────────────────────────
 apiClient.interceptors.request.use(
   async (config) => {
-    // If a caller already set Authorization (edge case during transition), respect it.
-    if (config.headers.Authorization) {
-      return config;
-    }
+    // verify.php is a public endpoint — email + code only, no session needed.
+    const isPublicRoute = config.url?.includes('/auth/verify.php');
+    if (isPublicRoute) return config;
+
+    // If a caller already set Authorization (edge case), respect it.
+    if (config.headers.Authorization) return config;
 
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     if (token) {
@@ -79,7 +81,15 @@ apiClient.interceptors.response.use(
       message === 'Unauthorized' ||
       message === 'Invalid session';
 
-    if (isUnauthorized) {
+    // Don't wipe session for onboarding routes — a wrong verify code
+    // returns 401 but the session itself is still valid.
+    const url = error.config?.url ?? '';
+    const isOnboardingRoute =
+      url.includes('/profile/avatar.php') ||
+      url.includes('/profile/city.php') ||
+      url.includes('/onboarding/');
+
+    if (isUnauthorized && !isOnboardingRoute) {
       // Wipe credentials
       await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
 

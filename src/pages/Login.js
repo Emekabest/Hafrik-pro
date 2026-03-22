@@ -25,8 +25,10 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../api/apiClient';
 import { useAuth } from '../AuthContext';
+import useStore from '../repository/store';
 import AppDetails from '../helpers/appdetails';
 import { Colors } from '../theme/colors';
 import { useNotification } from '../../context/notificationcontext';
@@ -457,6 +459,20 @@ const Onboarding = ({ onDone }) => {
   );
 };
 
+// ─── Birth date constants ──────────────────────────────────────────────────────
+const DAYS = Array.from({ length: 31 }, (_, i) => ({ id: i + 1, label: String(i + 1) }));
+const MONTHS = [
+  { id: 1, label: 'January' }, { id: 2, label: 'February' }, { id: 3, label: 'March' },
+  { id: 4, label: 'April' }, { id: 5, label: 'May' }, { id: 6, label: 'June' },
+  { id: 7, label: 'July' }, { id: 8, label: 'August' }, { id: 9, label: 'September' },
+  { id: 10, label: 'October' }, { id: 11, label: 'November' }, { id: 12, label: 'December' },
+];
+const CUR_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 85 }, (_, i) => {
+  const y = CUR_YEAR - 13 - i;
+  return { id: y, label: String(y) };
+});
+
 // ─── Auth Screen ──────────────────────────────────────────────────────────────
 const AuthScreen = () => {
   const { top }    = useSafeAreaInsets();
@@ -472,14 +488,23 @@ const AuthScreen = () => {
   const [focused, setFocused]     = useState({});
   const isSubmitting              = useRef(false);
   const [socialLoading, setSocialLoading] = useState(null); // 'apple' | 'google' | null
+  const [regStep, setRegStep] = useState(1);
+  const [birthPickerField, setBirthPickerField] = useState(null); // 'day'|'month'|'year'|null
 
     const { expoPushToken, notification } = useNotification();
 
 
   const [form, setForm] = useState({
-    fullName: '', username: '', email: '',
-    password: '', phone: '', country: null,
+    firstName: '', lastName: '', username: '', email: '',
+    password: '', phone: '', country: null, gender: null,
+    birthDay: null, birthMonth: null, birthYear: null,
   });
+  const [genders, setGenders] = useState([
+    { id: 1, label: 'Male' },
+    { id: 2, label: 'Female' },
+    { id: 3, label: 'Rather not say' },
+  ]);
+  const [showGenderModal, setShowGenderModal] = useState(false);
 
   const set = (key, val) => {
     setForm((p) => ({ ...p, [key]: val }));
@@ -487,25 +512,59 @@ const AuthScreen = () => {
   };
 
   const resetForm = () => {
-    setForm({ fullName: '', username: '', email: '', password: '', phone: '', country: null });
+    setForm({ firstName: '', lastName: '', username: '', email: '', password: '', phone: '', country: null, gender: null, birthDay: null, birthMonth: null, birthYear: null });
     setErrors({}); setAgreed(false); isSubmitting.current = false;
+    setRegStep(1);
   };
 
   const toggleMode = () => { resetForm(); setMode((m) => (m === 'login' ? 'register' : 'login')); };
 
+  useEffect(() => {
+    if (mode !== 'register') return;
+    apiClient.get('/auth/profile_field.php')
+      .then(res => {
+        const list = res.data?.data?.genders ?? res.data?.genders;
+        if (Array.isArray(list) && list.length) {
+          // Normalize: API may return `name` or `title` instead of `label`
+          const normalized = list.map(g => ({
+            id:    g.id ?? g.value,
+            label: g.label ?? g.name ?? g.title ?? String(g.id ?? ''),
+          })).filter(g => g.id != null && g.label);
+          if (normalized.length) setGenders(normalized);
+        }
+      })
+      .catch(() => {});
+  }, [mode]);
+
+  const validateStep1 = () => {
+    const e = {};
+    if (!form.firstName.trim()) e.firstName = 'Required';
+    if (!form.lastName.trim())  e.lastName  = 'Required';
+    if (!form.email.trim())     e.email     = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email';
+    if (!form.username.trim())  e.username  = 'Username is required';
+    if (!form.password)         e.password  = 'Password is required';
+    else if (form.password.length < 6) e.password = 'At least 6 characters';
+    setErrors(e);
+    return !Object.keys(e).length;
+  };
+
+  const handleContinue = () => {
+    if (validateStep1()) setRegStep(2);
+  };
+
   const validate = () => {
     const e = {};
-    if (mode === 'register') {
-      if (!form.fullName.trim()) e.fullName = 'Full name is required';
-      if (!form.email.trim())    e.email    = 'Email is required';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email';
-      if (!form.country)         e.country  = 'Please select your country';
-      if (!form.phone.trim())    e.phone    = 'Phone number is required';
-      if (!agreed)               e.terms    = 'You must agree to the terms';
+    if (mode === 'login') {
+      if (!form.username.trim() && !form.email.trim()) e.username = 'Username or email is required';
+      if (!form.password)         e.password = 'Password is required';
+      else if (form.password.length < 6) e.password = 'At least 6 characters';
     }
-    if (!form.username.trim() && !form.email.trim()) e.username = 'Username or email is required';
-    if (!form.password)          e.password = 'Password is required';
-    else if (form.password.length < 6) e.password = 'At least 6 characters';
+    if (mode === 'register') {
+      if (!form.gender)  e.gender  = 'Please select your gender';
+      if (!form.country) e.country = 'Please select your country';
+      if (!agreed)       e.terms   = 'You must agree to the terms';
+    }
     setErrors(e);
     return !Object.keys(e).length;
   };
@@ -526,34 +585,53 @@ const AuthScreen = () => {
       const payload = mode === 'login'
         ? { login: form.username.trim() || form.email.trim(), password: form.password }
         : {
-            full_name:    form.fullName.trim(),
+            first_name:   form.firstName.trim(),
+            last_name:    form.lastName.trim(),
             username:     form.username.trim(),
             email:        form.email.trim().toLowerCase(),
             password:     form.password,
-            phone_number: `${form.country?.dialCode ?? ''}${form.phone.replace(/\D/g, '')}`,
-            country:      form.country?.code,
-            country_name: form.country?.name,
+            phone_number: form.phone ? `${form.country?.dialCode ?? ''}${form.phone.replace(/\D/g, '')}` : undefined,
+            country:      form.country?.name,
+            gender:       form.gender,
+            birth_day:    form.birthDay ?? undefined,
+            birth_month:  form.birthMonth ?? undefined,
+            birth_year:   form.birthYear ?? undefined,
+            agree:        'on',
           };
 
       const res = await apiClient.post(endpoint, payload);
 
       if (res.data.status === 'success') {
-        const token        = res.data.data?.token;
-        const sessionToken = res.data.data?.session_token ?? null;
-        let user           = res.data.data?.user;
-        if (Array.isArray(user)) user = user[0];
-        if (!token || !user) throw new Error('Invalid server response');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await login(user, token, sessionToken);
 
-        const msg = {
-          token: expoPushToken,
-          title: 'Hafrik',
-          body: 'Welcome to Hafrik',
-        };
-        const response = await PushNotificationController(msg);
+        // Both login and register return the same format: res.data.data.{token, session_token, user}
+        const authData  = res.data.data;
+        const authToken = authData?.token; // JWT — must be used in Authorization header
+        let   authUser  = authData?.user;
+        if (Array.isArray(authUser)) authUser = authUser[0];
 
-        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        console.log("JWT FROM SERVER:", res.data.data.token);
+        console.log("SESSION FROM SERVER:", res.data.data.session_token);
+
+        if (!authToken) {
+          Alert.alert('Error', 'No token received from server. Please try again.');
+          return;
+        }
+
+        await AsyncStorage.multiRemove(['hafrik_token', 'hafrik_user', 'hafrik_session_token']);
+        await login(authUser ?? {}, authToken);
+
+        if (mode === 'register') {
+          await AsyncStorage.setItem('hafrik_onboarding_step', '2');
+          navigation.replace('OnboardingAvatar');
+        } else {
+          if (!authUser) throw new Error('Invalid server response');
+
+          const msg = { token: expoPushToken, title: 'Hafrik', body: 'Welcome back to Hafrik' };
+          PushNotificationController(msg);
+
+          navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+        }
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert('Failed', res.data.message || 'Please check your credentials.');
@@ -584,13 +662,14 @@ const AuthScreen = () => {
         ...userData,
       });
       if (res.data.status === 'success') {
-        const authToken    = res.data.data?.token;
-        const sessionToken = res.data.data?.session_token ?? null;
-        let user           = res.data.data?.user;
+        const authToken = res.data.data?.token; // JWT — must be used in Authorization header
+        let user        = res.data.data?.user;
         if (Array.isArray(user)) user = user[0];
         if (!authToken || !user) throw new Error('Invalid server response');
+        console.log("JWT FROM SERVER:", res.data.data?.token);
+        console.log("SESSION FROM SERVER:", res.data.data?.session_token);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await login(user, authToken, sessionToken);
+        await login(user, authToken);
         navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -745,110 +824,207 @@ const AuthScreen = () => {
           ))}
         </View>
 
+        {/* ── Step indicator (register only) ── */}
+        {mode === 'register' && (
+          <View style={styles.stepRow}>
+            <View style={[styles.stepDot, regStep >= 1 && styles.stepDotOn]} />
+            <View style={[styles.stepLine, regStep >= 2 && styles.stepLineOn]} />
+            <View style={[styles.stepDot, regStep >= 2 && styles.stepDotOn]} />
+            <Text style={styles.stepLabel}>{regStep === 1 ? 'Basic Info' : 'Personal Info'}</Text>
+          </View>
+        )}
+
         {/* ── Form card ── */}
         <View style={styles.card}>
-
-          {/* Username / email */}
-          <Field label={mode === 'login' ? 'Username or Email' : 'Username'} error={errors.username}>
-            <View style={inputStyle('username')}>
-              <View style={styles.inputPrefix}>
-                <Ionicons name="person-outline" size={17} color={focused.username ? ACCENT : MUTED} />
-              </View>
-              <View style={styles.inputDivider} />
-              <TextInput
-                style={[styles.inputText, { flex: 1 }]}
-                placeholder={mode === 'login' ? 'Enter username or email' : 'Choose a username'}
-                placeholderTextColor={Colors.placeholder}
-                value={mode === 'login' ? (form.username || form.email) : form.username}
-                onChangeText={(v) => {
-                  if (mode === 'login') {
-                    v.includes('@') ? (set('email', v), set('username', '')) : (set('username', v), set('email', ''));
-                  } else set('username', v);
-                }}
-                autoCapitalize="none"
-                onFocus={() => setFocused((p) => ({ ...p, username: true }))}
-                onBlur={()  => setFocused((p) => ({ ...p, username: false }))}
-              />
-            </View>
-          </Field>
-
-          {/* Password */}
-          <Field label="Password" error={errors.password}>
-            <View style={inputStyle('password')}>
-              <View style={styles.inputPrefix}>
-                <Ionicons name="lock-closed-outline" size={17} color={focused.password ? ACCENT : MUTED} />
-              </View>
-              <View style={styles.inputDivider} />
-              <TextInput
-                style={[styles.inputText, { flex: 1 }]}
-                placeholder="Enter your password"
-                placeholderTextColor={Colors.placeholder}
-                value={form.password}
-                onChangeText={(v) => set('password', v)}
-                secureTextEntry={!showPwd}
-                onFocus={() => setFocused((p) => ({ ...p, password: true }))}
-                onBlur={()  => setFocused((p) => ({ ...p, password: false }))}
-              />
-              <TouchableOpacity onPress={() => setShowPwd((v) => !v)} style={styles.eyeBtn}>
-                <Ionicons name={showPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={focused.password ? ACCENT : MUTED} />
-              </TouchableOpacity>
-            </View>
-            {/* Strength bar (register only) */}
-            {mode === 'register' && <PasswordStrength password={form.password} />}
-          </Field>
-
-          {/* Register-only fields */}
-          {mode === 'register' && (
+          {mode === 'login' && (
             <>
+              {/* Username/email */}
+              <Field label="Username or Email" error={errors.username}>
+                <View style={inputStyle('username')}>
+                  <View style={styles.inputPrefix}><Ionicons name="person-outline" size={17} color={focused.username ? ACCENT : MUTED} /></View>
+                  <View style={styles.inputDivider} />
+                  <TextInput
+                    style={[styles.inputText, { flex: 1 }]}
+                    placeholder="Enter username or email"
+                    placeholderTextColor={Colors.placeholder}
+                    value={form.username || form.email}
+                    onChangeText={(v) => { v.includes('@') ? (set('email', v), set('username', '')) : (set('username', v), set('email', '')); }}
+                    autoCapitalize="none"
+                    onFocus={() => setFocused((p) => ({ ...p, username: true }))}
+                    onBlur={()  => setFocused((p) => ({ ...p, username: false }))}
+                  />
+                </View>
+              </Field>
+
+              {/* Password */}
+              <Field label="Password" error={errors.password}>
+                <View style={inputStyle('password')}>
+                  <View style={styles.inputPrefix}><Ionicons name="lock-closed-outline" size={17} color={focused.password ? ACCENT : MUTED} /></View>
+                  <View style={styles.inputDivider} />
+                  <TextInput
+                    style={[styles.inputText, { flex: 1 }]}
+                    placeholder="Enter your password"
+                    placeholderTextColor={Colors.placeholder}
+                    value={form.password}
+                    onChangeText={(v) => set('password', v)}
+                    secureTextEntry={!showPwd}
+                    onFocus={() => setFocused((p) => ({ ...p, password: true }))}
+                    onBlur={()  => setFocused((p) => ({ ...p, password: false }))}
+                  />
+                  <TouchableOpacity onPress={() => setShowPwd((v) => !v)} style={styles.eyeBtn}>
+                    <Ionicons name={showPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={focused.password ? ACCENT : MUTED} />
+                  </TouchableOpacity>
+                </View>
+              </Field>
+
+              <TouchableOpacity style={styles.forgotBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ForgotPassword')}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.6 }]} onPress={submit} disabled={loading} activeOpacity={0.85}>
+                <LinearGradient colors={[BRAND, Colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitGradient}>
+                  {loading ? <ActivityIndicator color={WHITE} size="small" /> : (
+                    <><Text style={styles.submitText}>Sign In</Text><Ionicons name="arrow-forward" size={18} color={WHITE} style={{ marginLeft: 8 }} /></>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <View style={styles.orRow}><View style={styles.orLine} /><Text style={styles.orText}>or continue with</Text><View style={styles.orLine} /></View>
+              <View style={styles.socialRow}>
+                <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={handleGoogleSignIn} disabled={!!socialLoading}>
+                  {socialLoading === 'google' ? <ActivityIndicator size="small" color={Colors.google} /> : (
+                    <><Ionicons name="logo-google" size={18} color={Colors.google} /><Text style={styles.socialBtnText}>Google</Text></>
+                  )}
+                </TouchableOpacity>
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8} onPress={handleAppleSignIn} disabled={!!socialLoading}>
+                    {socialLoading === 'apple' ? <ActivityIndicator size="small" color={WHITE} /> : (
+                      <><Ionicons name="logo-apple" size={18} color={WHITE} /><Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text></>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+
+          {mode === 'register' && regStep === 1 && (
+            <>
+              {/* First + Last name side by side */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Field label="First Name" error={errors.firstName}>
+                    <View style={inputStyle('firstName')}>
+                      <View style={styles.inputPrefix}><Ionicons name="person-outline" size={17} color={focused.firstName ? ACCENT : MUTED} /></View>
+                      <View style={styles.inputDivider} />
+                      <TextInput style={[styles.inputText, { flex: 1 }]} placeholder="First name" placeholderTextColor={Colors.placeholder} value={form.firstName} onChangeText={(v) => set('firstName', v)} onFocus={() => setFocused((p) => ({ ...p, firstName: true }))} onBlur={() => setFocused((p) => ({ ...p, firstName: false }))} />
+                    </View>
+                  </Field>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Field label="Last Name" error={errors.lastName}>
+                    <View style={inputStyle('lastName')}>
+                      <View style={styles.inputPrefix}><Ionicons name="person-outline" size={17} color={focused.lastName ? ACCENT : MUTED} /></View>
+                      <View style={styles.inputDivider} />
+                      <TextInput style={[styles.inputText, { flex: 1 }]} placeholder="Last name" placeholderTextColor={Colors.placeholder} value={form.lastName} onChangeText={(v) => set('lastName', v)} onFocus={() => setFocused((p) => ({ ...p, lastName: true }))} onBlur={() => setFocused((p) => ({ ...p, lastName: false }))} />
+                    </View>
+                  </Field>
+                </View>
+              </View>
+
               <Field label="Email" error={errors.email}>
                 <View style={inputStyle('email')}>
-                  <View style={styles.inputPrefix}>
-                    <Ionicons name="mail-outline" size={17} color={focused.email ? ACCENT : MUTED} />
-                  </View>
+                  <View style={styles.inputPrefix}><Ionicons name="mail-outline" size={17} color={focused.email ? ACCENT : MUTED} /></View>
                   <View style={styles.inputDivider} />
-                  <TextInput
-                    style={[styles.inputText, { flex: 1 }]}
-                    placeholder="your@email.com"
-                    placeholderTextColor={Colors.placeholder}
-                    value={form.email}
-                    onChangeText={(v) => set('email', v)}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    onFocus={() => setFocused((p) => ({ ...p, email: true }))}
-                    onBlur={()  => setFocused((p) => ({ ...p, email: false }))}
-                  />
+                  <TextInput style={[styles.inputText, { flex: 1 }]} placeholder="your@email.com" placeholderTextColor={Colors.placeholder} value={form.email} onChangeText={(v) => set('email', v)} keyboardType="email-address" autoCapitalize="none" onFocus={() => setFocused((p) => ({ ...p, email: true }))} onBlur={() => setFocused((p) => ({ ...p, email: false }))} />
                 </View>
               </Field>
 
-              <Field label="Full Name" error={errors.fullName}>
-                <View style={inputStyle('fullName')}>
-                  <View style={styles.inputPrefix}>
-                    <Ionicons name="id-card-outline" size={17} color={focused.fullName ? ACCENT : MUTED} />
-                  </View>
+              <Field label="Username" error={errors.username}>
+                <View style={inputStyle('username')}>
+                  <View style={styles.inputPrefix}><Ionicons name="at-outline" size={17} color={focused.username ? ACCENT : MUTED} /></View>
                   <View style={styles.inputDivider} />
-                  <TextInput
-                    style={[styles.inputText, { flex: 1 }]}
-                    placeholder="Your full name"
-                    placeholderTextColor={Colors.placeholder}
-                    value={form.fullName}
-                    onChangeText={(v) => set('fullName', v)}
-                    onFocus={() => setFocused((p) => ({ ...p, fullName: true }))}
-                    onBlur={()  => setFocused((p) => ({ ...p, fullName: false }))}
-                  />
+                  <TextInput style={[styles.inputText, { flex: 1 }]} placeholder="Choose a username" placeholderTextColor={Colors.placeholder} value={form.username} onChangeText={(v) => set('username', v)} autoCapitalize="none" onFocus={() => setFocused((p) => ({ ...p, username: true }))} onBlur={() => setFocused((p) => ({ ...p, username: false }))} />
                 </View>
               </Field>
 
+              <Field label="Password" error={errors.password}>
+                <View style={inputStyle('password')}>
+                  <View style={styles.inputPrefix}><Ionicons name="lock-closed-outline" size={17} color={focused.password ? ACCENT : MUTED} /></View>
+                  <View style={styles.inputDivider} />
+                  <TextInput style={[styles.inputText, { flex: 1 }]} placeholder="Create a password" placeholderTextColor={Colors.placeholder} value={form.password} onChangeText={(v) => set('password', v)} secureTextEntry={!showPwd} onFocus={() => setFocused((p) => ({ ...p, password: true }))} onBlur={() => setFocused((p) => ({ ...p, password: false }))} />
+                  <TouchableOpacity onPress={() => setShowPwd((v) => !v)} style={styles.eyeBtn}>
+                    <Ionicons name={showPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={focused.password ? ACCENT : MUTED} />
+                  </TouchableOpacity>
+                </View>
+                <PasswordStrength password={form.password} />
+              </Field>
+
+              {/* Continue */}
+              <TouchableOpacity style={styles.submitBtn} onPress={handleContinue} activeOpacity={0.85}>
+                <LinearGradient colors={[BRAND, Colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitGradient}>
+                  <Text style={styles.submitText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={18} color={WHITE} style={{ marginLeft: 8 }} />
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <View style={styles.orRow}><View style={styles.orLine} /><Text style={styles.orText}>or sign up with</Text><View style={styles.orLine} /></View>
+              <View style={styles.socialRow}>
+                <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={handleGoogleSignIn} disabled={!!socialLoading}>
+                  {socialLoading === 'google' ? <ActivityIndicator size="small" color={Colors.google} /> : (
+                    <><Ionicons name="logo-google" size={18} color={Colors.google} /><Text style={styles.socialBtnText}>Google</Text></>
+                  )}
+                </TouchableOpacity>
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8} onPress={handleAppleSignIn} disabled={!!socialLoading}>
+                    {socialLoading === 'apple' ? <ActivityIndicator size="small" color={WHITE} /> : (
+                      <><Ionicons name="logo-apple" size={18} color={WHITE} /><Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text></>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+
+          {mode === 'register' && regStep === 2 && (
+            <>
+              {/* Gender */}
+              <Field label="Gender" error={errors.gender}>
+                <TouchableOpacity style={[styles.input, errors.gender && styles.inputError]} onPress={() => setShowGenderModal(true)} activeOpacity={0.8}>
+                  <View style={styles.inputPrefix}><Ionicons name="transgender-outline" size={17} color={MUTED} /></View>
+                  <View style={styles.inputDivider} />
+                  <Text style={[styles.inputText, { flex: 1, color: form.gender ? Colors.textStrong ?? DARK : Colors.placeholder }]}>
+                    {form.gender ? genders.find(g => g.id === form.gender)?.label : 'Select gender'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color={MUTED} style={{ marginRight: 14 }} />
+                </TouchableOpacity>
+              </Field>
+
+              {/* Birth date */}
+              <Field label="Date of Birth" error={errors.birthDay}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {[
+                    { field: 'day',   value: form.birthDay,   display: form.birthDay ? String(form.birthDay) : 'Day' },
+                    { field: 'month', value: form.birthMonth, display: form.birthMonth ? MONTHS[form.birthMonth - 1]?.label.slice(0, 3) : 'Month' },
+                    { field: 'year',  value: form.birthYear,  display: form.birthYear ? String(form.birthYear) : 'Year' },
+                  ].map(({ field, value, display }) => (
+                    <TouchableOpacity
+                      key={field}
+                      style={[styles.input, { flex: 1, justifyContent: 'space-between', paddingRight: 8 }]}
+                      onPress={() => setBirthPickerField(field)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.inputText, { flex: 1, paddingLeft: 12, color: value ? Colors.textStrong ?? DARK : Colors.placeholder }]}>{display}</Text>
+                      <Ionicons name="chevron-down" size={14} color={MUTED} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Field>
+
+              {/* Country */}
               <Field label="Country" error={errors.country}>
-                <TouchableOpacity
-                  style={[styles.input, errors.country && styles.inputError]}
-                  onPress={() => setShowModal(true)}
-                  activeOpacity={0.8}
-                >
+                <TouchableOpacity style={[styles.input, errors.country && styles.inputError]} onPress={() => setShowModal(true)} activeOpacity={0.8}>
                   <View style={styles.inputPrefix}>
-                    {form.country
-                      ? <Text style={{ fontSize: 20 }}>{form.country.flag}</Text>
-                      : <Ionicons name="globe-outline" size={17} color={MUTED} />
-                    }
+                    {form.country ? <Text style={{ fontSize: 20 }}>{form.country.flag}</Text> : <Ionicons name="globe-outline" size={17} color={MUTED} />}
                   </View>
                   <View style={styles.inputDivider} />
                   <Text style={[styles.inputText, { flex: 1, color: form.country ? Colors.textStrong : Colors.placeholder }]}>
@@ -858,126 +1034,115 @@ const AuthScreen = () => {
                 </TouchableOpacity>
               </Field>
 
-              <Field label="Phone" error={errors.phone}>
-                <View style={[styles.input, focused.phone && styles.inputFocused, errors.phone && styles.inputError]}>
+              {/* Phone (optional) */}
+              <Field label="Phone (optional)" error={errors.phone}>
+                <View style={[styles.input, focused.phone && styles.inputFocused]}>
                   <TouchableOpacity onPress={() => setShowModal(true)} style={styles.dialCode}>
-                    <Text style={styles.dialCodeText}>
-                      {form.country?.flag ?? '🌍'} {form.country?.dialCode ?? '+?'}
-                    </Text>
+                    <Text style={styles.dialCodeText}>{form.country?.flag ?? '🌍'} {form.country?.dialCode ?? '+?'}</Text>
                     <Ionicons name="chevron-down" size={13} color={MUTED} />
                   </TouchableOpacity>
                   <View style={styles.phoneDivider} />
-                  <TextInput
-                    style={[styles.inputText, { flex: 1 }]}
-                    placeholder="Mobile number"
-                    placeholderTextColor={Colors.placeholder}
-                    value={form.phone}
-                    onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
-                    keyboardType="phone-pad"
-                    onFocus={() => setFocused((p) => ({ ...p, phone: true }))}
-                    onBlur={()  => setFocused((p) => ({ ...p, phone: false }))}
-                  />
+                  <TextInput style={[styles.inputText, { flex: 1 }]} placeholder="Mobile number" placeholderTextColor={Colors.placeholder} value={form.phone} onChangeText={(v) => set('phone', v.replace(/\D/g, ''))} keyboardType="phone-pad" onFocus={() => setFocused((p) => ({ ...p, phone: true }))} onBlur={() => setFocused((p) => ({ ...p, phone: false }))} />
                 </View>
               </Field>
 
-              <TouchableOpacity
-                style={styles.termsRow}
-                onPress={() => setAgreed((v) => !v)}
-                activeOpacity={0.8}
-              >
+              {/* Terms */}
+              <TouchableOpacity style={styles.termsRow} onPress={() => setAgreed((v) => !v)} activeOpacity={0.8}>
                 <View style={[styles.checkbox, agreed && styles.checkboxOn]}>
                   {agreed && <Ionicons name="checkmark" size={13} color={WHITE} />}
                 </View>
                 <Text style={styles.termsText}>
-                  I agree to Hafrik's{' '}
-                  <Text style={styles.termsLink}>Terms of Service</Text>
-                  {' '}and{' '}
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                  I agree to Hafrik's <Text style={styles.termsLink}>Terms of Service</Text> and <Text style={styles.termsLink}>Privacy Policy</Text>
                 </Text>
               </TouchableOpacity>
               {errors.terms && <Text style={styles.fieldError}>{errors.terms}</Text>}
+
+              {/* Back + Create Account */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                <TouchableOpacity
+                  style={[styles.submitBtn, { flex: 0, paddingHorizontal: 18, borderRadius: 28, backgroundColor: BRAND + '12', overflow: 'visible' }]}
+                  onPress={() => setRegStep(1)}
+                  activeOpacity={0.8}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', height: 50, paddingHorizontal: 4 }}>
+                    <Ionicons name="arrow-back" size={18} color={BRAND} />
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.submitBtn, { flex: 1, opacity: loading ? 0.6 : 1 }]} onPress={submit} disabled={loading} activeOpacity={0.85}>
+                  <LinearGradient colors={[BRAND, Colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitGradient}>
+                    {loading ? <ActivityIndicator color={WHITE} size="small" /> : (
+                      <><Text style={styles.submitText}>Create Account</Text><Ionicons name="arrow-forward" size={18} color={WHITE} style={{ marginLeft: 8 }} /></>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              {/* Gender modal */}
+              <Modal visible={showGenderModal} animationType="slide" transparent onRequestClose={() => setShowGenderModal(false)}>
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalSheet}>
+                    <View style={styles.modalHandle} />
+                    <View style={styles.modalHeaderRow}>
+                      <Text style={styles.modalTitle}>Select Gender</Text>
+                      <TouchableOpacity onPress={() => setShowGenderModal(false)} style={styles.modalClose}><Ionicons name="close" size={22} color={DARK} /></TouchableOpacity>
+                    </View>
+                    {genders.map((g) => (
+                      <TouchableOpacity key={g.id} style={[styles.countryRow, form.gender === g.id && { backgroundColor: ACCENT + '12' }]} activeOpacity={0.75} onPress={() => { set('gender', g.id); setShowGenderModal(false); }}>
+                        <Ionicons name={g.id === 1 ? 'male-outline' : g.id === 2 ? 'female-outline' : 'person-outline'} size={20} color={form.gender === g.id ? ACCENT : MUTED} style={{ marginRight: 12 }} />
+                        <Text style={[styles.countryName, form.gender === g.id && { color: ACCENT, fontWeight: '700' }]}>{g.label}</Text>
+                        {form.gender === g.id && <Ionicons name="checkmark" size={18} color={ACCENT} />}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </Modal>
+
+              {/* Birth date picker modal */}
+              <Modal visible={!!birthPickerField} animationType="slide" transparent onRequestClose={() => setBirthPickerField(null)}>
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalSheet}>
+                    <View style={styles.modalHandle} />
+                    <View style={styles.modalHeaderRow}>
+                      <Text style={styles.modalTitle}>{birthPickerField === 'day' ? 'Select Day' : birthPickerField === 'month' ? 'Select Month' : 'Select Year'}</Text>
+                      <TouchableOpacity onPress={() => setBirthPickerField(null)} style={styles.modalClose}><Ionicons name="close" size={22} color={DARK} /></TouchableOpacity>
+                    </View>
+                    <FlatList
+                      data={birthPickerField === 'day' ? DAYS : birthPickerField === 'month' ? MONTHS : YEARS}
+                      keyExtractor={(item) => String(item.id)}
+                      showsVerticalScrollIndicator={false}
+                      style={{ maxHeight: 320 }}
+                      renderItem={({ item }) => {
+                        const currentVal = birthPickerField === 'day' ? form.birthDay : birthPickerField === 'month' ? form.birthMonth : form.birthYear;
+                        const isSelected = currentVal === item.id;
+                        return (
+                          <TouchableOpacity
+                            style={[styles.countryRow, isSelected && { backgroundColor: ACCENT + '12' }]}
+                            activeOpacity={0.75}
+                            onPress={() => {
+                              if (birthPickerField === 'day')   set('birthDay',   item.id);
+                              if (birthPickerField === 'month') set('birthMonth', item.id);
+                              if (birthPickerField === 'year')  set('birthYear',  item.id);
+                              setBirthPickerField(null);
+                            }}
+                          >
+                            <Text style={[styles.countryName, isSelected && { color: ACCENT, fontWeight: '700' }]}>{item.label}</Text>
+                            {isSelected && <Ionicons name="checkmark" size={18} color={ACCENT} />}
+                          </TouchableOpacity>
+                        );
+                      }}
+                      ItemSeparatorComponent={() => <View style={styles.separator} />}
+                    />
+                  </View>
+                </View>
+              </Modal>
             </>
           )}
 
-          {/* Forgot password (login only) */}
-          {mode === 'login' && (
-            <TouchableOpacity
-              style={styles.forgotBtn}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('ForgotPassword')}
-            >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Submit — gradient button */}
-          <TouchableOpacity
-            style={[styles.submitBtn, loading && { opacity: 0.6 }]}
-            onPress={submit}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={[BRAND, Colors.primary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.submitGradient}
-            >
-              {loading ? (
-                <ActivityIndicator color={WHITE} size="small" />
-              ) : (
-                <>
-                  <Text style={styles.submitText}>
-                    {mode === 'login' ? 'Sign In' : 'Create Account'}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={18} color={WHITE} style={{ marginLeft: 8 }} />
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Or continue with */}
-          <View style={styles.orRow}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>or continue with</Text>
-            <View style={styles.orLine} />
-          </View>
-
-          {/* Social buttons */}
-          <View style={styles.socialRow}>
-            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={handleGoogleSignIn} disabled={!!socialLoading}>
-              {socialLoading === 'google' ? (
-                <ActivityIndicator size="small" color={Colors.google} />
-              ) : (
-                <>
-                  <Ionicons name="logo-google" size={18} color={Colors.google} />
-                  <Text style={styles.socialBtnText}>Google</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            {Platform.OS === 'ios' && (
-              <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8} onPress={handleAppleSignIn} disabled={!!socialLoading}>
-                {socialLoading === 'apple' ? (
-                  <ActivityIndicator size="small" color={WHITE} />
-                ) : (
-                  <>
-                    <Ionicons name="logo-apple" size={18} color={WHITE} />
-                    <Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Switch mode */}
+          {/* Switch mode — always shown */}
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>
-              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            </Text>
+            <Text style={styles.switchText}>{mode === 'login' ? "Don't have an account? " : 'Already have an account? '}</Text>
             <TouchableOpacity onPress={toggleMode} activeOpacity={0.7}>
-              <Text style={styles.switchLink}>
-                {mode === 'login' ? 'Sign Up' : 'Sign In'}
-              </Text>
+              <Text style={styles.switchLink}>{mode === 'login' ? 'Sign Up' : 'Sign In'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1205,6 +1370,14 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
 
+  // Step indicator
+  stepRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, gap: 6 },
+  stepDot:    { width: 10, height: 10, borderRadius: 5, backgroundColor: BRAND + '30' },
+  stepDotOn:  { backgroundColor: BRAND },
+  stepLine:   { width: 40, height: 3, borderRadius: 2, backgroundColor: BRAND + '30' },
+  stepLineOn: { backgroundColor: BRAND },
+  stepLabel:  { fontSize: 12, color: MUTED, fontWeight: '600', marginLeft: 8 },
+
   // Tab row
   tabRow: {
     flexDirection: 'row',
@@ -1386,6 +1559,7 @@ const styles = StyleSheet.create({
     fontFamily: AppDetails?.fontFamily?.inter?.regular ?? 'System',
   },
   termsLink: { color: ACCENT, fontWeight: '600' },
+
 
   // Submit
   submitBtn: {

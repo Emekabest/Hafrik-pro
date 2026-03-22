@@ -135,11 +135,14 @@ const PostComposerModal = () => {
         if (!isComposerOpen || !token) return;
 
         if (composerConfig?.locked) {
-            const type = composerConfig._type === 'group' ? 'group'
-                       : composerConfig._type === 'page'  ? 'page'
-                       : 'profile';
+            // Support both new shape (target_type/target_id) and legacy (_type/id)
+            const type = composerConfig.target_type
+                       ?? (composerConfig._type === 'group' ? 'group'
+                         : composerConfig._type === 'page'  ? 'page'
+                         : 'profile');
+            const id   = composerConfig.target_id ?? composerConfig.id ?? 0;
             setSelectedTargetType(type);
-            setSelectedTargetId(composerConfig.id ?? 0);
+            setSelectedTargetId(id);
             return;
         }
 
@@ -533,14 +536,20 @@ const PostComposerModal = () => {
                                             ) : (
                                                 <View style={[styles.chipAvatar, styles.chipAvatarFallback]}>
                                                     <Ionicons
-                                                        name={composerConfig._type === 'group' ? 'people' : 'storefront'}
+                                                        name={
+                                                            (composerConfig.target_type ?? composerConfig._type) === 'group'
+                                                                ? 'people' : 'storefront'
+                                                        }
                                                         size={18} color={BRAND}
                                                     />
                                                 </View>
                                             )}
                                         </View>
                                         <Text style={[styles.chipName, styles.chipNameActive]} numberOfLines={1}>
-                                            {composerConfig.title || (composerConfig._type === 'group' ? 'Group' : 'Page')}
+                                            {composerConfig.title || (
+                                                (composerConfig.target_type ?? composerConfig._type) === 'group'
+                                                    ? 'Group' : 'Page'
+                                            )}
                                         </Text>
                                         <Ionicons name="lock-closed" size={11} color={MUTED} style={{ marginLeft: 4 }} />
                                     </View>

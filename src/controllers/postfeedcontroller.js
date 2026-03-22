@@ -1,34 +1,24 @@
 import apiClient from '../api/apiClient';
 
-// ─── Single unified endpoint for all post types and targets ───────────────────
-const API_URL = 'https://hafrik.com/api/v1/posts/create.php';
+const CREATE_URL = '/posts/create.php';
 
-const PostFeedController = async (postData, token) => {
+const PostFeedController = async (postData) => {
 
     // Normalize type: frontend uses 'text', backend expects 'post'
     const normalizedType = postData?.type === 'text' ? 'post' : postData?.type;
 
-    // Build body — ensure page_id / group_id are present for backend compatibility
-    const body = {
-        ...postData,
-        type: normalizedType,
-    };
+    const body = { ...postData, type: normalizedType };
 
-    // Backend expects page_id for page posts and group_id for group posts
-    if (body.target_type === 'page' && body.target_id && !body.page_id) {
-        body.page_id = body.target_id;
-    }
-    if (body.target_type === 'group' && body.target_id && !body.group_id) {
-        body.group_id = body.target_id;
-    }
+    // Remove undefined/null keys
+    Object.keys(body).forEach(k => (body[k] === undefined || body[k] === null) && delete body[k]);
 
     console.log('=== CREATE POST DEBUG ===');
-    console.log('URL:', API_URL);
+    console.log('URL:', CREATE_URL);
     console.log('BODY:', JSON.stringify(body));
     console.log('=========================');
 
     try {
-        const response = await apiClient.post(API_URL, body);
+        const response = await apiClient.post(CREATE_URL, body);
 
         console.log('CREATE POST RESPONSE status:', response.status);
         console.log('CREATE POST RESPONSE data:', JSON.stringify(response.data));

@@ -368,14 +368,19 @@ const mau = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Normalize a feed item — ensures likes_count is always populated
+// Normalize a feed item — ensures likes_count and reactions are always present
 // ─────────────────────────────────────────────────────────────────────────────
 const normalizeFeed = (feed) => {
   if (!feed) return feed;
+
+  // Normalise the reactions object — API may return it under different keys
+  const reactions = feed.reactions ?? feed.reaction_counts ?? feed.reactionCounts ?? null;
+
   const rawCount = feed.likes_count ?? feed.total_likes ?? feed.like_count ??
-    feed.reactions?.total ?? feed.total_reactions ??
+    reactions?.total ?? feed.total_reactions ??
     feed.reaction_count ?? feed.reactions_count ?? 0;
-  return { ...feed, likes_count: Number(rawCount) || 0 };
+
+  return { ...feed, likes_count: Number(rawCount) || 0, reactions };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
