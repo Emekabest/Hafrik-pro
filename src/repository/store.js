@@ -52,6 +52,15 @@ const useStore = create((set, get) => ({
     refreshSignal: 0,
     triggerRefresh: () => set((state) => ({ refreshSignal: state.refreshSignal + 1 })),
 
+    // ── Per-tab double-tap refresh signals ───────────────────────────────────
+    tabRefreshSignals: { Feed: 0, Home: 0, Reels: 0, Messages: 0, Profile: 0 },
+    triggerTabRefresh: (tabName) => set((state) => ({
+        tabRefreshSignals: {
+            ...state.tabRefreshSignals,
+            [tabName]: (state.tabRefreshSignals[tabName] ?? 0) + 1,
+        },
+    })),
+
     // ── Welcome modal (shown once after new registration) ────────────────────
     showWelcomeModal: false,
     setShowWelcomeModal: (v) => set({ showWelcomeModal: v }),
@@ -97,6 +106,7 @@ const useStore = create((set, get) => ({
             forYouFeeds: [],
             discoverFeeds: [],
             popularFeeds: [],
+            communityFeeds: [],
             followingFeeds: [],
             reelsFeeds: [],
             watchFeeds: [],

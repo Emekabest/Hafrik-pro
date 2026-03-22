@@ -53,7 +53,7 @@ const FEED_FILTERS = [
 // ─── People You May Know card ─────────────────────────────────────────────────
 const PeopleYouMayKnow = memo(({ people }) => {
   const navigation = useNavigation();
-  const filtered = (people?.filter(p => !!(p.avatar || p.profile_picture)) ?? []).slice(0, 4);
+  const filtered = (people?.filter(p => !!(p.avatar || p.profile_picture) && !p.is_follow) ?? []).slice(0, 4);
   if (!filtered.length) return null;
   return (
     <View style={styles.sectionCard}>
@@ -64,7 +64,7 @@ const PeopleYouMayKnow = memo(({ people }) => {
           </View>
           <Text style={styles.sectionTitle}>People You May Know</Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7}>
+        <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('PeopleYouMayKnow')}>
           <Text style={styles.sectionSeeAll}>See All</Text>
         </TouchableOpacity>
       </View>
@@ -586,7 +586,7 @@ const Feeds = ({
         return <MemoizedPostFeed />;
 
       case 'feedsheader':
-        return <MemoizedFeedsHeader name={item.name} id={item.id} />;
+        return <MemoizedFeedsHeader name={item.name} description={item.description} id={item.id} />;
 
       case 'locationstrip':
         return <LocationDiscoveryStrip />;
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
 
   scrollTopBtn: {
     position:        'absolute',
-    bottom:          24,
+    bottom:          90,      // sits above the FAB (56px tall at bottom 24 + 8px gap = 88)
     right:           18,
     width:           44,
     height:          44,

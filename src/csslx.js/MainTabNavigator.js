@@ -35,6 +35,10 @@ const ACCENT  = Colors.primary;
 const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
   const { bottom } = useSafeAreaInsets();
   const { colors: tc } = useTheme();
+  const triggerTabRefresh = useStore(s => s.triggerTabRefresh);
+
+  // Double-tap tracking: { routeName: lastTapTime }
+  const lastTapRef = React.useRef({});
 
   return (
     <View style={[styles.tabBarContainer, { paddingBottom: bottom, height: AppDetails.mainTabNavigatorHeight + bottom, backgroundColor: tc.tabBarBg, borderTopColor: tc.tabBarBorder }]}>
@@ -42,6 +46,16 @@ const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
         const isFocused = state.index === index;
 
         const onPress = () => {
+          const now = Date.now();
+          const last = lastTapRef.current[route.name] ?? 0;
+          const isDoubleTap = isFocused && (now - last) < 400;
+          lastTapRef.current[route.name] = now;
+
+          if (isDoubleTap) {
+            triggerTabRefresh(route.name);
+            return;
+          }
+
           const event = navigation.emit({
             type: 'tabPress',
             target: route.key,

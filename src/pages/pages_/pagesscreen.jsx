@@ -51,6 +51,8 @@ const BORDER = BRAND + '14';
 const WHITE  = Colors.white;
 const WARM   = Colors.warning;
 
+const HERO_COLOR = '#0c3f44'; // solid brand color for hero + header
+
 const COUNTRY_KEY     = 'selected_country';
 const DEFAULT_COUNTRY = { country_id: 'all', name: 'All' };
 
@@ -357,8 +359,9 @@ const MarketplaceCard = memo(({ item, onPress }) => {
 // Reel grid card — 3-col square thumbnail with play overlay
 // ─────────────────────────────────────────────────────────────────────────────
 const REEL_COLS    = 2;
-const REEL_GAP     = 8;
+const REEL_GAP     = 6;
 const REEL_SIZE    = (SCREEN_W - H_PAD * 2 - SEC_PAD * 2 - REEL_GAP * (REEL_COLS - 1)) / REEL_COLS;
+const REEL_H_W     = 130; // fixed width for horizontal-scroll reel card
 
 const fmtViews = (n) => {
   const v = Number(n ?? 0);
@@ -376,7 +379,7 @@ const ReelGridCard = memo(({ item, onPress }) => {
 
   return (
     <TouchableOpacity
-      style={[rg.card, { width: REEL_SIZE, height: REEL_SIZE * 1.55 }]}
+      style={[rg.card, { width: REEL_H_W, height: REEL_H_W * 1.6 }]}
       activeOpacity={0.88}
       onPress={onPress}
     >
@@ -414,7 +417,7 @@ const ReelGridCard = memo(({ item, onPress }) => {
 
 const rg = StyleSheet.create({
   card: {
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: Colors.surfaceTint,
   },
@@ -765,7 +768,7 @@ const FeaturedBusinessSection = ({ navigation, token, shuffleKey }) => {
       <View style={{ paddingHorizontal: 14, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={ss.sectionTitleRow}>
           <View style={ss.sectionAccent} />
-          <Text style={ss.sectionTitle}>Featured Business</Text>
+          <Text style={ss.sectionTitle}>Verified Businesses Near You</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: ACCENT + '1A', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
           <Ionicons name="shield-checkmark" size={10} color={ACCENT} />
@@ -870,6 +873,85 @@ const ExploreArticleCard = memo(({ item, onPress }) => {
       </View>
     </TouchableOpacity>
   );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Article grid card — 2-column vertical card
+// ─────────────────────────────────────────────────────────────────────────────
+const ARTICLE_GRID_GAP = 10;
+const ARTICLE_GRID_W   = (SCREEN_W - H_PAD * 2 - SEC_PAD * 2 - ARTICLE_GRID_GAP) / 2;
+
+const ArticleGridCard = memo(({ item, onPress }) => {
+  const hasImg  = isRealImage(item.image ?? null);
+  const title   = decodeHtml(item.title ?? '');
+  const cat     = item.category_name ?? item.category ?? null;
+
+  return (
+    <TouchableOpacity style={ag.card} activeOpacity={0.85} onPress={onPress}>
+      {hasImg ? (
+        <Image source={{ uri: item.image }} style={ag.img} resizeMode="cover" />
+      ) : (
+        <View style={[ag.img, ag.imgFallback]}>
+          <Ionicons name="newspaper-outline" size={28} color={MUTED} />
+        </View>
+      )}
+      <View style={ag.body}>
+        {!!cat && (
+          <View style={ag.catBadge}>
+            <Text style={ag.catText} numberOfLines={1}>{cat}</Text>
+          </View>
+        )}
+        <Text numberOfLines={3} style={ag.title}>{title}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const ag = StyleSheet.create({
+  card: {
+    width: ARTICLE_GRID_W,
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: DARK,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  img: {
+    width: '100%',
+    height: 110,
+    backgroundColor: BRAND + '0F',
+  },
+  imgFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  body: {
+    padding: 10,
+    gap: 6,
+  },
+  catBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: ACCENT + '1F',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  catText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: ACCENT,
+  },
+  title: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: DARK,
+    lineHeight: 18,
+  },
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1146,6 +1228,20 @@ export default function DiscoveryScreen() {
   const [peopleLoading, setPeopleLoading] = useState(false);
   const peopleAbortRef = useRef(null);
 
+  // ── New users state ─────────────────────────────────────────────────────────
+  const [newUsers,        setNewUsers]        = useState([]);
+  const [newUsersLoading, setNewUsersLoading] = useState(false);
+  const newUsersAbortRef = useRef(null);
+
+  // ── Communities state ───────────────────────────────────────────────────────
+  const [communities,        setCommunities]        = useState([]);
+  const [communitiesLoading, setCommunitiesLoading] = useState(false);
+  const communitiesAbortRef = useRef(null);
+
+  // ── Ads state ───────────────────────────────────────────────────────────────
+  const [exploreAds,        setExploreAds]        = useState([]);
+  const exploreAdsAbortRef = useRef(null);
+
   // -- Trending posts state
   const [trendingPosts, setTrendingPosts] = useState([]);
   const trendingPostsRef = useRef(null);
@@ -1260,8 +1356,14 @@ export default function DiscoveryScreen() {
     if (append) setArticleLoadingMore(true); else setArticleLoading(true);
     const timer = addTimeout(ctrl, 8000);
     try {
-      const items = await fetchArticles({ page: pageNum, limit: 10 }, ctrl.signal);
-      const list = Array.isArray(items) ? items : [];
+      const res  = await fetch(`${BASE_URL}/api/v1/articles/list.php?page=${pageNum}&limit=10`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: ctrl.signal,
+      });
+      const json = await res.json();
+      const list = Array.isArray(json?.data?.data ?? json?.data ?? json?.articles ?? [])
+        ? (json?.data?.data ?? json?.data ?? json?.articles ?? [])
+        : [];
       if (append) setArticleItems((p) => [...p, ...list]); else setArticleItems(list);
       setArticleHasMore(list.length >= 10);
       setArticlePage(pageNum);
@@ -1271,7 +1373,7 @@ export default function DiscoveryScreen() {
       clearTimeout(timer);
       if (append) setArticleLoadingMore(false); else setArticleLoading(false);
     }
-  }, []);
+  }, [token]);
 
   // ── Load trending articles (Popular This Week) ─────────────────────────────
   const loadTrendingArticles = useCallback(async () => {
@@ -1315,6 +1417,77 @@ export default function DiscoveryScreen() {
     } finally {
       clearTimeout(timer);
       setPeopleLoading(false);
+    }
+  }, [token]);
+
+  // ── Load new users from dedicated endpoint ──────────────────────────────────
+  const loadNewUsers = useCallback(async () => {
+    if (!token) return;
+    if (newUsersAbortRef.current) newUsersAbortRef.current.abort();
+    const ctrl = new AbortController();
+    newUsersAbortRef.current = ctrl;
+    setNewUsersLoading(true);
+    const timer = addTimeout(ctrl, 8000);
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/people/new_user.php?limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: ctrl.signal,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const list = json?.data?.data ?? json?.data ?? [];
+      setNewUsers(Array.isArray(list) ? list : []);
+    } catch (e) {
+      if (e?.name !== 'AbortError') setNewUsers([]);
+    } finally {
+      clearTimeout(timer);
+      setNewUsersLoading(false);
+    }
+  }, [token]);
+
+  // ── Load communities from dedicated endpoint ────────────────────────────────
+  const loadCommunities = useCallback(async () => {
+    if (!token) return;
+    if (communitiesAbortRef.current) communitiesAbortRef.current.abort();
+    const ctrl = new AbortController();
+    communitiesAbortRef.current = ctrl;
+    setCommunitiesLoading(true);
+    const timer = addTimeout(ctrl, 8000);
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/communities/list.php?limit=10`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: ctrl.signal,
+      });
+      const json = await res.json();
+      const list = json?.data?.data ?? json?.data?.communities ?? json?.data?.groups ?? json?.data ?? [];
+      setCommunities(Array.isArray(list) ? list : []);
+    } catch (e) {
+      if (e?.name !== 'AbortError') setCommunities([]);
+    } finally {
+      clearTimeout(timer);
+      setCommunitiesLoading(false);
+    }
+  }, [token]);
+
+  // ── Load explore ads from dedicated endpoint ────────────────────────────────
+  const loadExploreAds = useCallback(async () => {
+    if (!token) return;
+    if (exploreAdsAbortRef.current) exploreAdsAbortRef.current.abort();
+    const ctrl = new AbortController();
+    exploreAdsAbortRef.current = ctrl;
+    const timer = addTimeout(ctrl, 8000);
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/ads/list.php`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: ctrl.signal,
+      });
+      const json = await res.json();
+      const raw  = json?.data?.data ?? json?.data ?? json?.ads ?? [];
+      setExploreAds(Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []));
+    } catch (e) {
+      if (e?.name !== 'AbortError') setExploreAds([]);
+    } finally {
+      clearTimeout(timer);
     }
   }, [token]);
 
@@ -1489,6 +1662,9 @@ export default function DiscoveryScreen() {
         loadArticles(1, false),
         loadTrendingArticles(),
         loadPeople(),
+        loadNewUsers(),
+        loadCommunities(),
+        loadExploreAds(),
         loadReels(),
         loadMarketplace(),
         loadCtaAds(),
@@ -1504,6 +1680,9 @@ export default function DiscoveryScreen() {
     loadArticles,
     loadTrendingArticles,
     loadPeople,
+    loadNewUsers,
+    loadCommunities,
+    loadExploreAds,
     loadReels,
     loadMarketplace,
     loadCtaAds,
@@ -1596,14 +1775,454 @@ export default function DiscoveryScreen() {
 
   const goToPopularFeedTab = useCallback(() => {
     try {
-      navigation.navigate('Feed', { initialTabKey: 'popular' });
+      navigation.navigate('Feed', { initialTabKey: 'trending' });
       return;
     } catch {}
     navigation.navigate('MainTabs', {
       screen: 'Feed',
-      params: { initialTabKey: 'popular' },
+      params: { initialTabKey: 'trending' },
     });
   }, [navigation]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Sections data for FlatList (virtualized rendering)
+  // ─────────────────────────────────────────────────────────────────────────
+  const flatListData = useMemo(() => {
+    const items = [];
+    // 1. Trending Now
+    if (trendingPosts.length > 0)
+      items.push({ id: 'trending', type: 'trending' });
+    // 2. Reels (horizontal scroll, max 4)
+    if (reels.length > 0 || reelsLoading)
+      items.push({ id: 'reels', type: 'reels' });
+    // 3. People You May Know
+    const realPeople = Array.isArray(people) && people.filter(p => isRealImage(p?.avatar ?? p?.image ?? p?.thumbnail) && !p.is_follow).length > 0;
+    if (realPeople || peopleLoading)
+      items.push({ id: 'people', type: 'people' });
+    // 4. Suggested Communities
+    if (communities.length > 0 || communitiesLoading)
+      items.push({ id: 'community_highlights', type: 'community_highlights' });
+    // 5. Verified Businesses Near You
+    items.push({ id: 'featured_business', type: 'featured_business' });
+    // 6. New Users
+    if (newUsers.length > 0 || newUsersLoading)
+      items.push({ id: 'new_users', type: 'new_users' });
+    // 7. Articles grid
+    if (articleItems.length > 0 || articleLoading)
+      items.push({ id: 'articles', type: 'articles' });
+    return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trendingPosts.length, reels.length, reelsLoading, people, peopleLoading, communities.length, communitiesLoading, newUsers.length, newUsersLoading, articleItems.length, articleLoading]);
+
+  const renderSection = useCallback(({ item }) => {
+    switch (item.type) {
+
+      case 'trending':
+        return (
+          <View style={ss.section}>
+            <View style={ss.sectionHeader}>
+              <View style={ss.sectionTitleRow}>
+                <View style={ss.sectionAccent} />
+                <Text style={ss.sectionTitle}>🔥 Trending Now</Text>
+                <View style={[ss.trendingBadge, { marginLeft: 8 }]}>
+                  <View style={ss.liveDot} />
+                  <Text style={ss.trendingBadgeTxt}>LIVE</Text>
+                </View>
+              </View>
+            </View>
+            <Text style={ss.sectionSubtitle}>What the community is talking about</Text>
+            <View style={{ gap: 7 }}>
+              {displayTrending.map((post, i) => (
+                <RankedTrendingCard
+                  key={post.id ?? post.post_id ?? `tp-${i}`}
+                  item={post}
+                  rank={i + 1}
+                  rankDelta={RANK_DELTAS[i] ?? 0}
+                  onPress={() => {
+                    const id = post?.id ?? post?.post_id;
+                    if (!id) return;
+                    const pt = String(post?.type || '').toLowerCase();
+                    if (pt === 'reel' || pt === 'video') {
+                      navigation.navigate('Reels2', { initialReels: [post], startIndex: 0, initialReelId: id });
+                    } else {
+                      navigation.navigate('PostDetail', { postId: id });
+                    }
+                  }}
+                />
+              ))}
+            </View>
+            <HotArticlesSection articles={popularThisWeek} navigation={navigation} />
+            <TouchableOpacity style={ss.viewMoreBtn} activeOpacity={0.85} onPress={goToPopularFeedTab}>
+              <Ionicons name="flame-outline" size={14} color={ACCENT} />
+              <Text style={ss.viewMoreText}>View All Trending Posts</Text>
+              <Ionicons name="arrow-forward" size={14} color={ACCENT} />
+            </TouchableOpacity>
+          </View>
+        );
+
+      case 'ads_banner':
+        return <AdsBanner ads={ads} onPress={handleAdPress} />;
+
+      case 'featured_business':
+        return <FeaturedBusinessSection navigation={navigation} token={token} shuffleKey={shuffleKey} />;
+
+      case 'hot_topics':
+        return (
+          <View style={ss.section}>
+            <View style={ss.hotHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={ss.hotTitle}>🔥 Hot Topics</Text>
+                <View style={ss.hotBadge}><Text style={ss.hotBadgeTxt}>{hotTopics.length}</Text></View>
+              </View>
+            </View>
+            <Text style={ss.hotSub}>Tap any tag to dive into trending conversations</Text>
+            <View style={ss.hotTopicsWrap}>
+              {hotTopics.map((t, i) => {
+                const palettes = [
+                  { bg: BRAND, text: WHITE, border: BRAND },
+                  { bg: ACCENT, text: DARK, border: ACCENT },
+                  { bg: Colors.warning + '1A', text: Colors.warning, border: Colors.warning },
+                  { bg: BRAND + '12', text: BRAND, border: BRAND + '66' },
+                  { bg: ACCENT + '1A', text: ACCENT, border: ACCENT },
+                  { bg: ACCENT + '1F', text: BRAND, border: ACCENT },
+                ];
+                const pal = palettes[i % palettes.length];
+                return (
+                  <TouchableOpacity
+                    key={`${t}-${i}`}
+                    onPress={() => {
+                      try { setSearchQuery?.(t); } catch {}
+                      navigation.navigate('SearchScreen', { initialQuery: t, initialTab: 'all' });
+                    }}
+                    activeOpacity={0.78}
+                    style={[ss.topicPill, { backgroundColor: pal.bg, borderColor: pal.border }]}
+                  >
+                    <Text style={[ss.topicHashtag, { color: pal.text, opacity: 0.6 }]}>#</Text>
+                    <Text style={[ss.topicPillText, { color: pal.text }]}>{t}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        );
+
+      case 'people':
+        return (
+          <View style={ss.section}>
+            <SectionHeader title="People You May Know" onSeeAll={() => navigation.navigate('PeopleYouMayKnow')} />
+            <Text style={ss.sectionSubtitle}>Connect with people you might know</Text>
+            {peopleLoading && people.length === 0 ? (
+              <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
+                {people.filter(p => isRealImage(p?.avatar ?? p?.image ?? p?.thumbnail) && !p.is_follow).map((p, i) => (
+                  <PersonHCard
+                    key={`person-${p.id ?? p.user_id ?? i}`}
+                    item={p}
+                    onPress={() => navigation.navigate('UserProfile', { userId: p.id ?? p.user_id })}
+                    onFollow={() => toggleFollowPerson(p.id ?? p.user_id)}
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        );
+
+      case 'quick_access':
+        return <QuickAccessSection navigation={navigation} shuffleKey={shuffleKey} />;
+
+      case 'reels':
+        return (
+          <View style={ss.section}>
+            <View style={ss.sectionHeader}>
+              <View style={ss.sectionTitleRow}>
+                <View style={ss.sectionAccent} />
+                <Text style={ss.sectionTitle}>🎬 Reels</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Reels')} activeOpacity={0.8} style={ss.seeAllBtn}>
+                <Text style={ss.seeAllText}>See More</Text>
+                <Ionicons name="chevron-forward" size={14} color={ACCENT} />
+              </TouchableOpacity>
+            </View>
+            <Text style={ss.sectionSubtitle}>Short videos from your community</Text>
+            {reelsLoading && reels.length === 0 ? (
+              <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+              >
+                {reels.slice(0, 4).map((r, i) => (
+                  <ReelGridCard key={r.id ?? `reel-${i}`} item={r} onPress={() => handleReelPress(i)} />
+                ))}
+                <TouchableOpacity
+                  style={ss.reelSeeMoreCard}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('Reels')}
+                >
+                  <Ionicons name="play-circle-outline" size={28} color={WHITE + 'CC'} />
+                  <Text style={ss.reelSeeMoreText}>See{'\n'}More</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        );
+
+      case 'new_users':
+        return (
+          <View style={ss.section}>
+            <SectionHeader title="New on Hafrik" onSeeAll={() => navigation.navigate('PeopleYouMayKnow')} />
+            <Text style={ss.sectionSubtitle}>Recently joined members you might like</Text>
+            {newUsersLoading && newUsers.length === 0 ? (
+              <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
+                {newUsers.filter(p => !p.is_follow).map((p, i) => (
+                  <PersonHCard
+                    key={`newuser-${p.id ?? p.user_id ?? i}`}
+                    item={p}
+                    onPress={() => navigation.navigate('UserProfile', { userId: p.id ?? p.user_id })}
+                    onFollow={() => toggleFollowPerson(p.id ?? p.user_id)}
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        );
+
+      case 'ad_cta':
+        return ctaAds[item.adIndex] ? <InlineAdCard ad={ctaAds[item.adIndex]} onPress={handleAdPress} /> : null;
+
+      case 'events':
+        return (
+          <View style={ss.section}>
+            <SectionHeader title="Events This Week" onSeeAll={() => navigation.navigate('Events')} />
+            <Text style={ss.sectionSubtitle}>Don't miss what's happening near you</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
+              {hotEvents.map((ev, i) => {
+                const title = decodeHtml(ev.title ?? ev.name ?? 'Event');
+                const cover = ev.cover ?? ev.banner ?? ev.image ?? null;
+                const loc   = ev.location ?? ev.venue ?? '';
+                const date  = ev.start_date ?? ev.date ?? '';
+                return (
+                  <TouchableOpacity
+                    key={ev.id ?? `ev-${i}`}
+                    style={ss.eventCard}
+                    activeOpacity={0.88}
+                    onPress={() => navigation.navigate('EventDetails', { eventId: ev.id })}
+                  >
+                    {isRealImage(cover) ? (
+                      <Image source={{ uri: cover }} style={ss.eventCover} resizeMode="cover" />
+                    ) : (
+                      <LinearGradient colors={[BRAND, Colors.primaryDark]} style={[ss.eventCover, { alignItems: 'center', justifyContent: 'center' }]}>
+                        <Ionicons name="calendar" size={24} color={WHITE} />
+                      </LinearGradient>
+                    )}
+                    <View style={ss.eventBody}>
+                      <Text numberOfLines={2} style={ss.eventTitle}>{title}</Text>
+                      {!!date && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                          <Ionicons name="calendar-outline" size={11} color={ACCENT} />
+                          <Text numberOfLines={1} style={ss.eventMeta}>{date}</Text>
+                        </View>
+                      )}
+                      {!!loc && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <Ionicons name="location-outline" size={11} color={MUTED} />
+                          <Text numberOfLines={1} style={ss.eventMeta}>{loc}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        );
+
+      case 'community_highlights':
+        return (
+          <View style={ss.section}>
+            <SectionHeader title="Suggested Communities" onSeeAll={() => navigation.navigate('GroupScreen')} />
+            <Text style={ss.sectionSubtitle}>Join communities that match your interests</Text>
+            {communitiesLoading && communities.length === 0 ? (
+              <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
+            ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
+              {communities.map((g, i) => {
+                const avatar  = g.avatar ?? g.image ?? null;
+                const name    = decodeHtml(g.title ?? g.name ?? 'Community');
+                const members = (g.members_count ?? g.members ?? 0).toLocaleString();
+                return (
+                  <TouchableOpacity
+                    key={g.id ?? `ch-${i}`}
+                    style={ss.commHCard}
+                    activeOpacity={0.88}
+                    onPress={() => navigation.navigate('GroupDetails', { groupId: g.id })}
+                  >
+                    {isRealImage(avatar)
+                      ? <Image source={{ uri: avatar }} style={ss.commHAvatar} resizeMode="cover" />
+                      : <LinearGradient colors={[BRAND, Colors.primaryDark]} style={[ss.commHAvatar, { alignItems: 'center', justifyContent: 'center' }]}>
+                          <Ionicons name="people" size={18} color={WHITE} />
+                        </LinearGradient>
+                    }
+                    <Text numberOfLines={1} style={ss.commHName}>{name}</Text>
+                    <Text style={ss.commHSub}>{members} members</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            )}
+          </View>
+        );
+
+      case 'guides':
+        return (
+          <View style={[ss.section, { marginBottom: 12 }]}>
+            <SectionHeader title="Guides & Tips" onSeeAll={() => navigation.navigate('ArticlesScreen')} />
+            {articleLoading && articleItems.length === 0 ? (
+              <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {articleItems.map((a, idx) => (
+                  <React.Fragment key={String(a.id ?? a.post_id)}>
+                    <ExploreArticleCard
+                      item={a}
+                      onPress={() => navigation.navigate('ArticleDetails', { postId: a.post_id ?? a.id })}
+                    />
+                    {(idx + 1) % 4 === 0 && ads.length > 0 && (
+                      <AdsBanner ads={ads} onPress={handleAdPress} />
+                    )}
+                  </React.Fragment>
+                ))}
+              </View>
+            )}
+            {articleHasMore && (
+              <TouchableOpacity
+                style={[ss.viewMoreBtn, { marginTop: 8 }]}
+                activeOpacity={0.85}
+                onPress={() => { if (!articleLoadingMore && !articleLoading) loadArticles(articlePage + 1, true); }}
+              >
+                {articleLoadingMore
+                  ? <ActivityIndicator size="small" color={ACCENT} />
+                  : <>
+                      <Ionicons name="chevron-down" size={14} color={ACCENT} />
+                      <Text style={ss.viewMoreText}>Load More Articles</Text>
+                    </>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+
+      case 'articles':
+        return (
+          <View style={[ss.section, { marginBottom: 12 }]}>
+            <SectionHeader title="Articles & Guides" onSeeAll={() => navigation.navigate('ArticlesScreen')} />
+            <Text style={ss.sectionSubtitle}>Read the latest tips, stories and guides</Text>
+            {articleLoading && articleItems.length === 0 ? (
+              <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {articleItems.map((a) => (
+                  <ExploreArticleCard
+                    key={String(a.id ?? a.post_id)}
+                    item={a}
+                    onPress={() => navigation.navigate('ArticleDetails', { postId: a.post_id ?? a.id })}
+                  />
+                ))}
+              </View>
+            )}
+            {articleHasMore && (
+              <TouchableOpacity
+                style={ss.viewMoreBtn}
+                activeOpacity={0.85}
+                onPress={() => { if (!articleLoadingMore && !articleLoading) loadArticles(articlePage + 1, true); }}
+              >
+                {articleLoadingMore
+                  ? <ActivityIndicator size="small" color={ACCENT} />
+                  : <>
+                      <Ionicons name="chevron-down" size={14} color={ACCENT} />
+                      <Text style={ss.viewMoreText}>Load More Articles</Text>
+                    </>
+                }
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayTrending, people, peopleLoading, reels, reelsLoading, communities, communitiesLoading, newUsers, newUsersLoading, articleItems, articleLoading, articleHasMore, articleLoadingMore, articlePage, navigation, token, shuffleKey]);
+
+  const listHeader = (
+    <>
+      {/* ── HERO — blends seamlessly with the header above ── */}
+      <View style={ss.hero}>
+        {/* Label */}
+        <View style={ss.heroLabelRow}>
+          <View style={ss.heroLabelDot} />
+          <Text style={ss.heroLabel}>HAFRIK DISCOVER</Text>
+        </View>
+
+        {/* Title */}
+        <Text style={ss.heroTitle}>Discover people, ideas, and opportunities.</Text>
+
+        {/* Subtitle */}
+        <Text style={ss.heroSub}>
+          Search communities, businesses, jobs, events, guides.
+        </Text>
+
+        {/* Search bar */}
+        <View style={ss.heroSearch}>
+          <Ionicons name="search" size={19} color={WHITE + 'BF'} />
+          <TextInput
+            value={heroQuery}
+            onChangeText={setHeroQuery}
+            placeholder="Search anything on Hafrik…"
+            placeholderTextColor={WHITE + '70'}
+            style={ss.heroInput}
+            returnKeyType="search"
+            onSubmitEditing={handleHeroSubmit}
+            autoCapitalize="none"
+            autoCorrect={false}
+            selectionColor={ACCENT}
+          />
+          <TouchableOpacity activeOpacity={0.85} onPress={handleHeroSubmit} style={ss.heroSearchBtn}>
+            <Ionicons name="arrow-forward" size={17} color={BRAND} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Stats chips */}
+        <View style={ss.heroChips}>
+          {counts?.communities != null && (
+            <View style={ss.heroChip}>
+              <Ionicons name="people-outline" size={11} color={WHITE + 'CC'} />
+              <Text style={ss.heroChipText}>{counts.communities} Communities</Text>
+            </View>
+          )}
+          {suggestedPages.length > 0 && (
+            <View style={ss.heroChip}>
+              <Ionicons name="storefront-outline" size={11} color={WHITE + 'CC'} />
+              <Text style={ss.heroChipText}>{suggestedPages.length} Businesses</Text>
+            </View>
+          )}
+          {articleItems.length > 0 && (
+            <View style={ss.heroChip}>
+              <Ionicons name="newspaper-outline" size={11} color={WHITE + 'CC'} />
+              <Text style={ss.heroChipText}>{articleItems.length} Articles</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* ── QUICK LINKS ── */}
+      <StaticShortcutRow />
+    </>
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -1622,12 +2241,7 @@ export default function DiscoveryScreen() {
       {/* ════════════════════════════════════════════════════════════════════
           FIXED HEADER — always visible, outside scroll
           ════════════════════════════════════════════════════════════════════ */}
-      <LinearGradient
-        colors={[BRAND, Colors.primaryDark]}
-        style={[ss.header, { paddingTop: top + 6 }]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View style={[ss.header, { paddingTop: top + 6, backgroundColor: HERO_COLOR }]}>
         <View style={ss.headerInner}>
           {/* Hamburger — opens DrawerNavigation */}
           <TouchableOpacity
@@ -1663,493 +2277,47 @@ export default function DiscoveryScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* ════════════════════════════════════════════════════════════════════
-          SCROLLABLE CONTENT
+          SCROLLABLE CONTENT (FlatList for virtualized section rendering)
           ════════════════════════════════════════════════════════════════════ */}
-      <ScrollView
+      <FlatList
         ref={scrollRef}
-        style={ss.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        data={flatListData}
+        keyExtractor={(item) => item.id}
+        renderItem={renderSection}
+        ListHeaderComponent={listHeader}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />
         }
-      >
-        {/* ── 1. HERO ── */}
-        <View style={ss.hero}>
-          <View style={ss.heroPills}>
-            <View style={ss.livePill}>
-              <View style={ss.liveDot} />
-              <Text style={ss.liveText}>HAFRIK · DISCOVER</Text>
-            </View>
-            {counts?.communities != null && (
-              <View style={ss.countPill}>
-                <Ionicons name="people-outline" size={12} color={ACCENT} />
-                <Text style={ss.countText}>{counts.communities} Communities</Text>
-              </View>
-            )}
-            {counts?.events != null && (
-              <View style={ss.countPill}>
-                <Ionicons name="calendar-outline" size={12} color={ACCENT} />
-                <Text style={ss.countText}>{counts.events} Events</Text>
-              </View>
-            )}
-          </View>
+        contentContainerStyle={ss.body}
+        removeClippedSubviews
+        initialNumToRender={4}
+        maxToRenderPerBatch={3}
+        windowSize={7}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      />
 
-          <Text style={ss.heroTitle}>Find people, ideas,{'\n'}and opportunities.</Text>
-          <Text style={ss.heroSub}>
-            Search communities, businesses, jobs, events, guides and marketplace.
-          </Text>
+      {/* Post preview bottom sheet (modal — stays outside FlatList) */}
+      <PostPreviewSheet
+        visible={!!previewPost}
+        post={previewPost}
+        onClose={() => setPreviewPost(null)}
+        onViewFull={() => {
+          const id = previewPost?.id ?? previewPost?.post_id;
+          const pt = String(previewPost?.type || '').toLowerCase();
+          setPreviewPost(null);
+          if (pt === 'reel' || pt === 'video') {
+            navigation.navigate('Reels2', { initialReels: [previewPost], startIndex: 0, initialReelId: id });
+          } else {
+            navigation.navigate('PostDetail', { postId: id });
+          }
+        }}
+      />
 
-          <View style={ss.heroSearch}>
-            <Ionicons name="search" size={18} color={WHITE + 'BF'} />
-            <TextInput
-              value={heroQuery}
-              onChangeText={setHeroQuery}
-              placeholder="Search anything on Hafrik…"
-              placeholderTextColor={WHITE + '8C'}
-              style={ss.heroInput}
-              returnKeyType="search"
-              onSubmitEditing={handleHeroSubmit}
-              autoCapitalize="none"
-              autoCorrect={false}
-              selectionColor={ACCENT}
-            />
-            <TouchableOpacity activeOpacity={0.85} onPress={handleHeroSubmit}>
-              <Ionicons name="arrow-forward-circle" size={28} color={ACCENT} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-
-        {/* ─── QUICK LINKS ─── */}
-        <StaticShortcutRow />
-
-        {/* ─── BODY ─── */}
-        <View style={ss.body}>
-
-          {/* ─── 1. TRENDING NOW ─── */}
-          {trendingPosts.length > 0 && (
-            <View style={ss.section}>
-              {/* Header */}
-              <View style={ss.sectionHeader}>
-                <View style={ss.sectionTitleRow}>
-                  <View style={ss.sectionAccent} />
-                  <Text style={ss.sectionTitle}>🔥 Trending Now</Text>
-                  <View style={[ss.trendingBadge, { marginLeft: 8 }]}>
-                    <View style={ss.liveDot} />
-                    <Text style={ss.trendingBadgeTxt}>LIVE</Text>
-                  </View>
-                </View>
-              </View>
-              <Text style={ss.sectionSubtitle}>What the community is talking about</Text>
-
-              {/* Ranked post list */}
-              <View style={{ gap: 8 }}>
-                {displayTrending.map((post, i) => (
-                  <RankedTrendingCard
-                    key={post.id ?? post.post_id ?? `tp-${i}`}
-                    item={post}
-                    rank={i + 1}
-                    rankDelta={RANK_DELTAS[i] ?? 0}
-                    onPress={() => {
-                      const id = post?.id ?? post?.post_id;
-                      if (!id) return;
-                      const pt = String(post?.type || '').toLowerCase();
-                      if (pt === 'reel' || pt === 'video') {
-                        navigation.navigate('Reels2', {
-                          initialReels: [post],
-                          startIndex: 0,
-                          initialReelId: id,
-                        });
-                      } else {
-                        navigation.navigate('PostDetail', { postId: id });
-                      }
-                    }}
-                  />
-                ))}
-              </View>
-
-              {/* Hot articles — animated section */}
-              <HotArticlesSection articles={popularThisWeek} navigation={navigation} />
-
-              {/* View all */}
-              <TouchableOpacity
-                style={ss.viewMoreBtn}
-                activeOpacity={0.85}
-                onPress={goToPopularFeedTab}
-              >
-                <Ionicons name="flame-outline" size={14} color={ACCENT} />
-                <Text style={ss.viewMoreText}>View All Trending Posts</Text>
-                <Ionicons name="arrow-forward" size={14} color={ACCENT} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Post preview bottom sheet */}
-          <PostPreviewSheet
-            visible={!!previewPost}
-            post={previewPost}
-            onClose={() => setPreviewPost(null)}
-            onViewFull={() => {
-              const id = previewPost?.id ?? previewPost?.post_id;
-              const pt = String(previewPost?.type || '').toLowerCase();
-              setPreviewPost(null);
-              if (pt === 'reel' || pt === 'video') {
-                navigation.navigate('Reels2', {
-                  initialReels: [previewPost],
-                  startIndex: 0,
-                  initialReelId: id,
-                });
-              } else {
-                navigation.navigate('PostDetail', { postId: id });
-              }
-            }}
-          />
-
-          {/* ─── Ads — immediately after trending section ─── */}
-          {ads.length > 0 && <AdsBanner ads={ads} onPress={handleAdPress} />}
-
-          {/* ─── 2. FEATURED BUSINESS ─── */}
-          <FeaturedBusinessSection navigation={navigation} token={token} shuffleKey={shuffleKey} />
-
-          {/* ─── 3. HOT TOPICS ─── */}
-          <View style={ss.section}>
-            <View style={ss.hotHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={ss.hotTitle}>🔥 Hot Topics</Text>
-                <View style={ss.hotBadge}><Text style={ss.hotBadgeTxt}>{hotTopics.length}</Text></View>
-              </View>
-            </View>
-            <Text style={ss.hotSub}>Tap any tag to dive into trending conversations</Text>
-            <View style={ss.hotTopicsWrap}>
-              {hotTopics.map((t, i) => {
-                const palettes = [
-                  { bg: BRAND,                   text: WHITE,    border: BRAND },
-                  { bg: ACCENT,                  text: DARK,      border: ACCENT },
-                  { bg: Colors.warning + '1A',   text: Colors.warning, border: Colors.warning },
-                  { bg: BRAND + '12',            text: BRAND,          border: BRAND + '66' },
-                  { bg: ACCENT + '1A',           text: ACCENT,         border: ACCENT },
-                  { bg: ACCENT + '1F',           text: BRAND,          border: ACCENT },
-                ];
-                const pal = palettes[i % palettes.length];
-                return (
-                  <TouchableOpacity
-                    key={`${t}-${i}`}
-                    onPress={() => {
-                      try { setSearchQuery?.(t); } catch {}
-                      navigation.navigate('SearchScreen', { initialQuery: t, initialTab: 'all' });
-                    }}
-                    activeOpacity={0.78}
-                    style={[ss.topicPill, { backgroundColor: pal.bg, borderColor: pal.border }]}
-                  >
-                    <Text style={[ss.topicHashtag, { color: pal.text, opacity: 0.6 }]}>#</Text>
-                    <Text style={[ss.topicPillText, { color: pal.text }]}>{t}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* ─── 4. PEOPLE YOU MAY KNOW ─── */}
-          {Array.isArray(people) && (people.filter(p => isRealImage(p?.avatar ?? p?.image ?? p?.thumbnail)).length > 0 || peopleLoading) && (
-            <View style={ss.section}>
-              <SectionHeader
-                title="People You May Know"
-                onSeeAll={() => navigation.navigate('SearchScreen', { initialQuery: '' })}
-              />
-              {peopleLoading && people.length === 0 ? (
-                <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
-                  {people.filter(p => isRealImage(p?.avatar ?? p?.image ?? p?.thumbnail)).map((p, i) => (
-                    <PersonHCard
-                      key={`person-${p.id ?? p.user_id ?? i}`}
-                      item={p}
-                      onPress={() => navigation.navigate('UserProfile', { userId: p.id ?? p.user_id })}
-                      onFollow={() => toggleFollowPerson(p.id ?? p.user_id)}
-                    />
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-          )}
-
-          {/* ─── 5. QUICK ACCESS — Hashtag categories ─── */}
-          <QuickAccessSection navigation={navigation} shuffleKey={shuffleKey} />
-
-          {/* ─── 6. REELS PREVIEW ─── */}
-          {(reels.length > 0 || reelsLoading) && (
-            <View style={ss.section}>
-              <View style={ss.sectionHeader}>
-                <View style={ss.sectionTitleRow}>
-                  <View style={ss.sectionAccent} />
-                  <Text style={ss.sectionTitle}>🎬 Reels</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Reels')}
-                  activeOpacity={0.8}
-                  style={ss.seeAllBtn}
-                >
-                  <Text style={ss.seeAllText}>See all</Text>
-                  <Ionicons name="chevron-forward" size={14} color={ACCENT} />
-                </TouchableOpacity>
-              </View>
-              <Text style={ss.sectionSubtitle}>Short videos from your community</Text>
-
-              {reelsLoading && reels.length === 0 ? (
-                <View style={ss.sectionLoader}>
-                  <ActivityIndicator size="small" color={BRAND} />
-                </View>
-              ) : (
-                <>
-                  {/* 2-column grid */}
-                  <View style={ss.reelGrid}>
-                    {reels.map((r, i) => (
-                      <ReelGridCard
-                        key={r.id ?? `reel-${i}`}
-                        item={r}
-                        onPress={() => handleReelPress(i)}
-                      />
-                    ))}
-                  </View>
-
-                  {/* Load More button */}
-                  {reelsHasMore && (
-                    <TouchableOpacity
-                      style={ss.viewMoreBtn}
-                      activeOpacity={0.85}
-                      onPress={handleLoadMoreReels}
-                      disabled={reelsLoadingMore}
-                    >
-                      {reelsLoadingMore ? (
-                        <ActivityIndicator size="small" color={ACCENT} />
-                      ) : (
-                        <>
-                          <Ionicons name="reload-outline" size={14} color={ACCENT} />
-                          <Text style={ss.viewMoreText}>Load More Reels</Text>
-                          <Ionicons name="arrow-down" size={14} color={ACCENT} />
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-            </View>
-          )}
-
-          {/* ─── 7. SUGGESTED COMMUNITIES ─── */}
-          {hotCommunities.length > 0 && (
-            <View style={ss.section}>
-              <SectionHeader title="Suggested Communities" onSeeAll={() => navigation.navigate('GroupScreen')} />
-              <View style={{ gap: 10, marginTop: 4 }}>
-                {hotCommunities.map((g, i) => {
-                  const cover  = g.cover ?? g.banner ?? g.image ?? null;
-                  const avatar = g.avatar ?? g.image ?? null;
-                  const name   = decodeHtml(g.title ?? g.name ?? 'Community');
-                  const members = (g.members_count ?? g.members ?? 0).toLocaleString();
-                  return (
-                    <TouchableOpacity
-                      key={g.id ?? i}
-                      style={ss.communityRow}
-                      activeOpacity={0.88}
-                      onPress={() => navigation.navigate('GroupDetails', { groupId: g.id })}
-                    >
-                      {/* Avatar */}
-                      {isRealImage(avatar)
-                        ? <Image source={{ uri: avatar }} style={ss.communityRowAvatar} resizeMode="cover" />
-                        : <LinearGradient colors={[BRAND, Colors.primaryDark]} style={[ss.communityRowAvatar, { alignItems: 'center', justifyContent: 'center' }]}>
-                          <Ionicons name="people" size={20} color={WHITE} />
-                          </LinearGradient>
-                      }
-                      {/* Info */}
-                      <View style={{ flex: 1 }}>
-                        <Text numberOfLines={1} style={ss.communityRowName}>{name}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                          <Ionicons name="people-outline" size={12} color={MUTED} />
-                          <Text style={ss.communityRowSub}>{members} members</Text>
-                        </View>
-                        {!!(g.description ?? g.bio ?? g.summary) && (
-                          <Text numberOfLines={2} style={ss.communityRowDesc}>
-                            {(g.description ?? g.bio ?? g.summary ?? '').trim()}
-                          </Text>
-                        )}
-                      </View>
-                      {/* Join button */}
-                      <View style={ss.communityRowJoin}>
-                        <Text style={ss.communityRowJoinTxt}>Join</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* ─── 7. AD CTA slot 1 ─── */}
-          {ctaAds.length > 0 && (
-            <InlineAdCard ad={ctaAds[0]} onPress={handleAdPress} />
-          )}
-
-          {/* ─── 8. UPCOMING EVENTS ─── */}
-          {hotEvents.length > 0 && (
-            <View style={ss.section}>
-              <SectionHeader
-                title="Upcoming Events"
-                onSeeAll={() => navigation.navigate('Events')}
-              />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
-                {hotEvents.map((ev, i) => {
-                  const title = decodeHtml(ev.title ?? ev.name ?? 'Event');
-                  const cover = ev.cover ?? ev.banner ?? ev.image ?? null;
-                  const loc   = ev.location ?? ev.venue ?? '';
-                  const date  = ev.start_date ?? ev.date ?? '';
-                  return (
-                    <TouchableOpacity
-                      key={ev.id ?? `ev-${i}`}
-                      style={ss.eventCard}
-                      activeOpacity={0.88}
-                      onPress={() => navigation.navigate('EventDetails', { eventId: ev.id })}
-                    >
-                      {isRealImage(cover) ? (
-                        <Image source={{ uri: cover }} style={ss.eventCover} resizeMode="cover" />
-                      ) : (
-                        <LinearGradient colors={[BRAND, Colors.primaryDark]} style={[ss.eventCover, { alignItems: 'center', justifyContent: 'center' }]}>
-                          <Ionicons name="calendar" size={24} color={WHITE} />
-                        </LinearGradient>
-                      )}
-                      <View style={ss.eventBody}>
-                        <Text numberOfLines={2} style={ss.eventTitle}>{title}</Text>
-                        {!!date && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                            <Ionicons name="calendar-outline" size={11} color={ACCENT} />
-                            <Text numberOfLines={1} style={ss.eventMeta}>{date}</Text>
-                          </View>
-                        )}
-                        {!!loc && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                            <Ionicons name="location-outline" size={11} color={MUTED} />
-                            <Text numberOfLines={1} style={ss.eventMeta}>{loc}</Text>
-                          </View>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* ─── 9. AD CTA slot 2 ─── */}
-          {ctaAds.length > 1 && (
-            <InlineAdCard ad={ctaAds[1]} onPress={handleAdPress} />
-          )}
-
-          {/* ─── 12. COMMUNITY HIGHLIGHTS (extra groups beyond top 3) ─── */}
-          {communityHighlights.length > 0 && (
-            <View style={ss.section}>
-              <SectionHeader
-                title="Community Highlights"
-                onSeeAll={() => navigation.navigate('GroupScreen')}
-              />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
-                {communityHighlights.map((g, i) => {
-                  const avatar = g.avatar ?? g.image ?? null;
-                  const name   = decodeHtml(g.title ?? g.name ?? 'Community');
-                  const members = (g.members_count ?? g.members ?? 0).toLocaleString();
-                  return (
-                    <TouchableOpacity
-                      key={g.id ?? `ch-${i}`}
-                      style={ss.commHCard}
-                      activeOpacity={0.88}
-                      onPress={() => navigation.navigate('GroupDetails', { groupId: g.id })}
-                    >
-                      {isRealImage(avatar)
-                        ? <Image source={{ uri: avatar }} style={ss.commHAvatar} resizeMode="cover" />
-                        : <LinearGradient colors={[BRAND, Colors.primaryDark]} style={[ss.commHAvatar, { alignItems: 'center', justifyContent: 'center' }]}>
-                            <Ionicons name="people" size={18} color={WHITE} />
-                          </LinearGradient>
-                      }
-                      <Text numberOfLines={1} style={ss.commHName}>{name}</Text>
-                      <Text style={ss.commHSub}>{members} members</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* ─── 13. SPONSORED BUSINESSES ─── */}
-          {sponsoredBiz.length > 0 && (
-            <View style={ss.section}>
-              <View style={ss.sectionHeader}>
-                <View style={ss.sectionTitleRow}>
-                  <View style={ss.sectionAccent} />
-                  <Text style={ss.sectionTitle}>Sponsored</Text>
-                  <View style={[ss.trendingBadge, { marginLeft: 8 }]}>
-                    <Ionicons name="megaphone-outline" size={10} color={Colors.warning} />
-                    <Text style={ss.trendingBadgeTxt}>AD</Text>
-                  </View>
-                </View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4 }}>
-                {sponsoredBiz.map((biz, i) => (
-                  <FeaturedBizCard
-                    key={biz.id ?? `sb-${i}`}
-                    item={biz}
-                    onPress={() => navigation.navigate('BusinessDetails', { pageId: biz.id ?? biz.page_id })}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* ─── 14. GUIDES & TIPS — FINAL SECTION, paginated + ads ─── */}
-          {(articleItems.length > 0 || articleLoading) && (
-            <View style={[ss.section, { marginBottom: 28 }]}>
-              <SectionHeader title="Guides & Tips" onSeeAll={() => navigation.navigate('ArticlesScreen')} />
-              {articleLoading && articleItems.length === 0 ? (
-                <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
-              ) : (
-                <View style={{ gap: 10 }}>
-                  {articleItems.map((a, idx) => (
-                    <React.Fragment key={String(a.id ?? a.post_id)}>
-                      <ExploreArticleCard
-                        item={a}
-                        onPress={() => navigation.navigate('ArticleDetails', { postId: a.post_id ?? a.id })}
-                      />
-                      {(idx + 1) % 4 === 0 && ads.length > 0 && (
-                        <AdsBanner ads={ads} onPress={handleAdPress} />
-                      )}
-                    </React.Fragment>
-                  ))}
-                </View>
-              )}
-              {articleHasMore && (
-                <TouchableOpacity
-                  style={[ss.viewMoreBtn, { marginTop: 8 }]}
-                  activeOpacity={0.85}
-                  onPress={() => { if (!articleLoadingMore && !articleLoading) loadArticles(articlePage + 1, true); }}
-                >
-                  {articleLoadingMore
-                    ? <ActivityIndicator size="small" color={ACCENT} />
-                    : <>
-                        <Ionicons name="book-outline" size={14} color={ACCENT} />
-                        <Text style={ss.viewMoreText}>Load More Guides</Text>
-                        <Ionicons name="chevron-down" size={14} color={ACCENT} />
-                      </>
-                  }
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          <View style={{ height: 90 }} />
-        </View>
-      </ScrollView>
 
       {/* Visa modal */}
       <VisaModal
@@ -2215,8 +2383,9 @@ const ss = StyleSheet.create({
   sectionSubtitle: {
     fontSize: 12,
     color: MUTED,
-    marginTop: -6,
-    marginBottom: 12,
+    marginTop: 2,
+    marginBottom: 8,
+    lineHeight: 16,
   },
 
   // ── View More button ─────────────────────────────────────────────────────
@@ -2225,16 +2394,16 @@ const ss = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 14,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: `${ACCENT}12`,
+    marginTop: 8,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: `${ACCENT}14`,
     borderWidth: 1,
-    borderColor: `${ACCENT}22`,
+    borderColor: `${ACCENT}2A`,
   },
   viewMoreText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: ACCENT,
   },
 
@@ -2243,6 +2412,15 @@ const ss = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: REEL_GAP,
+  },
+  reelSeeMoreCard: {
+    width: 80, height: REEL_H_W * 1.6,
+    borderRadius: 8, overflow: 'hidden',
+    backgroundColor: BRAND + 'CC',
+    alignItems: 'center', justifyContent: 'center', gap: 6,
+  },
+  reelSeeMoreText: {
+    fontSize: 11, fontWeight: '800', color: WHITE + 'CC', textAlign: 'center',
   },
 
   fab: {
@@ -2265,9 +2443,8 @@ const ss = StyleSheet.create({
 
   // ── Fixed header ─────────────────────────────────────────────────────────
   header: {
-    paddingHorizontal: 16, paddingBottom: 14,
-    shadowColor: BRAND, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3, shadowRadius: 14, elevation: 12,
+    paddingHorizontal: 16, paddingBottom: 12,
+    elevation: 0,
   },
   headerInner:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerCenter:  { position: 'absolute', left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
@@ -2293,54 +2470,59 @@ const ss = StyleSheet.create({
 
   // ── Hero ─────────────────────────────────────────────────────────────────
   hero: {
-    backgroundColor: BRAND, paddingHorizontal: 18, paddingTop: 20, paddingBottom: 22,
-    borderBottomLeftRadius: 26, borderBottomRightRadius: 26, overflow: 'hidden',
+    backgroundColor: HERO_COLOR,
+    paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20,
+    marginHorizontal: -14,
+    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
-  heroPills:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  livePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: WHITE + '1F',
-    borderWidth: 1, borderColor: WHITE + '29',
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+  heroLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
+  heroLabelDot: { width: 7, height: 7, borderRadius: 99, backgroundColor: ACCENT },
+  heroLabel:    { fontSize: 10, fontWeight: '800', letterSpacing: 2.5, color: WHITE + 'BB' },
+  heroTitle: {
+    fontSize: 27, fontWeight: '900', color: WHITE, lineHeight: 34,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
-  liveText: { fontSize: 9, fontWeight: '900', letterSpacing: 1.6, color: WHITE + 'D9' },
-  countPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: WHITE + '14',
-    borderWidth: 1, borderColor: WHITE + '1F',
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+  heroSub: {
+    marginTop: 6, fontSize: 13, lineHeight: 18, color: WHITE + '99',
   },
-  countText: { fontSize: 11, fontWeight: '700', color: WHITE + 'BF' },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: WHITE, lineHeight: 34 },
-  heroSub:   { marginTop: 8, fontSize: 13, lineHeight: 19, color: WHITE + 'A6' },
   heroSearch: {
-    marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: WHITE + '1F',
-    borderRadius: 16, borderWidth: 1, borderColor: WHITE + '2E',
-    paddingHorizontal: 14, height: 52,
+    marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: WHITE + '15',
+    borderRadius: 999, borderWidth: 1, borderColor: WHITE + '28',
+    paddingHorizontal: 18, paddingRight: 10, height: 52,
+  },
+  heroSearchBtn: {
+    width: 36, height: 36, borderRadius: 999,
+    backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center',
   },
   heroInput: { flex: 1, color: WHITE, fontSize: 14, paddingVertical: 0 },
+  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  heroChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: WHITE + '12', borderWidth: 1, borderColor: WHITE + '1E',
+    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999,
+  },
+  heroChipText: { fontSize: 11, fontWeight: '600', color: WHITE + 'C0' },
 
   // ── Body ─────────────────────────────────────────────────────────────────
-  body: { paddingTop: 14, paddingHorizontal: 14 },
+  body: { paddingTop: 0, paddingHorizontal: 14, paddingBottom: 100 },
 
   // ── Generic section ────────────────────────────────────────────────────────
   section: {
-    backgroundColor: WHITE, borderRadius: 18, padding: 14, marginTop: 12,
+    backgroundColor: WHITE, borderRadius: 22, padding: 12, marginTop: 14,
     borderWidth: 1, borderColor: BORDER,
-    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 10, elevation: 2,
+    shadowColor: DARK, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07, shadowRadius: 14, elevation: 4,
   },
   sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2,
   },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionAccent:   { width: 4, height: 18, borderRadius: 3, backgroundColor: ACCENT },
   sectionTitle:    { fontSize: 16, fontWeight: '900', color: DARK },
   seeAllBtn:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
   seeAllText:      { fontSize: 12, fontWeight: '800', color: ACCENT },
-  sectionLoader:   { paddingVertical: 24, alignItems: 'center' },
+  sectionLoader:   { paddingVertical: 14, alignItems: 'center' },
 
   // ── Hot topics ────────────────────────────────────────────────────────────
   hotHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -2456,13 +2638,15 @@ const ss = StyleSheet.create({
 
   // ── People ────────────────────────────────────────────────────────────────
   personCard: {
-    width: 120, alignItems: 'center', backgroundColor: Colors.surfaceTint + 'E6',
-    borderRadius: 18, padding: 14, borderWidth: 1, borderColor: BORDER,
+    width: 140, alignItems: 'center', backgroundColor: WHITE,
+    borderRadius: 22, padding: 16, borderWidth: 1, borderColor: BORDER,
+    shadowColor: DARK, shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
   },
-  personAvatar: { width: 58, height: 58, borderRadius: 29, backgroundColor: BRAND + '14', marginBottom: 8 },
-  personName:   { fontSize: 12, fontWeight: '800', color: DARK, textAlign: 'center' },
-  personSub:    { fontSize: 10, color: MUTED, textAlign: 'center', marginTop: 2 },
-  followBtn:        { marginTop: 10, backgroundColor: BRAND, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  personAvatar: { width: 66, height: 66, borderRadius: 33, backgroundColor: BRAND + '14', marginBottom: 10 },
+  personName:   { fontSize: 13, fontWeight: '800', color: DARK, textAlign: 'center' },
+  personSub:    { fontSize: 10, color: MUTED, textAlign: 'center', marginTop: 3 },
+  followBtn:        { marginTop: 12, backgroundColor: BRAND, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
   followBtnText:    { color: WHITE, fontSize: 11, fontWeight: '800' },
   followingBtn:     { backgroundColor: ACCENT + '1F', borderWidth: 1, borderColor: ACCENT },
   followingBtnText: { color: ACCENT },
@@ -2637,6 +2821,13 @@ const ss = StyleSheet.create({
   },
 
   
+  // ── Article 2-col grid ────────────────────────────────────────────────────
+  articleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: ARTICLE_GRID_GAP,
+  },
+
   // ── Article cards (vertical list) ─────────────────────────────────────────
   articleCard: {
     flexDirection: 'row', backgroundColor: WHITE, borderRadius: 14,
@@ -2834,7 +3025,7 @@ const ss = StyleSheet.create({
   qaChip:      { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: BRAND + '0F', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: BRAND + '14' },
   qaChipLabel: { fontSize: 12, fontWeight: '700', color: DARK },
   // Enhanced Quick Access
-  qaSection:       { backgroundColor: WHITE, borderRadius: 18, padding: 14, marginTop: 12, borderWidth: 1, borderColor: BORDER, shadowColor: DARK, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
+  qaSection:       { backgroundColor: WHITE, borderRadius: 22, padding: 12, marginTop: 14, borderWidth: 1, borderColor: BORDER, shadowColor: DARK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 4 },
   qaGroupCard:     { backgroundColor: WHITE, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: BRAND + '12', shadowColor: BRAND, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   qaGroupHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   qaGroupIconWrap: { width: 26, height: 26, borderRadius: 8, backgroundColor: BRAND + '14', alignItems: 'center', justifyContent: 'center' },
@@ -2863,24 +3054,24 @@ const ss = StyleSheet.create({
   rtCard: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE,
     borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: BORDER,
-    paddingVertical: 10, paddingHorizontal: 10, gap: 10,
-    shadowColor: DARK, shadowOffset: { width: 0, height: 1 },
+    paddingVertical: 10, paddingHorizontal: 10, gap: 8,
+    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
-  rtRankCol:    { alignItems: 'center', justifyContent: 'center', width: 30, gap: 3 },
-  rtRankNum:    { fontSize: 22, fontWeight: '900', color: BRAND, lineHeight: 26 },
+  rtRankCol:    { alignItems: 'center', justifyContent: 'center', width: 26, gap: 2 },
+  rtRankNum:    { fontSize: 20, fontWeight: '900', color: BRAND, lineHeight: 24 },
   rtRankNumGold:{ color: '#f59e0b' },
-  rtDivider:    { width: 1, alignSelf: 'stretch', backgroundColor: BORDER, marginHorizontal: 2 },
-  rtThumb:      { width: 60, height: 60, borderRadius: 10, backgroundColor: BRAND + '14' },
+  rtDivider:    { width: 1, alignSelf: 'stretch', backgroundColor: BORDER, marginHorizontal: 1 },
+  rtThumb:      { width: 62, height: 62, borderRadius: 10, backgroundColor: BRAND + '14' },
   rtBody:       { flex: 1, gap: 3 },
-  rtUserRow:    { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  rtUserRow:    { flexDirection: 'row', alignItems: 'center', gap: 4 },
   rtAvatar:     { width: 18, height: 18, borderRadius: 9, backgroundColor: BRAND + '14' },
-  rtUsername:   { fontSize: 11, fontWeight: '700', color: MUTED, flex: 1 },
+  rtUsername:   { fontSize: 10, fontWeight: '700', color: MUTED, flex: 1 },
   rtTitle:      { fontSize: 13, fontWeight: '800', color: DARK, lineHeight: 17 },
-  rtStats:      { flexDirection: 'row', gap: 10, marginTop: 2 },
+  rtStats:      { flexDirection: 'row', gap: 10, marginTop: 1 },
   rtStat:       { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  rtStatText:   { fontSize: 11, color: MUTED },
-  rtChevron:    { marginLeft: 2 },
+  rtStatText:   { fontSize: 10, color: MUTED },
+  rtChevron:    { marginLeft: 1 },
 
   // ── Rank delta indicator ──────────────────────────────────────────────────
   rankStable:   { fontSize: 10, fontWeight: '700', color: MUTED },
@@ -2912,7 +3103,7 @@ const ss = StyleSheet.create({
   previewViewBtnText:  { color: WHITE, fontSize: 15, fontWeight: '900' },
 
   // ── Hot articles section ──────────────────────────────────────────────────
-  hotArticlesWrap:     { marginTop: 16, gap: 10 },
+  hotArticlesWrap:     { marginTop: 10, gap: 7 },
   hotArticleHeader:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   hotArticleHeaderText:{ fontSize: 14, fontWeight: '900', color: DARK },
   firePulseEmoji:      { fontSize: 18 },
@@ -2934,25 +3125,25 @@ const ss = StyleSheet.create({
 
   // ── Event card (horizontal scroll) ────────────────────────────────────────
   eventCard: {
-    width: 200, backgroundColor: WHITE, borderRadius: 16,
+    width: 220, backgroundColor: WHITE, borderRadius: 20,
     borderWidth: 1, borderColor: BORDER, overflow: 'hidden',
-    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+    shadowColor: DARK, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
   },
-  eventCover:  { width: '100%', height: 110, backgroundColor: BRAND + '0F' },
-  eventBody:   { padding: 10 },
-  eventTitle:  { fontSize: 13, fontWeight: '800', color: DARK, lineHeight: 17 },
+  eventCover:  { width: '100%', height: 126, backgroundColor: BRAND + '0F' },
+  eventBody:   { padding: 12 },
+  eventTitle:  { fontSize: 14, fontWeight: '800', color: DARK, lineHeight: 18 },
   eventMeta:   { fontSize: 11, color: MUTED },
 
   // ── Community highlight card (horizontal scroll) ──────────────────────────
   commHCard: {
-    width: 130, alignItems: 'center', backgroundColor: WHITE, borderRadius: 16, padding: 12,
-    borderWidth: 1, borderColor: BORDER, gap: 6,
-    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    width: 148, alignItems: 'center', backgroundColor: WHITE, borderRadius: 20, padding: 16,
+    borderWidth: 1, borderColor: BORDER, gap: 8,
+    shadowColor: DARK, shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
   },
-  commHAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: BRAND + '14' },
-  commHName:   { fontSize: 12, fontWeight: '800', color: DARK, textAlign: 'center' },
+  commHAvatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: BRAND + '14' },
+  commHName:   { fontSize: 13, fontWeight: '800', color: DARK, textAlign: 'center' },
   commHSub:    { fontSize: 10, color: MUTED, textAlign: 'center' },
 
 });

@@ -57,6 +57,7 @@ import BusinessList from './src/pages/pages_/BusinessList';
 import Reels2 from './src/pages/reels/reels2';
 import CreateReels from './src/pages/createreels/createreelscreen';
 import UserProfileScreen from './src/pages/users/UserProfileScreen';
+import PeopleYouMayKnowScreen from './src/pages/users/PeopleYouMayKnowScreen';
 import NotificationsScreen from './src/pages/notifications/NotificationsScreen';
 import InboxScreen from './src/pages/messages/InboxScreen';
 import ThreadScreen from './src/pages/messages/ThreadScreen';
@@ -388,6 +389,7 @@ function AppNavigator() {
               <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} />
               <Stack.Screen name="EventDetail" component={EventDetailScreen} />
               <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+              <Stack.Screen name="PeopleYouMayKnow" component={PeopleYouMayKnowScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="Inbox" component={InboxScreen} />
               <Stack.Screen name="Thread" component={ThreadScreen} />

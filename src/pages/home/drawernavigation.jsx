@@ -167,6 +167,14 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisible]);
 
+  // ── Auto-refresh drawer data every 30 s in the background ───────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchBalance();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchBalance]);
+
   // ── Navigation helpers ──────────────────────────────────────────────────────
   const handleNavigate = useCallback(
     (screen, params) => {
