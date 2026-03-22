@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Modal, TouchableWithoutFeedback, Alert, Linking } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Text, Modal, TouchableWithoutFeedback, Alert, Linking, ActivityIndicator } from "react-native";
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -89,26 +89,71 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
     },[userDetails]);
 
     
-     const pickImageFromGallery = async (mode, apiUrl) => {
+    const handleUpload = async (mode, apiUrl, asset) => {
+        const mimeType = asset.mimeType || 'image/jpeg';
+        const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg').replace('heic', 'jpg').replace('heif', 'jpg') || 'jpg';
+        const mediaObj = {
+            uri:      asset.uri,
+            fileName: asset.fileName || `upload_${Date.now()}.${ext}`,
+            mimeType,
+        };
+
+        if (mode === 'cover')  setCoverImage( { uri: asset.uri, uploading: true,  loading: true,  fileType: 'photo' });
+        if (mode === 'avatar') setAvatarImage({ uri: asset.uri, uploading: true,  loading: true,  fileType: 'photo' });
+
+        try {
+            const response = await UploadProfileImageController(mediaObj, token, apiUrl);
+            console.log('Upload response:', JSON.stringify(response, null, 2));
+
+            if (response.status === 'success') {
+                const timestamp = Date.now();
+                const rawUrl =
+                    response.data?.avatar ||
+                    response.data?.cover  ||
+                    response.data?.url    ||
+                    response.data?.image  ||
+                    null;
+
+                if (rawUrl) {
+                    const sep    = rawUrl.includes('?') ? '&' : '?';
+                    const newUri = `${rawUrl}${sep}t=${timestamp}`;
+
+                    if (mode === 'cover') {
+                        setCoverImage( prev => ({ ...prev, uploading: false, loading: false, uri: newUri }));
+                        onProfileUpdated?.({ cover: rawUrl });
+                    } else {
+                        setAvatarImage(prev => ({ ...prev, uploading: false, loading: false, uri: newUri }));
+                        onProfileUpdated?.({ avatar: rawUrl });
+                    }
+                } else {
+                    // No URL returned — keep the local preview, clear loading state
+                    if (mode === 'cover')  setCoverImage( prev => ({ ...prev, uploading: false, loading: false }));
+                    if (mode === 'avatar') setAvatarImage(prev => ({ ...prev, uploading: false, loading: false }));
+                }
+            } else {
+                console.error('Upload failed:', response.status);
+                if (mode === 'cover')  setCoverImage( prev => ({ ...prev, uploading: false, loading: false }));
+                if (mode === 'avatar') setAvatarImage(prev => ({ ...prev, uploading: false, loading: false }));
+            }
+        } catch (err) {
+            console.error('Upload error:', err);
+            if (mode === 'cover')  setCoverImage( prev => ({ ...prev, uploading: false, loading: false }));
+            if (mode === 'avatar') setAvatarImage(prev => ({ ...prev, uploading: false, loading: false }));
+        }
+    };
+
+    const pickImageFromGallery = async (mode, apiUrl) => {
         try {
             const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!permission.granted) {
-                if (!permission.canAskAgain) {
-                    Alert.alert(
-                        'Permission Required',
-                        'Photo library access is disabled. Please enable it in your device Settings to choose a profile photo.',
-                        [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'Open Settings', onPress: () => Linking.openSettings() },
-                        ]
-                    );
-                } else {
-                    Alert.alert(
-                        'Permission Denied',
-                        'We need access to your photo library to update your profile picture.',
-                        [{ text: 'OK' }]
-                    );
-                }
+                Alert.alert(
+                    'Permission Required',
+                    'Photo library access is disabled. Please enable it in your device Settings.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                    ]
+                );
                 return;
             }
 
@@ -117,94 +162,42 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                 mediaTypes: ['images'],
                 allowsEditing: isAvatar,
                 aspect: isAvatar ? [1, 1] : [16, 9],
-                quality: 1,
+                quality: 0.8,
             });
 
-            if (!result || result.canceled) {
-                console.log('Image selection cancelled or no result');
+            if (!result || result.canceled) return;
+            await handleUpload(mode, apiUrl, result.assets[0]);
+        } catch (err) {
+            console.error('pickImageFromGallery error:', err);
+        }
+    };
+
+    const pickImageFromCamera = async (mode, apiUrl) => {
+        try {
+            const permission = await ImagePicker.requestCameraPermissionsAsync();
+            if (!permission.granted) {
+                Alert.alert(
+                    'Camera Permission Required',
+                    'Camera access is disabled. Please enable it in your device Settings.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+                    ]
+                );
                 return;
             }
 
-            const asset = result.assets[0];
-            const mimeType = asset.mimeType || 'image/jpeg';
-            const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg').replace('heic', 'jpg').replace('heif', 'jpg') || 'jpg';
-            const imageDataFromGallery = {
-                id: Date.now() + Math.random(),
-                uri: asset.uri,
-                fileName: asset.fileName || `upload_${Date.now()}.${ext}`,
-                mimeType,
-                type: asset.type || "image",
-                uploading: true,
-                loading: true,
-                fileType: "photo"
-            };
-            
-            if (mode === "cover"){
-                setCoverImage(imageDataFromGallery);
-            }
-            else if (mode === "avatar"){
-                setAvatarImage(imageDataFromGallery);
-            }
+            const isAvatar = mode === 'avatar';
+            const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: isAvatar,
+                aspect: isAvatar ? [1, 1] : [16, 9],
+                quality: 0.8,
+            });
 
-            try{//
-                const response = await UploadProfileImageController(imageDataFromGallery, token, apiUrl);
-                console.log("Upload response:", JSON.stringify(response, null, 2));
-
-                if (response.status === 'success'){
-                    // Add timestamp to bust expo-image cache
-                    const timestamp = Date.now();
-                    
-                    if (mode === "cover"){
-                        console.log("Cover image uploaded successfully..");
-                        const url = response.data?.image || response.data?.cover_url || response.data?.url || response.data?.cover;
-                        if (url) {
-                            const separator = url.includes('?') ? '&' : '?';
-                            const newUri = `${url}${separator}t=${timestamp}`;
-                            setCoverImage(prev => ({ ...prev, uploading: false, loading: false, uri: newUri }));
-                        } else {
-                            console.log("No cover URL in response, using local image");
-                            setCoverImage(prev => ({ ...prev, uploading: false, loading: false }));
-                        }
-                    }
-                    else if (mode === "avatar"){
-                        console.log("Profile image uploaded successfully");
-                        const url = response.data?.image || response.data?.avatar_url || response.data?.url || response.data?.avatar;
-                        if (url) {
-                            const separator = url.includes('?') ? '&' : '?';
-                            const newUri = `${url}${separator}t=${timestamp}`;
-                            setAvatarImage(prev => ({ ...prev, uploading: false, loading: false, uri: newUri }));
-                        } else {
-                            console.log("No avatar URL in response, using local image");
-                            setAvatarImage(prev => ({ ...prev, uploading: false, loading: false }));
-                        }
-                    }
-
-                }
-                else{
-                    if (mode === "cover"){
-                        console.error("Failed to upload cover image, server responded with status:", response.status);
-                        setCoverImage(prev => ({ ...prev, uploading: false, loading: false }));
-                    }
-                    else if (mode === "avatar"){
-                        console.error("Failed to upload profile image, server responded with status:", response.status);
-                        setAvatarImage(prev => ({ ...prev, uploading: false, loading: false }));
-                    }
-                   
-                }
-
-            }
-            catch(error){
-                console.log("Error uploading image:", error);
-                if (mode === 'cover') {
-                    setCoverImage(prev => ({ ...prev, uploading: false, loading: false }));
-                } else if (mode === 'avatar') {
-                    setAvatarImage(prev => ({ ...prev, uploading: false, loading: false }));
-                }
-            }
-            
-
+            if (!result || result.canceled) return;
+            await handleUpload(mode, apiUrl, result.assets[0]);
         } catch (err) {
-            console.error('pickImageFromGallery error:', err);
+            console.error('pickImageFromCamera error:', err);
         }
     };
 
@@ -230,6 +223,13 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     end={{ x: 0.5, y: 1 }}
                     style={styles.coverGradient}
                 />
+                {/* Cover upload progress overlay */}
+                {coverImage?.uploading && (
+                    <View style={styles.coverUploadOverlay}>
+                        <ActivityIndicator size="large" color={Colors.white} />
+                        <Text style={styles.uploadingText}>Uploading...</Text>
+                    </View>
+                )}
                 {isOwner && (
                     <View style={[styles.coverActions, coverImage?.uploading && { opacity: 0.5, pointerEvents: 'none' }]}>
                         <TouchableOpacity 
@@ -255,10 +255,11 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
             <View style={styles.profileInfoRow}>
                 <View style={styles.avatarSection}>
                     <View style={styles.mainAvatarWrapper}>
-                        <TouchableOpacity 
-                            activeOpacity={0.8} 
+                        <TouchableOpacity
+                            activeOpacity={0.8}
                             style={styles.mainAvatarContainer}
                             onPress={() => isOwner ? setAvatarOptionsVisible(true) : setFullscreenImage(avatarImage?.uri || user?.avatar)}
+                            disabled={avatarImage?.uploading}
                         >
                             <ExpoImage
                                 source={{ uri: avatarImage?.uri }}
@@ -266,15 +267,21 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                                 contentFit="cover"
                                 cachePolicy="memory-disk"
                             />
+                            {/* Avatar upload progress overlay */}
+                            {avatarImage?.uploading && (
+                                <View style={styles.avatarUploadOverlay}>
+                                    <ActivityIndicator size="small" color={Colors.white} />
+                                </View>
+                            )}
                         </TouchableOpacity>
-                        {/* Online indicator */}
-                        <View style={styles.onlineIndicator} />
+                        {/* Online indicator — hide while uploading */}
+                        {!avatarImage?.uploading && <View style={styles.onlineIndicator} />}
                         {isOwner && (
                             <TouchableOpacity
                                 disabled={avatarImage?.uploading}
                                 onPress={() => setAvatarOptionsVisible(true)}
                                 activeOpacity={0.8}
-                                style={[styles.avatarEditButton, avatarImage?.uploading && { opacity: 0.5 }]}
+                                style={[styles.avatarEditButton, avatarImage?.uploading && { opacity: 0 }]}
                             >
                                 <Ionicons name="camera" size={13} color={Colors.white} />
                             </TouchableOpacity>
@@ -461,8 +468,24 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                                 <View style={styles.sheetHandle} />
                                 <Text style={styles.sheetTitle}>Profile Photo</Text>
 
-                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => { setAvatarOptionsVisible(false); pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'); }}>
-                                    <View style={[styles.sheetOptionIcon, { backgroundColor: withOpacity(ACCENT, 0.12) }]}> 
+                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => {
+                                    setAvatarOptionsVisible(false);
+                                    setTimeout(() => pickImageFromCamera('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'), 400);
+                                }}>
+                                    <View style={[styles.sheetOptionIcon, { backgroundColor: withOpacity(ACCENT, 0.12) }]}>
+                                        <Ionicons name="camera-outline" size={20} color={ACCENT} />
+                                    </View>
+                                    <View>
+                                        <Text style={styles.sheetOptionText}>Take a Photo</Text>
+                                        <Text style={styles.sheetOptionSub}>Use your camera</Text>
+                                    </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity activeOpacity={0.7} style={styles.sheetOption} onPress={() => {
+                                    setAvatarOptionsVisible(false);
+                                    setTimeout(() => pickImageFromGallery('avatar', 'https://hafrik.com/api/v1/users/update_avatar.php'), 400);
+                                }}>
+                                    <View style={[styles.sheetOptionIcon, { backgroundColor: withOpacity(ACCENT, 0.12) }]}>
                                         <Ionicons name="image-outline" size={20} color={ACCENT} />
                                     </View>
                                     <View>
@@ -533,6 +556,27 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 100,
+    },
+    coverUploadOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: withOpacity(Colors.black, 0.55),
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    uploadingText: {
+        color: Colors.white,
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    avatarUploadOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: withOpacity(Colors.black, 0.55),
+        borderRadius: 45,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     coverActions: {
         position: 'absolute',

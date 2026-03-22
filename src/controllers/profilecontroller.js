@@ -243,41 +243,67 @@ const GetProfileFieldController = async(token) => {
 }
 
 
-const UploadProfileImageController = async(media, token, api) => {
+const UploadProfileImageController = async (media, token, saveUrl) => {
+    try {
+        // ── Step 1: Upload file to /uploads/media.php ──────────────────
+        const formData = new FormData();
+        formData.append('file', {
+            uri:  media.uri,
+            name: 'image.jpg',
+            type: 'image/jpeg',
+        });
 
-    try{
-              // Prepare form data
-          const formData = new FormData();
+        formData.append('type', 'photo');
 
-        //   formData.append('type', media.fileType);
-          formData.append('file', {
-            uri: media.uri,
-            type: media.mimeType || 'image/jpeg',
-            name: media.fileName || `upload_${Date.now()}.jpg`,
-          });
+        // Do NOT set Content-Type — let fetch set it with the correct boundary
+        const uploadRes = await fetch('https://hafrik.com/api/v1/uploads/media.php', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+        });
 
+        const uploadData = await uploadRes.json();
+        console.log('Upload step response:', uploadData);
 
-        
+        // Extract file path from upload response
+        const filePath =
+            uploadData?.data?.path   ||
+            uploadData?.data?.url    ||
+            uploadData?.path         ||
+            uploadData?.url          ||
+            uploadData?.file_path    ||
+            uploadData?.file         ||
+            null;
 
-          const response = await apiClient.post(api, formData, {
-             headers: { 'Content-Type': 'multipart/form-data' },
-        })
+        if (!filePath) {
+            console.error('No file path in upload response:', uploadData);
+            return { status: 'error', data: null };
+        }
 
-        console.log("Upload response:", response.data);
+        // ── Step 2: Save path to profile endpoint ──────────────────────
+        // Derive field name from the endpoint: update_avatar → avatar, update_cover → cover
+        const fieldName = saveUrl.includes('cover') ? 'cover' : 'avatar';
+        const saveRes = await apiClient.post(saveUrl, { [fieldName]: filePath });
 
-        const apiStatus = response.data?.status;
+        console.log('Save profile response:', saveRes.data);
+
+        const apiStatus = saveRes.data?.status;
         const normalizedStatus =
-            apiStatus === 'success' || apiStatus === 1 || apiStatus === true || response.status === 200
+            apiStatus === 'success' || apiStatus === 1 || apiStatus === true || saveRes.status === 200
                 ? 'success'
                 : 'error';
-        const data = response.data?.data ?? response.data;
+
+        const data = {
+            ...(saveRes.data?.data ?? saveRes.data ?? {}),
+            url: filePath,
+            [fieldName]: filePath,
+        };
 
         return { status: normalizedStatus, data };
 
-    }
-    catch(error){
-
-        return {status: error.response?.status || 500, data: null};
+    } catch (error) {
+        console.error('UploadProfileImageController error:', error.message ?? error);
+        return { status: 'error', data: null };
     }
 }
 

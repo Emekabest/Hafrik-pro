@@ -159,7 +159,7 @@ const Followers = ({ header, tabs, activeTab, onTabChange, userId }) => {
             const res = await fetch(BASE_URL + '/api/v1/users/follow.php', {
                 method: 'POST',
                 headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: Number(targetId), action }),
+                body: JSON.stringify({ user_id: Number(targetId) }),
             });
             const json = await res.json();
             const ok = json?.status === 'success' || json?.status === 200 || json?.status === '200';

@@ -1456,12 +1456,10 @@ export default function DiscoveryScreen() {
         : p
     ));
     try {
-      const form = new FormData();
-      form.append('user_id', String(userId));
-      await fetch(`${BASE_URL}/api/v1/people/follow_toggle.php`, {
+      await fetch(`${BASE_URL}/api/v1/users/follow.php`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
       });
     } catch {}
   }, [token]);
