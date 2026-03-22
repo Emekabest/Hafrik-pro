@@ -126,6 +126,7 @@ const ProfileHeaderController = async(token, userId = null) => {
         // Normalize: handle both { data: { user, counts, viewer } } and { user, counts, viewer }
         const raw = response.data?.data ?? response.data;
 
+
         // Flatten nested location object into the user before normalising
         let normalizedUser = raw?.user;
         if (normalizedUser) {

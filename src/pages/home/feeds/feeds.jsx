@@ -445,6 +445,7 @@ const Feeds = ({
   onRefresh,
   onPostPress,
   hideScrollTop = false,
+  initialDataLoaded = false,
 }) => {
   const pageRef        = useRef(1);
   const loadingMoreRef = useRef(false);
@@ -485,6 +486,13 @@ const Feeds = ({
       });
     }
   }, [feeds.length]);
+
+  // Dismiss skeleton when parent signals the initial fetch is done (even if feeds are empty)
+  useEffect(() => {
+    if (initialDataLoaded) {
+      setInitialLoading(false);
+    }
+  }, [initialDataLoaded]);
 
   const handleLoadMore = useCallback(async () => {
     if (feeds.length === 0 || loadingMoreRef.current || initialLoading) return;

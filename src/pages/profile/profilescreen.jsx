@@ -143,9 +143,7 @@ const ProfileScreen = () => {
     }, [activeTab.value]);
 
     
-
-
-
+    
     const userId = profileData?.user?.id;
     const userDetails = profileData?.user;
     const followersCount = profileData?.counts?.followers || 0;

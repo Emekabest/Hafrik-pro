@@ -11,6 +11,7 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId, refre
     const feedsName = "profileTimelineFeeds";
 
      const [posts, setPosts] = useState([]);
+    const [initialFetchDone, setInitialFetchDone] = useState(false);
 
     const clearFeedsList_store = useStore(state => state.clearFeedsList);
 
@@ -32,14 +33,18 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId, refre
     const API_URL = `${AppDetails.apis.profileTimeline}?user_id=${userId}`
 
     const getFeeds = useCallback(async () => {
-        const response = await ProfileTimelineController(API_URL, token, 1);
-        if (response.status === 200){
-            const data = Array.isArray(response.data)
-                ? response.data
-                : Array.isArray(response.data?.data)
-                    ? response.data.data
-                    : [];
-            addFeedsToList_store(feedsName, data);
+        try {
+            const response = await ProfileTimelineController(API_URL, token, 1);
+            if (response.status === 200){
+                const data = Array.isArray(response.data)
+                    ? response.data
+                    : Array.isArray(response.data?.data)
+                        ? response.data.data
+                        : [];
+                addFeedsToList_store(feedsName, data);
+            }
+        } finally {
+            setInitialFetchDone(true);
         }
     }, [API_URL, token]);
 
@@ -117,6 +122,7 @@ const Timeline = ({ header, tabs, activeTab, onTabChange, isOwner, userId, refre
                 feedsName="profileTimelineFeeds"
                 combinedData={combinedData}
                 feeds={transformedPosts}
+                initialDataLoaded={initialFetchDone}
                 API_URL={API_URL}
                 feedsController={ProfileTimelineController}
                 stickyHeaderIndices={stickyHeaderIndices}
