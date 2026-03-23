@@ -18,12 +18,30 @@ const ACCENT = Colors.primary;
 
 // ─── Tab definitions ─────────────────────────────────────────────────────────
 export const FEED_TABS = [
-  { key: 'forYou',     label: 'For You',    icon: 'sparkles-outline',     get: 'newsfeed',   listName: 'forYouFeeds' },
-  { key: 'discover',   label: 'Discover',   icon: 'compass-outline',      get: 'discover',   listName: 'discoverFeeds' },
-  { key: 'popular',    label: 'Popular',    icon: 'trending-up-outline',  get: 'popular',    listName: 'popularFeeds' },
-  { key: 'reels',      label: 'Reels',      icon: 'film-outline',         get: 'reels',      listName: 'reelsFeeds' },
-  { key: 'following',  label: 'Following',  icon: 'people-outline',       get: 'following',  listName: 'followingFeeds' },
-  { key: 'videos',     label: 'Videos',     icon: 'videocam-outline',     get: 'watch',      listName: 'watchFeeds' },
+  {
+    key: 'discover',
+    label: 'Discover',
+    description: 'Discover posts, people, and communities near you.',
+    icon: 'compass-outline',
+    get: 'discover',
+    listName: 'discoverFeeds',
+  },
+  {
+    key: 'community',
+    label: 'Your Community',
+    description: 'Posts from people, pages, and communities you follow.',
+    icon: 'people-circle-outline',
+    get: 'following',
+    listName: 'communityFeeds',
+  },
+  {
+    key: 'trending',
+    label: 'Trending Now',
+    description: 'See what everyone is talking about right now.',
+    icon: 'trending-up-outline',
+    get: 'popular',
+    listName: 'popularFeeds',
+  },
 ];
 
 // ─── Content filter pills ────────────────────────────────────────────────────

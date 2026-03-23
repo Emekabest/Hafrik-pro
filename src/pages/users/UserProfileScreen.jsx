@@ -241,12 +241,10 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
     }));
 
     try {
-      const form = new FormData();
-      form.append('user_id', String(targetId));
-      const res = await fetch(BASE_URL + '/api/v1/people/follow_toggle.php', {
+      const res = await fetch(BASE_URL + '/api/v1/users/follow.php', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: form,
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: targetId }),
       });
       const json = await res.json();
       const ok = json?.status === 'success' || json?.status === 200 || json?.status === '200';
@@ -427,12 +425,10 @@ export default function UserProfileScreen({ navigation, route }) {
     setFollowLoad(true);
     setIsFollowing(!curFollowing);
     try {
-      const form = new FormData();
-      form.append('user_id', String(userId));
-      const res  = await fetch(BASE_URL + '/api/v1/people/follow_toggle.php', {
+      const res  = await fetch(BASE_URL + '/api/v1/users/follow.php', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: form,
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
       });
       const json = await res.json();
       const ok   = json?.status === 'success' || json?.status === 200 || json?.status === '200';
@@ -481,12 +477,10 @@ export default function UserProfileScreen({ navigation, route }) {
       (it.id || it.user_id) === targetId ? { ...it, _isFollowing: !it._isFollowing, _followLoading: true } : it
     ));
     try {
-      const form = new FormData();
-      form.append('user_id', String(targetId));
-      const res = await fetch(BASE_URL + '/api/v1/people/follow_toggle.php', {
+      const res = await fetch(BASE_URL + '/api/v1/users/follow.php', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + token },
-        body: form,
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: targetId }),
       });
       const json = await res.json();
       const ok = json?.status === 'success' || json?.status === 200 || json?.status === '200';

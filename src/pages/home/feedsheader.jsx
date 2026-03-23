@@ -103,7 +103,7 @@ const InlineAdSlot = () => {
 };
 
 // ─── FeedsHeader ────────────────────────────────────────────────────────────────
-const FeedsHeader = ({ name, id }) => {
+const FeedsHeader = ({ name, description, id }) => {
   const { token } = useAuth();
 
   const [countries,           setCountries]           = useState([]);
@@ -171,6 +171,7 @@ const FeedsHeader = ({ name, id }) => {
     else if (id === 'whatsNearbyFeeds') API = AppDetails.apis.whatsnearbyApi;
     // Unified feed tabs
     else if (id === 'forYouFeeds')     API = `${AppDetails.apis.feedApi}?get=newsfeed`;
+    else if (id === 'communityFeeds')  API = `${AppDetails.apis.feedApi}?get=following`;
     else if (id === 'discoverFeeds')   API = `${AppDetails.apis.feedApi}?get=discover`;
     else if (id === 'popularFeeds')    API = `${AppDetails.apis.feedApi}?get=popular`;
     else if (id === 'followingFeeds')  API = `${AppDetails.apis.feedApi}?get=following`;
@@ -202,8 +203,13 @@ const FeedsHeader = ({ name, id }) => {
     <View>
       {/* ── Header row ── */}
       <View style={styles.headerRow}>
-        {/* Feed title */}
-        <Text style={styles.headerName}>{name}</Text>
+        {/* Feed title + description */}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerName}>{name}</Text>
+          {!!description && (
+            <Text style={styles.headerDescription}>{description}</Text>
+          )}
+        </View>
 
         {/* Filter pill */}
         <TouchableOpacity
@@ -343,7 +349,13 @@ const styles = StyleSheet.create({
     fontFamily: 'ReadexPro_600SemiBold',
     color: BRAND,
     letterSpacing: -0.4,
-    flex: 1,
+  },
+  headerDescription: {
+    fontSize: 12,
+    fontFamily: 'ReadexPro_400Regular',
+    color: TEXT_MUTED,
+    marginTop: 2,
+    lineHeight: 16,
   },
 
   // ── Filter pill ──────────────────────────────────────────────────────────────

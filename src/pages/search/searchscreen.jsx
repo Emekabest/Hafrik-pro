@@ -441,7 +441,7 @@ const SearchScreen = () => {
       return next;
     });
     try {
-      await apiClient.post('https://hafrik.com/api/v1/people/follow_toggle.php', { user_id: id });
+      await apiClient.post('https://hafrik.com/api/v1/users/follow.php', { user_id: id });
     } catch (_) {
       setFollowedIds(prev => {
         const next = new Set(prev);

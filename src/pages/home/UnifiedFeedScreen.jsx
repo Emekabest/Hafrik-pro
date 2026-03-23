@@ -50,12 +50,11 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     const feedsFromStoreFiltered = feedsFromStore; // Country filter removed: show all feeds
 
   // ── Local state ─────────────────────────────────────────────────────────────
-  const [feeds,         setFeeds]         = useState([]);
-  const [version,       setVersion]       = useState(0);
-  const [refreshing,    setRefreshing]    = useState(false);
+  const [feeds,            setFeeds]            = useState([]);
+  const [version,          setVersion]          = useState(0);
+  const [refreshing,       setRefreshing]       = useState(false);
   const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [peopleList,    setPeopleList]    = useState([]);
-  const [adsList,       setAdsList]       = useState([]);
   const [bizList,       setBizList]       = useState([]);
   const [communityList, setCommunityList] = useState([]);
   const [loadingMore,   setLoadingMore]   = useState(false);
@@ -87,14 +86,6 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     fetch('https://hafrik.com/api/v1/people/list.php', { headers })
       .then(r => r.json())
       .then(d => setPeopleList(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []))
-      .catch(() => {});
-
-    fetch('https://hafrik.com/api/v1/ads/list.php', { headers })
-      .then(r => r.json())
-      .then(d => {
-        const raw = d?.data;
-        setAdsList(Array.isArray(raw) ? raw : (raw?.id ? [raw] : []));
-      })
       .catch(() => {});
 
     fetch('https://hafrik.com/api/v1/business/list.php?limit=5', { headers })
@@ -177,7 +168,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const silentRefresh = useCallback(async () => {
     try {
       const response = await GetFeedsController(apiUrl, token, 1);
-      if (response?.status === 200 && Array.isArray(response?.data)) {
+      if (response?.status === 200 && Array.isArray(response?.data) && response.data.length > 0) {
         InteractionManager.runAfterInteractions(() => {
           prependFeedsToList_store(feedsName, response.data);
           if (response.meta) {
@@ -230,14 +221,12 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const combinedData = useMemo(() => {
     const items = [
       { type: 'banner', feedWidth: feedWidth || 0 },
-      { type: 'feedsheader', name: tabConfig.label, id: feedsName },
-      { type: 'locationstrip' },
+      { type: 'feedsheader', name: tabConfig.label, description: tabConfig.description, id: feedsName },
     ];
 
     // Interstitial pool
     const pool = [];
-    if (adsList.length       > 0) pool.push({ type: 'ad',            data: adsList[0] });
-    if (peopleList.length    > 0 && Math.random() < 0.5) pool.push({ type: 'peoplecard',    data: peopleList });
+    if (peopleList.length    > 0) pool.push({ type: 'peoplecard',    data: peopleList });
     if (bizList.length       > 0) pool.push({ type: 'bizcard',       data: bizList });
     if (communityList.length > 0) pool.push({ type: 'communitycard', data: communityList });
     // Shuffle
@@ -246,9 +235,9 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
-    const MAX_INTERSTITIALS = 2;
-    const FIRST_AT          = 5;
-    const STEP              = 8;
+    const MAX_INTERSTITIALS = 3;
+    const FIRST_AT          = 4;
+    const STEP              = 7;
     let poolIdx    = 0;
     let nextInsert = FIRST_AT;
 
@@ -272,7 +261,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     });
 
     return items;
-  }, [feeds, feedWidth, adsList, peopleList, bizList, communityList, tabConfig.label, feedsName]);
+  }, [feeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName]);
 
   const handlePostPress = useCallback((postId) => {
     navigation.navigate('PostDetail', { postId });

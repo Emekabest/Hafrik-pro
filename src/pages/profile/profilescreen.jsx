@@ -34,9 +34,18 @@ const ProfileScreen = () => {
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    const setSearchVisible = useStore((state) => state.setSearchVisible);
+    const setSearchVisible  = useStore((state) => state.setSearchVisible);
     const setProfileTabMode = useStore((state) => state.setProfileTabMode);
-    const openComposer = useStore((state) => state.openComposer);
+    const openComposer      = useStore((state) => state.openComposer);
+    const profileDoubleTap  = useStore((state) => state.tabRefreshSignals?.Profile ?? 0);
+
+    // Double-tap on Profile tab → reload profile
+    const prevProfileDoubleTap = useRef(profileDoubleTap);
+    useEffect(() => {
+        if (profileDoubleTap === prevProfileDoubleTap.current) return;
+        prevProfileDoubleTap.current = profileDoubleTap;
+        handleRefreshProfile();
+    }, [profileDoubleTap]);
 
 
     const { expoPushToken, notification } = useNotification();

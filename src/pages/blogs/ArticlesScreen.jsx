@@ -36,10 +36,7 @@ const WHITE  = Colors.white;
 const CREAM  = Colors.background;
 const BORDER = BRAND + '14';
 
-const ON_DARK_10 = WHITE + '1A';
 const ON_DARK_14 = WHITE + '24';
-const ON_DARK_15 = WHITE + '26';
-const ON_DARK_40 = WHITE + '66';
 const ON_DARK_55 = WHITE + '8C';
 
 const FALLBACK_IMAGE = 'https://s3.ap-northeast-1.wasabisys.com/hafriksocial/uploads/photos/2026/01/hafrik_2b884253077d991796e12f7d1d13d243.png';
@@ -270,22 +267,23 @@ export default function ArticlesScreen({ navigation }) {
 
         {/* Search */}
         <View style={st.heroSearch}>
-          <Ionicons name="search-outline" size={16} color={ON_DARK_55} style={{ marginRight: 8 }} />
+          <Ionicons name="search" size={19} color={WHITE + 'BF'} />
           <TextInput
             style={st.searchInput}
             placeholder="Search articles…"
-            placeholderTextColor={ON_DARK_40}
+            placeholderTextColor={WHITE + '70'}
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
             autoCorrect={false}
             autoCapitalize="none"
           />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color={ON_DARK_55} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity activeOpacity={0.85} style={st.heroSearchBtn} onPress={() => setSearch('')}>
+            {search.length > 0
+              ? <Ionicons name="close" size={16} color={BRAND} />
+              : <Ionicons name="arrow-forward" size={17} color={BRAND} />
+            }
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -434,22 +432,22 @@ const st = StyleSheet.create({
   createBtn:    { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ACCENT, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100 },
   createBtnTxt: { fontSize: 12, fontWeight: '800', color: WHITE },
 
-  // Hero block — flat BRAND, rounded bottom, same pattern
+  // Hero block — flat brand, rounded bottom, same pattern as Explore hero
   heroBlock: {
-    backgroundColor: BRAND,
-    paddingHorizontal: 18, paddingTop: 18, paddingBottom: 24,
-    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
+    backgroundColor: '#0c3f44',
+    paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20,
+    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
     overflow: 'hidden', marginBottom: 4,
     marginHorizontal: -14,
   },
   heroPills:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  heroLivePill:  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: WHITE + '1F', borderWidth: 1, borderColor: WHITE + '29', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  heroLivePill:  { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: WHITE + '12', borderWidth: 1, borderColor: WHITE + '1E', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   heroLiveDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
   heroLiveText:  { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: WHITE + 'BF' },
-  heroCountPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: WHITE + '1F', borderWidth: 1, borderColor: WHITE + '1F', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  heroCountPill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: WHITE + '12', borderWidth: 1, borderColor: WHITE + '1E', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   heroCountText: { fontSize: 11, fontWeight: '700', color: WHITE + 'BF' },
-  heroTitle:     { fontSize: 28, fontWeight: '900', color: WHITE, lineHeight: 34 },
-  heroSub:       { marginTop: 8, fontSize: 13, lineHeight: 19, color: WHITE + 'A6' },
+  heroTitle:     { fontSize: 27, fontWeight: '900', color: WHITE, lineHeight: 34 },
+  heroSub:       { marginTop: 6, fontSize: 13, lineHeight: 18, color: WHITE + '99' },
   heroStats: {
     flexDirection: 'row', alignItems: 'center', marginTop: 18,
     backgroundColor: WHITE + '12', borderRadius: 14,
@@ -461,12 +459,13 @@ const st = StyleSheet.create({
   heroStatLabel:   { fontSize: 10, color: WHITE + '88', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
   heroStatDivider: { width: 1, height: 30, backgroundColor: WHITE + '22' },
   heroSearch: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: ON_DARK_10, borderRadius: 100,
-    borderWidth: 1, borderColor: ON_DARK_15,
-    paddingHorizontal: 14, height: 44, marginTop: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: WHITE + '15', borderRadius: 999,
+    borderWidth: 1, borderColor: WHITE + '28',
+    paddingHorizontal: 18, paddingRight: 10, height: 52, marginTop: 18,
   },
-  searchInput: { flex: 1, color: WHITE, fontSize: 13 },
+  heroSearchBtn: { width: 36, height: 36, borderRadius: 999, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' },
+  searchInput: { flex: 1, color: WHITE, fontSize: 14, paddingVertical: 0 },
 
   // Section label
   sectionBar:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8 },

@@ -711,53 +711,12 @@ const SearchModal = () => {
 
           ) : (
 
-            /* ── Live search suggestions ──────────────────────────────── */
+            /* ── Search bar with text — show only the search CTA ──────── */
             <View style={styles.body}>
-              {displayedSuggestions.length === 0 && !isLoading ? (
-                <View style={styles.noResultsWrap}>
-                  <Ionicons name="search-outline" size={40} color={BORDER} />
-                  <Text style={styles.noResultsText}>No results for "{searchText}"</Text>
-                  <Text style={styles.noResultsSub}>Try different keywords</Text>
-                </View>
-              ) : (
-                <ScrollView
-                  keyboardShouldPersistTaps="handled"
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 80 }}
-                >
-                  {displayedSuggestions.map((item, idx) => {
-                    const type = String(item?.type || "").toLowerCase();
-                    return (
-                      <TouchableOpacity
-                        key={`${item?.id || idx}-${idx}`}
-                        style={styles.suggRow}
-                        activeOpacity={0.78}
-                        onPress={() => selectSuggestion(item)}
-                      >
-                        <Image
-                          source={{ uri: item?.thumbnail || "https://hafrik.com/default-avatar.png" }}
-                          style={styles.suggAvatar}
-                        />
-                        <View style={styles.suggBody}>
-                          <Text style={styles.suggTitle} numberOfLines={1}>
-                            {item?.title || item?.name || "—"}
-                          </Text>
-                          {item?.subtitle ? (
-                            <Text style={styles.suggSub} numberOfLines={1}>{item.subtitle}</Text>
-                          ) : null}
-                        </View>
-                        {type ? <TypeBadge type={type} /> : null}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              )}
-
-              {/* See all results */}
               <View style={styles.seeAllBar}>
                 <TouchableOpacity style={styles.seeAllBarBtn} onPress={() => goSearch()} activeOpacity={0.82}>
                   <Ionicons name="search" size={16} color={WHITE} style={{ marginRight: 8 }} />
-                  <Text style={styles.seeAllBarText}>See all results for "{searchText}"</Text>
+                  <Text style={styles.seeAllBarText}>Search for "{searchText}"</Text>
                 </TouchableOpacity>
               </View>
             </View>

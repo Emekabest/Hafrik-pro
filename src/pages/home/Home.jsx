@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -42,6 +42,16 @@ const HomePage = ({ route, navigation }) => {
   const openCreateMenu     = useStore((state) => state.openCreateMenu);
   const showWelcomeModal   = useStore((state) => state.showWelcomeModal);
   const setShowWelcomeModal = useStore((state) => state.setShowWelcomeModal);
+  const feedDoubleTap      = useStore((state) => state.tabRefreshSignals?.Feed ?? 0);
+  const triggerRefresh     = useStore((state) => state.triggerRefresh);
+
+  // Double-tap on Feed tab → refresh active feed
+  const prevFeedDoubleTap = useRef(feedDoubleTap);
+  useEffect(() => {
+    if (feedDoubleTap === prevFeedDoubleTap.current) return;
+    prevFeedDoubleTap.current = feedDoubleTap;
+    triggerRefresh();
+  }, [feedDoubleTap, triggerRefresh]);
 
   const homeViewHeight = height - (AppDetails.headerHeight + AppDetails.mainTabNavigatorHeight + (tabletMode ? StatusBar.currentHeight : 0));
 
@@ -125,9 +135,7 @@ const HomePage = ({ route, navigation }) => {
   }, [setFeedWidth]);
 
   const currentTabConfig = FEED_TABS[activeTab];
-
-  // Hide content filter pills for Reels tab (renders full-screen vertical)
-  const showContentFilter = currentTabConfig.key !== 'reels';
+  const showContentFilter = true;
 
   const homeItem = () => (
     <>

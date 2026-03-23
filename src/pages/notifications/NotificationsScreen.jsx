@@ -110,12 +110,10 @@ const InlineFollowBtn = React.memo(({ userId, initialFollowing, token }) => {
     setFollowing(next);
     setLoading(true);
     try {
-      const fd = new FormData();
-      fd.append('user_id', String(userId));
-      const res = await fetch('https://hafrik.com/api/v1/people/follow_toggle.php', {
+      const res = await fetch('https://hafrik.com/api/v1/users/follow.php', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
       });
       const json = await res.json().catch(() => null);
       const serverFollowing = json?.data?.is_following ?? json?.is_following;
