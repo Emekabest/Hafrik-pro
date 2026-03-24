@@ -32,6 +32,10 @@ const BLACK    = Colors.black;
 const BUBBLE_ME    = BRAND;
 const BUBBLE_THEM  = WHITE;
 
+const POLL_INTERVAL    = 6000;  // 6s polling for new messages
+const TYPING_DEBOUNCE  = 1500;  // send typing signal 1.5s after last keystroke
+const TYPING_COOLDOWN  = 5000;  // don't resend typing signal within 5s
+
 const apiFetch = async (path, token, opts = {}) => {
   try {
     const res = await fetch(`${BASE_URL}${path}`, {
@@ -141,6 +145,47 @@ const Bubble = ({ item, isMe, otherAvatar, otherIsDefault }) => {
   );
 };
 
+// ─── Typing indicator bubble ────────────────────────────────────────────────
+const TypingBubble = ({ otherAvatar, otherIsDefault }) => {
+  const d1 = useRef(new Animated.Value(0)).current;
+  const d2 = useRef(new Animated.Value(0)).current;
+  const d3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const dot = (v, delay) => Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(v, { toValue: -4, duration: 250, useNativeDriver: true }),
+        Animated.timing(v, { toValue: 0,  duration: 250, useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    );
+    Animated.parallel([dot(d1, 0), dot(d2, 150), dot(d3, 300)]).start();
+  }, []);
+
+  return (
+    <View style={[styles.bubbleRow, styles.bubbleRowThem]}>
+      <View style={styles.bubbleAvatarWrap}>
+        {!otherIsDefault ? (
+          <Image source={{ uri: otherAvatar }} style={styles.bubbleAvatar} />
+        ) : (
+          <View style={[styles.bubbleAvatar, styles.bubbleAvatarFb]}>
+            <Ionicons name="person" size={14} color={BRAND} />
+          </View>
+        )}
+      </View>
+      <View style={[styles.bubble, styles.bubbleThem, { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 12 }]}>
+        {[d1, d2, d3].map((d, i) => (
+          <Animated.View
+            key={i}
+            style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: MUTED, transform: [{ translateY: d }] }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+};
+
 // ─── Day separator ─────────────────────────────────────────────────────────────
 const DaySep = ({ label }) => (
   <View style={styles.daySep}>
@@ -158,47 +203,96 @@ export default function ThreadScreen() {
   const { token, user } = useAuth();
   const { colors: tc } = useTheme();
   const refreshBadges   = useStore((s) => s.refreshBadges);
-  const setMessageCount = useStore((s) => s.setMessageCount);
 
   const { conversationId, otherUser = {} } = route.params ?? {};
 
-  const [messages,   setMessages]   = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [sending,    setSending]    = useState(false);
-  const [text,       setText]       = useState('');
-  const flatRef = useRef(null);
-  const myId    = user?.id ?? user?.user_id;
+  const [messages,       setMessages]       = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [sending,        setSending]        = useState(false);
+  const [text,           setText]           = useState('');
+  const [otherTyping,    setOtherTyping]    = useState(false);
 
-  const otherAvatar       = otherUser.avatar ?? otherUser.user_picture ?? null;
-  const otherIsDefault    = !otherAvatar || String(otherAvatar).includes('blank_profile') || String(otherAvatar).includes('/default.');
-  const otherName         = otherUser.username ?? otherUser.full_name ?? otherUser.name ?? 'User';
+  const flatRef          = useRef(null);
+  const pollRef          = useRef(null);
+  const typingTimeout    = useRef(null);
+  const lastTypingSent   = useRef(0);
+  const myId             = user?.id ?? user?.user_id;
 
-  const load = useCallback(async () => {
-    const res = await apiFetch(`/api/v1/messages/thread.php?conversation_id=${conversationId}`, token);
+  const otherAvatar    = otherUser.avatar ?? otherUser.user_picture ?? null;
+  const otherIsDefault = !otherAvatar || String(otherAvatar).includes('blank_profile') || String(otherAvatar).includes('/default.');
+  const otherName      = otherUser.username ?? otherUser.full_name ?? otherUser.name ?? 'User';
+
+  // ── Load messages ───────────────────────────────────────────────────────────
+  const load = useCallback(async (silent = false) => {
+    const res = await apiFetch('/api/v1/messages/messages.php', token, {
+      method: 'POST',
+      body: JSON.stringify({ conversation_id: conversationId }),
+    });
     const list = Array.isArray(res?.data) ? res.data : [];
-    setMessages(list);
-    setLoading(false);
+
+    setMessages((prev) => {
+      // Merge: keep temp messages, append confirmed ones
+      const confirmed = list;
+      const tempMsgs  = prev.filter((m) => m._temp);
+      const confirmedIds = new Set(confirmed.map((m) => String(m.id)));
+      const filtered  = tempMsgs.filter((m) => !confirmedIds.has(String(m.id)));
+      return [...confirmed, ...filtered];
+    });
+
+    // Check if other user is typing
+    const typing = res?.data_meta?.other_typing ?? 0;
+    setOtherTyping(typing === 1);
+
+    if (!silent) setLoading(false);
   }, [conversationId, token]);
 
-  // Mark as seen + refresh badges on open
+  // ── Mark seen ───────────────────────────────────────────────────────────────
+  const markSeen = useCallback(async () => {
+    await apiFetch('/api/v1/messages/seen.php', token, {
+      method: 'POST',
+      body: JSON.stringify({ conversation_id: conversationId }),
+    });
+    refreshBadges(token);
+  }, [conversationId, token, refreshBadges]);
+
+  // ── Init: load + mark seen + start polling ──────────────────────────────────
   useEffect(() => {
     load();
-    (async () => {
-      await apiFetch('/api/v1/messages/mark_seen.php', token, {
-        method: 'POST',
-        body: JSON.stringify({ conversation_id: conversationId }),
-      });
-      refreshBadges(token);
-    })();
+    markSeen();
+    pollRef.current = setInterval(() => load(true), POLL_INTERVAL);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    };
   }, []);
 
-  // Scroll to bottom when messages load / change
+  // ── Scroll to bottom when messages change ───────────────────────────────────
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 120);
     }
   }, [messages.length]);
 
+  // ── Typing indicator ────────────────────────────────────────────────────────
+  const sendTypingSignal = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastTypingSent.current < TYPING_COOLDOWN) return;
+    lastTypingSent.current = now;
+    await apiFetch('/api/v1/messages/typing.php', token, {
+      method: 'POST',
+      body: JSON.stringify({ conversation_id: conversationId }),
+    });
+  }, [conversationId, token]);
+
+  const handleChangeText = useCallback((val) => {
+    setText(val);
+    if (val.trim()) {
+      if (typingTimeout.current) clearTimeout(typingTimeout.current);
+      typingTimeout.current = setTimeout(sendTypingSignal, TYPING_DEBOUNCE);
+    }
+  }, [sendTypingSignal]);
+
+  // ── Send message ─────────────────────────────────────────────────────────────
   const sendMessage = useCallback(async () => {
     const msg = text.trim();
     if (!msg || sending) return;
@@ -228,7 +322,7 @@ export default function ThreadScreen() {
     refreshBadges(token);
   }, [text, sending, myId, conversationId, token, refreshBadges]);
 
-  // Build render-ready list (inject day separators)
+  // ── Build render list (day separators) ─────────────────────────────────────
   const renderList = (() => {
     const out = [];
     let lastDay = '';
@@ -281,7 +375,9 @@ export default function ThreadScreen() {
           )}
           <View>
             <Text style={styles.headerName} numberOfLines={1}>{otherName}</Text>
-            <Text style={styles.headerStatus}>Active recently</Text>
+            <Text style={styles.headerStatus}>
+              {otherTyping ? 'typing…' : 'Active recently'}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -309,6 +405,11 @@ export default function ThreadScreen() {
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() => flatRef.current?.scrollToEnd({ animated: false })}
+            ListFooterComponent={
+              otherTyping ? (
+                <TypingBubble otherAvatar={otherAvatar} otherIsDefault={otherIsDefault} />
+              ) : null
+            }
           />
         )}
 
@@ -320,7 +421,7 @@ export default function ThreadScreen() {
               placeholder="Type a message…"
               placeholderTextColor={MUTED}
               value={text}
-              onChangeText={setText}
+              onChangeText={handleChangeText}
               multiline
               maxLength={2000}
               selectionColor={ACCENT}

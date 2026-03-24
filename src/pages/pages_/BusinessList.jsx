@@ -429,26 +429,16 @@ export default function BusinessList() {
               <View style={bs.heroPills}>
                 <View style={bs.heroLivePill}>
                   <View style={bs.heroLiveDot} />
-                  <Text style={bs.heroLiveText}>BUSINESS DIRECTORY</Text>
+                  <Text style={bs.heroLiveText}>FOREIGNER BUSINESS DIRECTORY</Text>
                 </View>
               </View>
 
-              <Text style={bs.heroTitle}>Discover African{'\n'}Businesses.</Text>
+              <Text style={bs.heroTitle}>Discover African{'\n'}Businesses in China.</Text>
               <Text style={bs.heroSub}>
                 Browse verified services, products, and opportunities built for Africa and the world.
               </Text>
 
-              <View style={bs.heroStats}>
-                <View style={bs.heroStatItem}>
-                  <Text style={bs.heroStatNum}>{fmtCount(totalCount || pages.length)}</Text>
-                  <Text style={bs.heroStatLabel}>Listed</Text>
-                </View>
-                <View style={bs.heroStatDivider} />
-                <View style={bs.heroStatItem}>
-                  <Text style={bs.heroStatNum}>{fmtCount(categories.length)}</Text>
-                  <Text style={bs.heroStatLabel}>Categories</Text>
-                </View>
-              </View>
+             
 
               {/* ── Search ── */}
               <View style={bs.heroSearch}>
@@ -478,9 +468,10 @@ export default function BusinessList() {
               <View style={bs.filterTabs}>
                 {[
                   { key: 'all',       label: 'All' },
+                   { key: 'verified',  label: 'Verified' },
                   { key: 'following', label: 'Following' },
                   { key: 'suggested', label: 'Suggested' },
-                  { key: 'verified',  label: 'Verified' },
+                 
                 ].map(({ key, label }) => (
                   <TouchableOpacity
                     key={key}

@@ -1792,22 +1792,24 @@ export default function DiscoveryScreen() {
     // 1. Trending Now
     if (trendingPosts.length > 0)
       items.push({ id: 'trending', type: 'trending' });
-    // 2. Reels (horizontal scroll, max 4)
+    // 2. Hot Topics (search suggestion pills)
+    items.push({ id: 'hot_topics', type: 'hot_topics' });
+    // 3. Reels (horizontal scroll, max 4)
     if (reels.length > 0 || reelsLoading)
       items.push({ id: 'reels', type: 'reels' });
-    // 3. People You May Know
+    // 4. People You May Know
     const realPeople = Array.isArray(people) && people.filter(p => isRealImage(p?.avatar ?? p?.image ?? p?.thumbnail) && !p.is_follow).length > 0;
     if (realPeople || peopleLoading)
       items.push({ id: 'people', type: 'people' });
-    // 4. Suggested Communities
+    // 5. Suggested Communities
     if (communities.length > 0 || communitiesLoading)
       items.push({ id: 'community_highlights', type: 'community_highlights' });
-    // 5. Verified Businesses Near You
+    // 6. Verified Businesses Near You
     items.push({ id: 'featured_business', type: 'featured_business' });
-    // 6. New Users
+    // 7. New Users
     if (newUsers.length > 0 || newUsersLoading)
       items.push({ id: 'new_users', type: 'new_users' });
-    // 7. Articles grid
+    // 8. Articles
     if (articleItems.length > 0 || articleLoading)
       items.push({ id: 'articles', type: 'articles' });
     return items;
@@ -1874,8 +1876,15 @@ export default function DiscoveryScreen() {
                 <Text style={ss.hotTitle}>🔥 Hot Topics</Text>
                 <View style={ss.hotBadge}><Text style={ss.hotBadgeTxt}>{hotTopics.length}</Text></View>
               </View>
+              <TouchableOpacity
+                style={ss.shuffleBtn}
+                activeOpacity={0.75}
+                onPress={() => setHotTopics(pickRandom(TOPIC_POOL, 5))}
+              >
+                <Ionicons name="shuffle" size={17} color={BRAND} />
+              </TouchableOpacity>
             </View>
-            <Text style={ss.hotSub}>Tap any tag to dive into trending conversations</Text>
+            <Text style={ss.hotSub}>Tap any tag to search posts instantly</Text>
             <View style={ss.hotTopicsWrap}>
               {hotTopics.map((t, i) => {
                 const palettes = [
@@ -1891,8 +1900,7 @@ export default function DiscoveryScreen() {
                   <TouchableOpacity
                     key={`${t}-${i}`}
                     onPress={() => {
-                      try { setSearchQuery?.(t); } catch {}
-                      navigation.navigate('SearchScreen', { initialQuery: t, initialTab: 'all' });
+                      navigation.navigate('SearchScreen', { initialQuery: t, initialTab: 'posts' });
                     }}
                     activeOpacity={0.78}
                     style={[ss.topicPill, { backgroundColor: pal.bg, borderColor: pal.border }]}
@@ -2156,7 +2164,7 @@ export default function DiscoveryScreen() {
         return null;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayTrending, people, peopleLoading, reels, reelsLoading, communities, communitiesLoading, newUsers, newUsersLoading, articleItems, articleLoading, articleHasMore, articleLoadingMore, articlePage, navigation, token, shuffleKey]);
+  }, [displayTrending, people, peopleLoading, reels, reelsLoading, communities, communitiesLoading, newUsers, newUsersLoading, articleItems, articleLoading, articleHasMore, articleLoadingMore, articlePage, navigation, token, shuffleKey, hotTopics]);
 
   const listHeader = (
     <>
@@ -2472,7 +2480,6 @@ const ss = StyleSheet.create({
   hero: {
     backgroundColor: HERO_COLOR,
     paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20,
-    marginHorizontal: -14,
     borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
     overflow: 'hidden',
   },
@@ -2505,11 +2512,11 @@ const ss = StyleSheet.create({
   heroChipText: { fontSize: 11, fontWeight: '600', color: WHITE + 'C0' },
 
   // ── Body ─────────────────────────────────────────────────────────────────
-  body: { paddingTop: 0, paddingHorizontal: 14, paddingBottom: 100 },
+  body: { paddingTop: 0, paddingBottom: 100 },
 
   // ── Generic section ────────────────────────────────────────────────────────
   section: {
-    backgroundColor: WHITE, borderRadius: 22, padding: 12, marginTop: 14,
+    backgroundColor: WHITE, borderRadius: 22, padding: 12, marginTop: 14, marginHorizontal: 14,
     borderWidth: 1, borderColor: BORDER,
     shadowColor: DARK, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.07, shadowRadius: 14, elevation: 4,
@@ -3025,7 +3032,7 @@ const ss = StyleSheet.create({
   qaChip:      { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: BRAND + '0F', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: BRAND + '14' },
   qaChipLabel: { fontSize: 12, fontWeight: '700', color: DARK },
   // Enhanced Quick Access
-  qaSection:       { backgroundColor: WHITE, borderRadius: 22, padding: 12, marginTop: 14, borderWidth: 1, borderColor: BORDER, shadowColor: DARK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 4 },
+  qaSection:       { backgroundColor: WHITE, borderRadius: 22, padding: 12, marginTop: 14, marginHorizontal: 14, borderWidth: 1, borderColor: BORDER, shadowColor: DARK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 4 },
   qaGroupCard:     { backgroundColor: WHITE, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: BRAND + '12', shadowColor: BRAND, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   qaGroupHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   qaGroupIconWrap: { width: 26, height: 26, borderRadius: 8, backgroundColor: BRAND + '14', alignItems: 'center', justifyContent: 'center' },
