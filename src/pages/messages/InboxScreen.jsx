@@ -10,7 +10,8 @@ import {
   RefreshControl,
   TextInput,
   StatusBar,
-  Alert,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,7 +36,12 @@ const DANGER   = Colors.destructive;
 const apiFetch = async (path, token, opts = {}) => {
   try {
     const res = await fetch(`${BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(opts.headers ?? {}),
+      },
       ...opts,
     });
     return await res.json();
@@ -88,15 +94,15 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin }) => {
     }).start();
   }, []);
 
-  const other      = item.other_user ?? item.user ?? {};
-  const avatar     = other.avatar ?? null;
-  const name       = other.username ?? 'User';
-  const unread     = !item.seen || item.seen === 0 || item.seen === '0';
+  const other       = item.other_user ?? item.user ?? {};
+  const avatar      = other.avatar ?? null;
+  const name        = other.username ?? 'User';
   const unreadCount = Number(item.unread_count ?? 0);
-  const isOnline   = item.online === 1;
-  const typing     = item.typing === 1;
-  const timeStr    = timeAgo(item.last_message_at ?? item.updated_at);
-  const pinned     = item.pinned === 1;
+  const unread      = unreadCount > 0;
+  const isOnline    = item.online === 1;
+  const typing      = item.typing === 1;
+  const timeStr     = timeAgo(item.last_message_at ?? item.updated_at);
+  const pinned      = item.pinned === 1;
 
   const handlePress = () => {
     Haptics.selectionAsync();
@@ -244,6 +250,118 @@ const EmptyState = () => (
   </View>
 );
 
+/* ─── Contacts modal ─── */
+const ContactsModal = ({ visible, token, onClose, onSelect }) => {
+  const [contacts, setContacts]   = useState([]);
+  const [loading, setLoading]     = useState(false);
+  const [opening, setOpening]     = useState(null); // user_id being opened
+  const [search, setSearch]       = useState('');
+  const { top }                   = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (!visible) return;
+    setSearch('');
+    setLoading(true);
+    apiFetch('/api/v1/messages/contacts.php', token).then((res) => {
+      const list =
+        Array.isArray(res?.data?.contacts) ? res.data.contacts :
+        Array.isArray(res?.data)           ? res.data :
+        [];
+      setContacts(list);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [visible, token]);
+
+  const filtered = contacts.filter((c) => {
+    const name = (c.username ?? c.full_name ?? '').toLowerCase();
+    return name.includes(search.toLowerCase());
+  });
+
+  const handleSelect = async (contact) => {
+    if (opening) return;
+    const uid = contact.id ?? contact.user_id;
+    setOpening(uid);
+    const res = await apiFetch('/api/v1/messages/open.php', token, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: uid }),
+    });
+    setOpening(null);
+    const convId = res?.data?.conversation_id ?? res?.conversation_id;
+    if (convId) {
+      onClose();
+      onSelect({ conversationId: convId, otherUser: contact });
+    }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={[cm.root, { paddingTop: top }]}>
+        {/* Header */}
+        <View style={cm.header}>
+          <Text style={cm.title}>New Message</Text>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="close" size={22} color={WHITE} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Search */}
+        <View style={cm.searchBar}>
+          <Ionicons name="search" size={15} color={WHITE + '88'} />
+          <TextInput
+            style={cm.searchInput}
+            placeholder="Search people…"
+            placeholderTextColor={WHITE + '55'}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+          />
+        </View>
+
+        {/* List */}
+        {loading ? (
+          <View style={cm.loader}>
+            <ActivityIndicator color={ACCENT} size="large" />
+          </View>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={(c, i) => `contact-${c.id ?? c.user_id ?? i}`}
+            renderItem={({ item: c }) => {
+              const uid  = c.id ?? c.user_id;
+              const name = c.username ?? c.full_name ?? 'User';
+              const av   = c.avatar ?? null;
+              const busy = opening === uid;
+              return (
+                <TouchableOpacity style={cm.contactRow} activeOpacity={0.8} onPress={() => handleSelect(c)}>
+                  <Image
+                    source={{ uri: av ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}` }}
+                    style={cm.avatar}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={cm.name}>{name}</Text>
+                    {c.bio ? <Text style={cm.bio} numberOfLines={1}>{c.bio}</Text> : null}
+                  </View>
+                  {busy
+                    ? <ActivityIndicator size="small" color={ACCENT} />
+                    : <Ionicons name="chevron-forward" size={16} color={MUTED} />
+                  }
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={
+              <View style={cm.emptyWrap}>
+                <Text style={cm.emptyTxt}>No contacts found</Text>
+              </View>
+            }
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </View>
+    </Modal>
+  );
+};
+
 /* ─── Main screen ─── */
 export default function InboxScreen() {
   const navigation    = useNavigation();
@@ -252,19 +370,28 @@ export default function InboxScreen() {
   const { colors: tc } = useTheme();
   const setMsgCount   = useStore((s) => s.setMessageCount);
 
-  const [items,      setItems]      = useState([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [search,     setSearch]     = useState('');
-  const [searchFocus, setSearchFocus] = useState(false);
+  const [items,        setItems]        = useState([]);
+  const [refreshing,   setRefreshing]   = useState(false);
+  const [search,       setSearch]       = useState('');
+  const [searchFocus,  setSearchFocus]  = useState(false);
+  const [filter,       setFilter]       = useState('All');
+  const [showContacts, setShowContacts] = useState(false);
+  const [newBanner,    setNewBanner]    = useState(false);
 
-  const [filter, setFilter] = useState('All');
-
-  const headerAnim    = useRef(new Animated.Value(0)).current;
-  const searchWidth   = useRef(new Animated.Value(0)).current;
+  const pollRef      = useRef(null);
+  const prevUnread   = useRef(0);
+  const headerAnim   = useRef(new Animated.Value(0)).current;
+  const bannerAnim   = useRef(new Animated.Value(0)).current;
+  const searchWidth  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(headerAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     load();
+    // Poll every 7 seconds for new messages
+    pollRef.current = setInterval(load, 7000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -276,8 +403,19 @@ export default function InboxScreen() {
     }).start();
   }, [searchFocus]);
 
+  // Banner animation
+  useEffect(() => {
+    if (newBanner) {
+      Animated.sequence([
+        Animated.timing(bannerAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.delay(3000),
+        Animated.timing(bannerAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]).start(() => setNewBanner(false));
+    }
+  }, [newBanner]);
+
   const load = useCallback(async () => {
-    const res = await apiFetch('/api/v1/messages/inbox.php?page=1&limit=30', token);
+    const res = await apiFetch('/api/v1/messages/conversations.php?page=1&limit=30', token);
 
     const raw = Array.isArray(res?.data?.items)
       ? res.data.items
@@ -294,8 +432,15 @@ export default function InboxScreen() {
     });
 
     setItems(unique);
-    const unread = unique.filter((c) => !c.seen || c.seen === 0 || c.seen === '0').length;
-    setMsgCount(unread);
+
+    const totalUnread = unique.reduce((sum, c) => sum + Number(c.unread_count ?? 0), 0);
+    setMsgCount(totalUnread);
+
+    // Show "new message" banner if unread count increased since last poll
+    if (totalUnread > prevUnread.current) {
+      setNewBanner(true);
+    }
+    prevUnread.current = totalUnread;
     setRefreshing(false);
   }, [token]);
 
@@ -324,11 +469,12 @@ export default function InboxScreen() {
   const pinned = filtered.filter((c) => c.pinned === 1);
   const normal = filtered.filter((c) => c.pinned !== 1);
 
-  // apply unread filter on top
   const applyFilter = (arr) =>
-    filter === 'Unread' ? arr.filter((c) => !c.seen || c.seen === 0 || c.seen === '0') : arr;
+    filter === 'Unread' ? arr.filter((c) => Number(c.unread_count ?? 0) > 0) : arr;
 
   const activeConvs = items.filter((c) => c.online === 1).slice(0, 12);
+
+  const totalUnreadDisplay = items.reduce((sum, c) => sum + Number(c.unread_count ?? 0), 0);
 
   const flatData = useMemo(() => {
     const rows = [];
@@ -378,11 +524,10 @@ export default function InboxScreen() {
             <Text style={styles.headerEyebrow}>HAFRIK</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={styles.headerTitle}>Messages</Text>
-              {items.filter(c => !c.seen || c.seen === 0 || c.seen === '0').length > 0 && (
+              {totalUnreadDisplay > 0 && (
                 <View style={styles.titleUnreadBadge}>
                   <Text style={styles.titleUnreadTxt}>
-                    {items.filter(c => !c.seen || c.seen === 0 || c.seen === '0').length > 9
-                      ? '9+' : items.filter(c => !c.seen || c.seen === 0 || c.seen === '0').length}
+                    {totalUnreadDisplay > 9 ? '9+' : totalUnreadDisplay}
                   </Text>
                 </View>
               )}
@@ -393,7 +538,7 @@ export default function InboxScreen() {
           </View>
 
           <TouchableOpacity style={styles.composeBtn} activeOpacity={0.8}
-            onPress={() => Alert.alert('New message', 'New conversation feature coming soon!')}
+            onPress={() => setShowContacts(true)}
           >
             <Ionicons name="create-outline" size={20} color={WHITE} />
           </TouchableOpacity>
@@ -418,6 +563,19 @@ export default function InboxScreen() {
           )}
         </View>
       </View>
+
+      {/* ── New message banner ── */}
+      {newBanner && (
+        <Animated.View
+          style={[
+            styles.banner,
+            { opacity: bannerAnim, transform: [{ translateY: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }] },
+          ]}
+        >
+          <Ionicons name="chatbubble-ellipses" size={15} color={WHITE} />
+          <Text style={styles.bannerText}>New message received</Text>
+        </Animated.View>
+      )}
 
       {/* ── List ── */}
       <FlatList
@@ -456,6 +614,16 @@ export default function InboxScreen() {
         contentContainerStyle={{ paddingTop: 12, paddingBottom: 40, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews
+      />
+
+      {/* ── Contacts modal ── */}
+      <ContactsModal
+        visible={showContacts}
+        token={token}
+        onClose={() => setShowContacts(false)}
+        onSelect={({ conversationId, otherUser }) => {
+          navigation.navigate('Thread', { conversationId, otherUser });
+        }}
       />
     </View>
   );
@@ -515,6 +683,17 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1, fontSize: 14, color: WHITE,
   },
+
+  /* New message banner */
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: ACCENT,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  bannerText: { color: WHITE, fontSize: 13, fontWeight: '700' },
 
   /* Section label */
   sectionLabel: {
@@ -652,4 +831,44 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT, borderWidth: 2.5, borderColor: WHITE,
   },
   storyName: { fontSize: 10, fontWeight: '600', color: DARK, textAlign: 'center' },
+});
+
+/* ─── ContactsModal styles ─── */
+const cm = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
+  header: {
+    backgroundColor: BRAND,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingBottom: 10,
+  },
+  title: { fontSize: 18, fontWeight: '900', color: WHITE },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: BRAND,
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: WHITE + '22',
+  },
+  searchInput: {
+    flex: 1, fontSize: 14, color: WHITE,
+    backgroundColor: WHITE + '1F',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  loader: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+  contactRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: BRAND + '14',
+    backgroundColor: WHITE,
+  },
+  avatar: { width: 46, height: 46, borderRadius: 23 },
+  name:   { fontSize: 15, fontWeight: '700', color: DARK },
+  bio:    { fontSize: 12, color: MUTED, marginTop: 2 },
+  emptyWrap: { alignItems: 'center', paddingTop: 60 },
+  emptyTxt:  { fontSize: 14, color: MUTED },
 });

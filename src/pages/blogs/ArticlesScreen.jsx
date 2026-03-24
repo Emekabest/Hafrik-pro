@@ -248,23 +248,7 @@ export default function ArticlesScreen({ navigation }) {
           Stories, guides, and updates from Africa and the world.
         </Text>
 
-        <View style={st.heroStats}>
-          <View style={st.heroStatItem}>
-            <Text style={st.heroStatNum}>{trending.length > 0 ? `${trending.length}+` : '—'}</Text>
-            <Text style={st.heroStatLabel}>TRENDING</Text>
-          </View>
-          <View style={st.heroStatDivider} />
-          <View style={st.heroStatItem}>
-            <Text style={st.heroStatNum}>{mostRead.length > 0 ? `${mostRead.length}+` : '—'}</Text>
-            <Text style={st.heroStatLabel}>THIS WEEK</Text>
-          </View>
-          <View style={st.heroStatDivider} />
-          <View style={st.heroStatItem}>
-            <Text style={st.heroStatNum}>{articles.length > 0 ? `${articles.length}+` : '—'}</Text>
-            <Text style={st.heroStatLabel}>ARTICLES</Text>
-          </View>
-        </View>
-
+       
         {/* Search */}
         <View style={st.heroSearch}>
           <Ionicons name="search" size={19} color={WHITE + 'BF'} />

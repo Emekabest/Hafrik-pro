@@ -403,22 +403,7 @@ const CommunitiesScreen = () => {
                 Discover communities, meet like-minded people, and be part of conversations that matter.
               </Text>
 
-              <View style={gs.heroStats}>
-                <View style={gs.heroStatItem}>
-                  <Text style={gs.heroStatNum}>{fmtCount(groups.length)}</Text>
-                  <Text style={gs.heroStatLabel}>Groups</Text>
-                </View>
-                <View style={gs.heroStatDivider} />
-                <View style={gs.heroStatItem}>
-                  <Text style={gs.heroStatNum}>{fmtCount(joinedCount)}</Text>
-                  <Text style={gs.heroStatLabel}>Joined</Text>
-                </View>
-                <View style={gs.heroStatDivider} />
-                <View style={gs.heroStatItem}>
-                  <Text style={gs.heroStatNum}>{fmtCount(categories.length)}</Text>
-                  <Text style={gs.heroStatLabel}>Categories</Text>
-                </View>
-              </View>
+              
 
               {/* Search */}
               <View style={gs.heroSearch}>
