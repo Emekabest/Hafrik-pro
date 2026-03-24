@@ -323,15 +323,13 @@ const useStore = create((set, get) => ({
 
     refreshBadges: async (token) => {
         if (!token) return;
-        const [notifRes, convRes] = await Promise.all([
+        const [notifRes, unreadRes] = await Promise.all([
             apiBadge('/api/v1/notifications/count.php', token),
-            apiBadge('/api/v1/messages/conversations.php?page=1&limit=50', token),
+            apiBadge('/api/v1/messages/unread-count.php', token),
         ]);
         const notifCount = Number(notifRes?.data?.count ?? notifRes?.count ?? 0);
-        const convItems  = Array.isArray(convRes?.data?.items)
-            ? convRes.data.items
-            : Array.isArray(convRes?.data) ? convRes.data : [];
-        const msgCount   = convItems.reduce((sum, c) => sum + Number(c.unread_count ?? 0), 0);
+        // unread-count.php returns { status, data: 3 } — data is a plain number
+        const msgCount = Number(unreadRes?.data ?? 0);
         set({ notificationCount: notifCount, messageCount: msgCount });
     },
 
