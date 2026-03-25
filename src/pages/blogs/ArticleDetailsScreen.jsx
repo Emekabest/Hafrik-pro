@@ -25,10 +25,12 @@ import * as Haptics from 'expo-haptics';
 
 import { fetchArticleDetail, normalizeTags } from './articlesApi';
 import { GetCommentsController, AddCommentController, AddReplyController, LikeCommentController } from '../../controllers/commentscontroller';
+
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
 import { useTheme } from '../../theme/ThemeContext';
 import ShareModal from '../home/feeds/share';
+import ToggleSaveController from '../../controllers/tooglesavecontroller';
 
 const { width, height } = Dimensions.get('window');
 
@@ -116,18 +118,6 @@ async function saveBookmarksSet(set) {
   } catch {}
 }
 
-async function savePostToApi(postId, token) {
-  try {
-    const res = await fetch('https://hafrik.com/api/v1/posts/save.php', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ post_id: postId }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 function CommentRow({ item }) {
   const name = item.user?.full_name || item.user?.name || item.user?.username || item.username || 'User';
@@ -315,7 +305,7 @@ export default function ArticleDetailsScreen({ navigation, route }) {
     await saveBookmarksSet(set);
 
     // Sync to server (toggle — server handles saved/unsaved state)
-    savePostToApi(postId, token);
+    ToggleSaveController(postId, token);
   }, [postId, token]);
 
   const handleShare = useCallback(async () => {
