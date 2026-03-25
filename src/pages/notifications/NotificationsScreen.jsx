@@ -351,11 +351,9 @@ export default function NotificationsScreen() {
 
   const fetchCount = useCallback(async () => {  
     const res = await apiFetch('/api/v1/notifications/count.php', token);
-    const count = Number(res?.data?.unread);
+    const count = Number(res?.data?.unread ?? res?.data?.count ?? 0) || 0;
     setApiUnreadCount(count);
-    setNotifCount(1);
-    console.log("Loading notifications.....", 1);
-
+    setNotifCount(count);
   }, [token, setNotifCount]);
 
   const load = useCallback(async (pageNum = 1, append = false) => {

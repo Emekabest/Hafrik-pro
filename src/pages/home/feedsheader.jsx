@@ -33,12 +33,12 @@ const LIME       = Colors.brandLime;
 const BORDER     = Colors.borderSoft;
 const TEXT_MUTED = Colors.mutedBlueGrayDeep;
 
-const ALL_COUNTRY = { country_id: 'all', name: 'All Countries' };
+const ALL_CITIES = { country_id: 'all', name: 'All Cities' };
 
 // ─── Normalise a country object to always use country_id ─────────────────────
 const normaliseCountry = (c) => ({
   country_id: c?.country_id ?? c?.id ?? 'all',
-  name: c?.name || c?.title || c?.country_name || c?.country || 'All Countries',
+  name: c?.name || c?.title || c?.country_name || c?.country || 'All Cities',
 });
 
 // ─── Compact Inline Ad Slot ─────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ const FeedsHeader = ({ name, description, id }) => {
   const { token } = useAuth();
 
   const [countries,           setCountries]           = useState([]);
-  const [selectedCountry,     setSelectedCountry]     = useState(ALL_COUNTRY);
+  const [selectedCountry,     setSelectedCountry]     = useState(ALL_CITIES);
   const [countryModalVisible, setCountryModalVisible] = useState(false);
   const [search,              setSearch]              = useState('');
   const [loading,             setLoading]             = useState(false);
@@ -126,11 +126,11 @@ const FeedsHeader = ({ name, description, id }) => {
           : Array.isArray(response.data)
           ? response.data
           : [];
-        setCountries([ALL_COUNTRY, ...remote.map(normaliseCountry)]);
+        setCountries([ALL_CITIES, ...remote.map(normaliseCountry)]);
       } else {
-        setCountries([ALL_COUNTRY]);
+        setCountries([ALL_CITIES]);
       }
-    }).catch(() => setCountries([ALL_COUNTRY]));
+    }).catch(() => setCountries([ALL_CITIES]));
   }, []);
 
   // ── Restore previously saved country ────────────────────────────────────
@@ -222,7 +222,7 @@ const FeedsHeader = ({ name, description, id }) => {
             : <Ionicons name="earth-outline" size={14} color={isActive ? Colors.white : BRAND} />
           }
           <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]} numberOfLines={1}>
-            {isActive ? selectedCountry.name : 'All Countries'}
+            {isActive ? selectedCountry.name : 'All Cities'}
           </Text>
           <Ionicons name="chevron-down" size={12} color={isActive ? Colors.white : BRAND} />
         </TouchableOpacity>
@@ -235,7 +235,7 @@ const FeedsHeader = ({ name, description, id }) => {
           <Text style={styles.filterIndicatorText}>
             Posts from {selectedCountry.name}
           </Text>
-          <TouchableOpacity onPress={() => handleSelectCountry(ALL_COUNTRY)} hitSlop={8}>
+          <TouchableOpacity onPress={() => handleSelectCountry(ALL_CITIES)} hitSlop={8}>
             <Ionicons name="close-circle" size={14} color={TEXT_MUTED} />
           </TouchableOpacity>
         </View>
@@ -258,9 +258,9 @@ const FeedsHeader = ({ name, description, id }) => {
             <View style={styles.modalHandle} />
 
             {/* Title */}
-            <Text style={styles.modalTitle}>Filter by Country</Text>
+            <Text style={styles.modalTitle}>Filter by Cities</Text>
             <Text style={styles.modalSubtitle}>
-              Only posts from the selected country will appear in your feed.
+              Only posts from the selected city will appear in your feed.
             </Text>
 
             {/* Search */}
@@ -268,7 +268,7 @@ const FeedsHeader = ({ name, description, id }) => {
               <Ionicons name="search-outline" size={15} color={TEXT_MUTED} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search countries..."
+                placeholder="Search cities..."
                 placeholderTextColor={TEXT_MUTED}
                 value={search}
                 onChangeText={setSearch}
@@ -281,7 +281,7 @@ const FeedsHeader = ({ name, description, id }) => {
               )}
             </View>
 
-            {/* Country list */}
+            {/* City list */}
             <FlatList
               data={filteredCountries}
               keyExtractor={(c, i) => (c.country_id ? String(c.country_id) : String(i))}

@@ -327,9 +327,10 @@ const useStore = create((set, get) => ({
             apiBadge('/api/v1/notifications/count.php', token),
             apiBadge('/api/v1/messages/unread-count.php', token),
         ]);
-        const notifCount = Number(notifRes?.data?.unread ?? notifRes?.data ?? 0);
-        const msgCount = Number(unreadRes?.data?.unread ?? unreadRes?.data ?? 0) || 0;
-        set({ notificationCount: notifCount, messageCount: msgCount });
+        const notifCount = Number(notifRes?.data?.unread ?? notifRes?.data?.count ?? notifRes?.count ?? 0) || 0;
+        const msgCount = Number(unreadRes?.data?.unread ?? unreadRes?.data?.count ?? unreadRes?.count ?? 0) || 0;
+        get().setNotificationCount(notifCount);
+        get().setMessageCount(msgCount);
     },
 
     startBadgePolling: (token) => {
