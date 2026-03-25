@@ -302,6 +302,7 @@ export default function InboxScreen() {
   const { colors: tc } = useTheme();
   const setMsgCount  = useStore((s) => s.setMessageCount);
 
+
   const [items,        setItems]        = useState([]);
   const [unreadItems,  setUnreadItems]  = useState([]);
   const [refreshing,   setRefreshing]   = useState(false);
@@ -349,7 +350,9 @@ export default function InboxScreen() {
   /* ── Unread badge — dedicated endpoint ──────────────────────────────────── */
   const refreshUnread = useCallback(async () => {
     const res = await api('/api/v1/messages/unread-count.php', token);
-    const count = Number(res?.data ?? 0);
+    const count = Number(res?.data.unread ?? 0);
+    console.log('Refreshing unread count…', count);
+
     setMsgCount(count);
     if (count > prevUnread.current) setNewBanner(true);
     prevUnread.current = count;

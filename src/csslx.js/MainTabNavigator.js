@@ -1,5 +1,5 @@
 // src/navigation/MainTabNavigator.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -177,14 +177,23 @@ const FeedFab = ({ onPress, notifCount }) => {
 
 // ─── Navigator ────────────────────────────────────
 const MainTabNavigator = () => {
+
+  const [unReadCount, setUnreadCount] = useState(0);
+
   const { token }      = useAuth();
-  const unreadCount    = useStore((s) => s.messageCount      ?? 0);
+  const unreadCount    = useStore((s) => s.messageCount);
   const notifCount     = useStore((s) => s.notificationCount ?? 0);
+
+  useEffect(() => {
+
+    setUnreadCount(unreadCount);
+      console.log('MainTabNavigator: Unread messages count updated:', unreadCount);
+  }, [unreadCount]);
 
   return (
     <Tab.Navigator
       initialRouteName="Feed"
-      tabBar={props => <CustomTabBar {...props} unreadCount={unreadCount} notifCount={notifCount} />}
+      tabBar={props => <CustomTabBar {...props} unreadCount={unReadCount} notifCount={notifCount} />}
       screenOptions={{ headerShown: false }}
     >
       {/* Home tab → Explore / Discovery */}
