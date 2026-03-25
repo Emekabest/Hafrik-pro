@@ -346,12 +346,16 @@ export default function NotificationsScreen() {
   const [loadingMore,   setLoadingMore]   = useState(false);
   const [apiUnreadCount, setApiUnreadCount] = useState(0);
   const hdrAnim = useRef(new Animated.Value(0)).current;
+  const pollRef = useRef(null);
 
-  const fetchCount = useCallback(async () => {
+
+  const fetchCount = useCallback(async () => {  
     const res = await apiFetch('/api/v1/notifications/count.php', token);
-    const count = Number(res?.data?.count ?? res?.count ?? 0);
+    const count = Number(res?.data?.unread);
     setApiUnreadCount(count);
-    setNotifCount(count);
+    setNotifCount(1);
+    console.log("Loading notifications.....", 1);
+
   }, [token, setNotifCount]);
 
   const load = useCallback(async (pageNum = 1, append = false) => {
@@ -364,17 +368,14 @@ export default function NotificationsScreen() {
     if (append) setAllItems((p) => [...p, ...items]); else setAllItems(items);
     setHasMore(items.length >= 20);
     setRefreshing(false); setLoadingMore(false);
-    if (pageNum === 1) {
-      apiFetch('/api/v1/notifications/read.php', token, { method: 'POST' });
-      setApiUnreadCount(0);
-      setNotifCount(0);
-    }
-  }, [token, setNotifCount]);
+  }, [token]);
 
   useEffect(() => {
-    Animated.timing(hdrAnim, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+    Animated.timing(hdrAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     fetchCount();
     load();
+    pollRef.current = setInterval(() => { fetchCount(); }, 7000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
   const onRefresh   = useCallback(() => { setPage(1); setHasMore(true); load(1, false); }, [load]);

@@ -351,7 +351,7 @@ export default function InboxScreen() {
   const refreshUnread = useCallback(async () => {
     const res = await api('/api/v1/messages/unread-count.php', token);
     const count = Number(res?.data.unread ?? 0);
-    console.log('Refreshing unread count…', count);
+
 
     setMsgCount(count);
     if (count > prevUnread.current) setNewBanner(true);
