@@ -328,8 +328,7 @@ const useStore = create((set, get) => ({
             apiBadge('/api/v1/messages/unread-count.php', token),
         ]);
         const notifCount = Number(notifRes?.data?.count ?? notifRes?.count ?? 0);
-        // unread-count.php returns { status, data: 3 } — data is a plain number
-        const msgCount = Number(unreadRes?.data ?? 0);
+        const msgCount = Number(unreadRes?.data?.unread ?? unreadRes?.data ?? 0) || 0;
         set({ notificationCount: notifCount, messageCount: msgCount });
     },
 
