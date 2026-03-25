@@ -338,13 +338,21 @@ export default function NotificationsScreen() {
   const { colors: tc } = useTheme();
   const setNotifCount = useStore((s) => s.setNotificationCount);
 
-  const [allItems,    setAllItems]    = useState([]);
-  const [refreshing,  setRefreshing]  = useState(false);
-  const [filter,      setFilter]      = useState('All');
-  const [page,        setPage]        = useState(1);
-  const [hasMore,     setHasMore]     = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [allItems,      setAllItems]      = useState([]);
+  const [refreshing,    setRefreshing]    = useState(false);
+  const [filter,        setFilter]        = useState('All');
+  const [page,          setPage]          = useState(1);
+  const [hasMore,       setHasMore]       = useState(true);
+  const [loadingMore,   setLoadingMore]   = useState(false);
+  const [apiUnreadCount, setApiUnreadCount] = useState(0);
   const hdrAnim = useRef(new Animated.Value(0)).current;
+
+  const fetchCount = useCallback(async () => {
+    const res = await apiFetch('/api/v1/notifications/count.php', token);
+    const count = Number(res?.data?.count ?? res?.count ?? 0);
+    setApiUnreadCount(count);
+    setNotifCount(count);
+  }, [token, setNotifCount]);
 
   const load = useCallback(async (pageNum = 1, append = false) => {
     if (!append) setRefreshing(pageNum === 1); else setLoadingMore(true);
@@ -355,16 +363,17 @@ export default function NotificationsScreen() {
     else if (Array.isArray(res?.items))  items = res.items;
     if (append) setAllItems((p) => [...p, ...items]); else setAllItems(items);
     setHasMore(items.length >= 20);
-    if (!append) setNotifCount(items.filter((n) => !n.seen || n.seen === 0 || n.seen === '0').length);
     setRefreshing(false); setLoadingMore(false);
     if (pageNum === 1) {
       apiFetch('/api/v1/notifications/read.php', token, { method: 'POST' });
-      if (!append) setNotifCount(0);
+      setApiUnreadCount(0);
+      setNotifCount(0);
     }
   }, [token, setNotifCount]);
 
   useEffect(() => {
     Animated.timing(hdrAnim, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+    fetchCount();
     load();
   }, []);
 
@@ -373,11 +382,13 @@ export default function NotificationsScreen() {
   const handleDel   = useCallback((id) => { if (!id) return; setAllItems((p) => p.filter((n) => (n.id ?? n.notification_id ?? n.notify_id) !== id)); }, []);
   const markAllRead = useCallback(async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    setAllItems((p) => p.map((n) => ({ ...n, seen: 1 }))); setNotifCount(0);
+    setAllItems((p) => p.map((n) => ({ ...n, seen: 1 })));
+    setApiUnreadCount(0);
+    setNotifCount(0);
     apiFetch('/api/v1/notifications/read.php', token, { method: 'POST' });
   }, [token, setNotifCount]);
 
-  const unread   = useMemo(() => allItems.filter((n) => !n.seen || n.seen === 0 || n.seen === '0').length, [allItems]);
+  const unread   = apiUnreadCount;
   const mentions = useMemo(() => allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'mention').length, [allItems]);
   const messages = useMemo(() => allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'message').length, [allItems]);
 
@@ -449,7 +460,7 @@ export default function NotificationsScreen() {
           tabs={FILTER_TABS}
           active={filter}
           onChange={setFilter}
-          counts={{ Unread: unread, Mentions: mentions, Messages: messages }}
+          counts={{ Unread: apiUnreadCount, Mentions: mentions, Messages: messages }}
         />
       </View>
 
