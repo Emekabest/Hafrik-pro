@@ -114,13 +114,13 @@ export default function SettingsScreen() {
           <Row
             icon="lock-closed-outline"
             label="Change Password"
-            onPress={() => openWeb('Change Password', 'https://hafrik.com/settings/security/password')}
+            onPress={() => openWeb('Change Password', `https://hafrik.com/settings/security/password?token=${token}`)}
             themeColors={tc}
           />
           <Row
             icon="mail-outline"
             label="Email & Phone"
-            onPress={() => openWeb('Email & Phone', 'https://hafrik.com/settings/security/password')}
+            onPress={() => openWeb('Email & Phone', `https://hafrik.com/settings/security/password?token=${token}`)}
             last
             themeColors={tc}
           />
@@ -131,7 +131,7 @@ export default function SettingsScreen() {
           <Row
             icon="eye-outline"
             label="Privacy Settings"
-            onPress={() => openWeb('Privacy Settings', `https://hafrik.com/settings/privacy/`)}
+            onPress={() => openWeb('Privacy Settings', `https://hafrik.com/settings/privacy?token=${token}`)}
             themeColors={tc}
           />
           <Row
