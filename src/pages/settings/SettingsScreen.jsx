@@ -55,6 +55,9 @@ const Row = ({ icon, iconColor = BRAND, label, value, onPress, destructive, last
 );
 
 export default function SettingsScreen() {
+
+  const { token } = useAuth();
+
   const navigation = useNavigation();
   const { top }    = useSafeAreaInsets();
   const { logout } = useAuth();
@@ -128,13 +131,20 @@ export default function SettingsScreen() {
           <Row
             icon="eye-outline"
             label="Privacy Settings"
-            onPress={() => openWeb('Privacy Settings', 'https://hafrik.com/settings/privacy')}
+            onPress={() => openWeb('Privacy Settings', `https://hafrik.com/settings/privacy/`)}
             themeColors={tc}
           />
           <Row
             icon="notifications-outline"
             label="Notification Preferences"
-            onPress={() => openWeb('Notifications', 'https://hafrik.com/settings/privacy')}
+            onPress={() => openWeb('Notifications', `https://hafrik.com/settings/privacy?token=${token}`)}
+            last
+            themeColors={tc}
+          />
+          <Row
+            icon="trash-outline"
+            label="Delete Account"
+            onPress={() => openWeb('Notifications', `https://hafrik.com/settings/delete?token=${token}`)}
             last
             themeColors={tc}
           />
