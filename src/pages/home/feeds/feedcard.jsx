@@ -656,7 +656,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
               <TouchableOpacity
                 key={`${tag}-${idx}`}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('SearchScreen', { initialTab: 'all', initialQuery: tag })}
+                onPress={() => navigation.navigate('HashtagScreen', { hashtag: tag })}
               >
                 <Text style={styles.hashtag}>#{tag}</Text>
               </TouchableOpacity>

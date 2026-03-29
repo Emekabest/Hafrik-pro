@@ -53,7 +53,6 @@ export default function GroupFeed({ route }) {
 
     try {
       const payload = await getGroupFeed(groupId, pageNum, 10, token);
-      console.log("GROUP FEED:", JSON.stringify(payload));
 
       if (payload?.status === "success") {
         const feedPosts = Array.isArray(payload.data?.data)
@@ -65,8 +64,7 @@ export default function GroupFeed({ route }) {
         setPosts(prev => pageNum === 1 ? feedPosts : [...prev, ...feedPosts]);
         if (feedPosts.length < 10) setHasMore(false);
       }
-    } catch (e) {
-      console.log("GroupFeed error:", e);
+    } catch {
     }
 
     setLoading(false);

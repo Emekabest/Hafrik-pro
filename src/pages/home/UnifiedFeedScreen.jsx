@@ -59,7 +59,8 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const [communityList, setCommunityList] = useState([]);
   const [loadingMore,   setLoadingMore]   = useState(false);
 
-  const isReelsTab = tabConfig.key === 'reels';
+  const isReelsTab    = tabConfig.key === 'reels';
+  const isDiscoverTab = tabConfig.key === 'discover';
   const pageRef    = useRef(1);
   const hasMoreRef = useRef(true);
 
@@ -263,6 +264,29 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     return items;
   }, [feeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName]);
 
+  // ── For discover tab: batch feed items into masonryrow pairs ──────────────
+  const finalCombinedData = useMemo(() => {
+    if (!isDiscoverTab) return combinedData;
+    const result = [];
+    let buf = [];
+    const flush = () => {
+      for (let i = 0; i < buf.length; i += 2) {
+        result.push({ type: 'masonryrow', left: buf[i], right: buf[i + 1] ?? null });
+      }
+      buf = [];
+    };
+    for (const item of combinedData) {
+      if (item.type === 'feed') {
+        if (item.data) buf.push(item);
+      } else {
+        flush();
+        result.push(item);
+      }
+    }
+    flush();
+    return result;
+  }, [isDiscoverTab, combinedData]);
+
   const handlePostPress = useCallback((postId) => {
     navigation.navigate('PostDetail', { postId });
   }, [navigation]);
@@ -292,6 +316,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     }
   }, [isReelsTab, loadingMore, apiUrl, token, feedsName]);
 
+
   // Reset page refs when API URL changes
   useEffect(() => {
     pageRef.current = 1;
@@ -318,7 +343,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
       <Feeds
         key={`${feedsName}-${version}`}
         feedsName={feedsName}
-        combinedData={combinedData}
+        combinedData={finalCombinedData}
         feeds={feeds}
         initialDataLoaded={initialFetchDone}
         API_URL={apiUrl}

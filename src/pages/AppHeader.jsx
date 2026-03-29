@@ -31,12 +31,6 @@ const AppHeader = ({ onOpenDrawer, title }) => {
   const navigation = useNavigation();
   const notifCount = useStore((s) => s.notificationCount ?? 0);
 
-  useEffect(() => {
-
-    console.log("Notification count updated:", notifCount);
-
-  }, [notifCount]);
-
   // pulse animation for notification bell when count changes
   const bellPulse = useRef(new Animated.Value(1)).current;
 

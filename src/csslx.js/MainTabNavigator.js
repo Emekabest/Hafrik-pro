@@ -1,7 +1,7 @@
 // src/navigation/MainTabNavigator.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Screens
@@ -76,11 +76,10 @@ const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
         let label;
 
         if (route.name === 'Home') {
-          // Home tab now opens Explore / Discovery
-          label = 'Explore';
+          label = 'Home';
           icon = (
             <Ionicons
-              name={isFocused ? 'compass' : 'compass-outline'}
+              name={isFocused ? 'home' : 'home-outline'}
               size={24}
               color={isFocused ? BRAND : MUTED}
             />
@@ -159,10 +158,29 @@ const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
 
 // ─── Feed FAB (center) ─────────────────────────────
 const FeedFab = ({ onPress, notifCount }) => {
+  const scale  = useRef(new Animated.Value(1)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
+
+  const handlePress = useCallback(() => {
+    Animated.parallel([
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 0.82, useNativeDriver: true, speed: 50, bounciness: 0 }),
+        Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 14, bounciness: 14 }),
+      ]),
+      Animated.sequence([
+        Animated.timing(rotate, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(rotate, { toValue: 0, duration: 180, useNativeDriver: true }),
+      ]),
+    ]).start();
+    onPress();
+  }, [onPress, scale, rotate]);
+
+  const spin = rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '18deg'] });
+
   return (
-    <TouchableOpacity onPress={onPress} style={styles.fabTab} activeOpacity={0.85}>
-      <View style={styles.fabButton}>
-        <Ionicons name="home" size={28} color={Colors.white} />
+    <TouchableOpacity onPress={handlePress} style={styles.fabTab} activeOpacity={1}>
+      <Animated.View style={[styles.fabButton, { transform: [{ scale }, { rotate: spin }] }]}>
+        <Image source={require('../assl.js/logo1.png')} style={{ width: 44, height: 44, tintColor: Colors.white }} resizeMode="contain" />
         {notifCount > 0 && (
           <View style={styles.fabBadge}>
             <Text style={styles.badgeText}>
@@ -170,7 +188,7 @@ const FeedFab = ({ onPress, notifCount }) => {
             </Text>
           </View>
         )}
-      </View>
+      </Animated.View>
     </TouchableOpacity>
   );
 };
@@ -185,23 +203,21 @@ const MainTabNavigator = () => {
   const notifCount     = useStore((s) => s.notificationCount ?? 0);
 
   useEffect(() => {
-
     setUnreadCount(unreadCount);
-      console.log('MainTabNavigator: Unread messages count updated:', unreadCount);
   }, [unreadCount]);
 
   return (
     <Tab.Navigator
-      initialRouteName="Feed"
+      initialRouteName="Home"
       tabBar={props => <CustomTabBar {...props} unreadCount={unReadCount} notifCount={notifCount} />}
       screenOptions={{ headerShown: false }}
     >
-      {/* Home tab → Explore / Discovery */}
-      <Tab.Screen name="Home"          component={DiscoveryScreen} />
+      {/* Home tab → Main Feed */}
+      <Tab.Screen name="Home"          component={HomePage} />
       <Tab.Screen name="Reels"         component={Reels2} />
 
-      {/* BIG CENTER FAB → Feed */}
-      <Tab.Screen name="Feed"          component={HomePage} />
+      {/* BIG CENTER FAB → Explore / Discovery */}
+      <Tab.Screen name="Feed"          component={DiscoveryScreen} />
 
       {/* Messages tab */}
       <Tab.Screen name="Messages" component={InboxScreen} />

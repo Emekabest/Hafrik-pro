@@ -23,8 +23,10 @@ const UploadMediaController = async(media, token, onProgress, uploadType)=>{
           });
 
 
+          const isLargeUpload = ['video', 'reel', 'thumbnail'].includes(uploadType || media.fileType);
           const response = await apiClient.post(API_URL, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: isLargeUpload ? 0 : 30000, // no timeout for videos; 30s for photos
             onUploadProgress: (progressEvent) => {
                 if (onProgress && progressEvent.total) {
                     onProgress(progressEvent);

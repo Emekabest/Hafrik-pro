@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SvgIcon from '../../../../assl.js/svg/svg';
@@ -7,12 +7,6 @@ import ToggleFeedController from '../../../../controllers/tooglefeedcontroller';
 import ToggleSaveController from '../../../../controllers/tooglesavecontroller';
 import useStore from '../../../../repository/store';
 import { Colors } from '../../../../theme/colors';
-import ReactionPicker, { REACTION_EMOJI_MAP } from './ReactionPicker';
-
-const REACTION_EMOJIS = {
-  like: '👍', love: '❤️', laugh: '😂', haha: '😂',
-  wow: '😮', sad: '😢', angry: '😡', support: '🤝', yay: '🎉',
-};
 
 const EngagementBar = ({
   feedId,
@@ -23,7 +17,6 @@ const EngagementBar = ({
   isSaved: initialSaved = false,
   commentsDisabled = false,
   myReaction: initialMyReaction = null,
-  reactions: initialReactions = null,
   viewsCount = 0,
   onOpenShare,
   onCommentPress,
@@ -33,166 +26,109 @@ const EngagementBar = ({
 }) => {
   const { token } = useAuth();
 
-  // ── Local state ──────────────────────────────────────────────────────────
-  const [isReacted, setIsReacted]   = useState(Boolean(initialLiked));
-  const [myReaction, setMyReaction] = useState(initialMyReaction || (initialLiked ? 'like' : null));
-  const [likeCount, setLikeCount]   = useState(Number(initialLikeCount) || 0);
-  const [saved, setSaved]           = useState(Boolean(initialSaved));
-  const [pickerVisible, setPickerVisible] = useState(false);
+  const [isLiked,    setIsLiked]    = useState(Boolean(initialLiked));
+  const [likeCount,  setLikeCount]  = useState(Number(initialLikeCount) || 0);
+  const [saved,      setSaved]      = useState(Boolean(initialSaved));
 
-  // Sync when props change (FlatList recycling / data refresh)
+  // Sync when FlatList recycles / data refreshes
   useEffect(() => {
-    setIsReacted(Boolean(initialLiked));
-    setMyReaction(initialMyReaction || (initialLiked ? 'like' : null));
+    setIsLiked(Boolean(initialLiked));
     setLikeCount(Number(initialLikeCount) || 0);
-  }, [feedId, initialLiked, initialLikeCount, initialMyReaction]);
+  }, [feedId, initialLiked, initialLikeCount]);
 
   useEffect(() => {
     setSaved(Boolean(initialSaved));
   }, [feedId, initialSaved]);
 
-  useEffect(() => {
-    setPickerVisible(false);
-  }, [feedId]);
-
-  // ── Reactions summary (top 3 emojis + total) ─────────────────────────────
-  const reactionsSummary = useMemo(() => {
-    const reactions = initialReactions;
-    if (!reactions || typeof reactions !== 'object') return null;
-    const entries = Object.entries(reactions)
-      .filter(([k, count]) => k !== 'total' && Number(count) > 0)
-      .sort((a, b) => Number(b[1]) - Number(a[1]));
-    if (entries.length === 0) return null;
-    const top3 = entries.slice(0, 3).map(([type]) => REACTION_EMOJIS[type] || '👍');
-    const total = entries.reduce((sum, [, c]) => sum + Number(c), 0);
-    return { emojis: top3, total };
-  }, [initialReactions]);
-
-  // ── Reaction API ─────────────────────────────────────────────────────────
-  const sendReaction = useCallback(async (reactionType) => {
-    const prevReacted  = isReacted;
-    const prevReaction = myReaction;
-    const prevCount    = likeCount;
-
-    const isRemoving = prevReaction === reactionType;
-    const newReacted  = !isRemoving;
-    const newReaction = isRemoving ? null : reactionType;
-    const newCount    = isRemoving
-      ? Math.max(0, prevCount - 1)
-      : (prevReacted ? prevCount : prevCount + 1);
+  // ── Like (toggle) ─────────────────────────────────────────────────────────
+  const handleLike = useCallback(async () => {
+    const wasLiked   = isLiked;
+    const prevCount  = likeCount;
+    const newLiked   = !wasLiked;
+    const newCount   = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
 
     // Optimistic UI
-    setIsReacted(newReacted);
-    setMyReaction(newReaction);
+    setIsLiked(newLiked);
     setLikeCount(newCount);
-    setPickerVisible(false);
 
-    // Optimistic store update — also patch reactions object so the summary row updates
+    // Optimistic store update
     const { feeds, updateFeedById } = useStore.getState();
     const currentFeed = feeds.feedsById[feedId];
     if (currentFeed) {
-      const updatedReactions = { ...(currentFeed.reactions || {}) };
-      if (isRemoving) {
-        updatedReactions[reactionType] = Math.max(0, Number(updatedReactions[reactionType] || 0) - 1);
-      } else {
-        if (prevReaction && prevReaction !== reactionType) {
-          updatedReactions[prevReaction] = Math.max(0, Number(updatedReactions[prevReaction] || 0) - 1);
-        }
-        if (!prevReacted) {
-          updatedReactions[reactionType] = Number(updatedReactions[reactionType] || 0) + 1;
-        }
-      }
       updateFeedById(feedId, {
         ...currentFeed,
-        is_liked: newReacted,
-        my_reaction: newReaction,
+        is_liked:    newLiked,
+        my_reaction: newLiked ? 'like' : null,
         likes_count: newCount,
-        reactions: updatedReactions,
       });
     }
 
     try {
-      const response = await ToggleFeedController(feedId, token, reactionType);
+      const response = await ToggleFeedController(feedId, token, 'like');
       if (response.status === 200 && response.data) {
         const raw = response.data;
-        const d = raw.data && (
-          raw.data.is_reacted !== undefined ||
-          raw.data.my_reaction !== undefined ||
-          raw.data.user_reaction !== undefined
-        ) ? raw.data : raw;
+        const d = raw.data && raw.data.is_reacted !== undefined ? raw.data : raw;
 
-        const serverReacted   = !!(d.is_reacted || d.my_reaction || d.user_reaction);
-        const serverReaction  = d.my_reaction || d.user_reaction || null;
-        const serverReactions = d.reactions || null;
+        const serverLiked = !!(d.is_reacted || d.my_reaction || d.user_reaction);
+        let   serverCount = newCount;
 
-        let serverTotal = newCount;
-        if (serverReactions && typeof serverReactions === 'object') {
-          serverTotal = Object.entries(serverReactions)
+        if (typeof d.likes_count === 'number') serverCount = d.likes_count;
+        else if (d.reactions && typeof d.reactions === 'object') {
+          const tot = Object.entries(d.reactions)
             .filter(([k]) => k !== 'total')
             .reduce((a, [, b]) => a + Number(b || 0), 0);
-          if (serverTotal === 0 && typeof serverReactions.total === 'number') {
-            serverTotal = serverReactions.total;
-          }
+          if (tot > 0) serverCount = tot;
+          else if (typeof d.reactions.total === 'number') serverCount = d.reactions.total;
         }
 
-        setIsReacted(serverReacted);
-        setMyReaction(serverReaction);
-        setLikeCount(serverTotal);
+        setIsLiked(serverLiked);
+        setLikeCount(serverCount);
 
         if (currentFeed) {
-          const { updateFeedById: upd } = useStore.getState();
-          upd(feedId, {
+          useStore.getState().updateFeedById(feedId, {
             ...useStore.getState().feeds.feedsById[feedId],
-            is_liked: serverReacted,
-            my_reaction: serverReaction,
-            likes_count: serverTotal,
-            reactions: serverReactions || currentFeed.reactions,
+            is_liked:    serverLiked,
+            my_reaction: serverLiked ? 'like' : null,
+            likes_count: serverCount,
           });
         }
       } else {
         // Rollback
-        setIsReacted(prevReacted);
-        setMyReaction(prevReaction);
+        setIsLiked(wasLiked);
         setLikeCount(prevCount);
         if (currentFeed) updateFeedById(feedId, currentFeed);
       }
     } catch {
-      setIsReacted(prevReacted);
-      setMyReaction(prevReaction);
+      setIsLiked(wasLiked);
       setLikeCount(prevCount);
       if (currentFeed) {
-        const { updateFeedById: upd } = useStore.getState();
-        upd(feedId, currentFeed);
+        useStore.getState().updateFeedById(feedId, currentFeed);
       }
     }
-  }, [isReacted, myReaction, likeCount, feedId, token]);
+  }, [isLiked, likeCount, feedId, token]);
 
-  const handleTap       = useCallback(() => setPickerVisible(v => !v), []);
-  const handleLongPress = useCallback(() => setPickerVisible(true), []);
-  const handlePickerSelect = useCallback((type) => sendReaction(type), [sendReaction]);
-
-  // ── Save (fallback when onCollectionSave not provided) ───────────────────
+  // ── Save ─────────────────────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
-    const prev    = saved;
+    const prev     = saved;
     const newSaved = !prev;
     setSaved(newSaved);
 
     const { feeds, updateFeedById } = useStore.getState();
     const currentFeed = feeds.feedsById[feedId];
-    if (currentFeed) {
-      updateFeedById(feedId, { ...currentFeed, is_saved: newSaved });
-    }
+    if (currentFeed) updateFeedById(feedId, { ...currentFeed, is_saved: newSaved });
 
     try {
       const response = await ToggleSaveController(feedId, token);
       if (response.status === 200 && response.data) {
-        const raw = response.data;
-        const sData = raw.data && raw.data.is_saved !== undefined ? raw.data : raw;
+        const raw   = response.data;
+        const sData = raw.data?.is_saved !== undefined ? raw.data : raw;
         const serverSaved = !!sData.is_saved;
         setSaved(serverSaved);
         if (currentFeed) {
-          const { updateFeedById: upd } = useStore.getState();
-          upd(feedId, { ...useStore.getState().feeds.feedsById[feedId], is_saved: serverSaved });
+          useStore.getState().updateFeedById(feedId, {
+            ...useStore.getState().feeds.feedsById[feedId],
+            is_saved: serverSaved,
+          });
         }
       } else {
         setSaved(prev);
@@ -200,76 +136,44 @@ const EngagementBar = ({
       }
     } catch {
       setSaved(prev);
-      if (currentFeed) {
-        const { updateFeedById: upd } = useStore.getState();
-        upd(feedId, currentFeed);
-      }
+      if (currentFeed) useStore.getState().updateFeedById(feedId, currentFeed);
     }
   }, [saved, feedId, token]);
 
-  // ── Derived display ──────────────────────────────────────────────────────
-  const reactionEmoji = myReaction ? REACTION_EMOJI_MAP[myReaction] : null;
-  const likeColor     = isReacted ? (Colors.like ?? '#e74c3c') : (Colors.neutral600 ?? Colors.neutral700);
-  const likeLabel     = myReaction
-    ? myReaction.charAt(0).toUpperCase() + myReaction.slice(1)
-    : (isReacted ? 'Liked' : 'Like');
+  const likeColor = isLiked ? (Colors.like ?? '#e74c3c') : (Colors.neutral600 ?? Colors.neutral700);
 
   return (
     <View style={styles.wrapper}>
-      {/* Reaction picker popup */}
-      <ReactionPicker
-        visible={pickerVisible}
-        currentReaction={myReaction}
-        onSelect={handlePickerSelect}
-        onClose={() => setPickerVisible(false)}
-      />
 
-      {/* ── Summary row: reactions left, views right ── */}
+      {/* ── Summary row: like count left, views right ── */}
       <View style={styles.summaryRow}>
-        {reactionsSummary ? (
-          <TouchableOpacity
-            style={styles.reactionsSummary}
-            onPress={onReactionsPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.emojiRow}>
-              {reactionsSummary.emojis.map((e, i) => (
-                <Text key={i} style={styles.reactionEmoji}>{e}</Text>
-              ))}
-            </View>
-            <Text style={styles.reactionsCount}>
-              {reactionsSummary.total.toLocaleString()}
-            </Text>
+        {likeCount > 0 ? (
+          <TouchableOpacity style={styles.likeCountRow} onPress={onReactionsPress} activeOpacity={0.7}>
+            <Ionicons name="heart" size={13} color={Colors.like ?? '#e74c3c'} />
+            <Text style={styles.likeCountText}>{likeCount.toLocaleString()}</Text>
           </TouchableOpacity>
         ) : <View />}
 
-        <View style={styles.viewsRow}>
-          <Ionicons name="eye-outline" size={13} color={Colors.neutral500} />
-          <Text style={styles.viewsText}>{Number(viewsCount ?? 0).toLocaleString()}</Text>
-        </View>
+        {viewsCount > 0 && (
+          <View style={styles.viewsRow}>
+            <Ionicons name="eye-outline" size={13} color={Colors.neutral500} />
+            <Text style={styles.viewsText}>{Number(viewsCount).toLocaleString()}</Text>
+          </View>
+        )}
       </View>
 
       {/* ── Action row: Like | Comment | Repost | Save | Share ── */}
       <View style={styles.actionRow}>
-        {/* Like / React */}
-        <TouchableOpacity
-          style={styles.actionItem}
-          onPress={handleTap}
-          onLongPress={handleLongPress}
-          delayLongPress={350}
-          activeOpacity={0.7}
-        >
-          {reactionEmoji ? (
-            <Text style={styles.reactionEmojiIcon}>{reactionEmoji}</Text>
-          ) : (
-            <Ionicons
-              name={isReacted ? 'heart' : 'heart-outline'}
-              size={22}
-              color={likeColor}
-            />
-          )}
-          <Text style={[styles.actionLabel, isReacted && { color: likeColor }]}>
-            {likeLabel}
+
+        {/* Like */}
+        <TouchableOpacity style={styles.actionItem} onPress={handleLike} activeOpacity={0.7}>
+          <Ionicons
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={22}
+            color={likeColor}
+          />
+          <Text style={[styles.actionLabel, isLiked && { color: likeColor }]}>
+            {isLiked ? 'Liked' : 'Like'}
           </Text>
         </TouchableOpacity>
 
@@ -309,6 +213,7 @@ const EngagementBar = ({
           <SvgIcon name="share" width={20} height={20} color={Colors.neutral700} />
           <Text style={styles.actionLabel}>Share</Text>
         </TouchableOpacity>
+
       </View>
     </View>
   );
@@ -320,24 +225,18 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // Summary row
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  reactionsSummary: {
+  likeCountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
-  emojiRow: {
-    flexDirection: 'row',
-    gap: 1,
-  },
-  reactionEmoji: { fontSize: 14 },
-  reactionsCount: {
+  likeCountText: {
     fontSize: 13,
     color: Colors.neutral600 ?? Colors.neutral700,
     fontWeight: '600',
@@ -352,7 +251,6 @@ const styles = StyleSheet.create({
     color: Colors.neutral500,
   },
 
-  // Action row
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -372,20 +270,15 @@ const styles = StyleSheet.create({
     color: Colors.neutral600 ?? Colors.neutral700,
     fontWeight: '500',
   },
-  reactionEmojiIcon: { fontSize: 20 },
 });
 
-export default memo(EngagementBar, (prev, next) => {
-  return (
-    prev.feedId           === next.feedId           &&
-    prev.initialLiked     === next.initialLiked     &&
-    prev.initialLikeCount === next.initialLikeCount &&
-    prev.commentsCount    === next.commentsCount    &&
-    prev.sharesCount      === next.sharesCount      &&
-    prev.isSaved          === next.isSaved          &&
-    prev.commentsDisabled === next.commentsDisabled &&
-    prev.myReaction       === next.myReaction       &&
-    prev.viewsCount       === next.viewsCount       &&
-    JSON.stringify(prev.reactions) === JSON.stringify(next.reactions)
-  );
-});
+export default memo(EngagementBar, (prev, next) => (
+  prev.feedId           === next.feedId           &&
+  prev.initialLiked     === next.initialLiked     &&
+  prev.initialLikeCount === next.initialLikeCount &&
+  prev.commentsCount    === next.commentsCount    &&
+  prev.sharesCount      === next.sharesCount      &&
+  prev.isSaved          === next.isSaved          &&
+  prev.commentsDisabled === next.commentsDisabled &&
+  prev.viewsCount       === next.viewsCount
+));

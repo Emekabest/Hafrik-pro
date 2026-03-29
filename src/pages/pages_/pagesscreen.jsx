@@ -56,6 +56,82 @@ const HERO_COLOR = '#0c3f44'; // solid brand color for hero + header
 const COUNTRY_KEY     = 'selected_country';
 const DEFAULT_COUNTRY = { country_id: 'all', name: 'All' };
 
+// ─── Category grid ────────────────────────────────────────────────────────────
+const EXPLORE_CATEGORIES = [
+  { tag: 'Jobs',           icon: 'briefcase',          color: '#E74C3C' },
+  { tag: 'Schools',        icon: 'school',              color: '#3498DB' },
+  { tag: 'Universities',   icon: 'library',             color: '#9B59B6' },
+  { tag: 'Visa',           icon: 'document-text',       color: '#1ABC9C' },
+  { tag: 'Business',       icon: 'storefront',          color: '#F39C12' },
+  { tag: 'Accommodation',  icon: 'home',                color: '#27AE60' },
+  { tag: 'Shipping',       icon: 'cube',                color: '#2980B9' },
+  { tag: 'BuyAndSell',     icon: 'cart',                color: '#E67E22' },
+  { tag: 'Events',         icon: 'calendar',            color: '#8E44AD' },
+  { tag: 'Health',         icon: 'medkit',              color: '#C0392B' },
+  { tag: 'Food',           icon: 'restaurant',          color: '#D35400' },
+  { tag: 'Technology',     icon: 'hardware-chip',       color: '#2C3E50' },
+  { tag: 'Finance',        icon: 'cash',                color: '#16A085' },
+  { tag: 'Travel',         icon: 'airplane',            color: '#2471A3' },
+  { tag: 'Culture',        icon: 'color-palette',       color: '#A04000' },
+  { tag: 'Sports',         icon: 'football',            color: '#117A65' },
+  { tag: 'Music',          icon: 'musical-notes',       color: '#6C3483' },
+  { tag: 'Fashion',        icon: 'shirt',               color: '#CB4335' },
+  { tag: 'Remittance',     icon: 'swap-horizontal',     color: '#1F618D' },
+  { tag: 'Housing',        icon: 'business',            color: '#0B5345' },
+  { tag: 'Language',       icon: 'chatbubbles',         color: '#784212' },
+  { tag: 'News',           icon: 'newspaper',           color: '#212F3D' },
+  { tag: 'Community',      icon: 'people',              color: '#154360' },
+  { tag: 'Diaspora',       icon: 'earth',               color: '#0E6655' },
+];
+
+const CAT_PALETTES = [
+  { bg: BRAND,           text: WHITE, border: BRAND },
+  { bg: ACCENT,          text: DARK,  border: ACCENT },
+  { bg: '#E74C3C',       text: WHITE, border: '#E74C3C' },
+  { bg: BRAND + '12',    text: BRAND, border: BRAND + '66' },
+  { bg: ACCENT + '1A',   text: ACCENT, border: ACCENT },
+  { bg: '#9B59B6',       text: WHITE, border: '#9B59B6' },
+  { bg: '#27AE60' + '1A', text: '#27AE60', border: '#27AE60' },
+  { bg: '#E67E22' + '1A', text: '#E67E22', border: '#E67E22' },
+];
+
+const CategoriesGrid = memo(() => {
+  const navigation = useNavigation();
+  return (
+    <View style={catStyles.pillsWrap}>
+      {EXPLORE_CATEGORIES.map((cat, i) => {
+        const pal = CAT_PALETTES[i % CAT_PALETTES.length];
+        return (
+          <TouchableOpacity
+            key={cat.tag}
+            activeOpacity={0.75}
+            onPress={() => navigation.navigate('HashtagScreen', { hashtag: cat.tag })}
+            style={[catStyles.pill, { backgroundColor: pal.bg, borderColor: pal.border }]}
+          >
+            <Ionicons name={cat.icon} size={13} color={pal.text} style={{ opacity: 0.85 }} />
+            <Text style={[catStyles.pillText, { color: pal.text }]}>{cat.tag}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+});
+
+const catStyles = StyleSheet.create({
+  pillsWrap: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+    marginTop: 10,
+  },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8,
+    borderWidth: 1.5,
+  },
+  pillText: {
+    fontSize: 12.5, fontWeight: '800',
+  },
+});
+
 // Hardcoded rank movement deltas for the 5 trending posts (positive = rising, 0 = stable, negative = dropping)
 const RANK_DELTAS = [2, -1, 0, 1, -2];
 
@@ -1399,8 +1475,6 @@ export default function DiscoveryScreen() {
     setPeopleLoading(true);
     const timer = addTimeout(ctrl, 8000);
     try {
-      console.log("TOKEN:", token);
-      console.log("AUTH HEADER:", `Bearer ${token}`);
       const res = await fetch(`${BASE_URL}/api/v1/people/list.php?limit=10`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: ctrl.signal,
@@ -1792,7 +1866,9 @@ export default function DiscoveryScreen() {
     // 1. Trending Now
     if (trendingPosts.length > 0)
       items.push({ id: 'trending', type: 'trending' });
-    // 2. Hot Topics (search suggestion pills)
+    // 2. Browse Categories
+    items.push({ id: 'categories_grid', type: 'categories_grid' });
+    // 3. Hot Topics (search suggestion pills)
     items.push({ id: 'hot_topics', type: 'hot_topics' });
     // 3. Reels (horizontal scroll, max 4)
     if (reels.length > 0 || reelsLoading)
@@ -1867,6 +1943,20 @@ export default function DiscoveryScreen() {
 
       case 'featured_business':
         return <FeaturedBusinessSection navigation={navigation} token={token} shuffleKey={shuffleKey} />;
+
+      case 'categories_grid':
+        return (
+          <View style={ss.section}>
+            <View style={ss.sectionHeader}>
+              <View style={ss.sectionTitleRow}>
+                <View style={ss.sectionAccent} />
+                <Text style={ss.sectionTitle}>📂 Browse Categories</Text>
+              </View>
+            </View>
+            <Text style={ss.sectionSubtitle}>Tap any category to explore related posts</Text>
+            <CategoriesGrid />
+          </View>
+        );
 
       case 'hot_topics':
         return (
@@ -2339,11 +2429,11 @@ export default function DiscoveryScreen() {
         onClose={() => setDrawerVisible(false)}
       />
 
-      {/* FAB — opens creation menu */}
+      {/* FAB — opens composer immediately */}
       <TouchableOpacity
         style={ss.fab}
         activeOpacity={0.88}
-        onPress={openCreateMenu}
+        onPress={() => openComposer()}
       >
         <LinearGradient
           colors={[Colors.primaryDark, Colors.primary]}

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, memo, useCallback } from 'react';
+import React, { useRef, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../theme/colors';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
+const TAB_COUNT = 3;
+const TAB_W = SCREEN_W / TAB_COUNT;
 
 // ─── Tab definitions ─────────────────────────────────────────────────────────
 export const FEED_TABS = [
@@ -28,7 +29,7 @@ export const FEED_TABS = [
   },
   {
     key: 'community',
-    label: 'Your Community',
+    label: 'Following',
     description: 'Posts from people, pages, and communities you follow.',
     icon: 'people-circle-outline',
     get: 'following',
@@ -36,7 +37,7 @@ export const FEED_TABS = [
   },
   {
     key: 'trending',
-    label: 'Trending Now',
+    label: 'Trending',
     description: 'See what everyone is talking about right now.',
     icon: 'trending-up-outline',
     get: 'popular',
@@ -55,53 +56,44 @@ export const CONTENT_FILTERS = [
 
 // ─── Primary Tab Bar ─────────────────────────────────────────────────────────
 const FeedTabBar = memo(({ activeIndex, onTabChange }) => {
-  const scrollRef = useRef(null);
-  const indicatorX = useRef(new Animated.Value(0)).current;
+  const indicatorX = useRef(new Animated.Value(activeIndex * TAB_W)).current;
 
-  // Auto-scroll active tab into view
   useEffect(() => {
-    scrollRef.current?.scrollTo({ x: Math.max(0, activeIndex * 100 - 30), animated: true });
+    Animated.spring(indicatorX, {
+      toValue: activeIndex * TAB_W,
+      useNativeDriver: true,
+      tension: 68,
+      friction: 10,
+    }).start();
   }, [activeIndex]);
 
   return (
     <View style={styles.tabBarContainer}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabBarContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={styles.tabRow}>
         {FEED_TABS.map((tab, index) => {
           const active = index === activeIndex;
           return (
             <TouchableOpacity
               key={tab.key}
-              style={[styles.tab, active && styles.tabActive]}
-              activeOpacity={0.8}
+              style={styles.tab}
+              activeOpacity={0.7}
               onPress={() => onTabChange(index)}
             >
-              {active && (
-                <LinearGradient
-                  colors={[Colors.brandDeep, Colors.primaryDark, Colors.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              )}
-              <Ionicons
-                name={active ? tab.icon.replace('-outline', '') || tab.icon : tab.icon}
-                size={15}
-                color={active ? Colors.white : BRAND + 'CC'}
-                style={{ marginRight: 5 }}
-              />
               <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
+
+      {/* Sliding underline indicator */}
+      <Animated.View
+        style={[
+          styles.indicator,
+          { width: TAB_W, transform: [{ translateX: indicatorX }] },
+        ]}
+      />
     </View>
   );
 });
@@ -127,9 +119,9 @@ export const ContentFilterBar = memo(({ activeFilter, onFilterChange }) => {
             >
               <Ionicons
                 name={filter.icon}
-                size={14}
+                size={13}
                 color={active ? Colors.white : BRAND + 'A0'}
-                style={{ marginRight: 5 }}
+                style={{ marginRight: 4 }}
               />
               <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>
                 {filter.label}
@@ -144,7 +136,7 @@ export const ContentFilterBar = memo(({ activeFilter, onFilterChange }) => {
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  // Primary tabs
+  // Primary tabs — full width, no scroll
   tabBarContainer: {
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
@@ -155,45 +147,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 3,
   },
-  tabBarContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    gap: 8,
+  tabRow: {
+    flexDirection: 'row',
+    width: '100%',
   },
   tab: {
-    flexDirection: 'row',
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 22,
-    backgroundColor: BRAND + '09',
-    overflow: 'hidden',
-  },
-  tabActive: {
-    shadowColor: Colors.brandDeep,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    justifyContent: 'center',
+    paddingVertical: 12,
   },
   tabLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: BRAND + 'BB',
+    fontWeight: '500',
+    color: BRAND + '80',
     letterSpacing: -0.1,
   },
   tabLabelActive: {
-    color: Colors.white,
-    fontWeight: '800',
+    color: ACCENT,
+    fontWeight: '700',
     letterSpacing: -0.2,
   },
+  indicator: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: ACCENT,
+    marginTop: -1,
+  },
 
-  // Content filter pills — separated row with extra vertical breathing room
+  // Content filter pills
   filterBarContainer: {
     backgroundColor: Colors.white,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight ?? '#EBEBEB',
-    paddingTop: 2,
   },
   filterBarContent: {
     paddingHorizontal: 14,

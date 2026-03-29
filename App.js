@@ -65,8 +65,12 @@ import ThreadScreen from './src/pages/messages/ThreadScreen';
 import SplashScreen from './src/pages/common/SplashScreen';
 import PostDetailScreen from './src/pages/home/feeds/PostDetailScreen';
 import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
-import SettingsScreen from './src/pages/settings/SettingsScreen';
-import SearchScreen from './src/pages/search/searchscreen';
+import SettingsScreen             from './src/pages/settings/SettingsScreen';
+import VerificationIntroScreen   from './src/pages/verification/VerificationIntroScreen';
+import VerificationUploadScreen  from './src/pages/verification/VerificationUploadScreen';
+import VerificationPendingScreen from './src/pages/verification/VerificationPendingScreen';
+import SearchScreen   from './src/pages/search/searchscreen';
+import HashtagScreen  from './src/pages/hashtag/HashtagScreen';
 import EarningsScreen        from './src/pages/earnings/EarningsScreen';
 import PointsScreen          from './src/pages/earnings/PointsScreen';
 import WalletScreen          from './src/pages/earnings/WalletScreen';
@@ -394,8 +398,12 @@ function AppNavigator() {
               <Stack.Screen name="Inbox" component={InboxScreen} />
               <Stack.Screen name="Thread" component={ThreadScreen} />
               <Stack.Screen name="InAppBrowser" component={UniversalWebView} options={{ headerShown: false }} />
-              <Stack.Screen name="Settings" component={SettingsScreen} />
-              <Stack.Screen name="SearchScreen" component={SearchScreen} />
+              <Stack.Screen name="Settings"            component={SettingsScreen} />
+              <Stack.Screen name="VerificationIntro"  component={VerificationIntroScreen}  options={{ headerShown: false }} />
+              <Stack.Screen name="VerificationUpload" component={VerificationUploadScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="VerificationPending" component={VerificationPendingScreen} options={{ headerShown: false, gestureEnabled: false }} />
+              <Stack.Screen name="SearchScreen"  component={SearchScreen} />
+              <Stack.Screen name="HashtagScreen" component={HashtagScreen} options={{ headerShown: false }} />
               <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ cardStyle: { backgroundColor: '#fff' } }} />
               <Stack.Screen name="TrendingOnHafrik" component={TrendingOnHafrikScreen} options={{ headerShown: false }} />
               <Stack.Screen name="MyPagesAndGroups"    component={MyPagesAndGroupsScreen}   options={{ headerShown: false }} />

@@ -76,6 +76,22 @@ async function authPost(endpoint, bodyObj, token) {
 
 // ─────────────────────────────────────────────
 // FEED
+// Response shape from reels/list.php:
+// {
+//   status: 'success',
+//   data: {
+//     mode, page, limit, count,
+//     reels: [
+//       {
+//         id, text, created,
+//         media:  { video_url, thumbnail },
+//         stats:  { likes, comments, views },
+//         viewer: { is_liked, is_saved, is_following },
+//         user:   { id, username, verified, avatar }
+//       }
+//     ]
+//   }
+// }
 // ─────────────────────────────────────────────
 export async function fetchReels(
   { page = 1, limit = 10, mode = 'for_you', seed },
@@ -83,11 +99,10 @@ export async function fetchReels(
   signal
 ) {
   const url = new URL(`${BASE}/list.php`);
-
-  url.searchParams.append('page', String(page));
-  url.searchParams.append('limit', String(limit));
-  url.searchParams.append('mode', mode);
-  url.searchParams.append('seed', String(seed ?? 0));
+  url.searchParams.set('page',  String(page));
+  url.searchParams.set('limit', String(limit));
+  url.searchParams.set('mode',  mode);
+  if (seed != null) url.searchParams.set('seed', String(seed));
 
   const res = await fetch(url.toString(), {
     method: 'GET',
@@ -104,12 +119,24 @@ export async function fetchReels(
     return [];
   }
 
-  // Backend returns:
-  // { status, data: { page, limit, seed, data: [...] } }
+  const raw = Array.isArray(json.data?.reels) ? json.data.reels : [];
 
-  return Array.isArray(json.data?.data)
-    ? json.data.data
-    : [];
+  // Normalize to the flat shape expected by ReelInteractionContainer / ReelCard
+  return raw.map((r) => ({
+    ...r,
+    // media: keep as object; alias thumbnail → thumbnail_url for ReelCard
+    media: r.media
+      ? { ...r.media, thumbnail_url: r.media.thumbnail ?? null }
+      : null,
+    // flatten stats
+    likes_count:    Number(r.stats?.likes    ?? 0),
+    comments_count: Number(r.stats?.comments ?? 0),
+    views:          Number(r.stats?.views    ?? 0),
+    // flatten viewer
+    is_liked:    !!r.viewer?.is_liked,
+    is_saved:    !!r.viewer?.is_saved,
+    is_following: !!r.viewer?.is_following,
+  }));
 }
 
 // ─────────────────────────────────────────────
@@ -169,7 +196,6 @@ export async function shareReel(postId, token, text = '', privacy = 'public') {
 // WATCH TRACKING
 // ─────────────────────────────────────────────
 export async function recordWatch(postId, watchMs, durationMs, token) {
-  console.log('[Reels] Recording view for post:', postId, '| watch_ms:', Math.round(watchMs));
   return firePost(
     'view.php',
     {
