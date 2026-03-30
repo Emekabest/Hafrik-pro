@@ -1,6 +1,8 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState, useEffect } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Dimensions,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -15,17 +17,22 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../AuthContext';
 import { addComment, fetchComments, shareReel, toggleSave, toggleLike } from './reelsApi';
 import useStore from '../../repository/store';
 import { Colors } from '../../theme/colors';
 
+const { height: SCREEN_H } = Dimensions.get('window');
+
 const withOpacity = (hex, opacity) => {
-  const normalized = (hex || "").replace("#", "");
-  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  const normalized = (hex || '').replace('#', '');
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
+    .toString(16)
+    .padStart(2, '0');
   return `#${normalized}${alpha}`;
 };
 
-/** Decode common HTML entities + numeric/hex codes + strip tags */
 const decodeHtml = (str) => {
   if (!str || typeof str !== 'string') return str ?? '';
   const entities = {
@@ -41,30 +48,64 @@ const decodeHtml = (str) => {
   return out.replace(/<[^>]*>/g, '').trim();
 };
 
-const ACCENT = Colors.primary;
-const SHEET_BG = Colors.deepSlate;
+const ACCENT  = Colors.primary;
+const DEFAULT_AVATAR = 'https://hafrik.com/assets/images/default_avatar.png';
 
-const CommentItem = ({ item }) => (
-  <View style={styles.commentRow}>
-    <View style={styles.avatarRing}>
+// ─── Comment row ───────────────────────────────────────────────────────────────
+const CommentItem = ({ item }) => {
+  const [liked, setLiked] = useState(false);
+  const [likes, setLikes] = useState(Number(item.likes ?? 0));
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handleLike = useCallback(() => {
+    Animated.sequence([
+      Animated.spring(scaleAnim, { toValue: 1.4, useNativeDriver: true, speed: 50, bounciness: 0 }),
+      Animated.spring(scaleAnim, { toValue: 1,   useNativeDriver: true, speed: 14, bounciness: 14 }),
+    ]).start();
+    setLiked(l => {
+      setLikes(n => l ? Math.max(0, n - 1) : n + 1);
+      return !l;
+    });
+  }, [scaleAnim]);
+
+  const avatar = item.user?.avatar?.startsWith('http') ? item.user.avatar : DEFAULT_AVATAR;
+
+  return (
+    <View style={styles.commentRow}>
       <ExpoImage
-        source={{ uri: item.user?.avatar }}
+        source={{ uri: avatar }}
         style={styles.commentAvatar}
         contentFit="cover"
+        cachePolicy="memory-disk"
       />
-    </View>
-    <View style={styles.commentBody}>
-      <View style={styles.commentHeader}>
-        <Text style={styles.commentUsername}>{item.user?.username ?? 'User'}</Text>
-        {item.time ? <Text style={styles.commentTime}>{item.time}</Text> : null}
+      <View style={styles.commentContent}>
+        <View style={styles.commentBubble}>
+          <Text style={styles.commentAuthor}>{item.user?.username ?? 'User'}</Text>
+          <Text style={styles.commentText}>{decodeHtml(item.text)}</Text>
+        </View>
+        <View style={styles.commentMeta}>
+          {item.time ? <Text style={styles.commentTime}>{item.time}</Text> : null}
+          <TouchableOpacity onPress={() => {}} activeOpacity={0.7}>
+            <Text style={styles.replyBtn}>Reply</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <Text style={styles.commentText}>{decodeHtml(item.text)}</Text>
+      <TouchableOpacity style={styles.commentLike} onPress={handleLike} activeOpacity={0.7}>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          <Ionicons
+            name={liked ? 'heart' : 'heart-outline'}
+            size={15}
+            color={liked ? Colors.warningPink : withOpacity(Colors.white, 0.45)}
+          />
+        </Animated.View>
+        {likes > 0 ? <Text style={[styles.commentLikeCount, liked && { color: Colors.warningPink }]}>{likes}</Text> : null}
+      </TouchableOpacity>
     </View>
-  </View>
-);
+  );
+};
 
-
-const ReelEngagementBar = ({
+// ─── Main component ────────────────────────────────────────────────────────────
+const ReelEngagementBar = forwardRef(({
   postId,
   userId,
   token,
@@ -75,17 +116,21 @@ const ReelEngagementBar = ({
   reactions: initialReactions = null,
   commentCount: initialCommentCount,
   isSavedInitial = false,
-}) => {
-  const [saved, setSaved] = useState(isSavedInitial);
-  const [commentCount, setCommentCount] = useState(initialCommentCount ?? 0);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [comments, setComments] = useState([]);
-  const [loadingComments, setLoadingComments] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [myReaction, setMyReaction] = useState(initialMyReaction || (liked ? 'like' : null));
+}, ref) => {
+  const { user: authUser } = useAuth();
+  const { bottom: safeBottom } = useSafeAreaInsets();
 
-  // Sync from props when post changes
+  const [saved,         setSaved]         = useState(isSavedInitial);
+  const [commentCount,  setCommentCount]  = useState(initialCommentCount ?? 0);
+  const [modalVisible,  setModalVisible]  = useState(false);
+  const [comments,      setComments]      = useState([]);
+  const [loadingCmts,   setLoadingCmts]   = useState(false);
+  const [commentText,   setCommentText]   = useState('');
+  const [submitting,    setSubmitting]    = useState(false);
+  const [myReaction,    setMyReaction]    = useState(initialMyReaction || (liked ? 'like' : null));
+
+  const inputRef = useRef(null);
+
   useEffect(() => {
     setMyReaction(initialMyReaction || (liked ? 'like' : null));
   }, [postId, initialMyReaction, liked]);
@@ -94,24 +139,16 @@ const ReelEngagementBar = ({
     setSaved(isSavedInitial);
   }, [postId, isSavedInitial]);
 
-  /** Send a reaction via API — handles toggle */
   const sendReaction = useCallback(async (reactionType) => {
-    const isRemoving = myReaction === reactionType;
+    const isRemoving  = myReaction === reactionType;
     const newReaction = isRemoving ? null : reactionType;
     setMyReaction(newReaction);
-
-    // Call parent for immediate heart/count update
     if (onLikePress) onLikePress(reactionType);
 
-    // Sync to Zustand store
     const { feeds, updateFeedById } = useStore.getState();
     const currentFeed = feeds.feedsById[postId];
     if (currentFeed) {
-      updateFeedById(postId, {
-        ...currentFeed,
-        is_liked: !isRemoving,
-        my_reaction: newReaction,
-      });
+      updateFeedById(postId, { ...currentFeed, is_liked: !isRemoving, my_reaction: newReaction });
     }
 
     try {
@@ -119,7 +156,6 @@ const ReelEngagementBar = ({
       if (res) {
         const serverReaction = res.my_reaction || null;
         setMyReaction(serverReaction);
-        // Sync server truth to store
         const feed = useStore.getState().feeds.feedsById[postId];
         if (feed) {
           const serverReactions = res.reactions || null;
@@ -140,47 +176,42 @@ const ReelEngagementBar = ({
   }, [myReaction, postId, token, onLikePress, likesCount]);
 
   const handleSave = useCallback(async () => {
-    const prev = saved;
+    const prev    = saved;
     const newSaved = !prev;
     setSaved(newSaved);
-
-    // Sync to store
     const { feeds, updateFeedById } = useStore.getState();
     const currentFeed = feeds.feedsById[postId];
-    if (currentFeed) {
-      updateFeedById(postId, { ...currentFeed, is_saved: newSaved });
-    }
-
+    if (currentFeed) updateFeedById(postId, { ...currentFeed, is_saved: newSaved });
     try {
       const res = await toggleSave(postId, token);
       if (res) {
         const serverSaved = !!res.is_saved;
         setSaved(serverSaved);
         const feed = useStore.getState().feeds.feedsById[postId];
-        if (feed) {
-          useStore.getState().updateFeedById(postId, { ...feed, is_saved: serverSaved });
-        }
+        if (feed) useStore.getState().updateFeedById(postId, { ...feed, is_saved: serverSaved });
       }
     } catch {
       setSaved(prev);
-      if (currentFeed) {
-        useStore.getState().updateFeedById(postId, currentFeed);
-      }
+      if (currentFeed) useStore.getState().updateFeedById(postId, currentFeed);
     }
   }, [saved, postId, token]);
 
   const openComments = useCallback(async () => {
     setModalVisible(true);
-    setLoadingComments(true);
+    setLoadingCmts(true);
     try {
       const data = await fetchComments(postId, token);
       setComments(Array.isArray(data) ? data : []);
     } catch {
       setComments([]);
     } finally {
-      setLoadingComments(false);
+      setLoadingCmts(false);
     }
+    // Auto-focus input after sheet opens
+    setTimeout(() => inputRef.current?.focus(), 400);
   }, [postId, token]);
+
+  useImperativeHandle(ref, () => ({ openComments }), [openComments]);
 
   const handleSubmitComment = useCallback(async () => {
     const text = commentText.trim();
@@ -191,8 +222,6 @@ const ReelEngagementBar = ({
       await addComment(postId, text, token);
       setCommentText('');
       setCommentCount(c => c + 1);
-
-      // Sync comment count to store
       const { feeds, updateFeedById } = useStore.getState();
       const currentFeed = feeds.feedsById[postId];
       if (currentFeed) {
@@ -201,12 +230,9 @@ const ReelEngagementBar = ({
           comments_count: (Number(currentFeed.comments_count) || 0) + 1,
         });
       }
-
       const data = await fetchComments(postId, token);
       setComments(Array.isArray(data) ? data : []);
-    } catch {
-      // silent fail
-    } finally {
+    } catch {} finally {
       setSubmitting(false);
     }
   }, [commentText, postId, token, submitting]);
@@ -214,8 +240,6 @@ const ReelEngagementBar = ({
   const handleShare = useCallback(async () => {
     try {
       await shareReel(postId, token);
-
-      // Sync share count to store
       const { feeds, updateFeedById } = useStore.getState();
       const currentFeed = feeds.feedsById[postId];
       if (currentFeed) {
@@ -224,27 +248,22 @@ const ReelEngagementBar = ({
           shares_count: (Number(currentFeed.shares_count ?? currentFeed.shares ?? 0)) + 1,
         });
       }
-
       await Share.share({ message: 'Check out this reel on Hafrik!' });
-    } catch {
-      // silent
-    }
+    } catch {}
   }, [postId, token]);
 
   const isLiked = !!myReaction;
+  const myAvatar = authUser?.avatar?.startsWith('http') ? authUser.avatar : DEFAULT_AVATAR;
 
   return (
     <>
+      {/* ── Engagement icons ─────────────────────────────────────────── */}
       <View style={styles.container}>
         {/* Like */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.item}
-          onPress={() => sendReaction('like')}
-        >
+        <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={() => sendReaction('like')}>
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
-            size={30}
+            size={32}
             color={isLiked ? Colors.warningPink : Colors.white}
             style={isLiked ? styles.likedGlow : undefined}
           />
@@ -253,7 +272,7 @@ const ReelEngagementBar = ({
 
         {/* Comment */}
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={openComments}>
-          <Ionicons name="chatbubble-ellipses" size={28} color={Colors.white} />
+          <Ionicons name="chatbubble-ellipses" size={30} color={Colors.white} />
           <Text style={styles.count}>{commentCount}</Text>
         </TouchableOpacity>
 
@@ -261,18 +280,20 @@ const ReelEngagementBar = ({
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={handleSave}>
           <Ionicons
             name={saved ? 'bookmark' : 'bookmark-outline'}
-            size={28}
+            size={30}
             color={saved ? ACCENT : Colors.white}
           />
+          {saved ? <Text style={[styles.count, { color: ACCENT }]}>Saved</Text> : <Text style={styles.count}>Save</Text>}
         </TouchableOpacity>
 
         {/* Share */}
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={handleShare}>
-          <Ionicons name="paper-plane-outline" size={28} color={Colors.white} />
+          <Ionicons name="paper-plane-outline" size={30} color={Colors.white} />
+          <Text style={styles.count}>Share</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ── Comments Bottom Sheet ─────────────────────────────────── */}
+      {/* ── Comments Sheet ────────────────────────────────────────────── */}
       <Modal
         visible={modalVisible}
         transparent
@@ -280,33 +301,35 @@ const ReelEngagementBar = ({
         statusBarTranslucent
         onRequestClose={() => setModalVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.backdrop}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        />
+        {/* Tap backdrop to close */}
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setModalVisible(false)} />
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.sheet}
+          style={[styles.sheet, { paddingBottom: safeBottom }]}
         >
-          {/* Handle + Title row */}
-          <View style={styles.sheetTop}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.titleRow}>
-              <Text style={styles.sheetTitle}>Comments</Text>
-              <Text style={styles.commentBadge}>
-                {comments.length || commentCount}
-              </Text>
+          {/* ── Sheet header ─── */}
+          <View style={styles.sheetHandle} />
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>Comments</Text>
+            <View style={styles.sheetBadge}>
+              <Text style={styles.sheetBadgeTxt}>{comments.length || commentCount}</Text>
             </View>
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={() => setModalVisible(false)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color={withOpacity(Colors.white, 0.6)} />
+            </TouchableOpacity>
           </View>
 
-          {/* Divider */}
           <View style={styles.divider} />
 
-          {loadingComments ? (
+          {/* ── Comment list ─── */}
+          {loadingCmts ? (
             <View style={styles.loaderWrap}>
               <ActivityIndicator color={ACCENT} size="large" />
-              <Text style={styles.loaderText}>Loading comments…</Text>
             </View>
           ) : (
             <FlatList
@@ -319,21 +342,30 @@ const ReelEngagementBar = ({
               keyboardDismissMode="on-drag"
               ListEmptyComponent={
                 <View style={styles.emptyWrap}>
-                  <Ionicons name="chatbubble-outline" size={44} color={Colors.mutedBlueGray} />
+                  <View style={styles.emptyIcon}>
+                    <Ionicons name="chatbubbles-outline" size={38} color={withOpacity(Colors.white, 0.25)} />
+                  </View>
                   <Text style={styles.emptyTitle}>No comments yet</Text>
-                  <Text style={styles.emptySub}>Be the first to share your thoughts</Text>
+                  <Text style={styles.emptySub}>Be the first to leave one</Text>
                 </View>
               }
             />
           )}
 
-          {/* Input bar */}
+          {/* ── Input bar ─── */}
           <View style={styles.inputBar}>
+            <ExpoImage
+              source={{ uri: myAvatar }}
+              style={styles.inputAvatar}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
             <View style={styles.inputWrap}>
               <TextInput
+                ref={inputRef}
                 style={styles.input}
-                placeholder="Write a comment…"
-                placeholderTextColor={Colors.mutedBlueGray}
+                placeholder="Add a comment…"
+                placeholderTextColor={withOpacity(Colors.white, 0.35)}
                 value={commentText}
                 onChangeText={setCommentText}
                 returnKeyType="send"
@@ -344,17 +376,14 @@ const ReelEngagementBar = ({
             </View>
             <TouchableOpacity
               activeOpacity={0.75}
-              style={[
-                styles.sendBtn,
-                (!commentText.trim() || submitting) && styles.sendBtnDisabled,
-              ]}
+              style={[styles.sendBtn, (!commentText.trim() || submitting) && styles.sendBtnOff]}
               onPress={handleSubmitComment}
               disabled={submitting || !commentText.trim()}
             >
               {submitting ? (
                 <ActivityIndicator size="small" color={Colors.white} />
               ) : (
-                <Ionicons name="arrow-up" size={18} color={Colors.white} />
+                <Ionicons name="arrow-up" size={17} color={Colors.white} />
               )}
             </TouchableOpacity>
           </View>
@@ -362,25 +391,26 @@ const ReelEngagementBar = ({
       </Modal>
     </>
   );
-};
+});
 
 const styles = StyleSheet.create({
+  // ── Engagement icons ──────────────────────────────────────────────────
   container: {
     width: '100%',
     flexDirection: 'column',
     alignItems: 'center',
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
   item: {
     alignItems: 'center',
-    marginVertical: 8,
+    marginVertical: 10,
   },
   count: {
     color: Colors.white,
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 12,
     marginTop: 4,
-    textShadowColor: withOpacity(Colors.black, 0.75),
+    textShadowColor: 'rgba(0,0,0,0.75)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
@@ -391,187 +421,215 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
 
-  /* ── Modal / Sheet ─────────────────────────────────────────────── */
+  // ── Sheet ─────────────────────────────────────────────────────────────
   backdrop: {
     flex: 1,
-    backgroundColor: withOpacity(Colors.black, 0.55),
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
-    backgroundColor: Colors.deepSlateAlt,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    maxHeight: '65%',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    backgroundColor: '#1a1f2e',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: SCREEN_H * 0.75,
     overflow: 'hidden',
   },
-  sheetTop: {
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 2,
-  },
   sheetHandle: {
-    width: 36,
+    width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: withOpacity(Colors.mutedBlueGray, 0.4),
+    backgroundColor: withOpacity(Colors.white, 0.2),
     alignSelf: 'center',
+    marginTop: 10,
     marginBottom: 14,
   },
-  titleRow: {
+  sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    paddingHorizontal: 18,
+    paddingBottom: 12,
   },
   sheetTitle: {
     color: Colors.white,
     fontFamily: 'WorkSans_700Bold',
-    fontSize: 17,
+    fontSize: 16,
     letterSpacing: 0.2,
   },
-  commentBadge: {
-    backgroundColor: withOpacity(ACCENT, 0.2),
-    color: ACCENT,
-    fontFamily: 'WorkSans_600SemiBold',
-    fontSize: 12,
+  sheetBadge: {
+    marginLeft: 8,
+    backgroundColor: withOpacity(ACCENT, 0.18),
+    borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 10,
-    overflow: 'hidden',
   },
-  divider: {
-    height: 1,
-    backgroundColor: withOpacity(Colors.mutedBlueGray, 0.15),
-    marginHorizontal: 0,
-  },
-
-  /* ── Loading / Empty states ────────────────────────────────────── */
-  loaderWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    gap: 12,
-  },
-  loaderText: {
-    color: Colors.mutedBlueGray,
-    fontFamily: 'WorkSans_400Regular',
-    fontSize: 13,
-  },
-  emptyWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48,
-    gap: 8,
-  },
-  emptyTitle: {
-    color: Colors.mist,
+  sheetBadgeTxt: {
+    color: ACCENT,
+    fontSize: 12,
     fontFamily: 'WorkSans_600SemiBold',
-    fontSize: 16,
-    marginTop: 4,
   },
-  emptySub: {
-    color: Colors.mutedBlueGray,
-    fontFamily: 'WorkSans_400Regular',
-    fontSize: 13,
-  },
-
-  /* ── Comment list ──────────────────────────────────────────────── */
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 4,
-  },
-  commentRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    alignItems: 'flex-start',
-  },
-  avatarRing: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1.5,
-    borderColor: withOpacity(ACCENT, 0.35),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  commentAvatar: {
+  closeBtn: {
+    marginLeft: 'auto',
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.blueGreenDeep,
-  },
-  commentBody: {
-    flex: 1,
-  },
-  commentHeader: {
-    flexDirection: 'row',
+    backgroundColor: withOpacity(Colors.white, 0.08),
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 3,
+    justifyContent: 'center',
   },
-  commentUsername: {
-    color: Colors.white,
+  divider: {
+    height: 1,
+    backgroundColor: withOpacity(Colors.white, 0.07),
+    marginHorizontal: 0,
+  },
+
+  // ── Loader / Empty ────────────────────────────────────────────────────
+  loaderWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 50,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 8,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: withOpacity(Colors.white, 0.05),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    color: withOpacity(Colors.white, 0.7),
     fontFamily: 'WorkSans_600SemiBold',
+    fontSize: 15,
+  },
+  emptySub: {
+    color: withOpacity(Colors.white, 0.35),
+    fontFamily: 'WorkSans_400Regular',
     fontSize: 13,
   },
+
+  // ── Comment rows ──────────────────────────────────────────────────────
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  commentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 18,
+  },
+  commentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: withOpacity(Colors.white, 0.08),
+    marginRight: 10,
+    flexShrink: 0,
+  },
+  commentContent: {
+    flex: 1,
+  },
+  commentBubble: {
+    backgroundColor: withOpacity(Colors.white, 0.06),
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  commentAuthor: {
+    color: Colors.white,
+    fontFamily: 'WorkSans_600SemiBold',
+    fontSize: 12.5,
+    marginBottom: 3,
+  },
   commentText: {
-    color: withOpacity(Colors.mist, 0.9),
+    color: withOpacity(Colors.white, 0.88),
     fontFamily: 'WorkSans_400Regular',
     fontSize: 13.5,
     lineHeight: 19,
   },
+  commentMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 5,
+    paddingHorizontal: 4,
+  },
   commentTime: {
-    color: Colors.mutedBlueGray,
+    color: withOpacity(Colors.white, 0.35),
     fontFamily: 'WorkSans_400Regular',
     fontSize: 11,
   },
+  replyBtn: {
+    color: withOpacity(Colors.white, 0.45),
+    fontFamily: 'WorkSans_600SemiBold',
+    fontSize: 12,
+  },
+  commentLike: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 10,
+    paddingLeft: 10,
+    gap: 2,
+  },
+  commentLikeCount: {
+    color: withOpacity(Colors.white, 0.45),
+    fontFamily: 'WorkSans_500Medium',
+    fontSize: 10,
+  },
 
-  /* ── Input bar ─────────────────────────────────────────────────── */
+  // ── Input bar ─────────────────────────────────────────────────────────
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 14,
     paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 6 : 10,
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: withOpacity(Colors.mutedBlueGray, 0.12),
+    borderTopColor: withOpacity(Colors.white, 0.07),
+    backgroundColor: '#1a1f2e',
+  },
+  inputAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: withOpacity(Colors.white, 0.08),
+    flexShrink: 0,
   },
   inputWrap: {
     flex: 1,
-    backgroundColor: withOpacity(Colors.blueGreenDark, 0.6),
-    borderRadius: 22,
+    backgroundColor: withOpacity(Colors.white, 0.07),
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: withOpacity(Colors.mutedBlueGray, 0.15),
+    borderColor: withOpacity(Colors.white, 0.1),
+    minHeight: 38,
+    justifyContent: 'center',
   },
   input: {
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === 'ios' ? 9 : 7,
     color: Colors.white,
     fontFamily: 'WorkSans_400Regular',
-    fontSize: 14,
+    fontSize: 13.5,
     maxHeight: 80,
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
+    flexShrink: 0,
   },
-  sendBtnDisabled: {
-    backgroundColor: withOpacity(Colors.mutedBlueGray, 0.3),
-    shadowOpacity: 0,
-    elevation: 0,
+  sendBtnOff: {
+    backgroundColor: withOpacity(Colors.white, 0.1),
   },
-
 });
 
 export default ReelEngagementBar;

@@ -3,7 +3,7 @@
 import { AppState, StyleSheet, View, Platform, Dimensions, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators, TransitionSpecs } from '@react-navigation/stack';
 import Login from './src/pages/Login';
 import ForgotPasswordScreen from './src/pages/ForgotPasswordScreen.jsx';
 import ResetPasswordScreen from './src/pages/ResetPasswordScreen.jsx';
@@ -347,7 +347,36 @@ function AppNavigator() {
                 headerShown: false,
                 cardStyle: { backgroundColor: '#fff' },
                 gestureEnabled: true,
+                gestureDirection: 'horizontal',
+                gestureResponseDistance: 50,
+                gestureVelocityImpact: 0.3,
                 cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+                transitionSpec: {
+                  open: {
+                    animation: 'spring',
+                    config: {
+                      stiffness: 1000,
+                      damping: 500,
+                      mass: 3,
+                      overshootClamping: true,
+                      restDisplacementThreshold: 0.01,
+                      restSpeedThreshold: 0.01,
+                      useNativeDriver: true,
+                    },
+                  },
+                  close: {
+                    animation: 'spring',
+                    config: {
+                      stiffness: 1000,
+                      damping: 500,
+                      mass: 3,
+                      overshootClamping: true,
+                      restDisplacementThreshold: 0.01,
+                      restSpeedThreshold: 0.01,
+                      useNativeDriver: true,
+                    },
+                  },
+                },
               }}
             >
 

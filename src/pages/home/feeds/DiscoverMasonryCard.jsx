@@ -39,6 +39,17 @@ const strip = (str) => {
   return out.replace(/<[^>]*>/g, '').trim();
 };
 
+const totalLikes = (reactions, fallback = 0) => {
+  if (reactions && typeof reactions === 'object') {
+    const sum = Object.entries(reactions)
+      .filter(([k]) => k !== 'total')
+      .reduce((acc, [, v]) => acc + Number(v || 0), 0);
+    if (sum > 0) return sum;
+    if (typeof reactions.total === 'number') return reactions.total;
+  }
+  return Number(fallback) || 0;
+};
+
 const fmt = (n) => {
   const v = Number(n ?? 0);
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
@@ -61,11 +72,11 @@ const textFs = (len) => {
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 const Footer = memo(({ feed }) => {
-  const user      = feed?.user ?? {};
-  const avatar    = user.avatar?.startsWith('http') ? user.avatar : DEFAULT_AVATAR;
-  const name      = user.username ?? user.full_name ?? 'User';
-  const reactions = Number(feed?.likes_count ?? feed?.total_reactions ?? feed?.reaction_count ?? feed?.reactions_count ?? feed?.reactions?.total ?? feed?.total_likes ?? 0);
-  const views     = feed?.views ?? feed?.views_count ?? feed?.view_count ?? 0;
+  const user         = feed?.user ?? {};
+  const avatar       = user.avatar?.startsWith('http') ? user.avatar : DEFAULT_AVATAR;
+  const name         = user.username ?? user.full_name ?? 'User';
+  const total = totalLikes(feed?.reactions, feed?.likes_count ?? feed?.total_reactions ?? feed?.total_likes ?? 0);
+  const views = feed?.views ?? feed?.views_count ?? feed?.view_count ?? 0;
 
   return (
     <View style={styles.footer}>
@@ -73,7 +84,7 @@ const Footer = memo(({ feed }) => {
       <Text style={styles.uname} numberOfLines={1} ellipsizeMode="tail">{name}</Text>
       <View style={styles.statRow}>
         <Ionicons name="heart" size={11} color={ACCENT} />
-        <Text style={styles.statN}>{fmt(reactions)}</Text>
+        <Text style={styles.statN}>{fmt(total)}</Text>
         {views > 0 && (
           <>
             <Ionicons name="eye-outline" size={11} color={MUTED} style={{ marginLeft: 5 }} />
