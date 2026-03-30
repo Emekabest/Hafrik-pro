@@ -1,66 +1,112 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, FlatList, StyleSheet,
-  TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../AuthContext';
-import { PostCard } from '../../components/search/SearchCards';
-import SearchSuggestionController from '../../controllers/searchsuggestioncontroller';
+import FeedCard from '../home/feeds/feedcard';
 import { Colors } from '../../theme/colors';
 
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
+const LIMIT  = 15;
+const BASE   = 'https://hafrik.com/api/v1/hashtags/search.php';
 
 export default function HashtagScreen() {
-  const { params }   = useRoute();
-  const navigation   = useNavigation();
-  const { top }      = useSafeAreaInsets();
-  const { token }    = useAuth();
-  const hashtag      = (params?.hashtag || '').replace(/^#/, '');
+  const { params }  = useRoute();
+  const navigation  = useNavigation();
+  const { top }     = useSafeAreaInsets();
+  const { token }   = useAuth();
+  const hashtag     = (params?.hashtag || '').replace(/^#/, '');
 
-  const [posts,   setPosts]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const loadingRef = useRef(false);
+  const [posts,       setPosts]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore,     setHasMore]     = useState(true);
+  const [refreshing,  setRefreshing]  = useState(false);
 
-  const fetchPosts = useCallback(async () => {
-    if (!hashtag) return;
-    loadingRef.current = true;
-    setLoading(true);
+  const pageRef    = useRef(1);
+  const fetchingRef = useRef(false);
+
+  const fetchPage = useCallback(async (page, mode = 'initial') => {
+    if (!hashtag || fetchingRef.current) return;
+    fetchingRef.current = true;
+
     try {
-      const res  = await SearchSuggestionController(`#${hashtag}`, token);
-      const all  = res?.data?.results || [];
-      const postTypes = new Set(['post', 'video', 'reel', 'article', 'poll', 'photos']);
-      setPosts(all.filter(r => postTypes.has((r.type || '').toLowerCase())));
-    } catch {
-      setPosts([]);
+      const url = `${BASE}?tag=${encodeURIComponent(hashtag)}&page=${page}&limit=${LIMIT}`;
+      const res  = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+
+      if (json.status === 'success') {
+        const posts = json.posts || [];
+        if (mode === 'append') {
+          setPosts(prev => [...prev, ...posts]);
+        } else {
+          setPosts(posts);
+        }
+        setHasMore(posts.length >= LIMIT);
+        pageRef.current = page;
+      } else {
+        if (mode !== 'append') setPosts([]);
+        setHasMore(false);
+      }
+    } catch (e) {
+      console.log('[HASHTAG] error:', e?.name, e?.message);
+      setHasMore(false);
     } finally {
-      loadingRef.current = false;
+      fetchingRef.current = false;
       setLoading(false);
+      setLoadingMore(false);
+      setRefreshing(false);
     }
   }, [hashtag, token]);
 
+  // Initial load
   useEffect(() => {
+    setLoading(true);
     setPosts([]);
-    fetchPosts();
-  }, [fetchPosts]);
+    pageRef.current = 1;
+    setHasMore(true);
+    fetchPage(1, 'initial');
+  }, [fetchPage]);
 
-  const handlePress = useCallback((item) => {
-    const type = (item.type || '').toLowerCase();
-    if (type === 'article') return navigation.navigate('ArticleDetails', { postId: item.id, title: item.title });
-    if (type === 'reel' || type === 'video') {
-      return navigation.navigate('Reels2', { initialReels: [item], startIndex: 0, initialReelId: item.id });
-    }
-    navigation.navigate('CommentScreen', { feedId: item.id });
-  }, [navigation]);
+  // Pull-to-refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setPosts([]);
+    pageRef.current = 1;
+    setHasMore(true);
+    fetchPage(1, 'initial');
+  }, [fetchPage]);
 
-  const renderItem   = useCallback(({ item }) => (
-    <PostCard item={item} onPress={() => handlePress(item)} />
-  ), [handlePress]);
-  const keyExtract   = useCallback((item, i) => `${item.id ?? i}`, []);
-  const renderFooter = useCallback(() => null, []);
+  // Infinite scroll
+  const onEndReached = useCallback(() => {
+    if (!hasMore || loadingMore || fetchingRef.current) return;
+    const next = pageRef.current + 1;
+    setLoadingMore(true);
+    fetchPage(next, 'append');
+  }, [hasMore, loadingMore, fetchPage]);
+
+  // Hashtag API uses post_id / picture — normalise to what FeedCard expects
+  const normalise = (p) => ({
+    ...p,
+    id:   p.id   ?? p.post_id,
+    user: p.user ? { ...p.user, id: p.user.id ?? p.user.user_id, avatar: p.user.avatar ?? p.user.picture } : p.user,
+  });
+
+  const renderItem = useCallback(({ item }) => (
+    <FeedCard feed={normalise(item)} />
+  ), []);
+
+  const keyExtractor = useCallback((item, i) => String(item?.id ?? item?.post_id ?? i), []);
+
+  const renderFooter = useCallback(() => {
+    if (!loadingMore) return null;
+    return <ActivityIndicator style={{ marginVertical: 20 }} color={ACCENT} />;
+  }, [loadingMore]);
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>
@@ -70,7 +116,7 @@ export default function HashtagScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={22} color={BRAND} />
         </TouchableOpacity>
-        <Text style={styles.title}>#{hashtag}</Text>
+        <Text style={styles.title} numberOfLines={1}>#{hashtag}</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -85,11 +131,16 @@ export default function HashtagScreen() {
           <Text style={styles.emptySub}>Be the first to post with #{hashtag}</Text>
         </View>
       ) : (
-        <FlatList
+        <FlashList
           data={posts}
           renderItem={renderItem}
-          keyExtractor={keyExtract}
+          keyExtractor={keyExtractor}
+          estimatedItemSize={320}
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.4}
           ListFooterComponent={renderFooter}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         />
@@ -121,11 +172,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18, fontWeight: '800', color: BRAND,
-    letterSpacing: -0.3,
+    letterSpacing: -0.3, flex: 1, textAlign: 'center',
   },
   center: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10,
-    paddingHorizontal: 32,
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    gap: 10, paddingHorizontal: 32,
   },
   emptyTitle: {
     fontSize: 17, fontWeight: '700', color: BRAND, marginTop: 4,

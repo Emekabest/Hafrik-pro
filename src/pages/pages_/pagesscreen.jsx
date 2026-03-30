@@ -1645,21 +1645,28 @@ export default function DiscoveryScreen() {
     const page = append ? reelsPageRef.current + 1 : 1;
     const timer = addTimeout(ctrl, 8000);
     try {
-      const res = await fetch(
-        `${BASE_URL}/api/v1/reels/list.php?page=${page}&limit=6&mode=for_you&seed=${reelsSeedRef.current}`,
-        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, signal: ctrl.signal },
-      );
+      const reelsUrl = `${BASE_URL}/api/v1/reels/list.php?page=${page}&limit=6&mode=for_you&seed=${reelsSeedRef.current}`;
+      console.log('[REELS] fetching:', reelsUrl);
+      const res = await fetch(reelsUrl, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }, signal: ctrl.signal,
+      });
+      console.log('[REELS] http status:', res.status);
       const json = await res.json();
-      const list = json?.data?.data ?? json?.data ?? [];
+      console.log('[REELS] raw json keys:', Object.keys(json || {}));
+      console.log('[REELS] json.status:', json?.status, '| json.data type:', typeof json?.data);
+      console.log('[REELS] json.data keys:', Object.keys(json?.data || {}));
+      console.log('[REELS] json.data full:', JSON.stringify(json?.data));
+      const list = json?.data?.reels ?? json?.data?.posts ?? json?.data?.data ?? json?.data ?? json?.reels ?? json?.posts ?? [];
       const fresh = Array.isArray(list) ? list : [];
+      console.log('[REELS] fresh count:', fresh.length, '| first item id:', fresh[0]?.id ?? fresh[0]?.post_id);
       if (fresh.length === 0) {
         setReelsHasMore(false);
       } else {
         reelsPageRef.current = page;
         if (append) {
           setReels(prev => {
-            const existing = new Set(prev.map(r => String(r.id)));
-            const newItems = fresh.filter(r => !existing.has(String(r.id)));
+            const existing = new Set(prev.map(r => String(r.id ?? r.post_id)));
+            const newItems = fresh.filter(r => !existing.has(String(r.id ?? r.post_id)));
             return [...prev, ...newItems];
           });
         } else {
@@ -1668,6 +1675,7 @@ export default function DiscoveryScreen() {
         }
       }
     } catch (e) {
+      console.log('[REELS] error:', e?.name, e?.message);
       if (e?.name !== 'AbortError' && !append) setReels([]);
     } finally {
       clearTimeout(timer);
@@ -1866,13 +1874,13 @@ export default function DiscoveryScreen() {
     // 1. Trending Now
     if (trendingPosts.length > 0)
       items.push({ id: 'trending', type: 'trending' });
-    // 2. Browse Categories
-    items.push({ id: 'categories_grid', type: 'categories_grid' });
-    // 3. Hot Topics (search suggestion pills)
-    items.push({ id: 'hot_topics', type: 'hot_topics' });
-    // 3. Reels (horizontal scroll, max 4)
+    // 2. Reels (horizontal scroll, max 4)
     if (reels.length > 0 || reelsLoading)
       items.push({ id: 'reels', type: 'reels' });
+    // 3. Browse Categories
+    items.push({ id: 'categories_grid', type: 'categories_grid' });
+    // 4. Hot Topics (search suggestion pills)
+    items.push({ id: 'hot_topics', type: 'hot_topics' });
     // 4. People You May Know
     const realPeople = Array.isArray(people) && people.filter(p => isRealImage(p?.avatar ?? p?.image ?? p?.thumbnail) && !p.is_follow).length > 0;
     if (realPeople || peopleLoading)
@@ -2391,8 +2399,8 @@ export default function DiscoveryScreen() {
         }
         contentContainerStyle={ss.body}
         removeClippedSubviews
-        initialNumToRender={4}
-        maxToRenderPerBatch={3}
+        initialNumToRender={6}
+        maxToRenderPerBatch={4}
         windowSize={7}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

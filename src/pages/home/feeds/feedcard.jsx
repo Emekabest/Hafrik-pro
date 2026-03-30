@@ -231,21 +231,12 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       extractedUrl = feed?.url || feed?.link_url || feed?.payload?.url || null;
     }
 
-    // Pull out #hashtag tokens from the raw text
-    const extracted = (text.match(/#\w+/g) || []).map(t => t.slice(1));
+    // Keep hashtags inline in the text — just clean and truncate
+    const cleaned = CleanText(text.trim());
 
-    // Strip hashtags from the caption
-    const stripped = text.replace(/#\w+/g, '').replace(/\s{2,}/g, ' ').trim();
-    const cleaned  = CleanText(stripped);
-
-    // Merge API hashtags + extracted (case-insensitive dedup)
-    const seen = new Set();
-    const allTags = [...apiTags, ...extracted].filter(tag => {
-      const t = (tag || '').toLowerCase();
-      if (seen.has(t)) return false;
-      seen.add(t);
-      return true;
-    });
+    // Pills row: only API hashtags NOT already visible inline in text
+    const inlineSet = new Set((text.match(/#\w+/g) || []).map(t => t.slice(1).toLowerCase()));
+    const allTags = apiTags.filter(tag => !inlineSet.has((tag || '').toLowerCase()));
 
     if (cleaned.length > MAX_FEED_TEXT_LENGTH) {
       return {
@@ -601,7 +592,19 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
                     style={styles.textSection}
                   >
                     <Text style={[styles.postText, isTextOnly && styles.postTextLarge]}>
-                      {displayText}
+                      {displayText.split(/(#\w+)/g).map((part, i) =>
+                        /^#\w+$/.test(part) ? (
+                          <Text
+                            key={i}
+                            style={styles.inlineHashtag}
+                            onPress={() => navigation.navigate('HashtagScreen', { hashtag: part.slice(1) })}
+                          >
+                            {part}
+                          </Text>
+                        ) : (
+                          <Text key={i}>{part}</Text>
+                        )
+                      )}
                       {showSeeMore ? <Text style={styles.seeMore}> see more</Text> : null}
                     </Text>
                   </TouchableOpacity>
@@ -915,6 +918,10 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontWeight: '600',
     letterSpacing: 0.2,
+  },
+  inlineHashtag: {
+    color: ACCENT,
+    fontWeight: '700',
   },
 
   // ── Boosted / Sponsored ────────────────────────────────────────────────────

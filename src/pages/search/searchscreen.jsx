@@ -24,8 +24,16 @@ import {
   SectionHeader, SkeletonCard, ResultsLabel, ShowMoreButton,
 } from '../../components/search/SearchCards';
 import SearchEmptyState from '../../components/search/SearchEmptyState';
+import FeedCard from '../home/feeds/feedcard';
 import { Colors } from '../../theme/colors';
 import AppDetails from '../../helpers/appdetails';
+
+const HASHTAG_API = 'https://hafrik.com/api/v1/hashtags/search.php';
+const normaliseHashtagPost = (p) => ({
+  ...p,
+  id:   p.id   ?? p.post_id,
+  user: p.user ? { ...p.user, id: p.user.id ?? p.user.user_id, avatar: p.user.avatar ?? p.user.picture } : p.user,
+});
 
 const RECENT_KEY = 'hafrik_recent_searches';
 const MAX_RECENT = 8;
@@ -66,6 +74,8 @@ const SearchScreen = () => {
   const [followedIds,     setFollowedIds]     = useState(new Set());
   const [joinedIds,       setJoinedIds]       = useState(new Set());
   const [showAllItems,    setShowAllItems]    = useState(false);
+  const [hashtagResults,  setHashtagResults]  = useState([]);
+  const [hashtagLoading,  setHashtagLoading]  = useState(false);
 
   const inputRef = useRef(null);
 
@@ -113,17 +123,38 @@ const SearchScreen = () => {
     const tab = route.params?.initialTab;
     if (tab == null) return;
     const tabMap = {
-      all: 0, people: 1, posts: 2, hashtags: 2,
-      pages: 3, groups: 4, articles: 5,
+      all: 0, people: 1, posts: 2,
+      pages: 3, groups: 4, articles: 5, hashtags: 6,
     };
     const idx = typeof tab === 'number' ? tab : tabMap[String(tab).toLowerCase()];
     if (idx !== undefined) setActiveTab(idx);
   }, [route.params?.initialTab]);
 
+  // ── Hashtag search ─────────────────────────────────────────────────────────
+  const runHashtagSearch = useCallback(async (q) => {
+    const tag = q?.trim().replace(/^#/, '');
+    if (!tag) { setHashtagResults([]); return; }
+    setHashtagLoading(true);
+    try {
+      const url = `${HASHTAG_API}?tag=${encodeURIComponent(tag)}&page=1&limit=15`;
+      const res  = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (json.status === 'success') {
+        const posts = json.posts || [];
+        setHashtagResults(posts);
+      } else {
+        setHashtagResults([]);
+      }
+    } catch (_) {
+      setHashtagResults([]);
+    }
+    setHashtagLoading(false);
+  }, [token]);
+
   // ── Explicit search — fires only on Enter / search icon ─────────────────────
   const runSearch = useCallback(async (q) => {
     const trimmed = q?.trim();
-    if (!trimmed) { setResults([]); return; }
+    if (!trimmed) { setResults([]); setHashtagResults([]); return; }
     setIsLoading(true);
     try {
       const res = await SearchSuggestionController(trimmed, token);
@@ -132,7 +163,8 @@ const SearchScreen = () => {
       setResults([]);
     }
     setIsLoading(false);
-  }, [token]);
+    runHashtagSearch(trimmed);
+  }, [token, runHashtagSearch]);
 
   const handleSubmit = useCallback(() => {
     const q = searchQuery?.trim();
@@ -242,14 +274,29 @@ const SearchScreen = () => {
 
   // ── Build flat FlatList data ────────────────────────────────────────────────
   const buildListData = useCallback(() => {
+    const q = searchQuery?.trim();
+    const targetType = TABS[activeTab].type;
+
+    // ── Hashtag tab ───────────────────────────────────────────────────────────
+    if (targetType === 'hashtag') {
+      if (hashtagLoading) {
+        return [0, 1, 2, 3].map(i => ({ _key: `sk_${i}`, _type: 'skeleton' }));
+      }
+      if (!q || hashtagResults.length === 0) return [];
+      const data = [
+        { _key: 'results_label', _type: 'results_label', count: hashtagResults.length, query: q },
+      ];
+      hashtagResults.forEach((post, i) =>
+        data.push({ _key: `htag_${post.id ?? post.post_id ?? i}`, _type: 'hashtag_post', ...normaliseHashtagPost(post) })
+      );
+      return data;
+    }
+
     if (isLoading) {
       return [0, 1, 2, 3, 4].map(i => ({ _key: `sk_${i}`, _type: 'skeleton' }));
     }
 
-    const q = searchQuery?.trim();
     if (!q || results.length === 0) return [];
-
-    const targetType = TABS[activeTab].type;
 
     // ── All tab: grouped sections, max 3 per section ───────────────────────
     if (targetType === null) {
@@ -321,7 +368,7 @@ const SearchScreen = () => {
       });
     }
     return data;
-  }, [isLoading, searchQuery, results, activeTab, showAllItems]);
+  }, [isLoading, hashtagLoading, searchQuery, results, hashtagResults, activeTab, showAllItems]);
 
   // ── Render item ─────────────────────────────────────────────────────────────
   const renderItem = useCallback(({ item }) => {
@@ -346,6 +393,8 @@ const SearchScreen = () => {
         />
       );
     }
+
+    if (item._type === 'hashtag_post') return <FeedCard feed={item} />;
 
     const onPress = () => handleItemPress(item);
 

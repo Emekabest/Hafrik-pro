@@ -16,12 +16,13 @@ const DARK    = Colors.black;
 const WHITE   = Colors.white;
 
 export const TABS = [
-  { label: 'All',      icon: 'flash',         type: null      },
-  { label: 'People',   icon: 'people',        type: 'user'    },
-  { label: 'Posts',    icon: 'document-text', type: 'post'    },
-  { label: 'Pages',    icon: 'business',      type: 'page'    },
-  { label: 'Groups',   icon: 'albums',        type: 'group'   },
-  { label: 'Articles', icon: 'newspaper',     type: 'article' },
+  { label: 'All',      icon: 'flash',         type: null       },
+  { label: 'People',   icon: 'people',        type: 'user'     },
+  { label: 'Posts',    icon: 'document-text', type: 'post'     },
+  { label: 'Pages',    icon: 'business',      type: 'page'     },
+  { label: 'Groups',   icon: 'albums',        type: 'group'    },
+  { label: 'Articles', icon: 'newspaper',     type: 'article'  },
+  { label: 'Hashtags', icon: 'pricetag',      type: 'hashtag'  },
 ];
 
 // Fixed TypingDots — 3 separate refs, NOT called inside a map/loop
