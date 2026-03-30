@@ -1,8 +1,8 @@
 import React, {
-    useState, useRef, useEffect, useCallback, memo, useMemo,
+    useState, useRef, useEffect, useCallback, memo,
 } from 'react';
 import {
-    StyleSheet, Text, View, TouchableOpacity, FlatList,
+    StyleSheet, Text, View, TouchableOpacity,
     Modal, TextInput, Dimensions, Image, ActivityIndicator,
     ScrollView, Platform, KeyboardAvoidingView, Alert, Linking,
 } from 'react-native';
@@ -23,70 +23,244 @@ const { width: SCREEN_W } = Dimensions.get('window');
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
 const MUTED  = Colors.secondaryText;
-const BORDER = Colors.border;
-const BG     = Colors.surfaceTint;
+const BORDER = Colors.border ?? '#E8E8E8';
+const BG     = Colors.surfaceTint ?? '#F7F8FA';
 const WHITE  = Colors.white;
 const BLACK  = Colors.black;
 
-// ─── Post type tabs ────────────────────────────────────────────────────────────
-const POST_TYPES = [
-    { id: 'text',   label: 'Text',   icon: 'create-outline'   },
-    { id: 'photos', label: 'Photos', icon: 'images-outline'   },
-    { id: 'video',  label: 'Video',  icon: 'videocam-outline' },
-    { id: 'reel',   label: 'Reel',   icon: 'flame-outline'    },
+// ─── Predefined hashtag categories ────────────────────────────────────────────
+const PREDEFINED_HASHTAGS = [
+    'Jobs', 'Schools', 'Universities', 'Visa', 'Business',
+    'Accommodation', 'Shipping', 'BuyAndSell', 'Events',
+    'Health', 'Food', 'Technology', 'Finance', 'Travel',
+    'Culture', 'Sports', 'Music', 'Fashion', 'Remittance',
+    'Housing', 'Language', 'News', 'Community', 'Diaspora',
 ];
 
-// ─── Target avatar chip ────────────────────────────────────────────────────────
-const TargetChip = memo(({ item, isSelected, onPress }) => {
-    const name       = item.title || item.name || item.username || 'Me';
-    const isVerified = !!item.verified;
+// ─── Target picker modal ──────────────────────────────────────────────────────
+const TargetPickerModal = memo(({ visible, targets, selectedIdx, onSelect, onClose }) => {
+    const profile = targets.filter(t => t._type === 'profile');
+    const groups  = targets.filter(t => t._type === 'group');
+    const pages   = targets.filter(t => t._type === 'page');
+
+    const Section = ({ title, icon, color, items, startIdx }) => {
+        if (!items.length) return null;
+        return (
+            <View style={tpStyles.section}>
+                <View style={tpStyles.sectionHeader}>
+                    <Ionicons name={icon} size={13} color={color} />
+                    <Text style={[tpStyles.sectionTitle, { color }]}>{title}</Text>
+                </View>
+                {items.map((item, i) => {
+                    const globalIdx = startIdx + i;
+                    const active = selectedIdx === globalIdx;
+                    const name   = item.title || item.name || item.username || 'Me';
+                    return (
+                        <TouchableOpacity
+                            key={item.id ?? i}
+                            style={[tpStyles.row, active && tpStyles.rowActive]}
+                            onPress={() => { onSelect(item, globalIdx); onClose(); }}
+                            activeOpacity={0.8}
+                        >
+                            {item.avatar ? (
+                                <Image source={{ uri: item.avatar }} style={tpStyles.rowAvatar} />
+                            ) : (
+                                <View style={[tpStyles.rowAvatar, tpStyles.rowAvatarFallback]}>
+                                    <Ionicons
+                                        name={item._type === 'group' ? 'people' : item._type === 'page' ? 'storefront' : 'person'}
+                                        size={16} color={active ? WHITE : BRAND}
+                                    />
+                                </View>
+                            )}
+                            <View style={{ flex: 1 }}>
+                                <Text style={[tpStyles.rowName, active && { color: WHITE }]} numberOfLines={1}>{name}</Text>
+                                {item._type === 'group' && !!item.members && (
+                                    <Text style={[tpStyles.rowSub, active && { color: WHITE + 'BB' }]}>{Number(item.members).toLocaleString()} members</Text>
+                                )}
+                                {item._type === 'page' && !!item.likes && (
+                                    <Text style={[tpStyles.rowSub, active && { color: WHITE + 'BB' }]}>{Number(item.likes).toLocaleString()} followers</Text>
+                                )}
+                            </View>
+                            {active && <Ionicons name="checkmark-circle" size={20} color={WHITE} />}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        );
+    };
+
+    const profileEnd  = profile.length;
+    const groupEnd    = profileEnd + groups.length;
+
     return (
-        <TouchableOpacity
-            style={[styles.chip, isSelected && styles.chipSelected]}
-            activeOpacity={0.8}
-            onPress={onPress}
-        >
-            <View style={[styles.chipRing, isSelected && styles.chipRingActive]}>
-                {item.avatar ? (
-                    <Image source={{ uri: item.avatar }} style={styles.chipAvatar} />
-                ) : (
-                    <View style={[styles.chipAvatar, styles.chipAvatarFallback]}>
-                        <Ionicons
-                            name={item._type === 'group' ? 'people' : item._type === 'page' ? 'storefront' : 'person'}
-                            size={18} color={BRAND}
-                        />
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+            <View style={tpStyles.overlay}>
+                <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+                <View style={tpStyles.sheet}>
+                    <View style={tpStyles.handle} />
+                    <View style={tpStyles.sheetHeader}>
+                        <Text style={tpStyles.sheetTitle}>Post to</Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <Ionicons name="close" size={22} color={BRAND} />
+                        </TouchableOpacity>
                     </View>
-                )}
+                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                        <Section title="My Profile"  icon="person-circle"  color={ACCENT} items={profile} startIdx={0}         />
+                        <Section title="My Groups"   icon="people"         color='#27AE60' items={groups}  startIdx={profileEnd} />
+                        <Section title="My Pages"    icon="storefront"     color='#F39C12' items={pages}   startIdx={groupEnd}   />
+                    </ScrollView>
+                </View>
             </View>
-            <View style={styles.chipNameRow}>
-                <Text style={[styles.chipName, isSelected && styles.chipNameActive]} numberOfLines={1}>{name}</Text>
-                {isVerified && <Ionicons name="checkmark-circle" size={11} color={ACCENT} style={{ marginLeft: 2 }} />}
-            </View>
-            {item._type === 'group' && <Text style={styles.chipSub}>{Number(item.members ?? 0).toLocaleString()} members</Text>}
-            {item._type === 'page'  && <Text style={styles.chipSub}>{Number(item.likes ?? 0).toLocaleString()} likes</Text>}
-        </TouchableOpacity>
+        </Modal>
     );
 });
 
+const tpStyles = StyleSheet.create({
+    overlay: { flex: 1, justifyContent: 'flex-end' },
+    sheet: {
+        backgroundColor: WHITE, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+        maxHeight: '75%', paddingHorizontal: 16, paddingBottom: 32, paddingTop: 10,
+        shadowColor: BLACK, shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 20,
+    },
+    handle: {
+        width: 40, height: 4, borderRadius: 2, backgroundColor: BORDER,
+        alignSelf: 'center', marginBottom: 14,
+    },
+    sheetHeader: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    sheetTitle: { fontSize: 17, fontWeight: '800', color: BRAND },
+    section: { marginBottom: 18 },
+    sectionHeader: {
+        flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8,
+    },
+    sectionTitle: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+    row: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        paddingVertical: 10, paddingHorizontal: 12, borderRadius: 14,
+        marginBottom: 4, backgroundColor: BG,
+    },
+    rowActive: { backgroundColor: BRAND },
+    rowAvatar: { width: 40, height: 40, borderRadius: 20 },
+    rowAvatarFallback: { backgroundColor: BORDER + '40', alignItems: 'center', justifyContent: 'center' },
+    rowName: { fontSize: 14, fontWeight: '700', color: BRAND },
+    rowSub:  { fontSize: 11, color: MUTED, marginTop: 1 },
+});
 
-// ─── Main component ────────────────────────────────────────────────────────────
+// ─── Bottom toolbar actions ────────────────────────────────────────────────────
+const TOOLBAR_ACTIONS = [
+    { id: 'photos', icon: 'images',          label: 'Photo',    color: '#27AE60' },
+    { id: 'video',  icon: 'videocam',         label: 'Video',    color: '#E74C3C' },
+    { id: 'reel',   icon: 'play-circle',      label: 'Reel',     color: '#9B59B6' },
+    { id: 'poll',   icon: 'stats-chart',      label: 'Poll',     color: '#F39C12' },
+    { id: 'location', icon: 'location',       label: 'Location', color: '#3498DB' },
+];
+
+// (TargetChip replaced by TargetPickerModal)
+
+// ─── Poll builder ─────────────────────────────────────────────────────────────
+const PollBuilder = memo(({ options, onUpdate, onAdd, onRemove }) => (
+    <View style={styles.pollWrap}>
+        <View style={styles.pollTitleRow}>
+            <Ionicons name="stats-chart" size={15} color={ACCENT} />
+            <Text style={styles.pollTitle}>Poll Options</Text>
+            <Text style={styles.pollHint}>(min 2, max 4)</Text>
+        </View>
+        {options.map((opt, idx) => (
+            <View key={idx} style={styles.pollOptionRow}>
+                <View style={styles.pollOptionBullet}>
+                    <Text style={styles.pollOptionBulletText}>{idx + 1}</Text>
+                </View>
+                <TextInput
+                    style={styles.pollOptionInput}
+                    value={opt}
+                    onChangeText={v => onUpdate(idx, v)}
+                    placeholder={`Option ${idx + 1}`}
+                    placeholderTextColor={MUTED}
+                    maxLength={60}
+                    returnKeyType="next"
+                />
+                {options.length > 2 && (
+                    <TouchableOpacity onPress={() => onRemove(idx)} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                        <Ionicons name="close-circle" size={20} color={MUTED} />
+                    </TouchableOpacity>
+                )}
+            </View>
+        ))}
+        {options.length < 4 && (
+            <TouchableOpacity style={styles.pollAddBtn} onPress={onAdd} activeOpacity={0.75}>
+                <Ionicons name="add-circle-outline" size={17} color={ACCENT} />
+                <Text style={styles.pollAddText}>Add option</Text>
+            </TouchableOpacity>
+        )}
+    </View>
+));
+
+// ─── Hashtag selector ─────────────────────────────────────────────────────────
+const HashtagSelector = memo(({ selected, onToggle, onClearAll }) => (
+    <View style={styles.hashtagSection}>
+        <View style={styles.hashtagHeader}>
+            <Ionicons name="pricetag" size={13} color={ACCENT} />
+            <Text style={styles.hashtagLabel}>Categories</Text>
+            {selected.length > 0 && (
+                <TouchableOpacity onPress={onClearAll} style={styles.clearBtn}>
+                    <Text style={styles.clearBtnText}>Clear</Text>
+                </TouchableOpacity>
+            )}
+        </View>
+        <View style={styles.hashtagGrid}>
+            {PREDEFINED_HASHTAGS.map(tag => {
+                const active = selected.includes(tag);
+                return (
+                    <TouchableOpacity
+                        key={tag}
+                        style={[styles.hashtagPill, active && styles.hashtagPillActive]}
+                        onPress={() => onToggle(tag)}
+                        activeOpacity={0.75}
+                    >
+                        {active
+                            ? <Ionicons name="checkmark" size={10} color={WHITE} style={{ marginRight: 2 }} />
+                            : <Text style={styles.hashtagHash}>#</Text>
+                        }
+                        <Text style={[styles.hashtagPillText, active && styles.hashtagPillTextActive]}>
+                            {tag}
+                        </Text>
+                    </TouchableOpacity>
+                );
+            })}
+        </View>
+        {selected.length > 0 && (
+            <View style={styles.hashtagSelectedRow}>
+                {selected.map(t => (
+                    <View key={t} style={styles.hashtagBadge}>
+                        <Text style={styles.hashtagBadgeText}>#{t}</Text>
+                    </View>
+                ))}
+            </View>
+        )}
+    </View>
+));
+
+// ─── Main Composer ────────────────────────────────────────────────────────────
 const PostComposerModal = () => {
-    const { top }        = useSafeAreaInsets();
-    const { token }      = useAuth();
-    const isComposerOpen = useStore((s) => s.isComposerOpen);
-    const closeComposer  = useStore((s) => s.closeComposer);
-    const composerConfig = useStore((s) => s.composerConfig);
-    const userAvatar     = useStore((s) => s.userAvatar);
+    const { top, bottom } = useSafeAreaInsets();
+    const { token }       = useAuth();
+    const isComposerOpen  = useStore((s) => s.isComposerOpen);
+    const closeComposer   = useStore((s) => s.closeComposer);
+    const composerConfig  = useStore((s) => s.composerConfig);
+    const userAvatar      = useStore((s) => s.userAvatar);
 
-    // ── Targets ─────────────────────────────────────────────────────────────
-    const [targets,           setTargets]           = useState([]);
-    const [targetsLoading,    setTargetsLoading]    = useState(false);
-    const [selectedTargetIdx, setSelectedTargetIdx] = useState(0);
+    // ── Targets ──────────────────────────────────────────────────────────────
+    const [targets,            setTargets]            = useState([]);
+    const [targetsLoading,     setTargetsLoading]     = useState(false);
+    const [selectedTargetIdx,  setSelectedTargetIdx]  = useState(0);
     const [selectedTargetType, setSelectedTargetType] = useState('profile');
-    const [selectedTargetId,  setSelectedTargetId]  = useState(0);
+    const [selectedTargetId,   setSelectedTargetId]   = useState(0);
 
-    // ── Post type ─────────────────────────────────────────────────────────────
-    const [activeTab, setActiveTab] = useState('text');
+    // ── Active mode ───────────────────────────────────────────────────────────
+    const [activeTab,        setActiveTab]        = useState('text');
+    const [targetPickerOpen, setTargetPickerOpen] = useState(false);
 
     const resolveTargetTypeAndId = useCallback((item) => {
         const type = item?._type === 'group' || item?._type === 'page' ? item._type : 'profile';
@@ -103,13 +277,34 @@ const PostComposerModal = () => {
     }, [resolveTargetTypeAndId]);
 
     // ── Content state ─────────────────────────────────────────────────────────
-    const [postText,       setPostText]       = useState('');
-    const [locationText,   setLocationText]   = useState('');
-    const [showLocation,   setShowLocation]   = useState(false);
-    const [selectedImages, setSelectedImages] = useState([]);
-    const [selectedVideo,  setSelectedVideo]  = useState(null);
+    const [postText,          setPostText]          = useState('');
+    const [locationText,      setLocationText]      = useState('');
+    const [showLocation,      setShowLocation]      = useState(false);
+    const [selectedImages,    setSelectedImages]    = useState([]);
+    const [selectedVideo,     setSelectedVideo]     = useState(null);
     const [selectedThumbnail, setSelectedThumbnail] = useState(null);
     const [selectedCategory,  setSelectedCategory]  = useState(null);
+    const [selectedHashtags,  setSelectedHashtags]  = useState([]);
+
+    // ── Poll state ────────────────────────────────────────────────────────────
+    const [pollOptions, setPollOptions] = useState(['', '']);
+
+    const updatePollOption = useCallback((idx, val) => {
+        setPollOptions(prev => { const n = [...prev]; n[idx] = val; return n; });
+    }, []);
+    const addPollOption    = useCallback(() => {
+        setPollOptions(prev => prev.length < 4 ? [...prev, ''] : prev);
+    }, []);
+    const removePollOption = useCallback((idx) => {
+        setPollOptions(prev => prev.filter((_, i) => i !== idx));
+    }, []);
+
+    const toggleHashtag = useCallback((tag) => {
+        setSelectedHashtags(prev =>
+            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+        );
+    }, []);
+    const clearHashtags = useCallback(() => setSelectedHashtags([]), []);
 
     // ── Video player ──────────────────────────────────────────────────────────
     const videoPlayer = useVideoPlayer(null, (p) => { if (p) p.loop = true; });
@@ -125,17 +320,14 @@ const PostComposerModal = () => {
     useEffect(() => {
         if (!isComposerOpen) return;
         const tab = composerConfig?.initialTab;
-        if (tab && POST_TYPES.some(t => t.id === tab)) {
-            setActiveTab(tab);
-        }
+        if (tab) setActiveTab(tab);
     }, [isComposerOpen, composerConfig?.initialTab]);
 
-    // ── Fetch targets on open ──────────────────────────────────────────────────
+    // ── Fetch targets on open ─────────────────────────────────────────────────
     useEffect(() => {
         if (!isComposerOpen || !token) return;
 
         if (composerConfig?.locked) {
-            // Support both new shape (target_type/target_id) and legacy (_type/id)
             const type = composerConfig.target_type
                        ?? (composerConfig._type === 'group' ? 'group'
                          : composerConfig._type === 'page'  ? 'page'
@@ -182,22 +374,25 @@ const PostComposerModal = () => {
         setPostText(''); setLocationText(''); setShowLocation(false);
         setSelectedImages([]); setSelectedVideo(null);
         setSelectedThumbnail(null); setSelectedCategory(null);
+        setSelectedHashtags([]);
+        setPollOptions(['', '']);
+        setTargetPickerOpen(false);
     }, []); // eslint-disable-line
 
     const handleClose = useCallback(() => { resetAll(); closeComposer(); }, [resetAll, closeComposer]);
 
-    // ── Upload state (block double-tapping Post while a previous upload runs) ──
+    // ── Upload state ──────────────────────────────────────────────────────────
     const activeUpload = useStore((s) => s.activeUpload);
 
     // ── Can post? ─────────────────────────────────────────────────────────────
     const canPost = (() => {
-        // Block posting while a previous upload is still running
         if (activeUpload) return false;
-        if (activeTab === 'text')   return postText.trim().length > 0;
+        if (activeTab === 'poll')   return pollOptions.filter(o => o.trim()).length >= 2;
         if (activeTab === 'photos') return selectedImages.length > 0;
         if (activeTab === 'video')  return !!selectedVideo;
         if (activeTab === 'reel')   return !!selectedVideo;
-        return false;
+        // text (default) — allow if has text OR hashtags
+        return postText.trim().length > 0 || selectedHashtags.length > 0;
     })();
 
     // ── Permission helper ─────────────────────────────────────────────────────
@@ -216,12 +411,12 @@ const PostComposerModal = () => {
         return false;
     }, []);
 
-    // ── Media pickers (FIXED: using string array format for mediaTypes) ────────
+    // ── Media pickers ─────────────────────────────────────────────────────────
     const pickImages = async () => {
         if (!(await requestPermission())) return;
         if (selectedImages.length >= 10) return;
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],          // ✅ fixed — was deprecated enum
+            mediaTypes: ['images'],
             allowsMultipleSelection: true,
             quality: 1,
             selectionLimit: 10 - selectedImages.length,
@@ -237,7 +432,7 @@ const PostComposerModal = () => {
     const pickVideo = async () => {
         if (!(await requestPermission())) return;
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['videos'],          // ✅ fixed — was deprecated enum
+            mediaTypes: ['videos'],
             quality: 1,
         });
         if (result.canceled) return;
@@ -247,15 +442,13 @@ const PostComposerModal = () => {
         try {
             const { uri } = await VideoThumbnails.getThumbnailAsync(a.uri, { time: 1000 });
             setSelectedThumbnail({ id: `${Date.now()}`, uri, fileName: 'thumb.jpg', type: 'image', fileType: 'photo' });
-        } catch (_) {
-            // Auto-generation failed — thumbnail stays null; user can pick manually.
-        }
+        } catch (_) {}
     };
 
     const pickThumbnail = async () => {
         if (!(await requestPermission())) return;
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],          // ✅ fixed — was deprecated enum
+            mediaTypes: ['images'],
             quality: 1,
         });
         if (result.canceled) return;
@@ -263,28 +456,63 @@ const PostComposerModal = () => {
         setSelectedThumbnail({ id: `${Date.now()}`, uri: a.uri, fileName: a.fileName || 'thumb.jpg', type: 'image', fileType: 'photo' });
     };
 
+    // ── Toolbar press ─────────────────────────────────────────────────────────
+    const handleToolbarPress = useCallback(async (actionId) => {
+        if (actionId === 'location') {
+            setShowLocation(v => !v);
+            return;
+        }
+        if (actionId === 'photos') {
+            setActiveTab('photos');
+            await pickImages();
+            return;
+        }
+        if (actionId === 'video') {
+            setActiveTab('video');
+            await pickVideo();
+            return;
+        }
+        if (actionId === 'reel') {
+            setActiveTab('reel');
+            await pickVideo();
+            return;
+        }
+        if (actionId === 'poll') {
+            setActiveTab(prev => prev === 'poll' ? 'text' : 'poll');
+            return;
+        }
+    }, []); // eslint-disable-line
+
     // ── Post ──────────────────────────────────────────────────────────────────
-    const handlePost = async () => {
+    const handlePost = useCallback(async () => {
         if (!canPost) return;
 
-        // Build only the base post body — NO media URLs here.
-        // BackgroundUploadManager uploads files first, then appends
-        // media / video_url / thumbnail before calling create.php.
         const mappedType = activeTab === 'text' ? 'post' : activeTab;
         const postBody = {
             type: mappedType,
             target_type: selectedTargetType,
             privacy: 'public',
         };
-        if (postText.trim())    postBody.text     = postText.trim();
+
+        if (postText.trim()) postBody.text = postText.trim();
         if (locationText.trim()) postBody.location = locationText.trim();
-        if (selectedTargetType === 'page' && selectedTargetId) {
-            postBody.target_id = selectedTargetId;
-        } else if (selectedTargetType === 'group' && selectedTargetId) {
+
+        // Attach selected hashtags
+        if (selectedHashtags.length > 0) {
+            postBody.hashtags = selectedHashtags.join(',');
+            const tagStr = selectedHashtags.map(t => `#${t}`).join(' ');
+            postBody.text = postBody.text ? `${postBody.text}\n\n${tagStr}` : tagStr;
+        }
+
+        if (selectedTargetType !== 'profile' && selectedTargetId) {
             postBody.target_id = selectedTargetId;
         }
 
-        // Capture media references locally
+        // Poll options
+        if (activeTab === 'poll') {
+            postBody.poll_options = pollOptions.map(o => o.trim()).filter(Boolean);
+        }
+
         const images    = [...selectedImages];
         const video     = selectedVideo;
         const thumbnail = selectedThumbnail;
@@ -292,7 +520,6 @@ const PostComposerModal = () => {
         const tab       = activeTab;
         const authToken = token;
 
-        // Start upload in background — GlobalUploadBanner shows progress app-wide
         startBackgroundUpload({
             postBody,
             activeTab: tab,
@@ -303,539 +530,579 @@ const PostComposerModal = () => {
             token: authToken,
         });
 
-        // Close modal immediately so user can navigate freely while upload continues
         handleClose();
-    };
+    }, [
+        canPost, activeTab, selectedTargetType, selectedTargetId,
+        postText, locationText, selectedHashtags, pollOptions,
+        selectedImages, selectedVideo, selectedThumbnail, selectedCategory,
+        token, handleClose,
+    ]);
 
-    // ── Tab content ───────────────────────────────────────────────────────────
-    const renderContent = () => {
-        if (activeTab === 'text') {
-            return (
-                <View style={styles.contentArea}>
-                    <TextInput
-                        style={styles.textInput}
-                        placeholder="What's on your mind?"
-                        placeholderTextColor={MUTED}
-                        multiline
-                        value={postText}
-                        onChangeText={setPostText}
-                        autoFocus
-                        textAlignVertical="top"
-                    />
-                    {showLocation ? (
-                        <View style={styles.locationRow}>
-                            <Ionicons name="location" size={16} color={ACCENT} />
-                            <TextInput
-                                style={styles.locationInput}
-                                placeholder="Add location…"
-                                placeholderTextColor={MUTED}
-                                value={locationText}
-                                onChangeText={setLocationText}
-                            />
-                            <TouchableOpacity onPress={() => { setShowLocation(false); setLocationText(''); }}>
-                                <Ionicons name="close-circle" size={18} color={MUTED} />
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <TouchableOpacity style={styles.addLocationBtn} onPress={() => setShowLocation(true)}>
-                            <Ionicons name="location-outline" size={15} color={MUTED} />
-                            <Text style={styles.addLocationText}>Add location</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-            );
-        }
-
-        if (activeTab === 'photos') {
-            return (
-                <View style={styles.contentArea}>
-                    <TextInput
-                        style={[styles.textInput, { minHeight: 72 }]}
-                        placeholder="Write a caption…"
-                        placeholderTextColor={MUTED}
-                        multiline
-                        value={postText}
-                        onChangeText={setPostText}
-                        textAlignVertical="top"
-                    />
-                    {selectedImages.length === 0 ? (
-                        <TouchableOpacity style={styles.mediaPickerEmpty} onPress={pickImages} activeOpacity={0.85}>
-                            <View style={styles.mediaPickerEmptyIcon}>
-                                <Ionicons name="images" size={36} color={ACCENT} />
-                            </View>
-                            <Text style={styles.mediaPickerEmptyTitle}>Add Photos</Text>
-                            <Text style={styles.mediaPickerEmptySub}>Tap to pick from your library · up to 10</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <View>
-                            <View style={styles.photoGrid}>
-                                {selectedImages.map((img, idx) => (
-                                    <View key={img.id} style={styles.photoCell}>
-                                        <Image source={{ uri: img.uri }} style={styles.photoThumb} resizeMode="cover" />
-                                        <TouchableOpacity
-                                            style={styles.photoRemove}
-                                            onPress={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))}
-                                            hitSlop={{ top: 6, right: 6, bottom: 6, left: 6 }}
-                                        >
-                                            <Ionicons name="close-circle" size={22} color={BLACK + 'BF'} />
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
-                                {selectedImages.length < 10 && (
-                                    <TouchableOpacity style={styles.photoAddMore} onPress={pickImages} activeOpacity={0.8}>
-                                        <Ionicons name="add" size={28} color={ACCENT} />
-                                        <Text style={styles.photoAddMoreText}>More</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                            <Text style={styles.photoCount}>{selectedImages.length}/10 photos selected</Text>
-                        </View>
-                    )}
-                </View>
-            );
-        }
-
-        if (activeTab === 'video' || activeTab === 'reel') {
-            return (
-                <View style={styles.contentArea}>
-                    <TextInput
-                        style={[styles.textInput, { minHeight: 72 }]}
-                        placeholder={activeTab === 'reel' ? 'Describe your reel…' : 'Write a caption…'}
-                        placeholderTextColor={MUTED}
-                        multiline
-                        value={postText}
-                        onChangeText={setPostText}
-                        textAlignVertical="top"
-                    />
-                    {selectedVideo ? (
-                        <View style={styles.videoWrap}>
-                            <VideoView player={videoPlayer} style={styles.videoPreview} nativeControls contentFit="cover" />
-                            <TouchableOpacity
-                                style={styles.videoRemove}
-                                onPress={() => { try { videoPlayer.pause(); } catch (_) {} setSelectedVideo(null); setSelectedThumbnail(null); }}
-                                hitSlop={{ top: 6, right: 6, bottom: 6, left: 6 }}
-                            >
-                                <Ionicons name="close-circle" size={24} color={BLACK + 'BF'} />
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <TouchableOpacity style={styles.mediaPickerEmpty} onPress={pickVideo} activeOpacity={0.85}>
-                            <View style={styles.mediaPickerEmptyIcon}>
-                                <Ionicons name="videocam" size={36} color={ACCENT} />
-                            </View>
-                            <Text style={styles.mediaPickerEmptyTitle}>
-                                {activeTab === 'reel' ? 'Add Reel Video' : 'Add Video'}
-                            </Text>
-                            <Text style={styles.mediaPickerEmptySub}>Tap to pick a video from your library</Text>
-                        </TouchableOpacity>
-                    )}
-                    {selectedVideo && (
-                        <View style={styles.thumbSection}>
-                            <Text style={styles.thumbLabel}>Thumbnail (optional)</Text>
-                            <TouchableOpacity style={styles.thumbPicker} onPress={pickThumbnail} activeOpacity={0.85}>
-                                {selectedThumbnail ? (
-                                    <>
-                                        <Image source={{ uri: selectedThumbnail.uri }} style={styles.thumbImg} resizeMode="cover" />
-                                        <TouchableOpacity
-                                            style={styles.thumbRemove}
-                                            onPress={(e) => { e.stopPropagation?.(); setSelectedThumbnail(null); }}
-                                            hitSlop={{ top: 6, right: 6, bottom: 6, left: 6 }}
-                                        >
-                                            <Ionicons name="close-circle" size={18} color={BLACK + 'BF'} />
-                                        </TouchableOpacity>
-                                    </>
-                                ) : (
-                                    <View style={styles.thumbPlaceholder}>
-                                        <Ionicons name="image-outline" size={24} color={MUTED} />
-                                        <Text style={styles.thumbPlaceholderText}>Pick thumbnail</Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                    {activeTab === 'video' && selectedVideo && (
-                        <View style={styles.categorySection}>
-                            <Text style={styles.categoryLabel}>Category</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                {PostFeedList.videoCategory.map(cat => (
-                                    <TouchableOpacity
-                                        key={cat.id}
-                                        style={[styles.catPill, selectedCategory === cat.id && styles.catPillActive]}
-                                        onPress={() => setSelectedCategory(cat.id)}
-                                    >
-                                        <Text style={[styles.catPillText, selectedCategory === cat.id && styles.catPillTextActive]}>
-                                            {cat.name}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
-                </View>
-            );
-        }
-        return null;
-    };
+    const PHOTO_CELL = (SCREEN_W - 32 - 8) / 3;
 
     return (
         <Modal
             visible={isComposerOpen}
             animationType="slide"
-            transparent={true}               // ✅ transparent so backdrop shows
+            transparent={false}
             onRequestClose={handleClose}
         >
-            {/* ── Dimmed backdrop ── */}
-            <View style={styles.backdrop}>
-                {/* Tap outside to close */}
-                <TouchableOpacity style={styles.backdropTap} activeOpacity={1} onPress={handleClose} />
+            <View style={[styles.fullScreen, { paddingTop: top }]}>
 
-                {/* ── Bottom sheet ── */}
+                {/* ── Header ── */}
+                <View style={styles.header}>
+                    <TouchableOpacity style={styles.closeBtn} onPress={handleClose} activeOpacity={0.7}>
+                        <Ionicons name="close" size={22} color={BRAND} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Create Post</Text>
+                    <TouchableOpacity
+                        style={[styles.postBtn, !canPost && styles.postBtnOff]}
+                        onPress={handlePost}
+                        disabled={!canPost}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.postBtnText}>Post</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <KeyboardAvoidingView
-                    style={styles.sheetWrapper}
+                    style={{ flex: 1 }}
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={0}
                 >
-                    <View style={[styles.root, { paddingBottom: Platform.OS === 'ios' ? top : 0 }]}>
-                        {/* Drag handle */}
-                        <View style={styles.dragHandle} />
 
-                        <KeyboardAvoidingView
-                            style={{ flex: 1 }}
-                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                        >
-                            {/* ── HEADER ─────────────────────────────────────────────── */}
-                            <LinearGradient
-                                colors={[WHITE, BG]}
-                                style={styles.header}
-                            >
-                                <TouchableOpacity style={styles.headerClose} onPress={handleClose} activeOpacity={0.7}>
-                                    <Ionicons name="close" size={22} color={BRAND} />
-                                </TouchableOpacity>
+                    {/* ── Scrollable body ── */}
+                    <ScrollView
+                        style={{ flex: 1 }}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 16 }}
+                    >
 
-                                <Text style={styles.headerTitle}>New Post</Text>
-
+                        {/* Post-to compact selector */}
+                        {!composerConfig?.locked && (
+                            <>
                                 <TouchableOpacity
-                                    style={[styles.postBtn, !canPost && styles.postBtnOff]}
-                                    onPress={handlePost}
-                                    disabled={!canPost}
-                                    activeOpacity={0.85}
+                                    style={styles.targetBar}
+                                    onPress={() => !targetsLoading && setTargetPickerOpen(true)}
+                                    activeOpacity={0.8}
                                 >
-                                    <Text style={styles.postBtnText}>Post</Text>
+                                    <Text style={styles.targetBarLabel}>Posting to</Text>
+                                    {targetsLoading ? (
+                                        <ActivityIndicator size="small" color={ACCENT} style={{ marginHorizontal: 8 }} />
+                                    ) : (() => {
+                                        const sel = targets[selectedTargetIdx];
+                                        const name = sel?.title || sel?.name || sel?.username || 'My Profile';
+                                        const type = sel?._type ?? 'profile';
+                                        return (
+                                            <View style={styles.targetSelected}>
+                                                {sel?.avatar ? (
+                                                    <Image source={{ uri: sel.avatar }} style={styles.targetSelAvatar} />
+                                                ) : (
+                                                    <View style={[styles.targetSelAvatar, { backgroundColor: ACCENT + '22', alignItems: 'center', justifyContent: 'center' }]}>
+                                                        <Ionicons
+                                                            name={type === 'group' ? 'people' : type === 'page' ? 'storefront' : 'person'}
+                                                            size={12} color={ACCENT}
+                                                        />
+                                                    </View>
+                                                )}
+                                                <Text style={styles.targetSelName} numberOfLines={1}>{name}</Text>
+                                                <View style={styles.targetTypeBadge}>
+                                                    <Text style={styles.targetTypeText}>
+                                                        {type === 'group' ? 'Group' : type === 'page' ? 'Page' : 'Profile'}
+                                                    </Text>
+                                                </View>
+                                                <Ionicons name="chevron-down" size={14} color={MUTED} />
+                                            </View>
+                                        );
+                                    })()}
                                 </TouchableOpacity>
-                            </LinearGradient>
 
-                            {/* ── POST TO ─────────────────────────────────────────────── */}
-                            <View style={styles.targetSection}>
-                                <Text style={styles.targetLabel}>
-                                    Post to{composerConfig?.locked ? '' : ''}
-                                </Text>
-                                {composerConfig?.locked ? (
-                                    <View style={styles.targetFallback}>
-                                        <View style={[styles.chipRing, styles.chipRingActive]}>
-                                            {composerConfig.avatar ? (
-                                                <Image source={{ uri: composerConfig.avatar }} style={styles.chipAvatar} />
-                                            ) : (
-                                                <View style={[styles.chipAvatar, styles.chipAvatarFallback]}>
-                                                    <Ionicons
-                                                        name={
-                                                            (composerConfig.target_type ?? composerConfig._type) === 'group'
-                                                                ? 'people' : 'storefront'
-                                                        }
-                                                        size={18} color={BRAND}
-                                                    />
+                                <TargetPickerModal
+                                    visible={targetPickerOpen}
+                                    targets={targets}
+                                    selectedIdx={selectedTargetIdx}
+                                    onSelect={handleSelectTarget}
+                                    onClose={() => setTargetPickerOpen(false)}
+                                />
+                            </>
+                        )}
+
+                        {/* User avatar + text input */}
+                        <View style={styles.composeRow}>
+                            {userAvatar ? (
+                                <Image source={{ uri: userAvatar }} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatar, styles.avatarFallback]}>
+                                    <Ionicons name="person" size={20} color={MUTED} />
+                                </View>
+                            )}
+                            <View style={{ flex: 1 }}>
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder={
+                                        activeTab === 'poll'   ? "Ask a question… (optional)" :
+                                        activeTab === 'photos' ? "Write a caption…" :
+                                        activeTab === 'video' || activeTab === 'reel' ? "Describe this…" :
+                                        "What's on your mind?"
+                                    }
+                                    placeholderTextColor={MUTED}
+                                    multiline
+                                    value={postText}
+                                    onChangeText={setPostText}
+                                    autoFocus={activeTab === 'text' || activeTab === 'poll'}
+                                    textAlignVertical="top"
+                                />
+                            </View>
+                        </View>
+
+                        {/* ── Media content by tab ── */}
+
+                        {/* Photos */}
+                        {activeTab === 'photos' && (
+                            <View style={styles.mediaSection}>
+                                {selectedImages.length > 0 ? (
+                                    <>
+                                        <View style={styles.photoGrid}>
+                                            {selectedImages.map((img, idx) => (
+                                                <View key={img.id} style={[styles.photoCell, { width: PHOTO_CELL, height: PHOTO_CELL }]}>
+                                                    <Image source={{ uri: img.uri }} style={styles.photoThumb} resizeMode="cover" />
+                                                    <TouchableOpacity
+                                                        style={styles.photoRemove}
+                                                        onPress={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))}
+                                                        hitSlop={{ top: 6, right: 6, bottom: 6, left: 6 }}
+                                                    >
+                                                        <Ionicons name="close-circle" size={22} color={WHITE} />
+                                                    </TouchableOpacity>
                                                 </View>
+                                            ))}
+                                            {selectedImages.length < 10 && (
+                                                <TouchableOpacity
+                                                    style={[styles.photoAddMore, { width: PHOTO_CELL, height: PHOTO_CELL }]}
+                                                    onPress={pickImages}
+                                                    activeOpacity={0.8}
+                                                >
+                                                    <Ionicons name="add" size={28} color={ACCENT} />
+                                                    <Text style={styles.photoAddMoreText}>Add</Text>
+                                                </TouchableOpacity>
                                             )}
                                         </View>
-                                        <Text style={[styles.chipName, styles.chipNameActive]} numberOfLines={1}>
-                                            {composerConfig.title || (
-                                                (composerConfig.target_type ?? composerConfig._type) === 'group'
-                                                    ? 'Group' : 'Page'
-                                            )}
-                                        </Text>
-                                        <Ionicons name="lock-closed" size={11} color={MUTED} style={{ marginLeft: 4 }} />
-                                    </View>
-                                ) : targetsLoading ? (
-                                    <ActivityIndicator size="small" color={ACCENT} style={{ marginLeft: 16, marginTop: 8 }} />
-                                ) : targets.length === 0 ? (
-                                    <View style={styles.targetFallback}>
-                                        <View style={[styles.chipRing, styles.chipRingActive]}>
-                                            {userAvatar ? (
-                                                <Image source={{ uri: userAvatar }} style={styles.chipAvatar} />
-                                            ) : (
-                                                <View style={[styles.chipAvatar, styles.chipAvatarFallback]}>
-                                                    <Ionicons name="person" size={18} color={BRAND} />
-                                                </View>
-                                            )}
-                                        </View>
-                                        <Text style={[styles.chipName, styles.chipNameActive]}>My Profile</Text>
-                                    </View>
+                                        <Text style={styles.photoCount}>{selectedImages.length}/10 photos</Text>
+                                    </>
                                 ) : (
-                                    <FlatList
-                                        data={targets}
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        keyExtractor={(item, i) => `${item._type}_${item.id ?? i}`}
-                                        contentContainerStyle={styles.targetList}
-                                        renderItem={({ item, index }) => (
-                                            <TargetChip
-                                                item={item}
-                                                isSelected={selectedTargetIdx === index}
-                                                onPress={() => handleSelectTarget(item, index)}
-                                            />
-                                        )}
-                                    />
+                                    <TouchableOpacity style={styles.mediaPicker} onPress={pickImages} activeOpacity={0.85}>
+                                        <Ionicons name="images" size={38} color={ACCENT} />
+                                        <Text style={styles.mediaPickerTitle}>Add Photos</Text>
+                                        <Text style={styles.mediaPickerSub}>Up to 10 photos</Text>
+                                    </TouchableOpacity>
                                 )}
                             </View>
+                        )}
 
-                            {/* ── POST TYPE TABS ─────────────────────────────────────── */}
-                            <View style={styles.tabs}>
-                                {POST_TYPES.map(tab => {
-                                    const active = activeTab === tab.id;
-                                    return (
-                                        <TouchableOpacity
-                                            key={tab.id}
-                                            style={[styles.tab, active && styles.tabActive]}
-                                            onPress={() => setActiveTab(tab.id)}
-                                            activeOpacity={0.8}
-                                        >
-                                            <View style={[styles.tabIconWrap, active && styles.tabIconWrapActive]}>
-                                                <Ionicons name={tab.icon} size={17} color={active ? ACCENT : MUTED} />
+                        {/* Video / Reel */}
+                        {(activeTab === 'video' || activeTab === 'reel') && (
+                            <View style={styles.mediaSection}>
+                                {selectedVideo ? (
+                                    <>
+                                        <View style={styles.videoWrap}>
+                                            <VideoView
+                                                player={videoPlayer}
+                                                style={[styles.videoPreview, { height: Math.round((SCREEN_W - 32) * 9 / 16) }]}
+                                                nativeControls
+                                                contentFit="cover"
+                                            />
+                                            <TouchableOpacity
+                                                style={styles.videoRemove}
+                                                onPress={() => { try { videoPlayer.pause(); } catch (_) {} setSelectedVideo(null); setSelectedThumbnail(null); }}
+                                            >
+                                                <Ionicons name="close-circle" size={26} color={WHITE} />
+                                            </TouchableOpacity>
+                                        </View>
+                                        {/* Thumbnail */}
+                                        <View style={styles.thumbRow}>
+                                            <Text style={styles.thumbLabel}>Thumbnail</Text>
+                                            <TouchableOpacity style={styles.thumbPicker} onPress={pickThumbnail} activeOpacity={0.85}>
+                                                {selectedThumbnail ? (
+                                                    <>
+                                                        <Image source={{ uri: selectedThumbnail.uri }} style={styles.thumbImg} resizeMode="cover" />
+                                                        <TouchableOpacity
+                                                            style={styles.thumbRemove}
+                                                            onPress={(e) => { e.stopPropagation?.(); setSelectedThumbnail(null); }}
+                                                        >
+                                                            <Ionicons name="close-circle" size={16} color={WHITE} />
+                                                        </TouchableOpacity>
+                                                    </>
+                                                ) : (
+                                                    <View style={styles.thumbPlaceholder}>
+                                                        <Ionicons name="image-outline" size={22} color={MUTED} />
+                                                        <Text style={styles.thumbPlaceholderText}>Pick</Text>
+                                                    </View>
+                                                )}
+                                            </TouchableOpacity>
+                                        </View>
+                                        {/* Video category */}
+                                        {activeTab === 'video' && (
+                                            <View style={styles.catRow}>
+                                                <Text style={styles.catLabel}>Category</Text>
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
+                                                    {PostFeedList.videoCategory.map(cat => (
+                                                        <TouchableOpacity
+                                                            key={cat.id}
+                                                            style={[styles.catPill, selectedCategory === cat.id && styles.catPillActive]}
+                                                            onPress={() => setSelectedCategory(cat.id)}
+                                                        >
+                                                            <Text style={[styles.catPillText, selectedCategory === cat.id && styles.catPillTextActive]}>
+                                                                {cat.name}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </ScrollView>
                                             </View>
-                                            <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                                        )}
+                                    </>
+                                ) : (
+                                    <TouchableOpacity style={styles.mediaPicker} onPress={pickVideo} activeOpacity={0.85}>
+                                        <Ionicons name={activeTab === 'reel' ? 'play-circle' : 'videocam'} size={38} color={ACCENT} />
+                                        <Text style={styles.mediaPickerTitle}>{activeTab === 'reel' ? 'Add Reel' : 'Add Video'}</Text>
+                                        <Text style={styles.mediaPickerSub}>Tap to choose from library</Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
+                        )}
 
-                            {/* ── CONTENT ─────────────────────────────────────────────── */}
-                            <ScrollView
-                                style={{ flex: 1 }}
-                                keyboardShouldPersistTaps="handled"
-                                showsVerticalScrollIndicator={false}
-                                contentContainerStyle={{ paddingBottom: 32 }}
-                            >
-                                {renderContent()}
-                            </ScrollView>
+                        {/* Poll */}
+                        {activeTab === 'poll' && (
+                            <PollBuilder
+                                options={pollOptions}
+                                onUpdate={updatePollOption}
+                                onAdd={addPollOption}
+                                onRemove={removePollOption}
+                            />
+                        )}
 
-                        </KeyboardAvoidingView>
+                        {/* Location */}
+                        {showLocation && (
+                            <View style={styles.locationRow}>
+                                <Ionicons name="location" size={16} color='#3498DB' />
+                                <TextInput
+                                    style={styles.locationInput}
+                                    placeholder="Add your location…"
+                                    placeholderTextColor={MUTED}
+                                    value={locationText}
+                                    onChangeText={setLocationText}
+                                />
+                                <TouchableOpacity onPress={() => { setShowLocation(false); setLocationText(''); }}>
+                                    <Ionicons name="close-circle" size={18} color={MUTED} />
+                                </TouchableOpacity>
+                            </View>
+                        )}
 
+                        {/* ── Hashtag Categories ── */}
+                        <HashtagSelector
+                            selected={selectedHashtags}
+                            onToggle={toggleHashtag}
+                            onClearAll={clearHashtags}
+                        />
+
+                    </ScrollView>
+
+                    {/* ── Bottom Toolbar ── */}
+                    <View style={[styles.toolbar, { paddingBottom: bottom + 4 }]}>
+                        {TOOLBAR_ACTIONS.map(action => {
+                            const isActive = action.id === 'poll'
+                                ? activeTab === 'poll'
+                                : action.id === 'location'
+                                ? showLocation
+                                : activeTab === action.id;
+                            return (
+                                <TouchableOpacity
+                                    key={action.id}
+                                    style={[styles.toolbarBtn, isActive && { backgroundColor: action.color + '18' }]}
+                                    onPress={() => handleToolbarPress(action.id)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={action.icon}
+                                        size={22}
+                                        color={isActive ? action.color : MUTED}
+                                    />
+                                    <Text style={[styles.toolbarLabel, isActive && { color: action.color }]}>
+                                        {action.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
+
                 </KeyboardAvoidingView>
             </View>
         </Modal>
     );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const PHOTO_CELL = (SCREEN_W - 36 - 8 * 2) / 3;
-
+// ─── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
 
-    // ── Modal backdrop (full screen, dimmed) ──────────────────────────────────
-    backdrop: {
-        flex: 1,
-        backgroundColor: BLACK + '80',   // ✅ dimmed overlay
-        justifyContent: 'flex-end',            // ✅ sheet sits at the bottom
-    },
-    backdropTap: {
-        // Fills the space above the sheet so tapping it closes the modal
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-    },
-
-    // ── Sheet wrapper (90% screen height, rounded top corners) ───────────────
-    sheetWrapper: {
-        height: '90%',                         // ✅ ~90% of screen height
-    },
-
-    // ── Sheet root ────────────────────────────────────────────────────────────
-    root: {
+    fullScreen: {
         flex: 1,
         backgroundColor: WHITE,
-        borderTopLeftRadius: 20,               // ✅ rounded top corners
-        borderTopRightRadius: 20,
-        overflow: 'hidden',
-    },
-
-    // ── Drag handle ───────────────────────────────────────────────────────────
-    dragHandle: {
-        width: 40, height: 4,
-        backgroundColor: BORDER,
-        borderRadius: 2,
-        alignSelf: 'center',
-        marginTop: 10, marginBottom: 4,
     },
 
     // ── Header ────────────────────────────────────────────────────────────────
     header: {
-        height: 58,
+        height: 54,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
+        paddingHorizontal: 12,
         borderBottomWidth: 1,
         borderBottomColor: BORDER,
+        backgroundColor: WHITE,
     },
-    headerClose: {
+    closeBtn: {
         width: 38, height: 38,
         borderRadius: 19,
         backgroundColor: BG,
         alignItems: 'center', justifyContent: 'center',
     },
     headerTitle: {
-        fontSize: 17, fontWeight: '800', color: BRAND,
-        letterSpacing: -0.3,
+        fontSize: 16, fontWeight: '800', color: BRAND, letterSpacing: -0.3,
     },
     postBtn: {
         backgroundColor: ACCENT,
         paddingHorizontal: 22, paddingVertical: 9,
-        borderRadius: 22, minWidth: 72,
+        borderRadius: 22,
         alignItems: 'center', justifyContent: 'center',
     },
-    postBtnOff: { backgroundColor: ACCENT + '66' },
+    postBtnOff: { backgroundColor: ACCENT + '55' },
     postBtnText: { color: WHITE, fontWeight: '800', fontSize: 14 },
 
-    // ── Target selector ───────────────────────────────────────────────────────
-    targetSection: {
-        paddingTop: 12, paddingBottom: 12,
+    // ── Target bar ────────────────────────────────────────────────────────────
+    targetBar: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 16, paddingVertical: 10,
         borderBottomWidth: 1, borderBottomColor: BORDER,
+        gap: 8, backgroundColor: BG,
     },
-    targetLabel: {
-        fontSize: 10, fontWeight: '800', color: MUTED,
-        letterSpacing: 1, textTransform: 'uppercase',
-        marginLeft: 16, marginBottom: 10,
+    targetBarLabel: {
+        fontSize: 11, fontWeight: '700', color: MUTED,
+        textTransform: 'uppercase', letterSpacing: 0.6,
     },
-    targetList: { paddingHorizontal: 16, gap: 14 },
-    targetFallback: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, marginTop: 4 },
+    targetSelected: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+    },
+    targetSelAvatar: {
+        width: 22, height: 22, borderRadius: 11,
+    },
+    targetSelName: {
+        fontSize: 13, fontWeight: '700', color: BRAND, flex: 1,
+    },
+    targetTypeBadge: {
+        backgroundColor: ACCENT + '18', borderRadius: 8,
+        paddingHorizontal: 7, paddingVertical: 2,
+    },
+    targetTypeText: {
+        fontSize: 10, fontWeight: '700', color: ACCENT,
+    },
 
-    // ── Chip ──────────────────────────────────────────────────────────────────
-    chip: { alignItems: 'center', width: 72, opacity: 0.5 },
-    chipSelected: { opacity: 1 },
-    chipRing: {
-        width: 54, height: 54, borderRadius: 27,
-        borderWidth: 2.5, borderColor: 'transparent',
-        padding: 2, marginBottom: 5,
-    },
-    chipRingActive: { borderColor: ACCENT },
-    chipAvatar: { width: '100%', height: '100%', borderRadius: 23 },
-    chipAvatarFallback: { backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
-    chipNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    chipName: { fontSize: 11, color: MUTED, fontWeight: '500', textAlign: 'center' },
-    chipNameActive: { color: BRAND, fontWeight: '700' },
-    chipSub: { fontSize: 9, color: MUTED, marginTop: 1, textAlign: 'center' },
-
-    // ── Post type tabs ────────────────────────────────────────────────────────
-    tabs: {
+    // ── Compose row ───────────────────────────────────────────────────────────
+    composeRow: {
         flexDirection: 'row',
-        borderBottomWidth: 1, borderBottomColor: BORDER,
-        backgroundColor: WHITE,
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 8,
+        gap: 12,
+        alignItems: 'flex-start',
     },
-    tab: {
-        flex: 1,
+    avatar: {
+        width: 44, height: 44, borderRadius: 22,
+    },
+    avatarFallback: {
+        backgroundColor: BG,
         alignItems: 'center', justifyContent: 'center',
-        paddingVertical: 12, gap: 4,
     },
-    tabActive: {},
-    tabIconWrap: {
-        width: 36, height: 36, borderRadius: 18,
-        alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'transparent',
-    },
-    tabIconWrapActive: { backgroundColor: ACCENT + '1F' },
-    tabText: { fontSize: 10.5, color: MUTED, fontWeight: '600' },
-    tabTextActive: { color: ACCENT, fontWeight: '800' },
-
-    // ── Content area ──────────────────────────────────────────────────────────
-    contentArea: { padding: 18 },
     textInput: {
-        fontSize: 16, color: BRAND, lineHeight: 25,
-        minHeight: 130, textAlignVertical: 'top', marginBottom: 14,
+        fontSize: 16, color: BRAND, lineHeight: 24,
+        minHeight: 100, textAlignVertical: 'top',
     },
 
-    // ── Location ─────────────────────────────────────────────────────────────
-    locationRow: {
-        flexDirection: 'row', alignItems: 'center', gap: 8,
-        backgroundColor: BG, borderRadius: 12,
-        paddingHorizontal: 12, paddingVertical: 10, marginTop: 4,
+    // ── Media section ─────────────────────────────────────────────────────────
+    mediaSection: {
+        paddingHorizontal: 16,
+        paddingBottom: 12,
     },
-    locationInput: { flex: 1, fontSize: 14, color: BRAND },
-    addLocationBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
-    addLocationText: { fontSize: 13, color: MUTED },
-
-    // ── Empty media picker ────────────────────────────────────────────────────
-    mediaPickerEmpty: {
+    mediaPicker: {
         alignItems: 'center', justifyContent: 'center',
-        backgroundColor: BG, borderRadius: 18,
+        backgroundColor: BG, borderRadius: 16,
         paddingVertical: 44,
-        borderWidth: 1.5, borderColor: ACCENT, borderStyle: 'dashed',
-        marginBottom: 16,
+        borderWidth: 1.5, borderColor: ACCENT + '44', borderStyle: 'dashed',
+        gap: 6,
     },
-    mediaPickerEmptyIcon: {
-        width: 72, height: 72, borderRadius: 36,
-        backgroundColor: ACCENT + '1F',
-        alignItems: 'center', justifyContent: 'center',
-        marginBottom: 14,
-    },
-    mediaPickerEmptyTitle: {
-        fontSize: 17, fontWeight: '800', color: BRAND, marginBottom: 6,
-    },
-    mediaPickerEmptySub: { fontSize: 13, color: MUTED, textAlign: 'center' },
+    mediaPickerTitle: { fontSize: 16, fontWeight: '800', color: BRAND },
+    mediaPickerSub:   { fontSize: 12, color: MUTED },
 
-    // ── Photo grid ────────────────────────────────────────────────────────────
-    photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-    photoCell: { position: 'relative', width: PHOTO_CELL, height: PHOTO_CELL },
-    photoThumb: { width: '100%', height: '100%', borderRadius: 12, backgroundColor: BG },
+    photoGrid: {
+        flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6,
+    },
+    photoCell: { position: 'relative', borderRadius: 12, overflow: 'hidden' },
+    photoThumb: { width: '100%', height: '100%' },
     photoRemove: {
-        position: 'absolute', top: 5, right: 5,
-        backgroundColor: WHITE + 'E6', borderRadius: 11,
+        position: 'absolute', top: 4, right: 4,
     },
     photoAddMore: {
-        width: PHOTO_CELL, height: PHOTO_CELL,
-        borderRadius: 12, borderWidth: 1.5, borderColor: ACCENT, borderStyle: 'dashed',
+        borderRadius: 12, borderWidth: 1.5, borderColor: ACCENT + '66', borderStyle: 'dashed',
         alignItems: 'center', justifyContent: 'center', gap: 4,
-        backgroundColor: ACCENT + '0F',
+        backgroundColor: ACCENT + '08',
     },
-    photoAddMoreText: { fontSize: 11, color: ACCENT, fontWeight: '700' },
-    photoCount: { fontSize: 12, color: MUTED, marginTop: 2, textAlign: 'right' },
+    photoAddMoreText: { fontSize: 10, color: ACCENT, fontWeight: '700' },
+    photoCount: { fontSize: 11, color: MUTED, textAlign: 'right' },
 
-    // ── Video ─────────────────────────────────────────────────────────────────
-    videoWrap: { position: 'relative', marginBottom: 16, alignSelf: 'flex-start', width: '100%' },
+    videoWrap: { position: 'relative', marginBottom: 12 },
     videoPreview: {
-        width: SCREEN_W - 36,
-        height: Math.round((SCREEN_W - 36) * 9 / 16),
-        borderRadius: 14, backgroundColor: BLACK,
+        width: SCREEN_W - 32, borderRadius: 14, backgroundColor: BLACK,
     },
     videoRemove: {
-        position: 'absolute', top: 10, right: 10,
-        backgroundColor: WHITE + 'E6', borderRadius: 12,
+        position: 'absolute', top: 8, right: 8,
     },
 
-    // ── Thumbnail ─────────────────────────────────────────────────────────────
-    thumbSection: { marginBottom: 16 },
-    thumbLabel: { fontSize: 13, fontWeight: '700', color: BRAND, marginBottom: 8 },
-    thumbPicker: { position: 'relative', alignSelf: 'flex-start' },
-    thumbImg: { width: 130, height: 88, borderRadius: 12 },
+    thumbRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12,
+    },
+    thumbLabel: { fontSize: 13, fontWeight: '700', color: BRAND, flex: 1 },
+    thumbPicker: { position: 'relative' },
+    thumbImg: { width: 90, height: 60, borderRadius: 10 },
     thumbPlaceholder: {
-        width: 130, height: 88, borderRadius: 12,
+        width: 90, height: 60, borderRadius: 10,
         backgroundColor: BG, borderWidth: 1.5, borderColor: BORDER, borderStyle: 'dashed',
-        alignItems: 'center', justifyContent: 'center', gap: 5,
+        alignItems: 'center', justifyContent: 'center', gap: 4,
     },
-    thumbPlaceholderText: { fontSize: 11, color: MUTED },
-    thumbRemove: {
-        position: 'absolute', top: 5, right: 5,
-        backgroundColor: WHITE + 'E6', borderRadius: 9,
-    },
+    thumbPlaceholderText: { fontSize: 10, color: MUTED },
+    thumbRemove: { position: 'absolute', top: 2, right: 2 },
 
-    // ── Category ──────────────────────────────────────────────────────────────
-    categorySection: { marginTop: 4, marginBottom: 8 },
-    categoryLabel: { fontSize: 13, fontWeight: '700', color: BRAND, marginBottom: 10 },
+    catRow: { marginBottom: 8 },
+    catLabel: { fontSize: 12, fontWeight: '700', color: BRAND, marginBottom: 8, marginLeft: 0 },
     catPill: {
-        backgroundColor: BG, borderRadius: 22,
-        paddingHorizontal: 14, paddingVertical: 8,
-        marginRight: 8, borderWidth: 1, borderColor: BORDER,
+        backgroundColor: BG, borderRadius: 20,
+        paddingHorizontal: 12, paddingVertical: 7,
+        borderWidth: 1, borderColor: BORDER,
     },
     catPillActive: { backgroundColor: ACCENT, borderColor: ACCENT },
     catPillText: { fontSize: 12, color: MUTED, fontWeight: '600' },
     catPillTextActive: { color: WHITE, fontWeight: '800' },
+
+    // ── Poll ──────────────────────────────────────────────────────────────────
+    pollWrap: {
+        marginHorizontal: 16,
+        backgroundColor: BG,
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#F39C12' + '33',
+    },
+    pollTitleRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12,
+    },
+    pollTitle: { fontSize: 13, fontWeight: '800', color: BRAND, flex: 1 },
+    pollHint:  { fontSize: 11, color: MUTED },
+    pollOptionRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8,
+    },
+    pollOptionBullet: {
+        width: 24, height: 24, borderRadius: 12,
+        backgroundColor: ACCENT + '1A',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    pollOptionBulletText: {
+        fontSize: 11, fontWeight: '800', color: ACCENT,
+    },
+    pollOptionInput: {
+        flex: 1, height: 40,
+        backgroundColor: WHITE,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        fontSize: 14, color: BRAND,
+        borderWidth: 1, borderColor: BORDER,
+    },
+    pollAddBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingVertical: 8, marginTop: 2,
+    },
+    pollAddText: { fontSize: 13, color: ACCENT, fontWeight: '700' },
+
+    // ── Location ──────────────────────────────────────────────────────────────
+    locationRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        marginHorizontal: 16, marginBottom: 8,
+        backgroundColor: '#3498DB' + '10',
+        borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+        borderWidth: 1, borderColor: '#3498DB' + '30',
+    },
+    locationInput: { flex: 1, fontSize: 14, color: BRAND },
+
+    // ── Hashtag section ───────────────────────────────────────────────────────
+    hashtagSection: {
+        marginHorizontal: 16,
+        marginTop: 4,
+        marginBottom: 8,
+        padding: 14,
+        backgroundColor: ACCENT + '08',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: ACCENT + '25',
+    },
+    hashtagHeader: {
+        flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10,
+    },
+    hashtagLabel: {
+        fontSize: 11, fontWeight: '800', color: BRAND,
+        textTransform: 'uppercase', letterSpacing: 0.8, flex: 1,
+    },
+    clearBtn: {
+        paddingHorizontal: 8, paddingVertical: 3,
+        borderRadius: 8, backgroundColor: ACCENT + '18',
+    },
+    clearBtnText: { fontSize: 11, fontWeight: '700', color: ACCENT },
+    hashtagGrid: {
+        flexDirection: 'row', flexWrap: 'wrap', gap: 7,
+    },
+    hashtagPill: {
+        flexDirection: 'row', alignItems: 'center', gap: 1,
+        backgroundColor: WHITE,
+        borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6,
+        borderWidth: 1.5, borderColor: BORDER,
+    },
+    hashtagPillActive: {
+        backgroundColor: ACCENT, borderColor: ACCENT,
+    },
+    hashtagHash: { fontSize: 11, fontWeight: '700', color: ACCENT, opacity: 0.7 },
+    hashtagPillText: { fontSize: 12.5, fontWeight: '600', color: BRAND },
+    hashtagPillTextActive: { color: WHITE },
+    hashtagSelectedRow: {
+        flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10,
+    },
+    hashtagBadge: {
+        backgroundColor: ACCENT + '18',
+        borderRadius: 12, paddingHorizontal: 9, paddingVertical: 4,
+        borderWidth: 1, borderColor: ACCENT + '44',
+    },
+    hashtagBadgeText: { fontSize: 12, fontWeight: '700', color: ACCENT },
+
+    // ── Bottom toolbar ────────────────────────────────────────────────────────
+    toolbar: {
+        flexDirection: 'row',
+        borderTopWidth: 1,
+        borderTopColor: BORDER,
+        backgroundColor: WHITE,
+        paddingTop: 8,
+    },
+    toolbarBtn: {
+        flex: 1, alignItems: 'center', justifyContent: 'center',
+        paddingVertical: 7, gap: 3, borderRadius: 10, marginHorizontal: 2,
+    },
+    toolbarLabel: {
+        fontSize: 10, fontWeight: '600', color: MUTED,
+    },
 });
 
-export default memo(PostComposerModal);
+export default PostComposerModal;

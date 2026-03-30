@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   Animated,
   Dimensions,
@@ -308,7 +309,11 @@ function SplashScreen({ fadeAnim }) {
               end={{ x: 1, y: 1 }}
               style={styles.logoOrbGrad}
             >
-              <Text style={styles.logoLetter}>H</Text>
+              <Image
+                source={require('../../assl.js/logo1.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </LinearGradient>
           </Animated.View>
         </View>
@@ -380,11 +385,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoLetter: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: Colors.white,
-    letterSpacing: -1,
+  logoImage: {
+    width: 78,
+    height: 78,
   },
 
   brandName: {

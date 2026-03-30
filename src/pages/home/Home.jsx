@@ -200,8 +200,8 @@ const HomePage = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* FAB — opens shared creation menu */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.88} onPress={openCreateMenu}>
+      {/* FAB — opens composer immediately */}
+      <TouchableOpacity style={styles.fab} activeOpacity={0.88} onPress={() => openComposer()}>
         <LinearGradient
           colors={[Colors.primaryDark, Colors.primary]}
           start={{ x: 0, y: 0 }}

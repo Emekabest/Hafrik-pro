@@ -114,7 +114,9 @@ export default function UniversalWebView() {
     title = 'Hafrik',
   } = route.params ?? {};
 
-  const authUrl = buildWebViewUrl(token, url);
+  // Append ?app=true so the website hides its header, footer, and bottom nav
+  const appUrl  = url.includes('?') ? `${url}&app=true` : `${url}?app=true`;
+  const authUrl = buildWebViewUrl(token, appUrl);
 
   const webRef = useRef(null);
 

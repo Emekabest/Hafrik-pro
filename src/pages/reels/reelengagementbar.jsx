@@ -1,13 +1,11 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   Share,
   StyleSheet,
   Text,
@@ -43,22 +41,6 @@ const decodeHtml = (str) => {
   return out.replace(/<[^>]*>/g, '').trim();
 };
 
-// ── Reaction definitions ─────────────────────────────────────────────────────
-const REACTIONS = [
-  { type: 'like',  emoji: '👍', label: 'Like' },
-  { type: 'love',  emoji: '❤️', label: 'Love' },
-  { type: 'haha',  emoji: '😂', label: 'Haha' },
-  { type: 'yay',   emoji: '🎉', label: 'Yay' },
-  { type: 'wow',   emoji: '😮', label: 'Wow' },
-  { type: 'sad',   emoji: '😢', label: 'Sad' },
-  { type: 'angry', emoji: '😡', label: 'Angry' },
-];
-
-const REACTION_EMOJI_MAP = {
-  like: '👍', love: '❤️', haha: '😂', yay: '🎉',
-  wow: '😮', sad: '😢', angry: '😡',
-};
-
 const ACCENT = Colors.primary;
 const SHEET_BG = Colors.deepSlate;
 
@@ -81,65 +63,6 @@ const CommentItem = ({ item }) => (
   </View>
 );
 
-// ── Floating Reaction Picker (for reels) ─────────────────────────────────────
-const ReelReactionPicker = ({ visible, currentReaction, onSelect, onClose }) => {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const itemAnims = useRef(REACTIONS.map(() => new Animated.Value(0))).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.spring(scaleAnim, {
-        toValue: 1, friction: 6, tension: 120, useNativeDriver: true,
-      }).start();
-      itemAnims.forEach((anim, i) => {
-        anim.setValue(0);
-        Animated.spring(anim, {
-          toValue: 1, friction: 5, tension: 100, delay: i * 35, useNativeDriver: true,
-        }).start();
-      });
-    } else {
-      scaleAnim.setValue(0);
-      itemAnims.forEach(a => a.setValue(0));
-    }
-  }, [visible]);
-
-  if (!visible) return null;
-
-  return (
-    <>
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-      <Animated.View
-        style={[
-          styles.pickerContainer,
-          { transform: [{ scale: scaleAnim }], opacity: scaleAnim },
-        ]}
-      >
-        {REACTIONS.map((r, i) => {
-          const isActive = currentReaction === r.type;
-          return (
-            <Animated.View
-              key={r.type}
-              style={{
-                transform: [
-                  { scale: itemAnims[i] },
-                  { translateY: itemAnims[i].interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
-                ],
-              }}
-            >
-              <TouchableOpacity
-                style={[styles.emojiBtn, isActive && styles.emojiBtnActive]}
-                onPress={() => onSelect(r.type)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.pickerEmoji}>{r.emoji}</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
-      </Animated.View>
-    </>
-  );
-};
 
 const ReelEngagementBar = ({
   postId,
@@ -160,7 +83,6 @@ const ReelEngagementBar = ({
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [pickerVisible, setPickerVisible] = useState(false);
   const [myReaction, setMyReaction] = useState(initialMyReaction || (liked ? 'like' : null));
 
   // Sync from props when post changes
@@ -172,16 +94,11 @@ const ReelEngagementBar = ({
     setSaved(isSavedInitial);
   }, [postId, isSavedInitial]);
 
-  useEffect(() => {
-    setPickerVisible(false);
-  }, [postId]);
-
-  /** Send a reaction via API — handles toggle and switch */
+  /** Send a reaction via API — handles toggle */
   const sendReaction = useCallback(async (reactionType) => {
     const isRemoving = myReaction === reactionType;
     const newReaction = isRemoving ? null : reactionType;
     setMyReaction(newReaction);
-    setPickerVisible(false);
 
     // Call parent for immediate heart/count update
     if (onLikePress) onLikePress(reactionType);
@@ -221,16 +138,6 @@ const ReelEngagementBar = ({
       }
     } catch {}
   }, [myReaction, postId, token, onLikePress, likesCount]);
-
-  /** Tap = open / close the reaction picker so users see all options */
-  const handleTap = useCallback(() => {
-    setPickerVisible(v => !v);
-  }, []);
-
-  /** Long press = also open reaction picker (fallback) */
-  const handleLongPress = useCallback(() => {
-    setPickerVisible(true);
-  }, []);
 
   const handleSave = useCallback(async () => {
     const prev = saved;
@@ -324,38 +231,23 @@ const ReelEngagementBar = ({
     }
   }, [postId, token]);
 
-  // Determine what to render on the heart/reaction button
-  const reactionEmoji = myReaction ? REACTION_EMOJI_MAP[myReaction] : null;
+  const isLiked = !!myReaction;
 
   return (
     <>
       <View style={styles.container}>
-        {/* Reaction picker (floats above like button) */}
-        <ReelReactionPicker
-          visible={pickerVisible}
-          currentReaction={myReaction}
-          onSelect={sendReaction}
-          onClose={() => setPickerVisible(false)}
-        />
-
-        {/* Like / React */}
+        {/* Like */}
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.item}
-          onPress={handleTap}
-          onLongPress={handleLongPress}
-          delayLongPress={350}
+          onPress={() => sendReaction('like')}
         >
-          {reactionEmoji ? (
-            <Text style={styles.reactionEmojiText}>{reactionEmoji}</Text>
-          ) : (
-            <Ionicons
-              name={liked ? 'heart' : 'heart-outline'}
-              size={30}
-              color={liked ? Colors.warningPink : Colors.white}
-              style={liked ? styles.likedGlow : undefined}
-            />
-          )}
+          <Ionicons
+            name={isLiked ? 'heart' : 'heart-outline'}
+            size={30}
+            color={isLiked ? Colors.warningPink : Colors.white}
+            style={isLiked ? styles.likedGlow : undefined}
+          />
           <Text style={styles.count}>{likesCount ?? 0}</Text>
         </TouchableOpacity>
 
@@ -680,40 +572,6 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
 
-  /* ── Reaction Picker ───────────────────────────────────────────── */
-  pickerContainer: {
-    position: 'absolute',
-    bottom: 48,
-    right: -8,
-    flexDirection: 'column',
-    backgroundColor: withOpacity(Colors.black, 0.85),
-    borderRadius: 28,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    gap: 2,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
-    zIndex: 999,
-  },
-  emojiBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emojiBtnActive: {
-    backgroundColor: withOpacity(ACCENT, 0.3),
-  },
-  pickerEmoji: {
-    fontSize: 24,
-  },
-  reactionEmojiText: {
-    fontSize: 28,
-  },
 });
 
 export default ReelEngagementBar;

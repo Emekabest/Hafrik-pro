@@ -558,9 +558,6 @@ const AuthScreen = () => {
         let   authUser  = authData?.user;
         if (Array.isArray(authUser)) authUser = authUser[0];
 
-        console.log("JWT FROM SERVER:", res.data.data.token);
-        console.log("SESSION FROM SERVER:", res.data.data.session_token);
-
         if (!authToken) {
           Alert.alert('Error', 'No token received from server. Please try again.');
           return;
@@ -614,8 +611,6 @@ const AuthScreen = () => {
         let user        = res.data.data?.user;
         if (Array.isArray(user)) user = user[0];
         if (!authToken || !user) throw new Error('Invalid server response');
-        console.log("JWT FROM SERVER:", res.data.data?.token);
-        console.log("SESSION FROM SERVER:", res.data.data?.session_token);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await login(user, authToken);
         navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });

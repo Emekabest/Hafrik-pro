@@ -13,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import AppDetails from '../../helpers/appdetails';
 import CalculateElapsedTime from '../../helpers/calculateelapsedtime';
-import { followUser, toggleLike } from './reelsApi';
+import { toggleLike } from './reelsApi';
 import useStore from '../../repository/store';
 import ReelEngagementBar from './reelengagementbar';
 import { Colors } from '../../theme/colors';
@@ -76,7 +76,6 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   const [liked,    setLiked]    = useState(!!is_liked);
   const [likesCount, setLikesCount] = useState(likes_count ?? 0);
   const [myReaction, setMyReaction] = useState(my_reaction || (is_liked ? 'like' : null));
-  const [following, setFollowing] = useState(false);
   const [captionExpanded, setCaptionExpanded] = useState(false);
 
   /** Called by ReelEngagementBar when any reaction is sent (tap or picker) */
@@ -114,17 +113,6 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   }, [liked, handleReaction]);
 
   useImperativeHandle(ref, () => ({ triggerLike: handleDoubleTapLike }), [handleDoubleTapLike]);
-
-  const handleFollow = useCallback(async () => {
-    const prev = following;
-    setFollowing(f => !f);
-    try {
-      const res = await followUser(userId, token);
-      if (res?.following !== undefined) setFollowing(!!res.following);
-    } catch {
-      setFollowing(prev);
-    }
-  }, [following, userId, token]);
 
   const cleanCaption = caption ? decodeHtml(caption) : '';
   const isCaptionLong = cleanCaption && cleanCaption.length > 80;
@@ -186,30 +174,17 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
       {/* ── Right: avatar + follow + engagement — anchored bottom-right ───── */}
       <View style={[styles.actionsArea, { bottom: panelBottom + 8 }]}>
 
-        {/* Avatar with follow badge */}
-        <View style={styles.avatarWrapper}>
-          <TouchableOpacity activeOpacity={0.85} onPress={handleOpenProfile}>
-            <View style={styles.avatarRing}>
-              <ExpoImage
-                source={{ uri: user?.avatar }}
-                style={styles.avatar}
-                cachePolicy="memory-disk"
-                contentFit="cover"
-              />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.followBtn, following && styles.followBtnActive]}
-            onPress={handleFollow}
-          >
-            <Ionicons
-              name={following ? 'checkmark' : 'add'}
-              size={13}
-              color={Colors.white}
+        {/* Avatar — tap to open profile */}
+        <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.85} onPress={handleOpenProfile}>
+          <View style={styles.avatarRing}>
+            <ExpoImage
+              source={{ uri: user?.avatar }}
+              style={styles.avatar}
+              cachePolicy="memory-disk"
+              contentFit="cover"
             />
-          </TouchableOpacity>
-        </View>
+          </View>
+        </TouchableOpacity>
 
         {/* Like / Comment / Bookmark / Share */}
         <ReelEngagementBar
@@ -328,26 +303,6 @@ const styles = StyleSheet.create({
   avatar: {
     width: '100%',
     height: '100%',
-  },
-  followBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Colors.primaryDark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'absolute',
-    bottom: -8,
-    borderWidth: 2,
-    borderColor: Colors.black,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.45,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  followBtnActive: {
-    backgroundColor: ACCENT,
   },
 });
 

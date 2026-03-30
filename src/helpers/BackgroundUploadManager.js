@@ -37,16 +37,18 @@ export async function startBackgroundUpload({
     selectedThumbnail = null,
     selectedCategory = null,
     token,
+    pollOptions = [],
 }) {
     const { startUpload, updateUploadProgress, completeUpload, failUpload, triggerRefresh } =
         useStore.getState();
 
     // Friendly labels
     const labelMap = {
-        text: 'Publishing post…',
+        text:   'Publishing post…',
         photos: `Uploading ${selectedImages.length} photo${selectedImages.length > 1 ? 's' : ''}…`,
-        video: 'Uploading video…',
-        reel: 'Uploading reel…',
+        video:  'Uploading video…',
+        reel:   'Uploading reel…',
+        poll:   'Creating poll…',
     };
     startUpload(labelMap[activeTab] || 'Uploading…');
 

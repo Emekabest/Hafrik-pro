@@ -121,6 +121,13 @@ export default function SettingsScreen() {
             icon="mail-outline"
             label="Email & Phone"
             onPress={() => openWeb('Email & Phone', `https://hafrik.com/settings/security/password?token=${token}`)}
+            themeColors={tc}
+          />
+          <Row
+            icon="shield-checkmark-outline"
+            iconColor={ACCENT}
+            label="Verification"
+            onPress={() => navigation.navigate('VerificationIntro')}
             last
             themeColors={tc}
           />

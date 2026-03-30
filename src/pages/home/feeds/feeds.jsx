@@ -33,6 +33,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../theme";
 import { useTheme } from "../../../theme/ThemeContext";
 import { FeedSkeletonList } from "./feedskelenton.jsx";
+import DiscoverMasonryCard, { MASONRY_H_PAD, MASONRY_COL_GAP } from "./DiscoverMasonryCard.jsx";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BG_BASE = Colors.surfaceTint;
@@ -453,7 +454,10 @@ const Feeds = ({
   const [initialLoading, setInitialLoading] = useState(true);
   const [visibleFeedId,  setVisibleFeedId]  = useState(null);
   const visibleFeedIdRef  = useRef(null);
-  const flashListRef       = useRef(null);
+  const flashListRef      = useRef(null);
+  // Stable ref to feeds list — used by masonryrow for reel navigation context
+  const feedsRef = useRef(feeds);
+  useEffect(() => { feedsRef.current = feeds; }, [feeds]);
   const [showScrollTop,  setShowScrollTop]  = useState(false);
   const scrollTopVisible  = useRef(false);
   const savedScrollOffset = useRef(0);
@@ -471,8 +475,7 @@ const Feeds = ({
         },
         body: JSON.stringify({ post_id: postId }),
       });
-    } catch (e) {
-      console.log('View error:', e);
+    } catch {
     }
   }, []);
 
@@ -636,11 +639,32 @@ const Feeds = ({
         );
       }
 
+      case 'masonryrow': {
+        const leftFeed  = item.left?.data  ?? null;
+        const rightFeed = item.right?.data ?? null;
+        return (
+          <View style={{ flexDirection: 'row', paddingHorizontal: MASONRY_H_PAD, gap: MASONRY_COL_GAP, paddingBottom: 2 }}>
+            <View style={{ flex: 1 }}>
+              {leftFeed && (
+                <DiscoverMasonryCard feed={leftFeed} allFeeds={feedsRef.current} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              {rightFeed ? (
+                <DiscoverMasonryCard feed={rightFeed} allFeeds={feedsRef.current} />
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
+            </View>
+          </View>
+        );
+      }
+
       case 'peoplecard':
         return <PeopleYouMayKnow people={item.data} />;
 
       case 'bizcard':
-        return <BusinessToFollow items={item.data} />;
+        return null; // shown in footer while loading more, not inline
 
       case 'communitycard':
         return <CommunityToJoin items={item.data} />;
@@ -655,13 +679,24 @@ const Feeds = ({
     }
   }, [onPostPress]); // stable — visibleFeedId read via ref, not closure
 
+  const bizCardData = useMemo(
+    () => combinedData?.find(i => i.type === 'bizcard')?.data ?? null,
+    [combinedData]
+  );
+
   const renderFooter = useCallback(
-    () => <FooterLoader visible={loadingMore} />,
-    [loadingMore]
+    () => (
+      <>
+        {loadingMore && bizCardData && <BusinessToFollow items={bizCardData} />}
+        <FooterLoader visible={loadingMore} />
+      </>
+    ),
+    [loadingMore, bizCardData]
   );
 
   const keyExtractor = useCallback((item, index) => {
-    if (item.type === 'feed') return `feed-${item.data.id}`;
+    if (item.type === 'feed')       return `feed-${item.data.id}`;
+    if (item.type === 'masonryrow') return `mrow-${item.left?.data?.id}-${item.right?.data?.id ?? 'x'}`;
     return `${item.type}-${index}`;
   }, []);
 
