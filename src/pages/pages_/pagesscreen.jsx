@@ -105,7 +105,7 @@ const CategoriesGrid = memo(() => {
           <TouchableOpacity
             key={cat.tag}
             activeOpacity={0.75}
-            onPress={() => navigation.navigate('HashtagScreen', { hashtag: cat.tag })}
+            onPress={() => navigation.navigate('SearchScreen', { initialQuery: cat.tag, initialTab: 'all' })}
             style={[catStyles.pill, { backgroundColor: pal.bg, borderColor: pal.border }]}
           >
             <Ionicons name={cat.icon} size={13} color={pal.text} style={{ opacity: 0.85 }} />

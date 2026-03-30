@@ -123,8 +123,8 @@ const SearchScreen = () => {
     const tab = route.params?.initialTab;
     if (tab == null) return;
     const tabMap = {
-      all: 0, people: 1, posts: 2,
-      pages: 3, groups: 4, articles: 5, hashtags: 6,
+      all: 0, people: 1, posts: 2, hashtags: 2,
+      pages: 3, groups: 4, articles: 5,
     };
     const idx = typeof tab === 'number' ? tab : tabMap[String(tab).toLowerCase()];
     if (idx !== undefined) setActiveTab(idx);
@@ -274,29 +274,14 @@ const SearchScreen = () => {
 
   // ── Build flat FlatList data ────────────────────────────────────────────────
   const buildListData = useCallback(() => {
-    const q = searchQuery?.trim();
-    const targetType = TABS[activeTab].type;
-
-    // ── Hashtag tab ───────────────────────────────────────────────────────────
-    if (targetType === 'hashtag') {
-      if (hashtagLoading) {
-        return [0, 1, 2, 3].map(i => ({ _key: `sk_${i}`, _type: 'skeleton' }));
-      }
-      if (!q || hashtagResults.length === 0) return [];
-      const data = [
-        { _key: 'results_label', _type: 'results_label', count: hashtagResults.length, query: q },
-      ];
-      hashtagResults.forEach((post, i) =>
-        data.push({ _key: `htag_${post.id ?? post.post_id ?? i}`, _type: 'hashtag_post', ...normaliseHashtagPost(post) })
-      );
-      return data;
-    }
-
     if (isLoading) {
       return [0, 1, 2, 3, 4].map(i => ({ _key: `sk_${i}`, _type: 'skeleton' }));
     }
 
+    const q = searchQuery?.trim();
     if (!q || results.length === 0) return [];
+
+    const targetType = TABS[activeTab].type;
 
     // ── All tab: grouped sections, max 3 per section ───────────────────────
     if (targetType === null) {
@@ -349,15 +334,27 @@ const SearchScreen = () => {
     const filtered = results.filter(
       item => (item.type || '').toLowerCase() === targetType
     );
-    if (filtered.length === 0) return [];
 
-    const displayed  = showAllItems ? filtered : filtered.slice(0, TAB_ITEM_LIMIT);
-    const remaining  = filtered.length - displayed.length;
+    // For Posts tab, append hashtag results (deduplicated)
+    let allItems = filtered;
+    if (targetType === 'post' && hashtagResults.length > 0) {
+      const existingIds = new Set(filtered.map(p => String(p.id ?? p.post_id)));
+      const extra = hashtagResults
+        .map(normaliseHashtagPost)
+        .filter(p => !existingIds.has(String(p.id ?? p.post_id)))
+        .map(p => ({ ...p, type: 'post' }));
+      allItems = [...filtered, ...extra];
+    }
+
+    if (allItems.length === 0) return [];
+
+    const displayed  = showAllItems ? allItems : allItems.slice(0, TAB_ITEM_LIMIT);
+    const remaining  = allItems.length - displayed.length;
     const data       = [
-      { _key: 'results_label', _type: 'results_label', count: filtered.length, query: q },
+      { _key: 'results_label', _type: 'results_label', count: allItems.length, query: q },
     ];
     displayed.forEach(item =>
-      data.push({ _key: `item_${item.id}`, _type: targetType, ...item })
+      data.push({ _key: `item_${item.id ?? item.post_id}`, _type: 'post', ...item })
     );
     if (!showAllItems && remaining > 0) {
       data.push({
@@ -368,7 +365,7 @@ const SearchScreen = () => {
       });
     }
     return data;
-  }, [isLoading, hashtagLoading, searchQuery, results, hashtagResults, activeTab, showAllItems]);
+  }, [isLoading, searchQuery, results, hashtagResults, activeTab, showAllItems]);
 
   // ── Render item ─────────────────────────────────────────────────────────────
   const renderItem = useCallback(({ item }) => {
