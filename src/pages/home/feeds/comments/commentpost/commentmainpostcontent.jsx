@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, TouchableOpacity, Text, StyleSheet, Dimensions, Modal, TextInput, Alert, ActivityIndicator, Platform, KeyboardAvoidingView } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import ImageViewModal from '../../../../imageviewmodal';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,7 @@ import CommentMediaLinkContent from './commentmedialinkcontent';
 import parseLinkFromText from '../../../../../helpers/linkparser';
 import CommentMultipleSharedProductMediaCard from './commentmultiplesharedproductmediacard';
 import { Colors } from '../../../../../theme/colors';
+import { editPost, deletePost } from '../../../../../api/feedApi';
 import LinkPreview from '../../../../../components/LinkPreview';
 import ShareModal from '../../share';
 import ReactionsModal from '../../feedcardproperties/ReactionsModal';
@@ -53,6 +54,49 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
     const [reactionsModalVisible,      setReactionsModalVisible]      = useState(false);
     const [repostModalVisible,         setRepostModalVisible]         = useState(false);
     const [saveCollectionsModalVisible, setSaveCollectionsModalVisible] = useState(false);
+    const [textExpanded,   setTextExpanded]   = useState(false);
+    const [optionsVisible, setOptionsVisible] = useState(false);
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editText,       setEditText]       = useState('');
+    const [saving,         setSaving]         = useState(false);
+
+    const isOwnPost = authUser?.id && post?.user?.id && String(authUser.id) === String(post.user.id);
+
+    const handleDelete = useCallback(() => {
+        setOptionsVisible(false);
+        Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Delete', style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await deletePost(post.id);
+                        navigation.goBack();
+                    } catch {
+                        Alert.alert('Error', 'Could not delete post. Please try again.');
+                    }
+                },
+            },
+        ]);
+    }, [post?.id, navigation]);
+
+    const openEdit = useCallback(() => {
+        setOptionsVisible(false);
+        setEditText(post?.text || '');
+        setEditModalVisible(true);
+    }, [post?.text]);
+
+    const handleSaveEdit = useCallback(async () => {
+        if (!editText.trim()) return;
+        setSaving(true);
+        try {
+            await editPost(post.id, editText.trim());
+            setEditModalVisible(false);
+        } catch {
+            Alert.alert('Error', 'Could not update post. Please try again.');
+        }
+        setSaving(false);
+    }, [editText, post?.id]);
 
     // ── Page-post identity swap (mirrors feedcard.jsx logic) ────────────────
     const pageContext = useMemo(() => {
@@ -146,6 +190,67 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
     
     return (
         <View style={styles.postWrapper}>
+            {/* ── Options modal ──────────────────────────────────────────── */}
+            <Modal visible={optionsVisible} transparent animationType="fade" onRequestClose={() => setOptionsVisible(false)}>
+                <TouchableOpacity style={styles.optionsOverlay} activeOpacity={1} onPress={() => setOptionsVisible(false)}>
+                    <View style={styles.optionsSheet}>
+                        {isOwnPost && (
+                            <>
+                                <TouchableOpacity style={styles.optionRow} onPress={openEdit}>
+                                    <Ionicons name="create-outline" size={20} color={Colors.primaryDark} />
+                                    <Text style={styles.optionText}>Edit Post</Text>
+                                </TouchableOpacity>
+                                <View style={styles.optionDivider} />
+                                <TouchableOpacity style={styles.optionRow} onPress={handleDelete}>
+                                    <Ionicons name="trash-outline" size={20} color="#E74C3C" />
+                                    <Text style={[styles.optionText, { color: '#E74C3C' }]}>Delete Post</Text>
+                                </TouchableOpacity>
+                                <View style={styles.optionDivider} />
+                            </>
+                        )}
+                        <TouchableOpacity style={styles.optionRow} onPress={() => setOptionsVisible(false)}>
+                            <Ionicons name="close-outline" size={20} color={Colors.secondaryText} />
+                            <Text style={[styles.optionText, { color: Colors.secondaryText }]}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* ── Edit post modal ─────────────────────────────────────────── */}
+            <Modal visible={editModalVisible} transparent animationType="slide" onRequestClose={() => setEditModalVisible(false)}>
+                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                    <TouchableOpacity style={styles.optionsOverlay} activeOpacity={1} onPress={() => setEditModalVisible(false)}>
+                        <TouchableOpacity activeOpacity={1} style={styles.editSheet}>
+                            <View style={styles.editHeader}>
+                                <Text style={styles.editTitle}>Edit Post</Text>
+                                <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                                    <Ionicons name="close" size={22} color={Colors.primaryDark} />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={styles.editInput}
+                                value={editText}
+                                onChangeText={setEditText}
+                                multiline
+                                autoFocus
+                                placeholder="What's on your mind?"
+                                placeholderTextColor={Colors.secondaryText}
+                            />
+                            <TouchableOpacity
+                                style={[styles.editSaveBtn, (!editText.trim() || saving) && { opacity: 0.5 }]}
+                                onPress={handleSaveEdit}
+                                disabled={!editText.trim() || saving}
+                            >
+                                {saving
+                                    ? <ActivityIndicator size="small" color="#fff" />
+                                    : <Text style={styles.editSaveBtnText}>Save Changes</Text>
+                                }
+                            </TouchableOpacity>
+                        </TouchableOpacity>
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
+            </Modal>
+
             {/* ── Author row ─────────────────────────────────────────────── */}
             <View style={styles.authorRow}>
                 {/* Avatar */}
@@ -215,58 +320,17 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                         {CalculateElapsedTime(post.created)}
                     </Text>
                 </View>
+
+                {/* Options button */}
+                <TouchableOpacity style={styles.optionsBtn} onPress={() => setOptionsVisible(true)} activeOpacity={0.7}>
+                    <Ionicons name="ellipsis-horizontal" size={20} color={Colors.secondaryText} />
+                </TouchableOpacity>
             </View>
             
-            {/* Post body — inline hashtags are tappable */}
-            {!!postText && (
-                <View style={{ marginHorizontal: horizontalPadding, marginTop: 12, marginBottom: 4 }}>
-                    <Text style={{ fontSize: 16, fontFamily: AppDetails.fontFamily.body, color: AppDetails.bodyColor, lineHeight: 22 }}>
-                        {postText.split(/(\s+)/).map((seg, i) => {
-                            if (/^#\w+/.test(seg)) {
-                                const tag = seg.slice(1);
-                                return (
-                                    <Text
-                                        key={i}
-                                        style={styles.inlineHashtag}
-                                        onPress={() => navigation.navigate('SearchScreen', { initialTab: 'posts', initialQuery: tag })}
-                                    >
-                                        {seg}
-                                    </Text>
-                                );
-                            }
-                            return <Text key={i}>{seg}</Text>;
-                        })}
-                    </Text>
-                </View>
-            )}
-
-            {/* Hashtag chips */}
-            {post.hashtags?.length > 0 && (
-                <View style={styles.hashtagsRow}>
-                    {post.hashtags.map((tag, i) => (
-                        <TouchableOpacity
-                            key={`${tag}-${i}`}
-                            activeOpacity={0.7}
-                            onPress={() => navigation.navigate('SearchScreen', { initialTab: 'posts', initialQuery: tag })}
-                        >
-                            <Text style={styles.hashtagChip}>#{tag}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
-
-            {/* ── Link Preview (YouTube / Spotify / generic OG card) ── */}
-            {extractedUrl && !(post.media && post.media.length > 0) && post.type !== 'shared' && post.type !== 'article' && post.type !== 'product' ? (
-                <View style={{ marginHorizontal: horizontalPadding }}>
-                    <LinkPreview url={extractedUrl} />
-                </View>
-            ) : null}
-
-
-
+            {/* ── Media (picture / video / shared / article etc.) ── */}
             <View>
                  {post.type === 'shared'   ? (
-  
+
                      <CommentSharedPostItem post={post.shared_post} isLeaving={isLeaving} parentFeedId={post.id} />
 
                 ) : post.type === 'article' ? (
@@ -284,22 +348,22 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
 
                     <CommentEventPostCoverContent post={post} />
                 ) : post.type === "job" ?(
-                    
+
                     <CommentJobPostContent post={post} />
 
                 ) : post.type === "media" ? (
 
                 <CommentMediaLinkContent text={post.text} />
                 ) :
-                
+
                 (
                 (() => {
                     const isVideo = post.type === 'video' || post.type === 'reel';
                     if (isVideo) {
                         const mediaItem = post.media && post.media[0];
-                        return mediaItem ? <CommentVideoItem 
-                            videoUrl={mediaItem.video_url} 
-                            thumbnail={mediaItem.thumbnail} 
+                        return mediaItem ? <CommentVideoItem
+                            videoUrl={mediaItem.video_url}
+                            thumbnail={mediaItem.thumbnail}
                             isLeaving={isLeaving}
                             feedId={post.id}
                             isReel={post.type === 'reel'}
@@ -321,6 +385,57 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
             )}
 
             </View>
+
+            {/* Post body — inline hashtags are tappable */}
+            {!!postText && (
+                <View style={styles.textBlock}>
+                    <Text style={styles.postBody} numberOfLines={textExpanded ? undefined : 4}>
+                        {postText.split(/(\s+)/).map((seg, i) => {
+                            if (/^#\w+/.test(seg)) {
+                                const tag = seg.slice(1);
+                                return (
+                                    <Text
+                                        key={i}
+                                        style={styles.inlineHashtag}
+                                        onPress={() => navigation.navigate('SearchScreen', { initialTab: 'posts', initialQuery: tag })}
+                                    >
+                                        {seg}
+                                    </Text>
+                                );
+                            }
+                            return <Text key={i}>{seg}</Text>;
+                        })}
+                    </Text>
+                    {!textExpanded && postText.length > 200 && (
+                        <TouchableOpacity onPress={() => setTextExpanded(true)} activeOpacity={0.7} style={styles.readMoreBtn}>
+                            <Text style={styles.readMore}>Read more</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
+
+            {/* Hashtag chips */}
+            {post.hashtags?.length > 0 && (
+                <View style={styles.hashtagsRow}>
+                    {post.hashtags.map((tag, i) => (
+                        <TouchableOpacity
+                            key={`${tag}-${i}`}
+                            activeOpacity={0.7}
+                            style={styles.hashtagChipWrap}
+                            onPress={() => navigation.navigate('SearchScreen', { initialTab: 'posts', initialQuery: tag })}
+                        >
+                            <Text style={styles.hashtagChip}>#{tag}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
+
+            {/* ── Link Preview (YouTube / Spotify / generic OG card) ── */}
+            {extractedUrl && !(post.media && post.media.length > 0) && post.type !== 'shared' && post.type !== 'article' && post.type !== 'product' ? (
+                <View style={{ marginHorizontal: horizontalPadding }}>
+                    <LinkPreview url={extractedUrl} />
+                </View>
+            ) : null}
 
             {/* Engagement bar — same component as feedcard (summary row + 5 actions) */}
             <View style={{ paddingHorizontal: horizontalPadding }}>
@@ -402,8 +517,8 @@ const styles = StyleSheet.create({
     // ── Post wrapper ──────────────────────────────────────────────────────────
     postWrapper: {
         flexDirection: 'column',
-        paddingTop: 15,
-        paddingBottom: 5,
+        paddingTop: 16,
+        paddingBottom: 8,
         backgroundColor: '#fff',
         marginBottom: 8,
     },
@@ -411,14 +526,14 @@ const styles = StyleSheet.create({
     // ── Author row ────────────────────────────────────────────────────────────
     authorRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         marginHorizontal: horizontalPadding,
-        marginBottom: 4,
+        marginBottom: 12,
     },
     authorAvatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 46,
+        height: 46,
+        borderRadius: 23,
         backgroundColor: Colors.neutral180,
         marginRight: 10,
         flexShrink: 0,
@@ -467,9 +582,9 @@ const styles = StyleSheet.create({
     },
     timestamp: {
         fontSize: 12,
-        color: 'gray',
+        color: Colors.secondaryText,
         fontFamily: AppDetails.fontFamily.body,
-        marginTop: 2,
+        marginTop: 3,
     },
 
     // ── Context / action ──────────────────────────────────────────────────────
@@ -492,23 +607,131 @@ const styles = StyleSheet.create({
         fontFamily: AppDetails.fontFamily.body,
     },
 
+    // ── Post text ─────────────────────────────────────────────────────────────
+    textBlock: {
+        marginHorizontal: horizontalPadding,
+        marginTop: 14,
+        marginBottom: 6,
+    },
+    postBody: {
+        fontSize: 16,
+        fontFamily: AppDetails.fontFamily.body,
+        color: Colors.deepSlate ?? Colors.black,
+        lineHeight: 26,
+        letterSpacing: 0.1,
+    },
+    readMoreBtn: {
+        marginTop: 6,
+    },
+    readMore: {
+        color: Colors.primary,
+        fontWeight: '700',
+        fontSize: 14,
+    },
+
+    // ── Options button ────────────────────────────────────────────────────────
+    optionsBtn: {
+        padding: 6,
+        marginLeft: 4,
+        alignSelf: 'flex-start',
+    },
+
+    // ── Options modal ─────────────────────────────────────────────────────────
+    optionsOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'flex-end',
+    },
+    optionsSheet: {
+        backgroundColor: Colors.white,
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
+        paddingVertical: 8,
+        paddingBottom: 28,
+    },
+    optionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingHorizontal: 22,
+        paddingVertical: 16,
+    },
+    optionText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: Colors.primaryDark,
+    },
+    optionDivider: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: Colors.borderLight ?? '#EBEBEB',
+        marginHorizontal: 16,
+    },
+
+    // ── Edit post modal ───────────────────────────────────────────────────────
+    editSheet: {
+        backgroundColor: Colors.white,
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
+        padding: 20,
+        paddingBottom: 32,
+    },
+    editHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 14,
+    },
+    editTitle: {
+        fontSize: 17,
+        fontWeight: '800',
+        color: Colors.primaryDark,
+    },
+    editInput: {
+        borderWidth: 1,
+        borderColor: Colors.borderLight ?? '#EBEBEB',
+        borderRadius: 12,
+        padding: 12,
+        fontSize: 15,
+        color: Colors.black,
+        minHeight: 120,
+        textAlignVertical: 'top',
+        marginBottom: 14,
+    },
+    editSaveBtn: {
+        backgroundColor: Colors.primary,
+        borderRadius: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    editSaveBtnText: {
+        color: Colors.white,
+        fontWeight: '800',
+        fontSize: 15,
+    },
+
     // ── Hashtags ──────────────────────────────────────────────────────────────
     inlineHashtag: {
-        color: Colors.tealAccent,
-        fontWeight: '600',
+        color: Colors.primary,
+        fontWeight: '700',
     },
     hashtagsRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 8,
         marginHorizontal: horizontalPadding,
-        marginTop: 6,
-        marginBottom: 4,
+        marginTop: 10,
+        marginBottom: 6,
+    },
+    hashtagChipWrap: {
+        backgroundColor: Colors.primary + '12',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
     },
     hashtagChip: {
         fontSize: 13,
-        color: Colors.tealAccent,
-        fontWeight: '600',
+        color: Colors.primary,
+        fontWeight: '700',
         letterSpacing: 0.2,
     },
 
