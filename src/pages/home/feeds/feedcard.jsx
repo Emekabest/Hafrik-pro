@@ -37,6 +37,18 @@ import { useDoubleTap } from '../../reels/useDoubleTap';
 import LinkPreview from '../../../components/LinkPreview';
 import { LinearGradient } from 'expo-linear-gradient';
 
+// Sum all reaction types as total likes
+const totalLikes = (reactions, fallback = 0) => {
+  if (reactions && typeof reactions === 'object') {
+    const sum = Object.entries(reactions)
+      .filter(([k]) => k !== 'total')
+      .reduce((acc, [, v]) => acc + Number(v || 0), 0);
+    if (sum > 0) return sum;
+    if (typeof reactions.total === 'number') return reactions.total;
+  }
+  return Number(fallback) || 0;
+};
+
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const ACCENT      = Colors.primary;
 const BRAND       = Colors.primaryDark;
@@ -671,7 +683,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
         <EngagementBar
           feedId={feed?.id}
           initialLiked={!!(feed?.is_liked || feed?.my_reaction || feed?.user_reaction)}
-          initialLikeCount={feed?.likes_count ?? feed?.reactions?.total ?? feed?.total_reactions ?? feed?.reaction_count ?? feed?.reactions_count ?? 0}
+          initialLikeCount={totalLikes(feed?.reactions, feed?.likes_count)}
           commentsCount={feed?.comments_count ?? 0}
           sharesCount={feed?.shares_count ?? 0}
           myReaction={feed?.my_reaction ?? feed?.user_reaction ?? null}

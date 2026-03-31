@@ -16,6 +16,7 @@
 import UploadMediaController from '../controllers/uploadmediacontroller';
 import PostFeedController from '../controllers/postfeedcontroller';
 import useStore from '../repository/store';
+import { navigate } from './navigationRef';
 
 /**
  * Kick off a background upload + post creation.
@@ -173,6 +174,11 @@ export async function startBackgroundUpload({
                     postBody.target_type ?? 'profile',
                     postBody.target_id   ?? null,
                 );
+                // Always prepend to the Following (community) feed so the user
+                // sees their own post there immediately
+                useStore.getState().prependFeedsToList('communityFeeds', [createdPost]);
+                // Open the newly created post
+                navigate('CommentScreen', { feedId: createdPost.id, initialPost: createdPost });
             } else {
                 triggerRefresh();
             }

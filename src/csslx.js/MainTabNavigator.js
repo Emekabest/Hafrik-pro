@@ -40,6 +40,9 @@ const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
   // Double-tap tracking: { routeName: lastTapTime }
   const lastTapRef = React.useRef({});
 
+  // Reels screen is full-screen — no tab bar
+  if (state.routes[state.index].name === 'Reels') return null;
+
   return (
     <View style={[styles.tabBarContainer, { paddingBottom: bottom, height: AppDetails.mainTabNavigatorHeight + bottom, backgroundColor: tc.tabBarBg, borderTopColor: tc.tabBarBorder }]}>
       {state.routes.map((route, index) => {

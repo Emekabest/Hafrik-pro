@@ -27,6 +27,17 @@ import parseLinkFromText from '../../../../../helpers/linkparser';
 import CommentMultipleSharedProductMediaCard from './commentmultiplesharedproductmediacard';
 import { Colors } from '../../../../../theme/colors';
 import { editPost, deletePost } from '../../../../../api/feedApi';
+
+const totalLikes = (reactions, fallback = 0) => {
+  if (reactions && typeof reactions === 'object') {
+    const sum = Object.entries(reactions)
+      .filter(([k]) => k !== 'total')
+      .reduce((acc, [, v]) => acc + Number(v || 0), 0);
+    if (sum > 0) return sum;
+    if (typeof reactions.total === 'number') return reactions.total;
+  }
+  return Number(fallback) || 0;
+};
 import LinkPreview from '../../../../../components/LinkPreview';
 import ShareModal from '../../share';
 import ReactionsModal from '../../feedcardproperties/ReactionsModal';
@@ -442,7 +453,7 @@ const CommentMainPostContent = ({ post, textInputRef, isLeaving = false }) => {
                 <EngagementBar
                     feedId={post.id}
                     initialLiked={!!(post.is_liked || post.my_reaction || post.user_reaction)}
-                    initialLikeCount={post.likes_count ?? post.reactions?.total ?? 0}
+                    initialLikeCount={totalLikes(post.reactions, post.likes_count)}
                     commentsCount={post.comments_count ?? 0}
                     sharesCount={Number(post.shares ?? post.shares_count ?? post.share_count ?? 0)}
                     isSaved={!!post.is_saved}

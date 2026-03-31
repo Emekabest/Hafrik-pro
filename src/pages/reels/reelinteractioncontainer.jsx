@@ -3,11 +3,20 @@ import React, {
   memo,
   useCallback,
   useImperativeHandle,
+  useRef,
   useState,
 } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
@@ -21,9 +30,9 @@ import { Colors } from '../../theme/colors';
 const decodeHtml = (t = '') =>
   String(t)
     .replace(/&rsquo;|&#039;|&#x27;/g, "'")
-    .replace(/&lsquo;/g, "\u2018")
-    .replace(/&rdquo;/g, "\u201D")
-    .replace(/&ldquo;/g, "\u201C")
+    .replace(/&lsquo;/g, '\u2018')
+    .replace(/&rdquo;/g, '\u201D')
+    .replace(/&ldquo;/g, '\u201C')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
@@ -37,26 +46,29 @@ const decodeHtml = (t = '') =>
     .trim();
 
 const withOpacity = (hex, opacity) => {
-  const normalized = (hex || "").replace("#", "");
-  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  const normalized = (hex || '').replace('#', '');
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
+    .toString(16)
+    .padStart(2, '0');
   return `#${normalized}${alpha}`;
 };
-
 
 const ACCENT = Colors.primary;
 
 const TEXT_SHADOW = {
-  textShadowColor:  withOpacity(Colors.black, 0.80),
+  textShadowColor: withOpacity(Colors.black, 0.80),
   textShadowOffset: { width: 0, height: 1 },
   textShadowRadius: 4,
 };
+
+// Height of the "Say something…" bar at the bottom
+const COMMENT_BAR_H = 52;
 
 const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   const { token } = useAuth();
   const navigation = useNavigation();
   const { bottom: safeBottom } = useSafeAreaInsets();
-  // Bottom padding — reduced for more video real estate
-  const panelBottom = safeBottom + 6;
+  const engBarRef = useRef(null);
 
   const {
     id: postId,
@@ -73,27 +85,25 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
 
   const userId = user?.id;
 
-  const [liked,    setLiked]    = useState(!!is_liked);
+  const [liked,      setLiked]      = useState(!!is_liked);
   const [likesCount, setLikesCount] = useState(likes_count ?? 0);
   const [myReaction, setMyReaction] = useState(my_reaction || (is_liked ? 'like' : null));
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [following, setFollowing]   = useState(false);
 
-  /** Called by ReelEngagementBar when any reaction is sent (tap or picker) */
+  /** Called by ReelEngagementBar when any reaction is sent */
   const handleReaction = useCallback((reactionType) => {
     const isRemoving = myReaction === reactionType;
-    const prevLiked = liked;
-    const prevCount = likesCount;
-    const prevReaction = myReaction;
+    const prevLiked  = liked;
+    const prevCount  = likesCount;
 
-    // Optimistic local update
-    const newLiked = !isRemoving;
-    const newCount = isRemoving ? Math.max(0, prevCount - 1) : (prevLiked ? prevCount : prevCount + 1);
+    const newLiked    = !isRemoving;
+    const newCount    = isRemoving ? Math.max(0, prevCount - 1) : (prevLiked ? prevCount : prevCount + 1);
     const newReaction = isRemoving ? null : reactionType;
     setLiked(newLiked);
     setLikesCount(newCount);
     setMyReaction(newReaction);
 
-    // Sync to Zustand store
     const { feeds, updateFeedById } = useStore.getState();
     const currentFeed = feeds.feedsById[postId];
     if (currentFeed) {
@@ -106,75 +116,51 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
     }
   }, [liked, likesCount, myReaction, postId]);
 
-  /** Simple double-tap like (always sends 'like') */
+  /** Double-tap like */
   const handleDoubleTapLike = useCallback(() => {
-    if (liked) return; // already liked, no-op
+    if (liked) return;
     handleReaction('like');
   }, [liked, handleReaction]);
 
   useImperativeHandle(ref, () => ({ triggerLike: handleDoubleTapLike }), [handleDoubleTapLike]);
 
-  const cleanCaption = caption ? decodeHtml(caption) : '';
-  const isCaptionLong = cleanCaption && cleanCaption.length > 80;
-  const audioLabel = user?.username ? `@${user.username}` : 'Original audio';
-
   const handleOpenProfile = useCallback(() => {
     if (userId) navigation.push('UserProfile', { userId });
   }, [userId, navigation]);
 
+  const handleFollow = useCallback(() => {
+    setFollowing(f => !f);
+    // TODO: wire follow API
+  }, []);
+
+  // Parse caption — split hashtags out for separate display
+  const rawCaption = caption ? decodeHtml(caption) : '';
+  const hashtagMatches = rawCaption.match(/#[\w\u00C0-\u024F]+/g) || [];
+  const captionText = rawCaption.replace(/#[\w\u00C0-\u024F]+/g, '').trim();
+  const isCaptionLong = captionText.length > 80;
+  const audioLabel = user?.username ? `@${user.username}` : 'Original audio';
+
+  // Panels sit above the comment bar
+  const panelBottom = safeBottom + COMMENT_BAR_H + 12;
+
+  const openCommentsSheet = useCallback(() => {
+    engBarRef.current?.openComments();
+  }, []);
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
 
-      {/* ── Left: username · caption · music — anchored bottom-left ──────── */}
-      <View style={[styles.captionArea, { bottom: panelBottom + 8 }]} pointerEvents="box-none">
+      {/* ── Bottom gradient for readability ─────────────────────────── */}
+      <LinearGradient
+        colors={['transparent', withOpacity(Colors.black, 0.72)]}
+        style={styles.bottomGradient}
+        pointerEvents="none"
+      />
 
-        {/* Username + verified + time */}
-        <TouchableOpacity style={styles.userRow} activeOpacity={0.8} onPress={handleOpenProfile}>
-          {user?.verified ? (
-            <Ionicons name="checkmark-circle" size={14} color={ACCENT} style={{ marginRight: 4 }} />
-          ) : null}
-          <Text style={styles.username} numberOfLines={1}>
-            @{user?.username}
-          </Text>
-          <Text style={styles.time}> · {CalculateElapsedTime(created)}</Text>
-        </TouchableOpacity>
+      {/* ── LEFT column — avatar · user · follow · caption · hashtags · music ── */}
+      <View style={[styles.leftCol, { bottom: panelBottom }]} pointerEvents="box-none">
 
-        {/* Caption */}
-        {cleanCaption ? (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => setCaptionExpanded(e => !e)}
-          >
-            <Text
-              style={styles.caption}
-              numberOfLines={captionExpanded ? undefined : 2}
-            >
-              {cleanCaption}
-            </Text>
-            {isCaptionLong ? (
-              <Text style={styles.captionToggle}>
-                {captionExpanded ? 'less' : 'more'}
-              </Text>
-            ) : null}
-          </TouchableOpacity>
-        ) : null}
-
-        {/* Music row — TikTok-style */}
-        <View style={styles.musicRow}>
-          <View style={styles.musicDisc}>
-            <Ionicons name="musical-notes" size={10} color={Colors.white} />
-          </View>
-          <Text style={styles.musicLabel} numberOfLines={1}>
-            {audioLabel}
-          </Text>
-        </View>
-
-      </View>
-
-      {/* ── Right: avatar + follow + engagement — anchored bottom-right ───── */}
-      <View style={[styles.actionsArea, { bottom: panelBottom + 8 }]}>
-
-        {/* Avatar — tap to open profile */}
+        {/* Avatar */}
         <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.85} onPress={handleOpenProfile}>
           <View style={styles.avatarRing}>
             <ExpoImage
@@ -186,8 +172,70 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
           </View>
         </TouchableOpacity>
 
-        {/* Like / Comment / Bookmark / Share */}
+        {/* Username + follow */}
+        <View style={styles.userRow}>
+          <TouchableOpacity activeOpacity={0.8} onPress={handleOpenProfile} style={styles.usernameWrap}>
+            {user?.verified ? (
+              <Ionicons name="checkmark-circle" size={13} color={ACCENT} style={{ marginRight: 3 }} />
+            ) : null}
+            <Text style={styles.username} numberOfLines={1}>
+              @{user?.username}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.followBtn, following && styles.followBtnActive]}
+            activeOpacity={0.8}
+            onPress={handleFollow}
+          >
+            <Text style={[styles.followTxt, following && styles.followTxtActive]}>
+              {following ? 'Following' : 'Follow'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Caption */}
+        {captionText ? (
+          <TouchableOpacity activeOpacity={0.85} onPress={() => setCaptionExpanded(e => !e)}>
+            <Text
+              style={styles.caption}
+              numberOfLines={captionExpanded ? undefined : 2}
+            >
+              {captionText}
+            </Text>
+            {isCaptionLong ? (
+              <Text style={styles.captionToggle}>
+                {captionExpanded ? 'less' : 'more'}
+              </Text>
+            ) : null}
+          </TouchableOpacity>
+        ) : null}
+
+        {/* Hashtag chips */}
+        {hashtagMatches.length > 0 ? (
+          <View style={styles.hashtagRow}>
+            {hashtagMatches.slice(0, 4).map((tag, i) => (
+              <View key={i} style={styles.hashtagChip}>
+                <Text style={styles.hashtagTxt}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {/* Music row */}
+        <View style={styles.musicRow}>
+          <View style={styles.musicDisc}>
+            <Ionicons name="musical-notes" size={10} color={Colors.white} />
+          </View>
+          <Text style={styles.musicLabel} numberOfLines={1}>{audioLabel}</Text>
+        </View>
+
+      </View>
+
+      {/* ── RIGHT column — like · comment · bookmark · share ─────────── */}
+      <View style={[styles.rightCol, { bottom: panelBottom }]}>
         <ReelEngagementBar
+          ref={engBarRef}
           postId={postId}
           userId={userId}
           token={token}
@@ -199,110 +247,219 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
           commentCount={comments_count}
           isSavedInitial={!!is_saved}
         />
-
       </View>
+
+      {/* ── "Say something…" comment bar — pinned at bottom ─────────── */}
+      <TouchableOpacity
+        style={[styles.commentBar, { bottom: safeBottom }]}
+        activeOpacity={0.8}
+        onPress={openCommentsSheet}
+      >
+        <View style={styles.commentInputFake}>
+          <Ionicons name="happy-outline" size={20} color={withOpacity(Colors.white, 0.55)} style={{ marginRight: 8 }} />
+          <Text style={styles.commentPlaceholder}>Say something…</Text>
+        </View>
+        <TouchableOpacity style={styles.commentSend} activeOpacity={0.75} onPress={openCommentsSheet}>
+          <Ionicons name="paper-plane-outline" size={18} color={Colors.white} />
+        </TouchableOpacity>
+      </TouchableOpacity>
 
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  // ── Caption — bottom-left, clears the right-side action column ───────────
-  captionArea: {
+  // Bottom overlay gradient
+  bottomGradient: {
     position: 'absolute',
-    left: 12,
-    right: 80,   // leave room for the 62px action column + 12px gap
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '55%',
+    zIndex: 1,
+  },
+
+  // Left column — avatar + info
+  leftCol: {
+    position: 'absolute',
+    left: 14,
+    right: 90,   // leave room for right action column (70px) + 6px gap
     zIndex: 3,
   },
 
-  // ── Actions — bottom-right, independent of caption width ─────────────────
-  actionsArea: {
+  // Right column — engagement icons
+  rightCol: {
     position: 'absolute',
-    right: 12,
-    width: 62,
+    right: 10,
+    width: 70,
     alignItems: 'center',
     zIndex: 3,
   },
+
+  // Avatar
+  avatarWrapper: {
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  avatarRing: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: Colors.white,
+    overflow: 'hidden',
+    backgroundColor: Colors.blueGreenDeep,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // User row
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 7,
     flexWrap: 'wrap',
+    gap: 8,
+  },
+  usernameWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   username: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'ReadexPro_600SemiBold',
     color: Colors.white,
     ...TEXT_SHADOW,
   },
-  time: {
+
+  // Follow button
+  followBtn: {
+    borderWidth: 1.5,
+    borderColor: Colors.white,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  followBtnActive: {
+    backgroundColor: withOpacity(Colors.white, 0.18),
+    borderColor: withOpacity(Colors.white, 0.4),
+  },
+  followTxt: {
+    color: Colors.white,
     fontSize: 12,
-    color: withOpacity(Colors.white, 0.60),
-    fontFamily: 'WorkSans_500Medium',
+    fontFamily: 'WorkSans_600SemiBold',
     ...TEXT_SHADOW,
   },
+  followTxtActive: {
+    color: withOpacity(Colors.white, 0.7),
+  },
+
+  // Caption
   caption: {
-    fontSize: 13.5,
+    fontSize: 13,
     color: withOpacity(Colors.white, 0.92),
     fontFamily: 'WorkSans_500Medium',
-    lineHeight: 20,
+    lineHeight: 19,
+    marginBottom: 4,
     ...TEXT_SHADOW,
   },
   captionToggle: {
     color: withOpacity(Colors.white, 0.55),
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 12,
-    marginTop: 3,
+    marginTop: 2,
+    marginBottom: 4,
     ...TEXT_SHADOW,
   },
-  // Music row at bottom of left column
+
+  // Hashtag chips
+  hashtagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    marginBottom: 8,
+  },
+  hashtagChip: {
+    backgroundColor: withOpacity(Colors.white, 0.14),
+    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  hashtagTxt: {
+    color: Colors.white,
+    fontSize: 12,
+    fontFamily: 'WorkSans_500Medium',
+    ...TEXT_SHADOW,
+  },
+
+  // Music row
   musicRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
     gap: 7,
+    marginTop: 2,
   },
   musicDisc: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: Colors.nearBlackSoft,
-    borderWidth: 3,
+    borderWidth: 2.5,
     borderColor: Colors.neutral700,
     alignItems: 'center',
     justifyContent: 'center',
   },
   musicLabel: {
-    fontSize: 12.5,
+    fontSize: 12,
     color: withOpacity(Colors.white, 0.85),
     fontFamily: 'WorkSans_500Medium',
     flex: 1,
     ...TEXT_SHADOW,
   },
 
-  // Avatar
-  avatarWrapper: {
+  // "Say something…" bar
+  commentBar: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    height: COMMENT_BAR_H,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
-    position: 'relative',
+    gap: 10,
+    zIndex: 4,
   },
-  avatarRing: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2.5,
-    borderColor: Colors.white,
-    overflow: 'hidden',
-    backgroundColor: Colors.blueGreenDeep,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.55,
-    shadowRadius: 6,
-    elevation: 6,
+  commentInputFake: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: withOpacity(Colors.white, 0.35),
+    backgroundColor: withOpacity(Colors.black, 0.28),
+    paddingHorizontal: 14,
   },
-  avatar: {
-    width: '100%',
-    height: '100%',
+  commentPlaceholder: {
+    color: withOpacity(Colors.white, 0.55),
+    fontSize: 13.5,
+    fontFamily: 'WorkSans_400Regular',
+  },
+  commentSend: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: withOpacity(Colors.black, 0.30),
+    borderWidth: 1,
+    borderColor: withOpacity(Colors.white, 0.25),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
