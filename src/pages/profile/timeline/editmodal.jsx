@@ -358,8 +358,8 @@ const AboutTab = ({ form, setField }) => (
 
 const LocationTab = ({ form, setField, countryOption, relationshipOption, setPickerState }) => (
     <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <SelectField label="Country" icon="flag-outline" value={countryOption?.name || countryOption?.label} placeholder="Select country" onPress={() => setPickerState({ key: 'country', title: 'Select Country', searchable: true })} />
-        <FormField label="Current City" value={form.current_city} onChangeText={(v) => setField('current_city', v)} placeholder="Current city" />
+        <SelectField label="City" icon="flag-outline" value={countryOption?.name || countryOption?.label} placeholder="Select country" onPress={() => setPickerState({ key: 'country', title: 'Select Country', searchable: true })} />
+        <FormField label="Current Country" value={form.current_city} onChangeText={(v) => setField('current_city', v)} placeholder="Current city" />
         <FormField label="Hometown" value={form.hometown} onChangeText={(v) => setField('hometown', v)} placeholder="Hometown" />
         <SelectField label="Relationship" icon="heart-outline" value={relationshipOption?.label} placeholder="Select relationship" onPress={() => setPickerState({ key: 'relationship', title: 'Relationship Status', searchable: false })} />
         <View style={{ height: 32 }} />
@@ -434,6 +434,8 @@ const EditModal = ({ visible, onClose, userDetails, onProfileUpdated }) => {
                 setInitialForm(remoteForm);
             }
 
+
+
             if (metadataResponse?.status === 200 && metadataResponse.data) {
                 setMetadata({
                     countries: metadataResponse.data.countries || [],
@@ -441,6 +443,7 @@ const EditModal = ({ visible, onClose, userDetails, onProfileUpdated }) => {
                     relationships: metadataResponse.data.relationships?.length ? metadataResponse.data.relationships : DEFAULT_RELATIONSHIPS,
                 });
             }
+            
         } catch (_) {
             // Silent — user already has seed data from props, no alert needed
         } finally {
