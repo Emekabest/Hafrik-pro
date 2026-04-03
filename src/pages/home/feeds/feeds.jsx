@@ -33,7 +33,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../../theme";
 import { useTheme } from "../../../theme/ThemeContext";
 import { FeedSkeletonList } from "./feedskelenton.jsx";
-import DiscoverMasonryCard, { MASONRY_H_PAD, MASONRY_COL_GAP } from "./DiscoverMasonryCard.jsx";
+import DiscoverMasonryCard, { MASONRY_H_PAD, MASONRY_COL_GAP, MASONRY_ROW_H } from "./DiscoverMasonryCard.jsx";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BG_BASE = Colors.surfaceTint;
@@ -702,6 +702,20 @@ const Feeds = ({
 
   const getItemType = useCallback(item => item.type, []);
 
+  // Give FlashList accurate per-type heights so it never miscalculates scroll position
+  const overrideItemLayout = useCallback((layout, item) => {
+    if (item.type === 'masonryrow') {
+      layout.size = MASONRY_ROW_H;
+    } else if (item.type === 'banner') {
+      layout.size = 56;
+    } else if (item.type === 'feedsheader') {
+      layout.size = 72;
+    } else if (item.type === 'peoplecard' || item.type === 'bizcard' || item.type === 'communitycard') {
+      layout.size = 180;
+    }
+    // 'feed' items use the default estimatedItemSize of 550
+  }, []);
+
   const brandedRefresh = (
     <RefreshControl
       refreshing={refreshing}
@@ -722,11 +736,12 @@ const Feeds = ({
         ref={flashListRef}
         data={combinedData}
         estimatedItemSize={550}
+        overrideItemLayout={overrideItemLayout}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
         renderItem={renderCombinedItem}
         onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={0.4}
         showsVerticalScrollIndicator={false}
         refreshControl={brandedRefresh}
         onViewableItemsChanged={onViewableItemsChanged.current}
@@ -736,12 +751,13 @@ const Feeds = ({
         contentContainerStyle={styles.listContent}
         stickyHeaderIndices={stickyHeaderIndices?.length ? stickyHeaderIndices : []}
         onScroll={handleScroll}
-        scrollEventThrottle={150}
-        removeClippedSubviews
-        initialNumToRender={4}
-        maxToRenderPerBatch={4}
-        windowSize={5}
-        ItemSeparatorComponent={Separator}
+        scrollEventThrottle={16}
+        decelerationRate="normal"
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={5}
+        maxToRenderPerBatch={3}
+        windowSize={7}
+        ItemSeparatorComponent={combinedData?.some?.(i => i.type === 'masonryrow') ? null : Separator}
       />
       )}
 

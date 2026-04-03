@@ -276,8 +276,13 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
       buf = [];
     };
     for (const item of combinedData) {
+      // Skip people/biz/community interstitials in discover — only ads pass through
+      if (item.type === 'peoplecard' || item.type === 'bizcard' || item.type === 'communitycard') {
+        continue;
+      }
       if (item.type === 'feed') {
-        if (item.data) buf.push(item);
+        // Skip shared posts
+        if (item.data && item.data.type !== 'shared') buf.push(item);
       } else {
         flush();
         result.push(item);
