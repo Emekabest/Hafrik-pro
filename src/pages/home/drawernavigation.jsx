@@ -300,6 +300,29 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}
             showsVerticalScrollIndicator={false}
           >
+            {/* ── HafrikX Featured Entry ── */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => handleNavigate("HafrikXHome")}
+              style={styles.hafrikXBtn}
+            >
+              <LinearGradient
+                colors={["#0a1428", "#132244"]}
+                style={styles.hafrikXBg}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.hafrikXBadge}>
+                  <Text style={styles.hafrikXBadgeTxt}>X</Text>
+                </View>
+                <View style={styles.hafrikXText}>
+                  <Text style={styles.hafrikXTitle}>HafrikX</Text>
+                  <Text style={styles.hafrikXSub}>Import from China · RMB Exchange · Suppliers</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={16} color={"#c9a84c"} />
+              </LinearGradient>
+            </TouchableOpacity>
+
             {/* ── Product grid ── */}
             <SectionTitle>Hafrik Products</SectionTitle>
             <View style={styles.gridRow}>
@@ -317,6 +340,19 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
               <DrawerItem icon="storefront-outline" title="My Businesses" subtitle="Businesses you follow" onPress={() => handleNavigate("LikedBusinesses")} />
               <DrawerItem icon="people-outline" title="My Communities" subtitle="Communities you belong to" onPress={() => handleNavigate("JoinedCommunities")} />
               <DrawerItem icon="wallet-outline" title="Earnings" subtitle="Wallet, points & transactions" iconColor={ACCENT} onPress={() => handleNavigate("Earnings")} />
+            </View>
+
+            {/* ── Explore ── */}
+            <SectionTitle>Explore</SectionTitle>
+            <View style={styles.card}>
+              <DrawerItem
+                icon="map"
+                title="City Guide"
+                subtitle="China cities — jobs, rent, lifestyle"
+                iconColor="#10b981"
+                iconBg="#10b98114"
+                onPress={() => handleNavigate("CityGuide")}
+              />
             </View>
 
             {/* ── Account ── */}
@@ -514,6 +550,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 18,
     paddingBottom: 8,
+  },
+
+  // ── HafrikX Button ──
+  hafrikXBtn: {
+    marginHorizontal: 14,
+    marginTop: 14,
+    marginBottom: 6,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#c9a84c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hafrikXBg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1e2d45',
+    gap: 12,
+  },
+  hafrikXBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 11,
+    backgroundColor: '#c9a84c',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  hafrikXBadgeTxt: {
+    color: '#000',
+    fontSize: 20,
+    fontWeight: '900',
+    fontFamily: FONT_B,
+    letterSpacing: -1,
+  },
+  hafrikXText: { flex: 1 },
+  hafrikXTitle: {
+    color: WHITE,
+    fontSize: 15,
+    fontWeight: '900',
+    fontFamily: FONT_B,
+    letterSpacing: -0.2,
+  },
+  hafrikXSub: {
+    color: '#6b7f95',
+    fontSize: 10.5,
+    fontFamily: FONT_R,
+    marginTop: 2,
   },
 
   // ── Product grid ──

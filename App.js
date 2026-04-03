@@ -84,6 +84,25 @@ import ExchangeConfirmScreen from './src/pages/exchange/ExchangeConfirmScreen';
 import ExchangeHistoryScreen from './src/pages/exchange/ExchangeHistoryScreen';
 import ExchangeAdminScreen   from './src/pages/exchange/ExchangeAdminScreen';
 import SavedPostsScreen      from './src/pages/saved/SavedPostsScreen';
+// ── City Guide ──
+import CityGuideHomeScreen   from './src/pages/cityguide/CityGuideHomeScreen';
+import CityDetailScreen      from './src/pages/cityguide/CityDetailScreen';
+// ── HafrikX Module ──
+import HafrikXHome           from './src/pages/hafrikx/HafrikXHome';
+import HafrikXCurrency       from './src/pages/hafrikx/CurrencyExchange';
+import HafrikXSuppliers      from './src/pages/hafrikx/SuppliersDirectory';
+import HafrikXRequest        from './src/pages/hafrikx/RequestProduct';
+import HafrikXTrack          from './src/pages/hafrikx/TrackShipping';
+import HafrikXWarehouses     from './src/pages/hafrikx/WarehouseInfo';
+import HafrikXLearn          from './src/pages/hafrikx/LearnImporting';
+import HafrikXVisa           from './src/pages/hafrikx/VisaServices';
+import HafrikXMyOrders       from './src/pages/hafrikx/MyOrders';
+import HafrikXMyShipments    from './src/pages/hafrikx/MyShipments';
+import HafrikXMyRequests     from './src/pages/hafrikx/MyRequests';
+import ExchangePayment        from './src/pages/hafrikx/ExchangePayment';
+import ExchangeUploadReceipt  from './src/pages/hafrikx/ExchangeUploadReceipt';
+import ExchangeUploadQR       from './src/pages/hafrikx/ExchangeUploadQR';
+import ExchangeOrderStatus    from './src/pages/hafrikx/ExchangeOrderStatus';
 // import VerifyEmailScreen from './src/pages/onboarding/VerifyEmailScreen'; // re-enable with email verification
 import UploadAvatarScreen     from './src/pages/onboarding/UploadAvatarScreen';
 import FollowScreen           from './src/pages/onboarding/FollowScreen';
@@ -448,6 +467,52 @@ function AppNavigator() {
               <Stack.Screen name="ExchangeConfirm" component={ExchangeConfirmScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeHistory" component={ExchangeHistoryScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeAdmin"   component={ExchangeAdminScreen}   options={{ headerShown: false }} />
+
+              {/* ── City Guide ── */}
+              <Stack.Screen name="CityGuide"  component={CityGuideHomeScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="CityDetail" component={CityDetailScreen}    options={{ headerShown: false }} />
+
+              {/* ── HafrikX Module ── */}
+              <Stack.Screen
+                name="HafrikXHome"
+                component={HafrikXHome}
+                options={{
+                  headerShown: false,
+                  cardStyleInterpolator: ({ current, layouts }) => {
+                    const translateX = current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [layouts.screen.width * 0.35, 0],
+                    });
+                    const scale = current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.94, 1],
+                    });
+                    const opacity = current.progress.interpolate({
+                      inputRange: [0, 0.4, 1],
+                      outputRange: [0, 0.7, 1],
+                    });
+                    return { cardStyle: { transform: [{ translateX }, { scale }], opacity } };
+                  },
+                  transitionSpec: {
+                    open:  { animation: 'spring', config: { stiffness: 600, damping: 80, mass: 1, overshootClamping: false, useNativeDriver: true } },
+                    close: { animation: 'spring', config: { stiffness: 600, damping: 80, mass: 1, overshootClamping: false, useNativeDriver: true } },
+                  },
+                }}
+              />
+              <Stack.Screen name="HafrikXCurrency"    component={HafrikXCurrency}    options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXSuppliers"   component={HafrikXSuppliers}   options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXRequest"     component={HafrikXRequest}     options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXTrack"       component={HafrikXTrack}       options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXWarehouses"  component={HafrikXWarehouses}  options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXLearn"       component={HafrikXLearn}       options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXVisa"        component={HafrikXVisa}        options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXMyOrders"    component={HafrikXMyOrders}    options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXMyShipments" component={HafrikXMyShipments} options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikXMyRequests"  component={HafrikXMyRequests}  options={{ headerShown: false }} />
+              <Stack.Screen name="ExchangePayment"       component={ExchangePayment}       options={{ headerShown: false }} />
+              <Stack.Screen name="ExchangeUploadReceipt" component={ExchangeUploadReceipt} options={{ headerShown: false }} />
+              <Stack.Screen name="ExchangeUploadQR"      component={ExchangeUploadQR}      options={{ headerShown: false }} />
+              <Stack.Screen name="ExchangeOrderStatus"   component={ExchangeOrderStatus}   options={{ headerShown: false }} />
 
               {/* ── Onboarding flow ── */}
               {/* ── Onboarding: Avatar → Follow → Country → Welcome ── */}
