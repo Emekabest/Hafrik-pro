@@ -221,7 +221,7 @@ const NewMessageModal = ({ visible, token, onClose, onSelect }) => {
   }, [visible, token]);
 
   const filtered = contacts.filter((c) => {
-    const n = (c.username ?? c.full_name ?? '').toLowerCase();
+    const n = (c.full_name ?? c.name ?? c.username ?? c.user_name ?? '').toLowerCase();
     return n.includes(search.toLowerCase());
   });
 
@@ -268,7 +268,7 @@ const NewMessageModal = ({ visible, token, onClose, onSelect }) => {
             keyExtractor={(c, i) => `c-${c.id ?? c.user_id ?? i}`}
             renderItem={({ item: c }) => {
               const uid  = c.id ?? c.user_id;
-              const name = c.username ?? c.full_name ?? 'User';
+              const name = c.full_name ?? c.name ?? c.username ?? c.user_name ?? 'User';
               const av   = avatarUri(c, name);
               return (
                 <TouchableOpacity style={cm.row} activeOpacity={0.8} onPress={() => handleSelect(c)}>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   ActivityIndicator,
-  Animated,
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,16 +35,6 @@ const ForgotPasswordScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const [error,   setError]   = useState('');
-
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 480, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 480, useNativeDriver: true }),
-    ]).start();
-  }, []);
 
   const validate = () => {
     if (!email.trim()) {
@@ -126,7 +115,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
         keyboardShouldPersistTaps="always"
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <View style={styles.card}>
 
           {/* Email field */}
           <View style={styles.fieldWrap}>
@@ -199,7 +188,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
             <Ionicons name="chevron-back" size={14} color={ACCENT} />
             <Text style={styles.backToLoginText}>Back to Sign In</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -311,7 +300,7 @@ const styles = StyleSheet.create({
   input: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceCoolAlt,
+    backgroundColor: Colors.surfaceCoolAlt ?? '#f5f7fa',
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: BRAND + '16',
