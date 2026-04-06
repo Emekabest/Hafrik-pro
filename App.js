@@ -66,6 +66,7 @@ import SplashScreen from './src/pages/common/SplashScreen';
 import PostDetailScreen from './src/pages/home/feeds/PostDetailScreen';
 import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen             from './src/pages/settings/SettingsScreen';
+import AboutUsScreen              from './src/pages/settings/AboutUsScreen';
 import VerificationIntroScreen   from './src/pages/verification/VerificationIntroScreen';
 import VerificationUploadScreen  from './src/pages/verification/VerificationUploadScreen';
 import VerificationPendingScreen from './src/pages/verification/VerificationPendingScreen';
@@ -447,6 +448,7 @@ function AppNavigator() {
               <Stack.Screen name="Thread" component={ThreadScreen} />
               <Stack.Screen name="InAppBrowser" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="Settings"            component={SettingsScreen} />
+              <Stack.Screen name="AboutUs"             component={AboutUsScreen}  options={{ headerShown: false }} />
               <Stack.Screen name="VerificationIntro"  component={VerificationIntroScreen}  options={{ headerShown: false }} />
               <Stack.Screen name="VerificationUpload" component={VerificationUploadScreen} options={{ headerShown: false }} />
               <Stack.Screen name="VerificationPending" component={VerificationPendingScreen} options={{ headerShown: false, gestureEnabled: false }} />

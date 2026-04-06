@@ -102,7 +102,12 @@ export default function CityGuideHomeScreen() {
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
-        c => c.name.toLowerCase().includes(q) || c.province.toLowerCase().includes(q),
+        c =>
+          c.name.toLowerCase().includes(q) ||
+          c.province.toLowerCase().includes(q) ||
+          c.markets?.some(
+            m => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q),
+          ),
       );
     }
     return list;
@@ -149,7 +154,7 @@ export default function CityGuideHomeScreen() {
           <Ionicons name="search" size={16} color={MUTED} style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search city (Beijing, Shanghai…)"
+            placeholder="Search city or market (Canton Fair, Yiwu…)"
             placeholderTextColor={MUTED}
             value={query}
             onChangeText={setQuery}

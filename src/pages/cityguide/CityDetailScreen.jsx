@@ -313,7 +313,24 @@ export default function CityDetailScreen() {
             </View>
           </Section>
 
-          {/* ── 13. Hafrik Community ── */}
+          {/* ── 13. Markets ── */}
+          {city.markets && city.markets.length > 0 && (
+            <Section icon="storefront" title={`Major Markets in ${city.name}`} color="#e67e22">
+              {city.markets.map((market, i) => (
+                <View key={i} style={[styles.marketRow, i === 0 && { borderTopWidth: 0 }]}>
+                  <View style={styles.marketTop}>
+                    <Text style={styles.marketName}>{market.name}</Text>
+                    <View style={styles.marketBadge}>
+                      <Text style={styles.marketBadgeText}>{market.category}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.marketDesc}>{market.description}</Text>
+                </View>
+              ))}
+            </Section>
+          )}
+
+          {/* ── 14. Hafrik Community ── */}
           <Section icon="people" title={`Hafrik Community in ${city.name}`} color={ACCENT}>
             <LinearGradient
               colors={[BRAND, '#0f5060']}
@@ -745,6 +762,48 @@ const styles = StyleSheet.create({
     color: DARK,
     flex: 1,
     lineHeight: 19,
+  },
+
+  // ── Markets ──
+  marketRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: BORDER,
+    gap: 6,
+  },
+  marketTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  marketName: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: DARK,
+    flex: 1,
+    lineHeight: 19,
+  },
+  marketBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: '#e67e22' + '18',
+    borderWidth: 1,
+    borderColor: '#e67e22' + '30',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  marketBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#c0392b',
+  },
+  marketDesc: {
+    fontSize: 12.5,
+    color: MUTED,
+    lineHeight: 18,
   },
 
   // ── Known for ──

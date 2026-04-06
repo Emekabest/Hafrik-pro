@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Image, Animated, RefreshControl, TextInput, StatusBar,
-  Modal, ActivityIndicator,
+  Modal, ActivityIndicator, Platform, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
 import * as Haptics from 'expo-haptics';
@@ -15,14 +16,13 @@ import { Colors } from '../../theme';
 import { useTheme } from '../../theme/ThemeContext';
 
 const BASE_URL = 'https://hafrik.com';
-const BRAND  = Colors.primaryDark;
-const ACCENT = Colors.primary;
-const DARK   = Colors.black;
-const MUTED  = Colors.secondaryText;
-const BG     = Colors.surfaceTint;
-const WHITE  = Colors.white;
-const BLACK  = Colors.black;
-const DANGER = Colors.destructive;
+const BRAND    = Colors.primaryDark;   // #0c3f44
+const ACCENT   = Colors.primary;       // #1f8e93
+const DARK     = Colors.black;
+const MUTED    = Colors.secondaryText;
+const WHITE    = Colors.white;
+const DANGER   = Colors.destructive;
+const UNREAD_CLR = '#1f8e93';
 
 /* ─── API helper ─────────────────────────────────────────────────────────── */
 const api = async (path, token, opts = {}) => {
@@ -54,171 +54,147 @@ const timeAgo = (d) => {
 
 const avatarUri = (u = {}, name = 'U') => {
   const av = u.avatar ?? u.user_picture ?? u.profile_picture ?? null;
-  if (av && !String(av).includes('blank_profile') && !String(av).includes('/default.')) return av;
+  if (av && !String(av).includes('blank_profile') && !String(av).includes('/default.')) {
+    return String(av).startsWith('http') ? av : `${BASE_URL}/${av}`;
+  }
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'U')}&background=${BRAND.replace('#', '')}&color=fff`;
 };
 
-/* ─── Online dot ─────────────────────────────────────────────────────────── */
-const OnlineDot = () => {
-  const pulse = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 1.5, duration: 800, useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 1,   duration: 800, useNativeDriver: true }),
-    ])).start();
-  }, []);
-  return (
-    <View style={s.onlineWrap}>
-      <Animated.View style={[s.onlineRing, { transform: [{ scale: pulse }] }]} />
-      <View style={s.onlineDot} />
-    </View>
-  );
-};
-
-/* ─── Conversation card ───────────────────────────────────────────────────── */
-const ConvCard = React.memo(({ item, index, onDelete, onPin }) => {
+/* ─── Conversation row ────────────────────────────────────────────────────── */
+const ConvCard = React.memo(({ item, index, onDelete, onPin, onMarkSeen }) => {
   const navigation = useNavigation();
-  const anim = useRef(new Animated.Value(0)).current;
+  const slideAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.spring(anim, {
-      toValue: 1, delay: Math.min(index * 35, 250),
-      useNativeDriver: true, tension: 80, friction: 10,
+    Animated.timing(slideAnim, {
+      toValue: 1, duration: 280, delay: Math.min(index * 30, 180), useNativeDriver: true,
     }).start();
   }, []);
 
-  // Fields come directly from conversations.php (no nested other_user object)
-  const name    = item.user_name ?? 'User';
+  const name    = item.full_name ?? item.name ?? item.user_name ?? item.username ?? 'User';
   const rawPic  = item.user_picture;
-  const picUrl  = rawPic
-    ? rawPic.startsWith('http') ? rawPic : `${BASE_URL}/${rawPic}`
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${BRAND.replace('#','')}&color=fff`;
-  const avatar  = picUrl;
-  const unread  = item.seen === '0' || item.seen === 0 || item.seen === false;
-  const isOnline = false; // not in API yet
-  const typing  = false;  // not in API yet
-  const timeStr = timeAgo(item.time ?? item.last_time);
-  const pinned  = item.pinned === 1;
-  const convId  = item.conversation_id ?? item.id;
+  const avatar  = rawPic
+    ? (rawPic.startsWith('http') ? rawPic : `${BASE_URL}/${rawPic}`)
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${BRAND.replace('#', '')}&color=fff`;
+  const unread   = item.seen === '0' || item.seen === 0 || item.seen === false;
+  const pinned   = item.pinned === 1;
+  const convId   = item.conversation_id ?? item.id;
+  const timeStr  = timeAgo(item.time ?? item.last_time);
+  const preview  = item.message || '';
 
-  // Pass the user info ThreadScreen needs
   const otherUser = {
-    id: item.user_id,
-    user_id: item.user_id,
-    username: name,
+    id: item.user_id, user_id: item.user_id,
+    full_name: name, username: item.username ?? name,
     user_picture: rawPic ?? '',
   };
 
   const handlePress = () => {
     Haptics.selectionAsync();
+    onMarkSeen?.(convId);
     navigation.navigate('Thread', { conversationId: convId, otherUser });
   };
 
   const renderRightActions = () => (
-    <View style={s.swipeActions}>
+    <View style={s.swipeWrap}>
       <TouchableOpacity
         style={[s.swipeBtn, { backgroundColor: ACCENT }]}
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPin(convId); }}
       >
-        <Ionicons name={pinned ? 'pin' : 'pin-outline'} size={18} color={WHITE} />
-        <Text style={s.swipeBtnTxt}>{pinned ? 'Unpin' : 'Pin'}</Text>
+        <Ionicons name={pinned ? 'pin' : 'pin-outline'} size={20} color={WHITE} />
+        <Text style={s.swipeTxt}>{pinned ? 'Unpin' : 'Pin'}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[s.swipeBtn, { backgroundColor: DANGER }]}
         onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onDelete(convId); }}
       >
-        <Ionicons name="trash-outline" size={18} color={WHITE} />
-        <Text style={s.swipeBtnTxt}>Delete</Text>
+        <Ionicons name="trash-outline" size={20} color={WHITE} />
+        <Text style={s.swipeTxt}>Delete</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <Animated.View style={{ opacity: anim, transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }] }}>
+    <Animated.View style={{
+      opacity: slideAnim,
+      transform: [{ translateY: slideAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+    }}>
       <Swipeable renderRightActions={renderRightActions} overshootRight={false} friction={2}>
-        <TouchableOpacity style={[s.card, unread && s.cardUnread]} activeOpacity={0.88} onPress={handlePress}>
-          {unread && <View style={s.unreadStrip} />}
-
+        <TouchableOpacity
+          style={[s.row, unread && s.rowUnread]}
+          activeOpacity={0.7}
+          onPress={handlePress}
+        >
           {/* Avatar */}
-          <View style={s.avatarWrap}>
-            <Image source={{ uri: avatar }} style={s.avatar} />
-            {isOnline && <OnlineDot />}
+          <View style={s.avWrap}>
+            <Image source={{ uri: avatar }} style={[s.av, unread && s.avUnread]} />
             {pinned && (
-              <View style={s.pinnedBadge}>
-                <Ionicons name="pin" size={9} color={WHITE} />
+              <View style={s.pinBadge}>
+                <Ionicons name="pin" size={8} color={WHITE} />
               </View>
             )}
           </View>
 
-          {/* Content */}
-          <View style={s.cardBody}>
-            <View style={s.cardRow}>
-              <Text style={[s.cardName, unread && s.cardNameBold]} numberOfLines={1}>{name}</Text>
-              <Text style={[s.cardTime, unread && { color: ACCENT }]}>{timeStr}</Text>
-            </View>
-            <View style={s.cardRow}>
-              <Text style={[s.cardPreview, typing && { color: ACCENT, fontStyle: 'italic' }]} numberOfLines={1}>
-                {typing ? 'typing…' : (item.message || 'Say hello 👋')}
+          {/* Body */}
+          <View style={s.rowBody}>
+            <View style={s.rowTop}>
+              <Text style={[s.rowName, unread && s.rowNameBold]} numberOfLines={1}>
+                {name}
               </Text>
-              {unread && <View style={s.unreadDot} />}
+              <Text style={[s.rowTime, unread && s.rowTimeUnread]}>{timeStr}</Text>
+            </View>
+            <View style={s.rowBottom}>
+              <Text style={[s.rowPreview, unread && s.rowPreviewBold]} numberOfLines={1}>
+                {preview || 'Say hello 👋'}
+              </Text>
+              {unread && <View style={s.unreadBadge}><View style={s.unreadDot} /></View>}
             </View>
           </View>
         </TouchableOpacity>
+        {/* Divider */}
+        <View style={s.divider} />
       </Swipeable>
     </Animated.View>
   );
 });
 
-/* ─── Filter tabs ─────────────────────────────────────────────────────────── */
-const FilterTabs = ({ active, onChange }) => (
-  <View style={s.filterRow}>
-    {['All', 'Unread'].map((f) => (
-      <TouchableOpacity key={f} style={[s.filterTab, active === f && s.filterTabOn]} onPress={() => onChange(f)} activeOpacity={0.8}>
-        <Text style={[s.filterTabTxt, active === f && s.filterTabTxtOn]}>{f}</Text>
-      </TouchableOpacity>
-    ))}
-  </View>
-);
-
 /* ─── Empty state ─────────────────────────────────────────────────────────── */
-const EmptyState = () => (
+const EmptyState = ({ filtered }) => (
   <View style={s.empty}>
-    <View style={[s.emptyCircle, { backgroundColor: ACCENT + '1A' }]}>
-      <Ionicons name="chatbubbles-outline" size={44} color={MUTED} />
+    <View style={s.emptyIcon}>
+      <Ionicons name={filtered ? 'search-outline' : 'chatbubbles-outline'} size={40} color={ACCENT + '88'} />
     </View>
-    <Text style={s.emptyTitle}>No conversations yet</Text>
-    <Text style={s.emptySub}>Start a conversation with someone on Hafrik.</Text>
-  </View>
-);
-
-/* ─── Section label ──────────────────────────────────────────────────────── */
-const SectionLabel = ({ label }) => (
-  <View style={s.sectionLabel}>
-    <Ionicons name="pin" size={11} color={ACCENT} />
-    <Text style={s.sectionLabelTxt}>{label}</Text>
+    <Text style={s.emptyTitle}>{filtered ? 'No results' : 'No messages yet'}</Text>
+    <Text style={s.emptySub}>
+      {filtered ? 'Try a different search term.' : 'Start a conversation with someone on Hafrik.'}
+    </Text>
   </View>
 );
 
 /* ─── New Message modal ───────────────────────────────────────────────────── */
 const NewMessageModal = ({ visible, token, onClose, onSelect }) => {
-  const [contacts,  setContacts]  = useState([]);
-  const [loading,   setLoading]   = useState(false);
-  const [opening,   setOpening]   = useState(null);
-  const [search,    setSearch]    = useState('');
-  const { top }                   = useSafeAreaInsets();
+  const { user }                = useAuth();
+  const myId                    = user?.id ?? user?.user_id;
+  const [contacts, setContacts] = useState([]);
+  const [loading,  setLoading]  = useState(false);
+  const [opening,  setOpening]  = useState(null);
+  const [search,   setSearch]   = useState('');
+  const { top }                 = useSafeAreaInsets();
+  const searchRef               = useRef(null);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !myId) return;
     setSearch('');
     setLoading(true);
-    api('/api/v1/messages/contacts.php', token).then((res) => {
+    setTimeout(() => searchRef.current?.focus(), 400);
+    // Only show people the current user follows (friends)
+    api(`/api/v1/users/user_following.php?user_id=${myId}&limit=200`, token).then((res) => {
       const list =
-        Array.isArray(res?.data?.contacts) ? res.data.contacts :
-        Array.isArray(res?.data)           ? res.data : [];
+        Array.isArray(res?.data?.data) ? res.data.data :
+        Array.isArray(res?.data)       ? res.data : [];
       setContacts(list);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [visible, token]);
+  }, [visible, token, myId]);
 
   const filtered = contacts.filter((c) => {
     const n = (c.full_name ?? c.name ?? c.username ?? c.user_name ?? '').toLowerCase();
@@ -228,66 +204,152 @@ const NewMessageModal = ({ visible, token, onClose, onSelect }) => {
   const handleSelect = async (contact) => {
     if (opening) return;
     const uid = contact.id ?? contact.user_id;
+    if (!uid) { Alert.alert('Error', 'Invalid contact.'); return; }
     setOpening(uid);
-    // Use start.php to create/get a conversation
-    const res = await api('/api/v1/messages/start.php', token, {
-      method: 'POST',
-      body: JSON.stringify({ user_id: uid }),
-    });
-    setOpening(null);
-    const convId = res?.data?.conversation_id ?? res?.conversation_id;
-    if (convId) { onClose(); onSelect({ conversationId: convId, otherUser: contact }); }
+    try {
+      const rawRes = await fetch(`${BASE_URL}/api/v1/messages/start.php`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: uid }),
+      });
+      const rawText = await rawRes.text();
+      console.log('[handleSelect] start.php status:', rawRes.status, '| body:', rawText);
+      let res = null;
+      try { res = JSON.parse(rawText); } catch { /* not JSON */ }
+      const convId =
+        res?.data?.conversation_id ??
+        res?.data?.id ??
+        res?.data?.conversation?.id ??
+        res?.conversation_id ??
+        res?.conversation?.id ??
+        res?.id ??
+        null;
+      if (convId) {
+        onClose();
+        onSelect({ conversationId: convId, otherUser: {
+          ...contact,
+          full_name: contact.full_name ?? contact.name ?? contact.username ?? contact.user_name,
+        }});
+      } else {
+        Alert.alert('Error', res?.message ?? res?.data?.message ?? `Server error (${rawRes.status})`);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setOpening(null);
+    }
   };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[cm.root, { paddingTop: top }]}>
-        <View style={cm.header}>
-          <Text style={cm.title}>New Message</Text>
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close" size={22} color={WHITE} />
+      <View style={[nm.root, { paddingTop: top }]}>
+
+        {/* ── Header ── */}
+        <LinearGradient
+          colors={[Colors.brandDeep ?? '#0a2e32', BRAND, ACCENT + 'DD']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={nm.header}
+        >
+          <TouchableOpacity onPress={onClose} style={nm.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="chevron-down" size={22} color={WHITE} />
           </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={nm.headerTitle}>New Message</Text>
+            <Text style={nm.headerSub}>{contacts.length > 0 ? `${contacts.length} contacts` : 'Select someone to chat'}</Text>
+          </View>
+        </LinearGradient>
+
+        {/* ── Search bar ── */}
+        <View style={nm.searchSection}>
+          <View style={nm.toRow}>
+            <Text style={nm.toLabel}>To:</Text>
+            <TextInput
+              ref={searchRef}
+              style={nm.toInput}
+              placeholder="Search by name or username…"
+              placeholderTextColor={MUTED}
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={18} color={MUTED} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        <View style={cm.searchBar}>
-          <Ionicons name="search" size={15} color={WHITE + '88'} />
-          <TextInput
-            style={cm.searchInput}
-            placeholder="Search people…"
-            placeholderTextColor={WHITE + '55'}
-            value={search}
-            onChangeText={setSearch}
-          />
-        </View>
-
+        {/* ── Contacts ── */}
         {loading ? (
-          <View style={cm.loader}><ActivityIndicator color={ACCENT} size="large" /></View>
+          <View style={nm.loader}>
+            <ActivityIndicator color={ACCENT} size="large" />
+            <Text style={nm.loadingTxt}>Loading contacts…</Text>
+          </View>
         ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(c, i) => `c-${c.id ?? c.user_id ?? i}`}
-            renderItem={({ item: c }) => {
-              const uid  = c.id ?? c.user_id;
-              const name = c.full_name ?? c.name ?? c.username ?? c.user_name ?? 'User';
-              const av   = avatarUri(c, name);
-              return (
-                <TouchableOpacity style={cm.row} activeOpacity={0.8} onPress={() => handleSelect(c)}>
-                  <Image source={{ uri: av }} style={cm.avatar} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={cm.name}>{name}</Text>
-                    {c.bio ? <Text style={cm.bio} numberOfLines={1}>{c.bio}</Text> : null}
+          <>
+            {!search && filtered.length > 0 && (
+              <Text style={nm.sectionTitle}>Suggested</Text>
+            )}
+            <FlatList
+              data={filtered}
+              keyExtractor={(c, i) => `c-${c.id ?? c.user_id ?? i}`}
+              renderItem={({ item: c }) => {
+                const uid      = c.id ?? c.user_id;
+                const fullName = c.full_name ?? c.name ?? c.username ?? c.user_name ?? 'User';
+                const handle   = c.username ?? c.user_name ?? '';
+                const av       = avatarUri(c, fullName);
+                const isOpening = opening === uid;
+                return (
+                  <TouchableOpacity
+                    style={nm.row}
+                    activeOpacity={0.75}
+                    onPress={() => handleSelect(c)}
+                    disabled={!!opening}
+                  >
+                    {/* Avatar */}
+                    <View style={nm.avWrap}>
+                      <Image source={{ uri: av }} style={nm.av} />
+                    </View>
+
+                    {/* Info */}
+                    <View style={nm.info}>
+                      <Text style={nm.name} numberOfLines={1}>{fullName}</Text>
+                      {!!handle && <Text style={nm.handle} numberOfLines={1}>@{handle}</Text>}
+                    </View>
+
+                    {/* Action */}
+                    {isOpening ? (
+                      <ActivityIndicator size="small" color={ACCENT} />
+                    ) : (
+                      <View style={nm.msgBtn}>
+                        <Ionicons name="chatbubble-ellipses" size={15} color={WHITE} />
+                        <Text style={nm.msgBtnTxt}>Message</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              ItemSeparatorComponent={() => <View style={nm.divider} />}
+              ListEmptyComponent={
+                <View style={nm.empty}>
+                  <View style={nm.emptyIcon}>
+                    <Ionicons name={search ? 'search-outline' : 'people-outline'} size={36} color={ACCENT + '88'} />
                   </View>
-                  {opening === uid
-                    ? <ActivityIndicator size="small" color={ACCENT} />
-                    : <Ionicons name="chevron-forward" size={16} color={MUTED} />
-                  }
-                </TouchableOpacity>
-              );
-            }}
-            ListEmptyComponent={<View style={cm.emptyWrap}><Text style={cm.emptyTxt}>No contacts found</Text></View>}
-            contentContainerStyle={{ paddingBottom: 40 }}
-            showsVerticalScrollIndicator={false}
-          />
+                  <Text style={nm.emptyTitle}>{search ? 'No results found' : 'No contacts yet'}</Text>
+                  <Text style={nm.emptySub}>{search ? 'Try a different name.' : 'People you follow will appear here.'}</Text>
+                </View>
+              }
+              contentContainerStyle={{ paddingBottom: 50 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            />
+          </>
         )}
       </View>
     </Modal>
@@ -296,79 +358,85 @@ const NewMessageModal = ({ visible, token, onClose, onSelect }) => {
 
 /* ─── Main screen ─────────────────────────────────────────────────────────── */
 export default function InboxScreen() {
-  const navigation   = useNavigation();
-  const { top }      = useSafeAreaInsets();
-  const { token }    = useAuth();
-  const { colors: tc } = useTheme();
-  const setMsgCount  = useStore((s) => s.setMessageCount);
+  const navigation  = useNavigation();
+  const { top }     = useSafeAreaInsets();
+  const { token }   = useAuth();
+  const setMsgCount = useStore((s) => s.setMessageCount);
 
+  const [items,       setItems]       = useState([]);
+  const [unreadItems, setUnreadItems] = useState([]);
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [search,      setSearch]      = useState('');
+  const [searchFocus, setSearchFocus] = useState(false);
+  const [filter,      setFilter]      = useState('All');
+  const [showCompose, setShowCompose] = useState(false);
+  const [newBanner,   setNewBanner]   = useState(false);
 
-  const [items,        setItems]        = useState([]);
-  const [unreadItems,  setUnreadItems]  = useState([]);
-  const [refreshing,   setRefreshing]   = useState(false);
-  const [search,       setSearch]       = useState('');
-  const [searchFocus,  setSearchFocus]  = useState(false);
-  const [filter,       setFilter]       = useState('All');
-  const [showCompose,  setShowCompose]  = useState(false);
-  const [newBanner,    setNewBanner]    = useState(false);
+  const pollRef       = useRef(null);
+  const prevUnread    = useRef(0);
+  const bannerAnim    = useRef(new Animated.Value(0)).current;
+  // Tracks conversations the user has locally opened — survives polls
+  const localSeenRef  = useRef(new Set());
 
-  const pollRef    = useRef(null);
-  const prevUnread = useRef(0);
-  const hdrAnim    = useRef(new Animated.Value(0)).current;
-  const bannerAnim = useRef(new Animated.Value(0)).current;
-
-  /* ── Load conversations ─────────────────────────────────────────────────── */
+  /* ── Data fetching ────────────────────────────────────────────────────────── */
   const load = useCallback(async () => {
     const res = await api('/api/v1/messages/conversations.php', token);
     const raw = Array.isArray(res?.data?.items) ? res.data.items
                : Array.isArray(res?.data)       ? res.data : [];
-
-    const seenIds = new Set();
-    const unique  = raw.filter((c) => {
-      const id = c.conversation_id ?? c.id;
-      if (seenIds.has(id)) return false;
-      seenIds.add(id); return true;
-    });
+    const dedupIds = new Set();
+    const unique   = raw
+      .filter((c) => {
+        const id = String(c.conversation_id ?? c.id);
+        if (dedupIds.has(id)) return false;
+        dedupIds.add(id); return true;
+      })
+      // Preserve local seen state even if backend hasn't updated yet
+      .map((c) => {
+        const id = String(c.conversation_id ?? c.id);
+        return localSeenRef.current.has(id) ? { ...c, seen: 1 } : c;
+      });
     setItems(unique);
     setRefreshing(false);
   }, [token]);
 
-  /* ── Load unread conversations (Unread tab) ──────────────────────────────── */
   const loadUnread = useCallback(async () => {
     const res = await api('/api/v1/messages/conversations.php?filter=unread', token);
     const raw = Array.isArray(res?.data?.items) ? res.data.items
                : Array.isArray(res?.data)       ? res.data : [];
     const seenIds = new Set();
-    const unique = raw.filter((c) => {
+    const unique  = raw.filter((c) => {
       const id = c.conversation_id ?? c.id;
       if (seenIds.has(id)) return false;
       seenIds.add(id); return true;
+    }).filter((c) => {
+      // Remove any that were locally marked as seen
+      const id = String(c.conversation_id ?? c.id);
+      return !localSeenRef.current.has(id);
     });
     setUnreadItems(unique);
   }, [token]);
 
-  /* ── Unread badge — dedicated endpoint ──────────────────────────────────── */
   const refreshUnread = useCallback(async () => {
-    const res = await api('/api/v1/messages/unread-count.php', token);
-    const count = Number(res?.data.unread ?? 0);
-
-
-    setMsgCount(count);
-    if (count > prevUnread.current) setNewBanner(true);
-    prevUnread.current = count;
+    const res         = await api('/api/v1/messages/unread-count.php', token);
+    const serverCount = Number(res?.data?.unread ?? 0);
+    // Subtract locally-seen convos that backend may not have updated yet
+    const localSeenCount = localSeenRef.current.size;
+    const count = Math.max(0, serverCount - localSeenCount);
+    // Only update if server says MORE than our optimistic count — prevents overwriting decrements
+    setMsgCount((prev) => {
+      if (serverCount > (prev ?? 0)) return serverCount; // new message arrived
+      return Math.min(prev ?? 0, count);                 // take the lower value
+    });
+    if (serverCount > prevUnread.current) setNewBanner(true);
+    prevUnread.current = serverCount;
   }, [token, setMsgCount]);
 
-  /* ── Init ──────────────────────────────────────────────────────────────── */
   useEffect(() => {
-    Animated.timing(hdrAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-    load();
-    loadUnread();
-    refreshUnread();
+    load(); loadUnread(); refreshUnread();
     pollRef.current = setInterval(() => { load(); loadUnread(); refreshUnread(); }, 7000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  /* ── Banner animation ───────────────────────────────────────────────────── */
   useEffect(() => {
     if (!newBanner) return;
     Animated.sequence([
@@ -378,9 +446,9 @@ export default function InboxScreen() {
     ]).start(() => setNewBanner(false));
   }, [newBanner]);
 
+  /* ── Actions ──────────────────────────────────────────────────────────────── */
   const onRefresh = () => { setRefreshing(true); load(); refreshUnread(); };
 
-  /* ── Delete conversation — calls API + removes from list ────────────────── */
   const handleDelete = useCallback((id) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setItems((prev) => prev.filter((c) => (c.conversation_id ?? c.id) !== id));
@@ -397,111 +465,143 @@ export default function InboxScreen() {
     ));
   }, []);
 
-  const isUnread = (c) => c.seen === '0' || c.seen === 0 || c.seen === false;
-  const totalUnread = items.filter(isUnread).length;
+  const handleMarkSeen = useCallback((convId) => {
+    const id = String(convId);
+    localSeenRef.current.add(id);   // persist through polls
+    setItems((prev) => prev.map((c) =>
+      String(c.conversation_id ?? c.id) === id ? { ...c, seen: 1 } : c
+    ));
+    setUnreadItems((prev) => prev.filter((c) => String(c.conversation_id ?? c.id) !== id));
+    // Immediately decrement tab badge without waiting for next poll
+    setMsgCount((prev) => Math.max(0, (prev ?? 1) - 1));
+  }, [setMsgCount]);
 
-  /* ── Derived lists ──────────────────────────────────────────────────────── */
+  /* ── Derived ──────────────────────────────────────────────────────────────── */
+  const isUnread     = (c) => c.seen === '0' || c.seen === 0 || c.seen === false;
+  const totalUnread  = items.filter(isUnread).length;
+
   const flatData = useMemo(() => {
-    // Unread tab → use server-filtered list; All tab → use full list
-    const source = filter === 'Unread' ? unreadItems : items;
-
+    const source   = filter === 'Unread' ? unreadItems : items;
     const searched = source.filter((c) => {
-      const name = (c.user_name ?? c.other_user?.username ?? '').toLowerCase();
-      return name.includes(search.toLowerCase());
+      const n = (c.full_name ?? c.name ?? c.user_name ?? c.username ?? '').toLowerCase();
+      return n.includes(search.toLowerCase());
     });
-
     const pinned = searched.filter((c) => c.pinned === 1);
     const normal = searched.filter((c) => c.pinned !== 1);
-
-    const rows = [];
-    if (pinned.length > 0) {
-      rows.push({ _type: 'label', label: 'Pinned' });
-      pinned.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
-    }
-    if (normal.length > 0) {
-      if (pinned.length > 0) rows.push({ _type: 'label', label: 'All Messages' });
-      normal.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
-    }
+    const rows   = [];
+    pinned.forEach((item, i) => rows.push({ _type: 'item', item, _i: i, _pinned: true }));
+    normal.forEach((item, i) => rows.push({ _type: 'item', item, _i: i + pinned.length }));
     return rows;
   }, [items, unreadItems, filter, search]);
 
-  const renderRow = ({ item: row }) => {
-    if (row._type === 'label') return <SectionLabel label={row.label} />;
-    return <ConvCard item={row.item} index={row._i} onDelete={handleDelete} onPin={handlePin} />;
-  };
+  const renderRow = ({ item: row }) => (
+    <ConvCard
+      item={row.item}
+      index={row._i}
+      onDelete={handleDelete}
+      onPin={handlePin}
+      onMarkSeen={handleMarkSeen}
+    />
+  );
+
+  const listIsEmpty   = flatData.length === 0;
+  const isSearching   = search.length > 0;
 
   return (
-    <View style={[s.root, { backgroundColor: tc.background }]}>
-      <StatusBar barStyle="light-content" />
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} translucent />
 
-      {/* ── Header ── */}
-      <View style={[s.header, { paddingTop: top + 6 }]}>
-        <Animated.View style={[s.headerRow, {
-          opacity: hdrAnim,
-          transform: [{ translateY: hdrAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
-        }]}>
+      {/* ── Gradient header ── */}
+      <LinearGradient
+        colors={[Colors.brandDeep ?? '#0a2e32', BRAND, ACCENT + 'CC']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={[s.header, { paddingTop: top + 8 }]}
+      >
+        {/* Title row */}
+        <View style={s.titleRow}>
           <View style={{ flex: 1 }}>
-            <Text style={s.eyebrow}>HAFRIK</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={s.headerTitle}>Messages</Text>
-              {totalUnread > 0 && (
-                <View style={s.titleBadge}>
-                  <Text style={s.titleBadgeTxt}>{totalUnread > 9 ? '9+' : totalUnread}</Text>
-                </View>
-              )}
-            </View>
-            {items.length > 0 && <Text style={s.headerStat}>{items.length} conversations</Text>}
+            <Text style={s.headerTitle}>Messages</Text>
+            {totalUnread > 0 && (
+              <Text style={s.headerSub}>{totalUnread} unread</Text>
+            )}
           </View>
-          <TouchableOpacity style={s.composeBtn} activeOpacity={0.8} onPress={() => setShowCompose(true)}>
+          <TouchableOpacity style={s.composeBtn} onPress={() => setShowCompose(true)} activeOpacity={0.85}>
             <Ionicons name="create-outline" size={20} color={WHITE} />
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
         {/* Search */}
-        <View style={[s.searchBar, searchFocus && s.searchBarFocus]}>
-          <Ionicons name="search" size={16} color={searchFocus ? ACCENT : WHITE + '88'} />
+        <View style={[s.searchBar, searchFocus && s.searchFocused]}>
+          <Ionicons name="search" size={15} color={searchFocus ? ACCENT : MUTED} />
           <TextInput
-            placeholder="Search messages…"
+            style={s.searchInput}
+            placeholder="Search conversations…"
+            placeholderTextColor={MUTED}
             value={search}
             onChangeText={setSearch}
             onFocus={() => setSearchFocus(true)}
             onBlur={() => setSearchFocus(false)}
-            style={s.searchInput}
-            placeholderTextColor={WHITE + '55'}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-circle" size={16} color={WHITE + '88'} />
+              <Ionicons name="close-circle" size={16} color={MUTED} />
             </TouchableOpacity>
           )}
         </View>
-      </View>
 
-      {/* ── New message banner ── */}
+        {/* Filter chips */}
+        <View style={s.filterRow}>
+          {['All', 'Unread'].map((f) => {
+            const active = filter === f;
+            return (
+              <TouchableOpacity
+                key={f}
+                style={[s.chip, active && s.chipActive]}
+                onPress={() => setFilter(f)}
+                activeOpacity={0.8}
+              >
+                {f === 'Unread' && totalUnread > 0 && (
+                  <View style={s.chipBadge}>
+                    <Text style={s.chipBadgeTxt}>{totalUnread > 9 ? '9+' : totalUnread}</Text>
+                  </View>
+                )}
+                <Text style={[s.chipTxt, active && s.chipTxtActive]}>{f}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </LinearGradient>
+
+      {/* ── New message toast ── */}
       {newBanner && (
-        <Animated.View style={[s.banner, {
+        <Animated.View style={[s.toast, {
           opacity: bannerAnim,
-          transform: [{ translateY: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }],
+          transform: [{ translateY: bannerAnim.interpolate({ inputRange: [0, 1], outputRange: [-48, 0] }) }],
         }]}>
-          <Ionicons name="chatbubble-ellipses" size={15} color={WHITE} />
-          <Text style={s.bannerTxt}>New message received</Text>
+          <View style={s.toastDot} />
+          <Text style={s.toastTxt}>New message received</Text>
         </Animated.View>
       )}
 
-      {/* ── List ── */}
+      {/* ── Conversation list ── */}
       <FlatList
         data={flatData}
-        keyExtractor={(row, i) =>
-          row._type === 'label' ? `lbl-${row.label}` : `conv-${row.item?.conversation_id ?? i}`
-        }
+        keyExtractor={(row, i) => `conv-${row.item?.conversation_id ?? i}`}
         renderItem={renderRow}
-        ListHeaderComponent={<FilterTabs active={filter} onChange={setFilter} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
-        ListEmptyComponent={<EmptyState />}
-        contentContainerStyle={{ paddingTop: 4, paddingBottom: 40, flexGrow: 1 }}
+        ListEmptyComponent={<EmptyState filtered={isSearching || filter === 'Unread'} />}
+        contentContainerStyle={listIsEmpty ? { flex: 1 } : { paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews
+        style={s.list}
       />
+
+      {/* ── Compose FAB ── */}
+      <TouchableOpacity style={s.fab} onPress={() => setShowCompose(true)} activeOpacity={0.85}>
+        <LinearGradient colors={[ACCENT, BRAND]} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <Ionicons name="chatbubble-ellipses" size={22} color={WHITE} />
+        </LinearGradient>
+      </TouchableOpacity>
 
       {/* ── New message modal ── */}
       <NewMessageModal
@@ -516,89 +616,160 @@ export default function InboxScreen() {
   );
 }
 
-/* ─── Styles ─────────────────────────────────────────────────────────────── */
+/* ─── Styles ──────────────────────────────────────────────────────────────── */
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1, backgroundColor: '#f7f9fb' },
 
-  header: {
-    backgroundColor: BRAND, paddingHorizontal: 16, paddingBottom: 16,
-    shadowColor: BRAND, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 8,
+  /* Header */
+  header: { paddingHorizontal: 20, paddingBottom: 16 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  headerTitle: { fontSize: 26, fontWeight: '900', color: WHITE, letterSpacing: 0.3 },
+  headerSub:   { fontSize: 12, color: WHITE + '99', marginTop: 2, fontWeight: '600' },
+  composeBtn:  {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: WHITE + '30',
   },
-  headerRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10 },
-  eyebrow:    { fontSize: 9, fontWeight: '800', letterSpacing: 2.5, color: ACCENT, marginBottom: 1 },
-  headerTitle:{ fontSize: 22, fontWeight: '900', color: WHITE, letterSpacing: 0.2 },
-  headerStat: { fontSize: 11, color: WHITE + '66', marginTop: 2 },
-  titleBadge: { backgroundColor: ACCENT, borderRadius: 100, paddingHorizontal: 7, paddingVertical: 2, minWidth: 22, alignItems: 'center' },
-  titleBadgeTxt: { color: WHITE, fontSize: 11, fontWeight: '900' },
-  composeBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: ACCENT + '33', alignItems: 'center', justifyContent: 'center' },
 
+  /* Search */
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: WHITE + '1F', borderRadius: 14, paddingHorizontal: 14, height: 44,
-    borderWidth: 1, borderColor: WHITE + '14',
+    backgroundColor: WHITE, borderRadius: 14,
+    paddingHorizontal: 14, height: 44,
+    borderWidth: 1.5, borderColor: 'transparent',
+    marginBottom: 12,
   },
-  searchBarFocus: { backgroundColor: WHITE + '2E', borderColor: ACCENT + '55' },
-  searchInput:    { flex: 1, fontSize: 14, color: WHITE },
+  searchFocused: { borderColor: ACCENT },
+  searchInput:   { flex: 1, fontSize: 14, color: DARK },
 
-  banner: {
+  /* Filter chips */
+  filterRow: { flexDirection: 'row', gap: 8 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 7,
+    borderRadius: 100, backgroundColor: WHITE + '22',
+    borderWidth: 1, borderColor: WHITE + '30',
+  },
+  chipActive:    { backgroundColor: WHITE, borderColor: WHITE },
+  chipTxt:       { fontSize: 13, fontWeight: '700', color: WHITE + 'CC' },
+  chipTxtActive: { color: BRAND },
+  chipBadge:     { backgroundColor: DANGER, borderRadius: 100, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  chipBadgeTxt:  { fontSize: 10, fontWeight: '900', color: WHITE },
+
+  /* Toast */
+  toast: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: ACCENT, paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: BRAND, paddingHorizontal: 18, paddingVertical: 11,
+    borderRadius: 100, marginHorizontal: 20, marginTop: 10,
+    alignSelf: 'flex-start',
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
   },
-  bannerTxt: { color: WHITE, fontSize: 13, fontWeight: '700' },
+  toastDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' },
+  toastTxt: { color: WHITE, fontSize: 13, fontWeight: '700' },
 
-  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 8 },
-  filterTab: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 100, backgroundColor: BRAND + '0F', borderWidth: 1, borderColor: BRAND + '14' },
-  filterTabOn:    { backgroundColor: BRAND, borderColor: BRAND },
-  filterTabTxt:   { fontSize: 12, fontWeight: '700', color: DARK },
-  filterTabTxtOn: { color: WHITE },
+  /* List */
+  list: { flex: 1 },
 
-  sectionLabel: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 16, marginTop: 16, marginBottom: 6 },
-  sectionLabelTxt: { fontSize: 11, fontWeight: '900', color: MUTED, textTransform: 'uppercase', letterSpacing: 1.4 },
-
-  card: {
+  /* Conversation row */
+  row: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: WHITE, marginHorizontal: 16, marginBottom: 8,
-    borderRadius: 18, padding: 14, overflow: 'hidden',
-    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    backgroundColor: WHITE, paddingHorizontal: 20, paddingVertical: 14,
   },
-  cardUnread:    { backgroundColor: ACCENT + '12', shadowColor: ACCENT, shadowOpacity: 0.08 },
-  unreadStrip:   { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3.5, backgroundColor: ACCENT },
-  avatarWrap:    { position: 'relative', marginRight: 14 },
-  avatar:        { width: 54, height: 54, borderRadius: 27 },
-  onlineWrap:    { position: 'absolute', bottom: 1, right: 1 },
-  onlineRing:    { position: 'absolute', width: 14, height: 14, borderRadius: 7, backgroundColor: ACCENT + '40', top: -3, left: -3 },
-  onlineDot:     { width: 12, height: 12, borderRadius: 6, backgroundColor: ACCENT, borderWidth: 2, borderColor: WHITE },
-  pinnedBadge:   { position: 'absolute', top: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: WHITE },
-  cardBody:      { flex: 1 },
-  cardRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  cardName:      { fontSize: 15, fontWeight: '600', color: DARK, flex: 1, marginRight: 8 },
-  cardNameBold:  { fontWeight: '800' },
-  cardTime:      { fontSize: 11, color: MUTED, fontWeight: '500' },
-  cardPreview:   { fontSize: 13, color: MUTED, flex: 1, marginRight: 8 },
-  unreadDot:     { width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT, flexShrink: 0 },
+  rowUnread: { backgroundColor: ACCENT + '08' },
 
-  swipeActions:  { flexDirection: 'row', marginBottom: 8, gap: 6, paddingRight: 16 },
-  swipeBtn:      { width: 64, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8 },
-  swipeBtnTxt:   { color: WHITE, fontSize: 10, fontWeight: '800' },
+  avWrap:  { position: 'relative', marginRight: 14 },
+  av:      { width: 54, height: 54, borderRadius: 27, backgroundColor: BRAND + '22' },
+  avUnread:{ borderWidth: 2.5, borderColor: ACCENT },
+  pinBadge:{ position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: WHITE },
 
-  empty:       { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 16 },
-  emptyCircle: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center' },
-  emptyTitle:  { fontSize: 18, fontWeight: '800', color: DARK },
-  emptySub:    { fontSize: 13, color: MUTED, textAlign: 'center', maxWidth: 220, lineHeight: 20 },
+  rowBody:   { flex: 1 },
+  rowTop:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 },
+  rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+
+  rowName:        { fontSize: 15, fontWeight: '600', color: DARK, flex: 1, marginRight: 8 },
+  rowNameBold:    { fontWeight: '800', color: '#111' },
+  rowTime:        { fontSize: 12, color: MUTED, fontWeight: '500' },
+  rowTimeUnread:  { color: ACCENT, fontWeight: '700' },
+  rowPreview:     { fontSize: 13, color: MUTED, flex: 1, marginRight: 8 },
+  rowPreviewBold: { color: '#444', fontWeight: '600' },
+
+  unreadBadge: { alignItems: 'center', justifyContent: 'center' },
+  unreadDot:   { width: 10, height: 10, borderRadius: 5, backgroundColor: UNREAD_CLR },
+
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#e8edf0', marginLeft: 88 },
+
+  /* Swipe actions */
+  swipeWrap: { flexDirection: 'row', alignItems: 'center', paddingRight: 12, gap: 6 },
+  swipeBtn:  { width: 68, alignSelf: 'stretch', borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 4, marginVertical: 2 },
+  swipeTxt:  { color: WHITE, fontSize: 11, fontWeight: '800' },
+
+  /* FAB */
+  fab: {
+    position: 'absolute', bottom: 28, right: 20,
+    borderRadius: 28,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
+  },
+  fabGrad: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+
+  /* Empty */
+  empty:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyIcon:  { width: 88, height: 88, borderRadius: 44, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: DARK },
+  emptySub:   { fontSize: 13, color: MUTED, textAlign: 'center', maxWidth: 240, lineHeight: 20 },
 });
 
-/* ─── Modal styles ───────────────────────────────────────────────────────── */
-const cm = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: BG },
-  header: { backgroundColor: BRAND, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
-  title:  { fontSize: 18, fontWeight: '900', color: WHITE },
-  searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: BRAND, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: WHITE + '22' },
-  searchInput: { flex: 1, fontSize: 14, color: WHITE, backgroundColor: WHITE + '1F', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  loader:  { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
-  row:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BRAND + '14', backgroundColor: WHITE },
-  avatar:  { width: 46, height: 46, borderRadius: 23 },
-  name:    { fontSize: 15, fontWeight: '700', color: DARK },
-  bio:     { fontSize: 12, color: MUTED, marginTop: 2 },
-  emptyWrap: { alignItems: 'center', paddingTop: 60 },
-  emptyTxt:  { fontSize: 14, color: MUTED },
+/* ─── New Message modal styles ────────────────────────────────────────────── */
+const nm = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#f7f9fb' },
+
+  // Header
+  header:      { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 18 },
+  backBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: WHITE },
+  headerSub:   { fontSize: 12, color: WHITE + '88', marginTop: 2 },
+
+  // Search / To: row
+  searchSection: {
+    backgroundColor: WHITE,
+    borderBottomWidth: 1, borderBottomColor: '#e8edf0',
+    paddingHorizontal: 18, paddingVertical: 10,
+  },
+  toRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  toLabel: { fontSize: 15, fontWeight: '700', color: ACCENT, minWidth: 28 },
+  toInput: { flex: 1, fontSize: 15, color: DARK, paddingVertical: 6 },
+
+  sectionTitle: {
+    fontSize: 12, fontWeight: '800', color: MUTED,
+    textTransform: 'uppercase', letterSpacing: 1.2,
+    paddingHorizontal: 18, paddingTop: 20, paddingBottom: 8,
+  },
+
+  loader:     { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 60 },
+  loadingTxt: { fontSize: 14, color: MUTED },
+
+  // Contact row
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: WHITE, paddingHorizontal: 18, paddingVertical: 13,
+  },
+  avWrap: { position: 'relative' },
+  av:     { width: 50, height: 50, borderRadius: 25, backgroundColor: BRAND + '22' },
+  info:   { flex: 1 },
+  name:   { fontSize: 15, fontWeight: '700', color: DARK },
+  handle: { fontSize: 12, color: MUTED, marginTop: 2 },
+
+  msgBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: ACCENT, borderRadius: 100,
+    paddingHorizontal: 12, paddingVertical: 7,
+  },
+  msgBtnTxt: { fontSize: 12, fontWeight: '800', color: WHITE },
+
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#e8edf0', marginLeft: 82 },
+
+  // Empty
+  empty:     { alignItems: 'center', paddingTop: 72, gap: 12, paddingHorizontal: 40 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle:{ fontSize: 17, fontWeight: '800', color: DARK },
+  emptySub:  { fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 20 },
 });
