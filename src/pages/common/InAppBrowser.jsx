@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   Share,
 } from 'react-native';
+import BrandLoader from '../../components/BrandLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -104,7 +104,7 @@ export default function InAppBrowser() {
           startInLoadingState
           renderLoading={() => (
             <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color={ACCENT} />
+              <BrandLoader inline size="medium" />
             </View>
           )}
           allowsInlineMediaPlayback

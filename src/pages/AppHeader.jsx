@@ -27,7 +27,7 @@ const Badge = ({ count }) =>
  *   onOpenDrawer  — opens the side drawer
  *   title         — if set, shows a text title in the centre instead of the logo
  */
-const AppHeader = ({ onOpenDrawer, title }) => {
+const AppHeader = ({ onOpenDrawer, title, hideSearch = false }) => {
   const navigation = useNavigation();
   const notifCount = useStore((s) => s.notificationCount ?? 0);
 
@@ -71,13 +71,15 @@ const AppHeader = ({ onOpenDrawer, title }) => {
 
         {/* RIGHT — search + notifications */}
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('SearchScreen')}
-          >
-            <Ionicons name="search-outline" size={20} color={Colors.white} />
-          </TouchableOpacity>
+          {!hideSearch && (
+            <TouchableOpacity
+              style={styles.iconBtn}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('SearchScreen')}
+            >
+              <Ionicons name="search-outline" size={20} color={Colors.white} />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.iconBtn}

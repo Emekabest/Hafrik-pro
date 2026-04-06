@@ -137,65 +137,127 @@ const StatusTick = ({ item, isMe, convSeen }) => {
 };
 
 /* ─── Voice player ───────────────────────────────────────────────────────── */
-const VoicePlayer = ({ url, isMe, uploading }) => {
-  const [playing,  setPlaying]  = useState(false);
+const VoicePlayer = React.memo(({ url, isMe, uploading }) => {
+  const [status,   setStatus]   = useState('idle'); // idle | loading | playing | paused
   const [progress, setProgress] = useState(0);
-  const soundRef = useRef(null);
+  const [duration, setDuration] = useState(0);
+  const soundRef  = useRef(null);
+  const mountedRef = useRef(true);
 
-  const toggle = async () => {
-    if (uploading) return;
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      soundRef.current?.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    };
+  }, []);
+
+  // Unload if url changes
+  useEffect(() => {
+    soundRef.current?.unloadAsync().catch(() => {});
+    soundRef.current = null;
+    if (mountedRef.current) { setStatus('idle'); setProgress(0); setDuration(0); }
+  }, [url]);
+
+  const onPlaybackStatus = useCallback((st) => {
+    if (!mountedRef.current) return;
+    if (!st.isLoaded) return;
+    const dur = st.durationMillis ?? 0;
+    const pos = st.positionMillis ?? 0;
+    setDuration(dur);
+    setProgress(dur > 0 ? pos / dur : 0);
+    if (st.didJustFinish) {
+      setStatus('idle');
+      setProgress(0);
+      soundRef.current?.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    }
+  }, []);
+
+  const toggle = useCallback(async () => {
+    if (uploading || status === 'loading') return;
     try {
-      if (playing) {
+      if (status === 'playing') {
         await soundRef.current?.pauseAsync();
-        setPlaying(false);
+        if (mountedRef.current) setStatus('paused');
+      } else if (status === 'paused' && soundRef.current) {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
+        await soundRef.current.playAsync();
+        if (mountedRef.current) setStatus('playing');
       } else {
-        if (!soundRef.current) {
-          const { sound } = await Audio.Sound.createAsync(
-            { uri: url },
-            { shouldPlay: true },
-            (status) => {
-              if (status.isLoaded) {
-                const pct = status.durationMillis ? status.positionMillis / status.durationMillis : 0;
-                setProgress(pct);
-                if (status.didJustFinish) {
-                  setPlaying(false); setProgress(0);
-                  soundRef.current?.unloadAsync();
-                  soundRef.current = null;
-                }
-              }
-            }
-          );
-          soundRef.current = sound;
-        } else {
-          await soundRef.current.playAsync();
-        }
-        setPlaying(true);
+        if (mountedRef.current) setStatus('loading');
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: url },
+          { shouldPlay: true, progressUpdateIntervalMillis: 100 },
+          onPlaybackStatus,
+        );
+        if (!mountedRef.current) { sound.unloadAsync(); return; }
+        soundRef.current = sound;
+        setStatus('playing');
       }
-    } catch (_) {}
-  };
-
-  useEffect(() => () => { soundRef.current?.unloadAsync(); }, []);
+    } catch (_) {
+      if (mountedRef.current) setStatus('idle');
+    }
+  }, [url, status, uploading, onPlaybackStatus]);
 
   const ic   = isMe ? WHITE : BRAND;
   const trk  = isMe ? WHITE + '33' : BRAND + '22';
   const fill = isMe ? WHITE + 'CC' : ACCENT;
+  const durationStr = duration > 0 ? fmtDuration(duration) : '0:00';
+  const isLoading = status === 'loading';
+  const isPlaying = status === 'playing';
 
   return (
     <TouchableOpacity onPress={toggle} activeOpacity={0.8} style={s.voicePill}>
-      <Ionicons name={uploading ? 'hourglass-outline' : playing ? 'pause' : 'play'} size={20} color={ic} />
-      <View style={[s.voiceTrack, { backgroundColor: trk }]}>
-        <View style={[s.voiceFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: fill }]} />
+      {uploading || isLoading
+        ? <ActivityIndicator size="small" color={ic} style={{ width: 20 }} />
+        : <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color={ic} />
+      }
+      <View style={{ flex: 1, marginHorizontal: 10 }}>
+        <View style={[s.voiceTrack, { backgroundColor: trk }]}>
+          <View style={[s.voiceFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: fill }]} />
+        </View>
       </View>
+      <Text style={{ fontSize: 11, color: ic, opacity: 0.8, minWidth: 32, textAlign: 'right' }}>
+        {durationStr}
+      </Text>
     </TouchableOpacity>
   );
-};
+});
+
+/* ─── Image with loading shimmer ────────────────────────────────────────── */
+const ImageWithLoader = React.memo(({ uri, style }) => {
+  const [loaded, setLoaded] = useState(false);
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  const onLoad = useCallback(() => {
+    setLoaded(true);
+    Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+  }, [opacity]);
+
+  return (
+    <View style={style}>
+      {!loaded && (
+        <Skel w={style?.width ?? '100%'} h={style?.height ?? 200} r={0} />
+      )}
+      <Animated.Image
+        source={{ uri }}
+        style={[style, { opacity, position: loaded ? 'relative' : 'absolute' }]}
+        resizeMode="cover"
+        onLoad={onLoad}
+      />
+    </View>
+  );
+});
 
 /* ─── Bubble ─────────────────────────────────────────────────────────────── */
 const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePress, convSeen }) => {
   const text      = item.message ?? item.message_text ?? item.text ?? '';
-  const imgUrl    = item.image ?? (item.media_type === 'image' ? item.media_url : null);
-  const vidUrl    = item.video ?? (item.media_type === 'video' ? item.media_url : null);
-  const voiceUrl  = item.voice_note ?? (item.media_type === 'voice' ? item.media_url : null);
+  const imgUrl    = resolveUrl(item.image ?? item.image_url ?? (item.media_type === 'image' ? item.media_url : null));
+  const vidUrl    = resolveUrl(item.video ?? item.video_url ?? (item.media_type === 'video' ? item.media_url : null));
+  const voiceUrl  = resolveUrl(item.voice_note ?? item.voice_url ?? item.audio_url ?? (item.media_type === 'voice' ? item.media_url : null));
   const timeStr   = fmtTime(item.time ?? item.created_at);
   const isTemp    = !!item._temp || !!item._uploading;
   const grouped   = !!item._grouped;
@@ -240,13 +302,13 @@ const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePres
             {/* Image */}
             {imgUrl ? (
               item._uploading ? (
-                <View>
-                  <Image source={{ uri: imgUrl }} style={[s.bubbleImg, { opacity: 0.5 }]} resizeMode="cover" blurRadius={3} />
-                  <View style={s.uploadOverlay}><ActivityIndicator color={WHITE} size="small" /></View>
+                <View style={[s.bubbleImg, { backgroundColor: BRAND + '22', alignItems: 'center', justifyContent: 'center' }]}>
+                  <ActivityIndicator color={isMe ? WHITE : ACCENT} size="large" />
+                  <Text style={{ color: isMe ? WHITE + 'AA' : MUTED, fontSize: 11, marginTop: 6 }}>Sending…</Text>
                 </View>
               ) : (
                 <TouchableOpacity onPress={() => onImagePress(imgUrl)} activeOpacity={0.9}>
-                  <Image source={{ uri: imgUrl }} style={s.bubbleImg} resizeMode="cover" />
+                  <ImageWithLoader uri={imgUrl} style={s.bubbleImg} />
                 </TouchableOpacity>
               )
             ) : null}
@@ -260,7 +322,14 @@ const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePres
             ) : null}
 
             {/* Voice */}
-            {voiceUrl ? <VoicePlayer url={voiceUrl} isMe={isMe} uploading={!!item._uploading} /> : null}
+            {voiceUrl ? (
+              <VoicePlayer url={voiceUrl} isMe={isMe} uploading={!!item._uploading} />
+            ) : item._uploading && !imgUrl ? (
+              <View style={s.voicePill}>
+                <ActivityIndicator size="small" color={isMe ? WHITE : ACCENT} style={{ width: 20 }} />
+                <Text style={{ color: isMe ? WHITE + 'AA' : MUTED, fontSize: 12, marginLeft: 10 }}>Sending voice…</Text>
+              </View>
+            ) : null}
 
             {/* Text */}
             {!!text && (
@@ -316,18 +385,57 @@ const TypingDots = ({ av }) => {
 };
 
 /* ─── Image fullscreen viewer ────────────────────────────────────────────── */
-const ImageViewer = ({ uri, onClose }) => (
-  <Modal visible={!!uri} transparent animationType="fade" onRequestClose={onClose}>
-    <TouchableWithoutFeedback onPress={onClose}>
+const ImageViewer = ({ uri, onClose }) => {
+  const [loaded, setLoaded] = useState(false);
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (uri) { setLoaded(false); opacity.setValue(0); }
+  }, [uri]);
+
+  const onLoad = useCallback(() => {
+    setLoaded(true);
+    Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+  }, [opacity]);
+
+  return (
+    <Modal visible={!!uri} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <View style={iv.backdrop}>
-        <TouchableOpacity style={iv.closeBtn} onPress={onClose}>
+        <TouchableOpacity style={iv.closeBtn} onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="close" size={24} color={WHITE} />
         </TouchableOpacity>
-        {uri && <Image source={{ uri }} style={iv.img} resizeMode="contain" />}
+        {uri && (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            {/* Thumbnail shown immediately from cache while full image renders */}
+            <Image
+              source={{ uri }}
+              style={iv.img}
+              resizeMode="contain"
+              blurRadius={loaded ? 0 : 4}
+            />
+            {/* Full-res overlay fades in */}
+            <Animated.Image
+              source={{ uri }}
+              style={[iv.img, { position: 'absolute', opacity }]}
+              resizeMode="contain"
+              onLoad={onLoad}
+            />
+            {!loaded && (
+              <ActivityIndicator
+                color={WHITE}
+                size="large"
+                style={{ position: 'absolute' }}
+              />
+            )}
+          </View>
+        )}
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: -1 }} />
+        </TouchableWithoutFeedback>
       </View>
-    </TouchableWithoutFeedback>
-  </Modal>
-);
+    </Modal>
+  );
+};
 
 /* ─── Recording pulse ────────────────────────────────────────────────────── */
 const RecordingPulse = ({ duration }) => {
@@ -356,6 +464,8 @@ export default function ThreadScreen() {
   const { token, user } = useAuth();
   const { colors: tc }  = useTheme();
   const refreshBadges   = useStore((st) => st.refreshBadges);
+  const setMessageCount = useStore((st) => st.setMessageCount);
+  const messageCount    = useStore((st) => st.messageCount);
   const userAvatar      = useStore((st) => st.userAvatar);
 
   const { conversationId, otherUser = {} } = route.params ?? {};
@@ -385,7 +495,7 @@ export default function ThreadScreen() {
   const typingTimer  = useRef(null);
   const myId         = user?.id ?? user?.user_id ?? null;
 
-  const otherName = otherUser.username ?? otherUser.user_name ?? otherUser.full_name ?? otherUser.name ?? 'User';
+  const otherName = otherUser.full_name ?? otherUser.name ?? otherUser.username ?? otherUser.user_name ?? 'User';
   const otherAv   = avatarUri(otherUser, otherName);
   const myName    = user?.username ?? user?.full_name ?? 'Me';
   const myAv      = userAvatar || avatarUri(user ?? {}, myName);
@@ -400,6 +510,15 @@ export default function ThreadScreen() {
       const confirmedIds = new Set(list.map((m) => String(m.message_id ?? m.id)));
       const kept         = tempMsgs.filter((m) => !confirmedIds.has(String(m.message_id ?? m.id)));
       return [...list, ...kept];
+    });
+
+    // Prefetch all image URLs so they are cached before user taps them
+    list.forEach((m) => {
+      const imgUrl = m.image ?? m.image_url ?? (m.media_type === 'image' ? m.media_url : null);
+      if (imgUrl) {
+        const full = imgUrl.startsWith('http') ? imgUrl : `${BASE_URL}/${imgUrl}`;
+        Image.prefetch(full).catch(() => {});
+      }
     });
 
     setOtherTyping((res?.typing ?? 0) === 1);
@@ -432,36 +551,22 @@ export default function ThreadScreen() {
 
   /* ── Mark seen ───────────────────────────────────────────────────────── */
   const markSeen = useCallback(async () => {
-    const body = `conversation_id=${encodeURIComponent(conversationId)}`;
-    console.log('[markSeen] →', {
-      url: `${BASE_URL}/api/v1/messages/mark-seen.php`,
-      conversationId,
-      body,
-      token: token ? token.slice(0, 20) + '…' : 'MISSING',
-    });
+    // Immediately decrement badge — don't wait for server
+    setMessageCount((prev) => Math.max(0, (prev ?? 1) - 1));
     try {
-      const res = await fetch(`${BASE_URL}/api/v1/messages/mark-seen.php`, {
+      await fetch(`${BASE_URL}/api/v1/messages/mark-seen.php`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body,
+        body: `conversation_id=${encodeURIComponent(conversationId)}`,
       });
-      const text = await res.text();
-      console.log('[markSeen] ← status:', res.status, '| raw:', text);
-      try {
-        const json = JSON.parse(text);
-        console.log('[markSeen] ← parsed:', json);
-      } catch {
-        console.warn('[markSeen] response is not JSON');
-      }
-    } catch (err) {
-      console.error('[markSeen] fetch error:', err);
-    }
-    refreshBadges(token);
-  }, [conversationId, token, refreshBadges]);
+    } catch (_) {}
+    // Delay refresh so backend has time to process before we re-fetch count
+    setTimeout(() => refreshBadges(token), 3000);
+  }, [conversationId, token, refreshBadges, setMessageCount]);
 
   /* ── Init ────────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -503,18 +608,25 @@ export default function ThreadScreen() {
   }, [conversationId, token]);
 
   /* ── Upload helper ───────────────────────────────────────────────────── */
-  const uploadMedia = useCallback(async (uri, name, type) => {
+  const uploadMedia = useCallback(async (uri, name, type, mediaType = 'photo') => {
     const fd = new FormData();
     fd.append('file', { uri, name, type });
+    fd.append('type', mediaType);
     try {
       const res = await fetch(`${BASE_URL}/api/v1/uploads/media.php`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
-      const data = await res.json();
-      return data?.data?.url ?? null;
-    } catch { return null; }
+      const raw = await res.text();
+      console.log('[uploadMedia] status:', res.status, '| body:', raw);
+      let data = null;
+      try { data = JSON.parse(raw); } catch { return null; }
+      return data?.data?.url ?? data?.data?.path ?? data?.url ?? data?.path ?? null;
+    } catch (e) {
+      console.log('[uploadMedia] error:', e);
+      return null;
+    }
   }, [token]);
 
   /* ── Send text ───────────────────────────────────────────────────────── */
@@ -536,17 +648,48 @@ export default function ThreadScreen() {
     setReplyTo(null);
 
     const replyParam = savedReply?.message_id ? `&reply_to=${encodeURIComponent(savedReply.message_id)}` : '';
-    const res = await api('/api/v1/messages/send.php', token, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `conversation_id=${encodeURIComponent(conversationId)}&message=${encodeURIComponent(msg)}${replyParam}`,
+    const body = `conversation_id=${encodeURIComponent(conversationId)}&message=${encodeURIComponent(msg)}${replyParam}`;
+
+    console.log('[sendMessage] →', {
+      url: `${BASE_URL}/api/v1/messages/send.php`,
+      conversationId,
+      message: msg,
+      body,
+      token: token ? token.slice(0, 20) + '…' : 'MISSING',
     });
-    const sent = res?.data ?? null;
-    setMessages((prev) => prev.map((m) =>
-      (m.message_id === tempId || m.id === tempId)
-        ? sent ? { ...sent, _temp: false } : { ...m, _temp: false }
-        : m
-    ));
+
+    try {
+      const rawRes = await fetch(`${BASE_URL}/api/v1/messages/send.php`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+      });
+      const rawText = await rawRes.text();
+      console.log('[sendMessage] ← status:', rawRes.status, '| raw:', rawText);
+      let parsed = null;
+      try {
+        parsed = JSON.parse(rawText);
+        console.log('[sendMessage] ← parsed:', parsed);
+      } catch {
+        console.warn('[sendMessage] response is not JSON');
+      }
+      const sent = parsed?.data ?? null;
+      setMessages((prev) => prev.map((m) =>
+        (m.message_id === tempId || m.id === tempId)
+          ? sent ? { ...sent, _temp: false } : { ...m, _temp: false }
+          : m
+      ));
+    } catch (err) {
+      console.error('[sendMessage] fetch error:', err);
+      setMessages((prev) => prev.map((m) =>
+        (m.message_id === tempId || m.id === tempId) ? { ...m, _temp: false } : m
+      ));
+    }
+
     setSending(false);
     load(true);
     refreshBadges(token);
@@ -555,9 +698,12 @@ export default function ThreadScreen() {
   /* ── Send image ──────────────────────────────────────────────────────── */
   const pickAndSendImage = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return;
+    if (!perm.granted) {
+      Alert.alert('Permission needed', 'Please allow photo library access in Settings to send images.');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.Images,
+      mediaTypes: ['images'],
       quality: 0.7,
     });
     if (result.canceled || !result.assets?.length) return;
@@ -571,16 +717,25 @@ export default function ThreadScreen() {
       image: asset.uri, time: new Date().toISOString(),
     }]);
 
-    const imageUrl = await uploadMedia(asset.uri, 'photo.jpg', 'image/jpeg');
-    await api('/api/v1/messages/send-image.php', token, {
+    const imageUrl = await uploadMedia(asset.uri, 'image.jpg', 'image/jpeg', 'photo');
+    if (!imageUrl) {
+      setMessages((prev) => prev.filter((m) => m.message_id !== tempId && m.id !== tempId));
+      Alert.alert('Upload failed', 'Could not upload image. Please try again.');
+      return;
+    }
+    console.log('[sendImage] imageUrl:', imageUrl);
+
+    const sendRes = await fetch(`${BASE_URL}/api/v1/messages/send-image.php`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `conversation_id=${encodeURIComponent(conversationId)}&image=${encodeURIComponent(imageUrl ?? asset.uri)}`,
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `conversation_id=${encodeURIComponent(conversationId)}&image=${encodeURIComponent(imageUrl)}`,
     });
+    const sendRaw = await sendRes.text();
+    console.log('[sendImage] send-image.php response:', sendRaw);
 
     setMessages((prev) => prev.map((m) =>
       (m.message_id === tempId || m.id === tempId)
-        ? { ...m, _uploading: false, _temp: false, image: imageUrl ?? asset.uri }
+        ? { ...m, _uploading: false, _temp: false, image: imageUrl }
         : m
     ));
     load(true);
@@ -591,7 +746,10 @@ export default function ThreadScreen() {
   const startRecording = useCallback(async () => {
     try {
       const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') return;
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please allow microphone access in Settings to send voice messages.');
+        return;
+      }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       recordingRef.current = recording;
@@ -622,24 +780,32 @@ export default function ThreadScreen() {
 
       const fd = new FormData();
       fd.append('file', { uri, name: 'voice.m4a', type: 'audio/m4a' });
+      fd.append('type', 'photo');
       const uploadRes = await fetch(`${BASE_URL}/api/v1/uploads/media.php`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
-      const uploadData = await uploadRes.json();
-      const voiceUrl = uploadData?.data?.url;
+      const uploadRaw = await uploadRes.text();
+      console.log('[sendVoice] upload response:', uploadRaw);
+      let uploadData = null;
+      try { uploadData = JSON.parse(uploadRaw); } catch { /* not JSON */ }
+      const voiceUrl = uploadData?.data?.url ?? uploadData?.data?.path ?? uploadData?.url ?? uploadData?.path ?? null;
 
       if (!voiceUrl) {
         setMessages((prev) => prev.filter((m) => m.message_id !== tempId));
+        Alert.alert('Upload failed', 'Could not upload voice message. Please try again.');
         return;
       }
+      console.log('[sendVoice] voiceUrl:', voiceUrl);
 
-      await api('/api/v1/messages/send-voice.php', token, {
+      const sendRes = await fetch(`${BASE_URL}/api/v1/messages/send-voice.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `conversation_id=${encodeURIComponent(conversationId)}&voice_note=${encodeURIComponent(voiceUrl)}`,
       });
+      const sendRaw = await sendRes.text();
+      console.log('[sendVoice] send-voice.php response:', sendRaw);
 
       setMessages((prev) => prev.map((m) =>
         m.message_id === tempId
@@ -648,9 +814,12 @@ export default function ThreadScreen() {
       ));
       load(true);
       refreshBadges(token);
-    } catch (_) {
+    } catch (e) {
+      console.log('[sendVoice] error:', e);
       recordingRef.current = null;
       setRecordMs(0);
+      setMessages((prev) => prev.filter((m) => !m.message_id?.toString().startsWith('tmp_voice_')));
+      Alert.alert('Error', 'Failed to send voice message. Please try again.');
     }
   }, [myId, conversationId, token, load, refreshBadges]);
 

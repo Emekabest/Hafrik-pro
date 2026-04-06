@@ -1,7 +1,8 @@
 import { FlashList } from "@shopify/flash-list";
 import { useCallback } from "react";
-import { View, Text, ActivityIndicator, StyleSheet as RNStyleSheet } from "react-native";
+import { View, Text, StyleSheet as RNStyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import BrandLoader from '../../../components/BrandLoader';
 import ProfileTabs from "../tabs";
 import { memo } from "react";
 import { FlatList } from "react-native-gesture-handler";
@@ -79,7 +80,7 @@ const ProfileTabList = ({ combinedData }) => {
             case "loader":
                 return (
                     <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                        <ActivityIndicator size="large" color={Colors.primary} />
+                        <BrandLoader inline size="medium" />
                     </View>
                 );
 

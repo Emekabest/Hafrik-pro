@@ -5,7 +5,7 @@ import React, {
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
   FlatList, Modal, ActivityIndicator, RefreshControl,
-  StatusBar, Dimensions, Animated,
+  StatusBar, Dimensions, Animated, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +29,7 @@ const CREAM  = Colors.surfaceTint;
 const DARK   = Colors.deepSlate;
 const MUTED  = Colors.secondaryText;
 const BORDER = withOpacity(Colors.primaryDark, 0.09);
-const TABS   = ['posts', 'followers', 'media', 'communities'];
+const TABS   = ['posts', 'reels', 'media', 'followers', 'communities'];
 
 const decodeHtml = (t = '') =>
   String(t)
@@ -442,6 +442,47 @@ export default function UserProfileScreen({ navigation, route }) {
     setFollowLoad(false);
   }, [userId, token]);
 
+  // ── Chat / Message ─────────────────────────────────────────────────────────
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const startChat = useCallback(async () => {
+    if (!userId || chatLoading) return;
+    setChatLoading(true);
+    try {
+      const res  = await fetch(BASE_URL + '/api/v1/messages/start.php', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      const json = await res.json();
+      const convId =
+        json?.data?.conversation_id ??
+        json?.data?.id              ??
+        json?.conversation_id       ??
+        json?.id                    ?? null;
+
+      if (convId) {
+        const chatUser = {
+          id:         profile?.id ?? userId,
+          user_id:    profile?.id ?? userId,
+          full_name:  profile?.full_name  ?? null,
+          username:   profile?.username   ?? null,
+          user_name:  profile?.username   ?? null,
+          avatar:     profile?.avatar     ?? null,
+          user_picture: profile?.avatar   ?? null,
+        };
+        setChatLoading(false);
+        navigation.navigate('Thread', { conversationId: convId, otherUser: chatUser });
+      } else {
+        setChatLoading(false);
+        Alert.alert('Error', json?.message ?? 'Could not start conversation. Please try again.');
+      }
+    } catch {
+      setChatLoading(false);
+      Alert.alert('Error', 'Network error. Please try again.');
+    }
+  }, [userId, token, profile, chatLoading, navigation]);
+
   // ── Fetch followers/following for inline tab ───────────────────────────────
   const fetchFollowersTab = useCallback(async (subTab) => {
     if (!userId) return;
@@ -503,6 +544,7 @@ export default function UserProfileScreen({ navigation, route }) {
   // ── Tab endpoints ──────────────────────────────────────────────────────────
   const ENDPOINTS = useMemo(() => ({
     posts:       '/api/v1/users/user_feed.php?user_id=' + userId + '&limit=10&filter=all',
+    reels:       '/api/v1/users/user_media.php?user_id=' + userId + '&limit=30',
     media:       '/api/v1/users/user_media.php?user_id=' + userId + '&limit=30',
     communities: '/api/v1/users/user_communities.php?user_id=' + userId + '&limit=10',
     pages:       '/api/v1/users/user_pages.php?user_id='       + userId + '&limit=10',
@@ -519,15 +561,34 @@ export default function UserProfileScreen({ navigation, route }) {
     try {
       const url  = BASE_URL + ENDPOINTS[tab] + '&page=' + pg;
       const res  = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-      const json = await res.json();
+
+      // Guard against HTML error pages (404/500) — parse as text first
+      const text = await res.text();
+      if (!res.ok || text.trimStart().startsWith('<')) {
+        console.warn('fetchTab(' + tab + ') non-JSON response, status=' + res.status);
+        s.hasMore = false;
+        s.loading = false;
+        bump();
+        return;
+      }
+      const json = JSON.parse(text);
 
       // Support both paginated wrapper and flat array responses
-      const wrapper     = json?.data;
-      const list        = Array.isArray(wrapper?.data)   ? wrapper.data
-                        : Array.isArray(wrapper?.feeds)  ? wrapper.feeds
-                        : Array.isArray(wrapper?.items)  ? wrapper.items
-                        : Array.isArray(wrapper)         ? wrapper
-                        : [];
+      const wrapper = json?.data;
+      let list      = Array.isArray(wrapper?.data)   ? wrapper.data
+                    : Array.isArray(wrapper?.feeds)  ? wrapper.feeds
+                    : Array.isArray(wrapper?.items)  ? wrapper.items
+                    : Array.isArray(wrapper)         ? wrapper
+                    : [];
+
+      // Reels tab: keep only reel/video items from the media endpoint
+      if (tab === 'reels') {
+        list = list.filter(item => {
+          const t = (item?.type ?? '').toLowerCase();
+          return t === 'reel' || t === 'video';
+        });
+      }
+
       const totalPages  = wrapper?.total_pages != null ? Number(wrapper.total_pages) : null;
 
       if (list.length === 0) {
@@ -576,7 +637,7 @@ export default function UserProfileScreen({ navigation, route }) {
 
   const ts      = activeTab !== 'followers' && tabState.current[activeTab] ? tabState.current[activeTab] : { data: [], loading: false, hasMore: false, page: 1 };
   const tabData = activeTab === 'followers' ? followersList : ts.data;
-  const isMedia = activeTab === 'media';
+  const isGrid  = activeTab === 'media' || activeTab === 'reels';
   const isFollowersTab = activeTab === 'followers';
   const [visiblePostId, setVisiblePostId] = useState(null);
   const activeTabRef = useRef(activeTab);
@@ -649,6 +710,7 @@ export default function UserProfileScreen({ navigation, route }) {
   ), [navigation, authUser, handleFollowInList]);
 
   const renderItem = activeTab === 'posts'       ? renderPost
+                   : activeTab === 'reels'        ? renderMedia
                    : activeTab === 'media'        ? renderMedia
                    : activeTab === 'followers'    ? renderFollower
                    : activeTab === 'communities'  ? renderCommunity
@@ -712,26 +774,39 @@ export default function UserProfileScreen({ navigation, route }) {
         </View>
 
         {!isOwn && !profileLoad && (
-          <TouchableOpacity
-            style={[ss.followBtn, isFollowing && ss.followingBtn]}
-            activeOpacity={0.85}
-            onPress={toggleFollow}
-            disabled={followLoad}
-          >
-            {followLoad
-              ? <ActivityIndicator size="small" color={isFollowing ? BRAND : Colors.white} />
-              : <Text style={[ss.followBtnTxt, isFollowing && ss.followingBtnTxt]}>
-                  {isFollowing ? '✓  Following' : '+ Follow'}
-                </Text>
-            }
-          </TouchableOpacity>
+          <View style={ss.actionRow}>
+            <TouchableOpacity
+              style={[ss.followBtn, isFollowing && ss.followingBtn]}
+              activeOpacity={0.85}
+              onPress={toggleFollow}
+              disabled={followLoad}
+            >
+              {followLoad
+                ? <ActivityIndicator size="small" color={isFollowing ? BRAND : Colors.white} />
+                : <Text style={[ss.followBtnTxt, isFollowing && ss.followingBtnTxt]}>
+                    {isFollowing ? '✓  Following' : '+ Follow'}
+                  </Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={ss.chatBtn}
+              activeOpacity={0.85}
+              onPress={startChat}
+              disabled={chatLoading}
+            >
+              {chatLoading
+                ? <ActivityIndicator size="small" color={Colors.white} />
+                : <Ionicons name="chatbubble-ellipses" size={18} color={Colors.white} />
+              }
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
       <View style={ss.tabsBar}>
         {TABS.map(tab => {
           const active = activeTab === tab;
-          const iconMap = { posts: 'home-outline', followers: 'people-outline', media: 'images-outline', communities: 'globe-outline', pages: 'flag-outline' };
+          const iconMap = { posts: 'home-outline', reels: 'film-outline', followers: 'people-outline', media: 'images-outline', communities: 'globe-outline', pages: 'flag-outline' };
           return (
             <TouchableOpacity
               key={tab}
@@ -772,7 +847,7 @@ export default function UserProfileScreen({ navigation, route }) {
         </View>
       )}
     </View>
-  ), [profile, profileLoad, activeTab, isFollowing, followLoad, isOwn, insets.top, toggleFollow, navigation, cover, avatar, displayName, handle, bio, postsCount, follCount, followCount, isVerified, followersSubTab]); // eslint-disable-line
+  ), [profile, profileLoad, activeTab, isFollowing, followLoad, isOwn, insets.top, toggleFollow, startChat, chatLoading, navigation, cover, avatar, displayName, handle, bio, postsCount, follCount, followCount, isVerified, followersSubTab]); // eslint-disable-line
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -789,10 +864,10 @@ export default function UserProfileScreen({ navigation, route }) {
       </Animated.View>
 
       <Animated.FlatList
-        key={activeTab + (isMedia ? '-3' : '-1')}
+        key={activeTab + (isGrid ? '-3' : '-1')}
         data={tabData}
         keyExtractor={(item, i) => String(item?.id ?? item?.user_id ?? i)}
-        numColumns={isMedia ? 3 : 1}
+        numColumns={isGrid ? 3 : 1}
         ListHeaderComponent={ListHeader}
         renderItem={renderItem}
         ListEmptyComponent={
@@ -801,7 +876,7 @@ export default function UserProfileScreen({ navigation, route }) {
                 ? <ActivityIndicator size="small" color={BRAND} style={{ marginTop: 36 }} />
                 : (
                   <View style={ss.emptyWrap}>
-                    <Ionicons name={isFollowersTab ? "people-outline" : "file-tray-outline"} size={40} color={MUTED} />
+                    <Ionicons name={isFollowersTab ? "people-outline" : activeTab === 'reels' ? "film-outline" : "file-tray-outline"} size={40} color={MUTED} />
                     <Text style={ss.emptyTxt}>
                       {isFollowersTab
                         ? (followersSubTab === 'followers' ? 'No followers yet' : 'Not following anyone')
@@ -881,10 +956,12 @@ const ss = StyleSheet.create({
   statValue: { fontSize: 20, fontWeight: '900', color: Colors.white },
   statLabel: { fontSize: 11, color: withOpacity(Colors.white, 0.6) },
 
-  followBtn:       { marginTop: 18, paddingHorizontal: 36, paddingVertical: 10, borderRadius: 999, backgroundColor: ACCENT },
+  actionRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
+  followBtn:       { flex: 1, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' },
   followingBtn:    { backgroundColor: withOpacity(Colors.white, 0.15), borderWidth: 1, borderColor: withOpacity(Colors.white, 0.4) },
   followBtnTxt:    { fontSize: 14, fontWeight: '800', color: Colors.white },
   followingBtnTxt: { color: Colors.white },
+  chatBtn:         { width: 44, height: 44, borderRadius: 999, backgroundColor: Colors.tealAccent, alignItems: 'center', justifyContent: 'center' },
 
   tabsBar:      { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 12, backgroundColor: CREAM, gap: 6, flexWrap: 'wrap' },
   tabBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: Colors.white, borderWidth: 1, borderColor: BORDER },

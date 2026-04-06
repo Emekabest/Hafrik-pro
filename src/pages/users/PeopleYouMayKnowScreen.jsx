@@ -26,7 +26,7 @@ const isRealImage = (url) =>
 
 const PersonCard = ({ item, onFollow, onPress }) => {
   const avatar = item?.avatar ?? item?.profile_picture ?? item?.image ?? null;
-  const name = item?.name ?? item?.username ?? 'User';
+  const name = item?.full_name ?? item?.name ?? item?.username ?? item?.user_name ?? 'User';
   const mutual = item?.mutual_friends;
   const followers = item?.followers_count ?? item?.followers ?? 0;
   const isFollowing = !!item?.is_follow;
@@ -86,11 +86,11 @@ const PeopleYouMayKnowScreen = () => {
 
   const fetchPeople = useCallback(async (pageNum = 1, append = false) => {
     try {
-      const res = await fetch(`${BASE_URL}/api/v1/people/list.php?page=${pageNum}&limit=20`, {
+      const res = await fetch(`${BASE_URL}/api/v1/people/new_user.php?page=${pageNum}&limit=20`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       });
       const data = await res.json();
-      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      const list = Array.isArray(data?.data?.data) ? data.data.data : Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
 
       if (append) {
         setPeople(prev => [...prev, ...list]);

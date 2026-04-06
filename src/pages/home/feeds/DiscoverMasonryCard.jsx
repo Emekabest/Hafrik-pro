@@ -3,7 +3,7 @@
  * Three variants: image · reel · text
  * Dynamic image height. Footer shows reactions + views.
  */
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,10 +14,12 @@ import AppDetails from '../../../helpers/appdetails';
 
 // ─── Dimensions ───────────────────────────────────────────────────────────────
 const { width: SCREEN_W } = Dimensions.get('window');
-export const MASONRY_H_PAD  = 6;    // left/right padding on the row container
+export const MASONRY_H_PAD   = 6;    // left/right padding on the row container
 export const MASONRY_COL_GAP = 5;   // gap between the two columns
 export const MASONRY_CARD_W  = (SCREEN_W - MASONRY_H_PAD * 2 - MASONRY_COL_GAP) / 2;
 const CARD_IMG_H = Math.round(MASONRY_CARD_W * 1.35); // fixed height for all variants
+// Exported so FlashList in feeds.jsx can use overrideItemLayout
+export const MASONRY_ROW_H = CARD_IMG_H + 68; // image + footer + padding
 const CARD_RADIUS = 0;
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -189,14 +191,69 @@ const TextCard = memo(({ feed, onPress }) => {
   );
 });
 
+// ─── Article card ─────────────────────────────────────────────────────────────
+const ArticleCard = memo(({ feed, onPress }) => {
+  const cover   = feed?.payload?.cover_image || feed?.payload?.image || feed?.media?.[0]?.url;
+  const title   = strip(feed?.payload?.title || feed?.text || feed?.content || '');
+  const excerpt = strip(feed?.payload?.excerpt || feed?.payload?.description || '');
+
+  return (
+    <TouchableOpacity style={styles.card} activeOpacity={0.88} onPress={onPress}>
+      <View style={{ height: CARD_IMG_H, width: '100%', backgroundColor: BASE }}>
+        {cover?.startsWith('http') ? (
+          <ExpoImage
+            source={{ uri: cover }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            recyclingKey={`disc-art-${feed?.id}`}
+            transition={150}
+          />
+        ) : (
+          <LinearGradient
+            colors={[Colors.primaryDark, Colors.primary]}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+        {/* Article badge */}
+        <View style={styles.articleBadge}>
+          <Ionicons name="document-text" size={10} color={WHITE} />
+          <Text style={styles.articleBadgeText}>Article</Text>
+        </View>
+        {/* Title overlay */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.72)']}
+          style={styles.articleOverlay}
+        >
+          <Text style={styles.articleTitle} numberOfLines={3}>{title}</Text>
+        </LinearGradient>
+      </View>
+      <View style={styles.body}>
+        {!!excerpt && <Text style={styles.caption} numberOfLines={2}>{excerpt}</Text>}
+        <Footer feed={feed} />
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const DiscoverMasonryCard = memo(({ feed, allFeeds = [] }) => {
   const navigation = useNavigation();
-  const v = getVariant(feed);
+
+  // Skip shared posts entirely
+  if (feed?.type === 'shared') return null;
+
+  const isArticle = feed?.type === 'article';
+  const v = isArticle ? 'article' : getVariant(feed);
 
   const onPress = useCallback(() => {
-    if (v === 'reel') {
-      // Filter to reel-only items so swipe-up/down stays within the reels feed
+    if (isArticle) {
+      navigation.navigate('ArticleDetails', {
+        postId:    feed?.id,
+        articleId: feed?.payload?.article_id ?? feed?.payload?.id ?? feed?.id,
+        title:     feed?.payload?.title ?? '',
+      });
+    } else if (v === 'reel') {
       const reelFeeds = allFeeds.filter(
         (f) => f?.type === 'reel' || !!f?.media?.[0]?.video_url
       );
@@ -210,12 +267,13 @@ const DiscoverMasonryCard = memo(({ feed, allFeeds = [] }) => {
     } else {
       navigation.navigate('PostDetail', { postId: feed?.id });
     }
-  }, [v, feed, allFeeds, navigation]);
+  }, [v, isArticle, feed, allFeeds, navigation]);
 
-  if (v === 'reel')  return <ReelCard  feed={feed} onPress={onPress} />;
-  if (v === 'image') return <ImageCard feed={feed} onPress={onPress} />;
+  if (v === 'article') return <ArticleCard feed={feed} onPress={onPress} />;
+  if (v === 'reel')    return <ReelCard    feed={feed} onPress={onPress} />;
+  if (v === 'image')   return <ImageCard   feed={feed} onPress={onPress} />;
   return <TextCard feed={feed} onPress={onPress} />;
-});
+}, (prev, next) => String(prev.feed?.id) === String(next.feed?.id));
 
 export default DiscoverMasonryCard;
 
@@ -289,6 +347,39 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.52)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  articleBadge: {
+    position: 'absolute',
+    top: 7,
+    left: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(12,63,68,0.82)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  articleBadgeText: {
+    color: WHITE,
+    fontSize: 9,
+    fontWeight: '700',
+    fontFamily: FONT_M,
+  },
+  articleOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 8,
+    paddingTop: 20,
+  },
+  articleTitle: {
+    color: WHITE,
+    fontSize: 11.5,
+    fontWeight: '700',
+    fontFamily: FONT_M,
+    lineHeight: 15,
   },
   textBg: {
     width: '100%',
