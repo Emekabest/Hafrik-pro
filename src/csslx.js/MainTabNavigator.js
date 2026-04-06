@@ -206,6 +206,7 @@ const MainTabNavigator = () => {
   const notifCount     = useStore((s) => s.notificationCount ?? 0);
 
   useEffect(() => {
+    console.log(unreadCount)
     setUnreadCount(unreadCount);
   }, [unreadCount]);
 

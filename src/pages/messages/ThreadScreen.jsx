@@ -14,6 +14,8 @@ import useStore from '../../repository/store';
 import { useTheme } from '../../theme/ThemeContext';
 import { Colors } from '../../theme';
 
+console.log("Hwww")
+
 const BASE_URL  = 'https://hafrik.com';
 const BRAND     = Colors.primaryDark;
 const ACCENT    = Colors.primary;
@@ -430,11 +432,34 @@ export default function ThreadScreen() {
 
   /* ── Mark seen ───────────────────────────────────────────────────────── */
   const markSeen = useCallback(async () => {
-    await api('/api/v1/messages/mark-seen.php', token, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `conversation_id=${encodeURIComponent(conversationId)}`,
+    const body = `conversation_id=${encodeURIComponent(conversationId)}`;
+    console.log('[markSeen] →', {
+      url: `${BASE_URL}/api/v1/messages/mark-seen.php`,
+      conversationId,
+      body,
+      token: token ? token.slice(0, 20) + '…' : 'MISSING',
     });
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/messages/mark-seen.php`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+      });
+      const text = await res.text();
+      console.log('[markSeen] ← status:', res.status, '| raw:', text);
+      try {
+        const json = JSON.parse(text);
+        console.log('[markSeen] ← parsed:', json);
+      } catch {
+        console.warn('[markSeen] response is not JSON');
+      }
+    } catch (err) {
+      console.error('[markSeen] fetch error:', err);
+    }
     refreshBadges(token);
   }, [conversationId, token, refreshBadges]);
 
