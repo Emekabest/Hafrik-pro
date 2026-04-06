@@ -240,39 +240,34 @@ function AddFundsModal({ visible, onClose }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={af.root}>
 
-          {/* ── Header ── */}
-          {step !== STEPS.SUCCESS && (
-            <View style={af.header}>
-              <TouchableOpacity style={af.headerBtn} onPress={handleBack} activeOpacity={0.8} disabled={isBusy}>
-                <Ionicons name={step === STEPS.AMOUNT ? 'close' : 'arrow-back'} size={20} color={TEXT_H} />
-              </TouchableOpacity>
-              <Text style={af.headerTitle}>Add Funds</Text>
-              <TouchableOpacity style={af.headerBtn} onPress={handleClose} activeOpacity={0.8} disabled={isBusy}>
-                <Ionicons name="close" size={20} color={TEXT_H} />
-              </TouchableOpacity>
+          {/* ── Gradient Header ── */}
+          <LinearGradient
+            colors={[BRAND, ACCENT]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={af.header}
+          >
+            <TouchableOpacity style={af.headerBtn} onPress={handleBack} activeOpacity={0.8} disabled={isBusy}>
+              <Ionicons name={step === STEPS.AMOUNT ? 'close' : 'arrow-back'} size={20} color={WHITE} />
+            </TouchableOpacity>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={af.headerTitle}>
+                {step === STEPS.SUCCESS ? 'Payment Submitted' : 'Add Funds'}
+              </Text>
+              {step < STEPS.SUCCESS && (
+                <Text style={af.headerStepLabel}>
+                  Step {step + 1} of {STEP_LABELS.length} — {STEP_LABELS[step]}
+                </Text>
+              )}
             </View>
-          )}
+            <TouchableOpacity style={af.headerBtn} onPress={handleClose} activeOpacity={0.8} disabled={isBusy}>
+              <Ionicons name="close" size={20} color={WHITE} />
+            </TouchableOpacity>
+          </LinearGradient>
 
-          {/* ── Progress dots ── */}
+          {/* ── Progress bar ── */}
           {step < STEPS.SUCCESS && (
-            <View style={af.progressWrap}>
-              {STEP_LABELS.map((label, i) => (
-                <View key={i} style={af.progressStep}>
-                  <View style={[
-                    af.progressDot,
-                    i < step   && af.progressDotDone,
-                    i === step && af.progressDotActive,
-                  ]}>
-                    {i < step
-                      ? <Ionicons name="checkmark" size={10} color={WHITE} />
-                      : <Text style={[af.progressDotTxt, i === step && { color: WHITE }]}>{i + 1}</Text>
-                    }
-                  </View>
-                  {i < STEP_LABELS.length - 1 && (
-                    <View style={[af.progressLine, i < step && { backgroundColor: ACCENT }]} />
-                  )}
-                </View>
-              ))}
+            <View style={af.progressBarTrack}>
+              <View style={[af.progressBarFill, { width: `${((step + 1) / STEP_LABELS.length) * 100}%` }]} />
             </View>
           )}
 
@@ -286,8 +281,8 @@ function AddFundsModal({ visible, onClose }) {
             {/* ── STEP 0: Enter Amount ── */}
             {step === STEPS.AMOUNT && (
               <View style={af.stepWrap}>
-                <Text style={af.stepTitle}>Enter Amount</Text>
-                <Text style={af.stepSub}>How much would you like to add to your wallet?</Text>
+                <Text style={af.stepTitle}>How much to add?</Text>
+                <Text style={af.stepSub}>Enter the amount you want to top up your wallet with.</Text>
 
                 <View style={af.amountBox}>
                   <Text style={af.amountPrefix}>¥</Text>
@@ -296,7 +291,7 @@ function AddFundsModal({ visible, onClose }) {
                     value={amount}
                     onChangeText={t => setAmount(t.replace(/[^0-9.]/g, ''))}
                     placeholder="0.00"
-                    placeholderTextColor={TEXT_M + '88'}
+                    placeholderTextColor={TEXT_M + '55'}
                     keyboardType="decimal-pad"
                     autoFocus
                     editable={!isBusy}
@@ -304,6 +299,7 @@ function AddFundsModal({ visible, onClose }) {
                 </View>
                 <Text style={af.amountHint}>Minimum top-up: ¥10.00</Text>
 
+                <Text style={af.quickLabel}>Quick amounts</Text>
                 <View style={af.quickAmounts}>
                   {['50', '100', '200', '500'].map(q => (
                     <TouchableOpacity
@@ -312,7 +308,7 @@ function AddFundsModal({ visible, onClose }) {
                       onPress={() => setAmount(q)}
                       disabled={isBusy}
                     >
-                      <Text style={[af.qAmtTxt, amount === q && { color: ACCENT }]}>¥{q}</Text>
+                      <Text style={[af.qAmtTxt, amount === q && { color: WHITE }]}>¥{q}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -322,38 +318,24 @@ function AddFundsModal({ visible, onClose }) {
             {/* ── STEP 1: Payment Instructions ── */}
             {step === STEPS.INSTRUCTIONS && (
               <View style={af.stepWrap}>
-                <Text style={af.stepTitle}>Complete Payment</Text>
-                <Text style={af.stepSub}>Send payment using one of the methods below, then upload your proof.</Text>
 
-                {/* Amount summary */}
-                <View style={af.summaryCard}>
-                  <View style={af.summaryRow}>
-                    <Text style={af.summaryKey}>Amount</Text>
-                    <Text style={af.summaryVal}>{fmtMoney(amtNum)}</Text>
-                  </View>
-                  <View style={af.summaryDivider} />
-                  <View style={af.summaryRow}>
-                    <Text style={af.summaryKey}>Reference</Text>
-                    <Text style={[af.summaryVal, { color: ACCENT, fontSize: 13 }]}>{reference}</Text>
-                  </View>
-                  <View style={af.summaryDivider} />
-                  <View style={af.summaryRow}>
-                    <Text style={[af.summaryKey, { fontFamily: FONT_B, color: TEXT_H }]}>Total</Text>
-                    <Text style={[af.summaryVal, { fontSize: 20, color: BRAND }]}>{fmtMoney(amtNum)}</Text>
-                  </View>
+                {/* Amount pill */}
+                <View style={af.amountPill}>
+                  <Ionicons name="wallet-outline" size={18} color={ACCENT} />
+                  <Text style={af.amountPillLabel}>You are paying</Text>
+                  <Text style={af.amountPillVal}>{fmtMoney(amtNum)}</Text>
                 </View>
 
-                {/* ── Payment methods (dynamic) ── */}
                 {loadingMethods && (
                   <View style={af.methodsLoadingRow}>
-                    <ActivityIndicator size="small" color={ACCENT} />
+                    <ActivityIndicator size="large" color={ACCENT} />
                     <Text style={af.methodsLoadingTxt}>Loading payment methods…</Text>
                   </View>
                 )}
 
                 {!loadingMethods && methods.length === 0 && (
                   <View style={[af.infoBox, { backgroundColor: DANGER + '10', borderColor: DANGER + '28' }]}>
-                    <Ionicons name="warning-outline" size={15} color={DANGER} style={{ marginTop: 1 }} />
+                    <Ionicons name="warning-outline" size={16} color={DANGER} />
                     <Text style={[af.infoTxt, { color: DANGER }]}>
                       Payment is currently unavailable. Please try again later.
                     </Text>
@@ -363,140 +345,128 @@ function AddFundsModal({ visible, onClose }) {
                 {!loadingMethods && methods.map(method => {
                   const isMulti    = methods.length > 1;
                   const isSelected = isMulti && selectedMethod?.id === method.id;
+                  const qrUrl      = method.qr_code_url ?? method.details?.qr_code ?? null;
+                  const hasAccount = !!method.details?.account_number;
+                  const hasName    = !!method.details?.account_name;
+
                   return (
-                    <TouchableOpacity
-                      key={method.id}
-                      style={[af.methodCard, isSelected && af.methodCardActive]}
-                      onPress={() => isMulti && setSelectedMethod(method)}
-                      activeOpacity={isMulti ? 0.8 : 1}
-                    >
-                      <View style={{ flex: 1 }}>
-                        {/* Title row with optional radio */}
-                        <View style={af.methodTitleRow}>
-                          {isMulti && (
-                            <View style={[af.methodRadio, isSelected && af.methodRadioActive]}>
-                              {isSelected && <View style={af.methodRadioDot} />}
-                            </View>
-                          )}
+                    <View key={method.id} style={[af.methodCard, isSelected && af.methodCardActive]}>
+
+                      {/* Method selector (multi only) */}
+                      {isMulti && (
+                        <TouchableOpacity style={af.methodTitleRow} onPress={() => setSelectedMethod(method)} activeOpacity={0.8}>
+                          <View style={[af.methodRadio, isSelected && af.methodRadioActive]}>
+                            {isSelected && <View style={af.methodRadioDot} />}
+                          </View>
                           <View style={{ flex: 1 }}>
                             <Text style={af.methodTitle}>{method.name}</Text>
-                            {!!method.description && (
-                              <Text style={af.methodSub}>{method.description}</Text>
-                            )}
+                            {!!method.description && <Text style={af.methodSub}>{method.description}</Text>}
+                          </View>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* Method name (single) */}
+                      {!isMulti && (
+                        <View style={af.methodTitleRow}>
+                          <View style={af.methodIconCircle}>
+                            <Ionicons name="qr-code-outline" size={20} color={ACCENT} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={af.methodTitle}>{method.name}</Text>
+                            {!!method.description && <Text style={af.methodSub}>{method.description}</Text>}
                           </View>
                         </View>
+                      )}
 
-                        {/* Manual payment details */}
-                        {method.type === 'manual' && method.details && (
-                          <View style={af.detailsCard}>
-                            {!!method.details.bank_name && (
-                              <View style={af.detailRow}>
-                                <Text style={af.detailKey}>Bank / Platform</Text>
-                                <Text style={af.detailVal}>{method.details.bank_name}</Text>
-                              </View>
-                            )}
-                            {!!method.details.account_number && (
-                              <>
-                                <View style={af.detailsDivider} />
-                                <View style={af.detailRow}>
-                                  <Text style={af.detailKey}>Account Number</Text>
-                                  <Text style={af.detailVal}>{method.details.account_number}</Text>
-                                </View>
-                              </>
-                            )}
-                            {!!method.details.account_name && (
-                              <>
-                                <View style={af.detailsDivider} />
-                                <View style={af.detailRow}>
-                                  <Text style={af.detailKey}>Account Name</Text>
-                                  <Text style={af.detailVal}>{method.details.account_name}</Text>
-                                </View>
-                              </>
-                            )}
+                      {/* QR Code — full width, prominent */}
+                      {!!qrUrl && (
+                        <View style={af.qrWrap}>
+                          <View style={af.qrFrame}>
+                            <Image source={{ uri: qrUrl }} style={af.qrImage} resizeMode="contain" />
                           </View>
-                        )}
+                          <View style={af.qrBadge}>
+                            <Ionicons name="scan-outline" size={14} color={WHITE} />
+                            <Text style={af.qrBadgeTxt}>Scan QR Code to Pay</Text>
+                          </View>
+                        </View>
+                      )}
 
-                        {/* Note / instructions highlight */}
-                        {!!method.details?.note && (
-                          <View style={[af.infoBox, { marginTop: 8 }]}>
-                            <Ionicons name="information-circle-outline" size={14} color={ACCENT} style={{ marginTop: 1 }} />
-                            <Text style={af.infoTxt}>{method.details.note}</Text>
-                          </View>
-                        )}
-                      </View>
-                    </TouchableOpacity>
+                      {/* Account details */}
+                      {(hasAccount || hasName) && (
+                        <View style={af.detailsCard}>
+                          {hasAccount && (
+                            <View style={af.detailRow}>
+                              <Text style={af.detailKey}>Account Number</Text>
+                              <Text style={af.detailVal}>{method.details.account_number}</Text>
+                            </View>
+                          )}
+                          {hasAccount && hasName && <View style={af.detailsDivider} />}
+                          {hasName && (
+                            <View style={af.detailRow}>
+                              <Text style={af.detailKey}>Account Name</Text>
+                              <Text style={af.detailVal}>{method.details.account_name}</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+
+                      {/* Instructions */}
+                      {!!method.details?.note && (
+                        <View style={af.noteBox}>
+                          <Text style={af.noteTitle}>Instructions</Text>
+                          {method.details.note.split('\n').filter(l => l.trim()).map((line, i) => (
+                            <View key={i} style={af.noteLine}>
+                              <Text style={af.noteBullet}>•</Text>
+                              <Text style={af.noteText}>{line.trim()}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
                   );
                 })}
-
-                {/* Reference — copyable, shown once methods are loaded */}
-                {!loadingMethods && methods.length > 0 && (
-                  <>
-                    <TouchableOpacity
-                      style={af.refCopyBox}
-                      onPress={copyReference}
-                      activeOpacity={0.75}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={af.refCopyLabel}>Your Reference Code</Text>
-                        <Text style={af.refCopyCode}>{reference}</Text>
-                      </View>
-                      <View style={af.refCopyBtn}>
-                        <Ionicons name="copy-outline" size={16} color={ACCENT} />
-                        <Text style={af.refCopyBtnTxt}>Copy</Text>
-                      </View>
-                    </TouchableOpacity>
-
-                    <View style={[af.infoBox, { backgroundColor: ORANGE + '10', borderColor: ORANGE + '28' }]}>
-                      <Ionicons name="warning-outline" size={15} color={ORANGE} style={{ marginTop: 1 }} />
-                      <Text style={[af.infoTxt, { color: ORANGE }]}>
-                        You MUST include this reference code in your payment remarks so we can identify your transaction.
-                      </Text>
-                    </View>
-                  </>
-                )}
               </View>
             )}
 
             {/* ── STEP 2: Upload Proof ── */}
             {step === STEPS.RECEIPT && (
               <View style={af.stepWrap}>
-                <Text style={af.stepTitle}>Upload Proof</Text>
-                <Text style={af.stepSub}>Take a screenshot of your payment confirmation and upload it below.</Text>
+                <Text style={af.stepTitle}>Upload Payment Proof</Text>
+                <Text style={af.stepSub}>Take a screenshot of your payment and upload it so we can verify.</Text>
 
-                {/* Preview */}
-                <View style={af.receiptBox}>
+                {/* Amount recap chip */}
+                <View style={af.amountPill}>
+                  <Ionicons name="wallet-outline" size={18} color={ACCENT} />
+                  <Text style={af.amountPillLabel}>Amount paid</Text>
+                  <Text style={af.amountPillVal}>{fmtMoney(amtNum)}</Text>
+                </View>
+
+                {/* Upload tap area */}
+                <TouchableOpacity style={af.receiptTapArea} onPress={handlePickProof} activeOpacity={0.85} disabled={isBusy}>
                   {proof ? (
                     <Image source={{ uri: proof.uri }} style={af.receiptImg} resizeMode="cover" />
                   ) : (
                     <View style={af.receiptPlaceholder}>
-                      <Ionicons name="cloud-upload-outline" size={44} color={TEXT_M + '70'} />
-                      <Text style={af.receiptTxt}>No image selected</Text>
+                      <View style={af.uploadIconCircle}>
+                        <Ionicons name="cloud-upload-outline" size={34} color={ACCENT} />
+                      </View>
+                      <Text style={af.receiptTxt}>Tap to upload screenshot</Text>
+                      <Text style={af.receiptSub}>JPG, PNG supported</Text>
                     </View>
                   )}
-                </View>
-
-                <TouchableOpacity style={af.changeImgBtn} onPress={handlePickProof} activeOpacity={0.85} disabled={isBusy}>
-                  <Ionicons name={proof ? 'refresh-outline' : 'image-outline'} size={16} color={ACCENT} />
-                  <Text style={af.changeImgTxt}>{proof ? 'Change Image' : 'Select Image'}</Text>
                 </TouchableOpacity>
 
-                {/* Summary recap */}
-                <View style={[af.summaryCard, { marginTop: 16 }]}>
-                  <View style={af.summaryRow}>
-                    <Text style={af.summaryKey}>Amount</Text>
-                    <Text style={af.summaryVal}>{fmtMoney(amtNum)}</Text>
-                  </View>
-                  <View style={af.summaryDivider} />
-                  <View style={af.summaryRow}>
-                    <Text style={af.summaryKey}>Reference</Text>
-                    <Text style={[af.summaryVal, { color: ACCENT, fontSize: 13 }]}>{reference}</Text>
-                  </View>
-                </View>
+                {proof && (
+                  <TouchableOpacity style={af.changeImgBtn} onPress={handlePickProof} disabled={isBusy} activeOpacity={0.8}>
+                    <Ionicons name="refresh-outline" size={15} color={ACCENT} />
+                    <Text style={af.changeImgTxt}>Change Image</Text>
+                  </TouchableOpacity>
+                )}
 
                 {uploading && (
                   <View style={af.uploadingRow}>
                     <ActivityIndicator size="small" color={ACCENT} />
-                    <Text style={af.uploadingTxt}>Uploading image…</Text>
+                    <Text style={af.uploadingTxt}>Uploading…</Text>
                   </View>
                 )}
               </View>
@@ -505,27 +475,21 @@ function AddFundsModal({ visible, onClose }) {
             {/* ── STEP 3: Success ── */}
             {step === STEPS.SUCCESS && (
               <View style={af.successWrap}>
-                <LinearGradient colors={[GREEN + '20', GREEN + '08']} style={af.successCircle}>
-                  <Ionicons name="checkmark-circle" size={72} color={GREEN} />
+                <LinearGradient colors={[GREEN + '25', GREEN + '08']} style={af.successCircle}>
+                  <Ionicons name="checkmark-circle" size={80} color={GREEN} />
                 </LinearGradient>
                 <Text style={af.successTitle}>Payment Submitted!</Text>
                 <Text style={af.successMsg}>
-                  Your payment proof has been received and is under review.
-                  Funds will be credited to your wallet within 24 hours.
+                  Your payment proof is under review. Funds will be credited to your wallet within 5 minutes.
                 </Text>
                 <View style={af.statusPill}>
                   <View style={af.statusDot} />
-                  <Text style={af.statusTxt}>Status: Pending</Text>
+                  <Text style={af.statusTxt}>Pending Review</Text>
                 </View>
                 <View style={af.successCard}>
                   <View style={af.summaryRow}>
                     <Text style={af.summaryKey}>Amount</Text>
                     <Text style={af.summaryVal}>{fmtMoney(amtNum)}</Text>
-                  </View>
-                  <View style={af.summaryDivider} />
-                  <View style={af.summaryRow}>
-                    <Text style={af.summaryKey}>Reference</Text>
-                    <Text style={[af.summaryVal, { color: ACCENT, fontSize: 13 }]}>{reference}</Text>
                   </View>
                 </View>
               </View>
@@ -1026,54 +990,55 @@ const cs = StyleSheet.create({
 
 // ─── AddFunds Modal Styles ────────────────────────────────────────────────────
 const af = StyleSheet.create({
-  root: { flex: 1, backgroundColor: WHITE },
+  root: { flex: 1, backgroundColor: '#F7F8FA' },
 
+  // Header
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 16, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+    paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 20, paddingBottom: 16,
   },
-  headerBtn:   { width: 36, height: 36, borderRadius: 12, backgroundColor: '#F7F8FA', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  headerBtn:       { width: 36, height: 36, borderRadius: 18, backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center' },
+  headerTitle:     { fontSize: 17, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
+  headerStepLabel: { fontSize: 11, color: WHITE + 'AA', fontFamily: FONT_R, marginTop: 2 },
 
-  // Progress
-  progressWrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 },
-  progressStep: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  progressDot:  {
-    width: 22, height: 22, borderRadius: 11,
-    borderWidth: 2, borderColor: '#E0E0E0',
-    backgroundColor: WHITE,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  progressDotActive: { borderColor: ACCENT, backgroundColor: ACCENT },
-  progressDotDone:   { borderColor: GREEN, backgroundColor: GREEN },
-  progressDotTxt:    { fontSize: 10, fontWeight: '800', color: TEXT_M, fontFamily: FONT_B },
-  progressLine: { flex: 1, height: 2, backgroundColor: '#E0E0E0', marginHorizontal: 4 },
+  // Progress bar
+  progressBarTrack: { height: 3, backgroundColor: '#E0E8E8' },
+  progressBarFill:  { height: 3, backgroundColor: ACCENT },
 
-  body: { padding: 20, paddingBottom: 10 },
-  stepWrap: { gap: 0 },
-  stepTitle: { fontSize: 22, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, marginBottom: 6 },
-  stepSub:   { fontSize: 13.5, color: TEXT_M, fontFamily: FONT_R, marginBottom: 24, lineHeight: 20 },
+  body:      { padding: 20, paddingBottom: 20 },
+  stepWrap:  { gap: 16 },
+  stepTitle: { fontSize: 22, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  stepSub:   { fontSize: 13.5, color: TEXT_M, fontFamily: FONT_R, lineHeight: 20, marginTop: -8 },
 
-  // Amount
+  // Amount entry
   amountBox: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F7F8FA', borderRadius: 18,
-    borderWidth: 2, borderColor: ACCENT + '40',
-    paddingHorizontal: 20, paddingVertical: 16, marginBottom: 10,
+    backgroundColor: WHITE, borderRadius: 20,
+    borderWidth: 2, borderColor: ACCENT + '50',
+    paddingHorizontal: 20, paddingVertical: 18,
+    shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 3,
   },
-  amountPrefix: { fontSize: 28, fontWeight: '900', color: BRAND, fontFamily: FONT_B, marginRight: 6 },
-  amountInput:  { flex: 1, fontSize: 36, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, padding: 0 },
-  amountHint:   { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, marginBottom: 18 },
+  amountPrefix: { fontSize: 30, fontWeight: '900', color: BRAND, fontFamily: FONT_B, marginRight: 8 },
+  amountInput:  { flex: 1, fontSize: 42, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, padding: 0 },
+  amountHint:   { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, marginTop: -8 },
+  quickLabel:   { fontSize: 12, fontWeight: '700', color: TEXT_M, fontFamily: FONT_M, textTransform: 'uppercase', letterSpacing: 0.8 },
   quickAmounts: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  qAmt:         { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: '#E0E0E0', backgroundColor: WHITE },
-  qAmtActive:   { borderColor: ACCENT, backgroundColor: ACCENT + '10' },
-  qAmtTxt:      { fontSize: 14, fontWeight: '700', color: TEXT_M, fontFamily: FONT_M },
+  qAmt:         { paddingHorizontal: 22, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, borderColor: '#E0E0E0', backgroundColor: WHITE },
+  qAmtActive:   { borderColor: ACCENT, backgroundColor: ACCENT },
+  qAmtTxt:      { fontSize: 15, fontWeight: '700', color: TEXT_M, fontFamily: FONT_M },
+
+  // Amount pill (on payment & upload steps)
+  amountPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: WHITE, borderRadius: 16, padding: 16,
+    borderWidth: 1.5, borderColor: ACCENT + '30',
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  amountPillLabel: { flex: 1, fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
+  amountPillVal:   { fontSize: 22, fontWeight: '900', color: BRAND, fontFamily: FONT_B },
 
   // Summary
-  summaryCard: {
-    backgroundColor: '#F7F8FA', borderRadius: 18, overflow: 'hidden', marginBottom: 16,
-  },
+  summaryCard:    { backgroundColor: WHITE, borderRadius: 18, overflow: 'hidden' },
   summaryRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16 },
   summaryDivider: { height: 1, backgroundColor: '#EBEBEB' },
   summaryKey:     { fontSize: 14, color: TEXT_M, fontFamily: FONT_R },
@@ -1083,95 +1048,87 @@ const af = StyleSheet.create({
   infoBox: {
     flexDirection: 'row', gap: 10, alignItems: 'flex-start',
     backgroundColor: ACCENT + '10', borderRadius: 12,
-    borderWidth: 1, borderColor: ACCENT + '25',
-    padding: 14,
+    borderWidth: 1, borderColor: ACCENT + '25', padding: 14,
   },
   infoTxt: { flex: 1, fontSize: 12.5, color: ACCENT, fontFamily: FONT_R, lineHeight: 18 },
 
-  // Methods loading / empty
-  methodsLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 18, justifyContent: 'center' },
+  // Methods loading
+  methodsLoadingRow: { alignItems: 'center', gap: 12, padding: 40, justifyContent: 'center' },
   methodsLoadingTxt: { fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
 
-  // Methods
+  // Method card
   methodCard: {
-    backgroundColor: WHITE, borderRadius: 16, padding: 16,
-    borderWidth: 2, borderColor: '#E8E8E8', marginBottom: 12,
+    backgroundColor: WHITE, borderRadius: 20, padding: 20,
+    borderWidth: 1.5, borderColor: '#E8E8E8',
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 12, elevation: 3,
   },
-  methodCardActive:  { borderColor: ACCENT, backgroundColor: ACCENT + '06' },
-  methodTitleRow:    { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 10 },
-  methodTitle:       { fontSize: 15, fontWeight: '800', color: TEXT_H, fontFamily: FONT_B },
-  methodSub:         { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, marginTop: 3 },
-  methodRadio:       { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#DDD', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  methodCardActive:  { borderColor: ACCENT },
+  methodTitleRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  methodIconCircle:  { width: 44, height: 44, borderRadius: 22, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center' },
+  methodTitle:       { fontSize: 17, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  methodSub:         { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, marginTop: 2 },
+  methodRadio:       { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#DDD', alignItems: 'center', justifyContent: 'center' },
   methodRadioActive: { borderColor: ACCENT },
-  methodRadioDot:    { width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT },
+  methodRadioDot:    { width: 12, height: 12, borderRadius: 6, backgroundColor: ACCENT },
+
+  // QR code
+  qrWrap:     { alignItems: 'center', marginBottom: 16 },
+  qrFrame:    { padding: 12, backgroundColor: WHITE, borderRadius: 20, borderWidth: 1.5, borderColor: '#E8E8E8', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
+  qrImage:    { width: 260, height: 260, borderRadius: 12 },
+  qrBadge:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, backgroundColor: ACCENT, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
+  qrBadgeTxt: { fontSize: 13, fontWeight: '700', color: WHITE, fontFamily: FONT_M },
+
+  // Instructions note
+  noteBox:    { backgroundColor: '#F7F8FA', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#EBEBEB' },
+  noteTitle:  { fontSize: 13, fontWeight: '800', color: TEXT_H, fontFamily: FONT_B, marginBottom: 10 },
+  noteLine:   { flexDirection: 'row', gap: 8, marginBottom: 6 },
+  noteBullet: { fontSize: 14, color: ACCENT, fontWeight: '900' },
+  noteText:   { flex: 1, fontSize: 13, color: TEXT_M, fontFamily: FONT_R, lineHeight: 19 },
 
   // Bank details
-  detailsCard:    { backgroundColor: '#F7F8FA', borderRadius: 14, overflow: 'hidden', marginBottom: 0, borderWidth: 1, borderColor: '#EBEBEB' },
+  detailsCard:    { backgroundColor: '#F7F8FA', borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#EBEBEB' },
   detailsDivider: { height: 1, backgroundColor: '#EBEBEB' },
   detailRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 },
   detailKey:      { fontSize: 12, color: TEXT_M, fontFamily: FONT_R },
   detailVal:      { fontSize: 13, fontWeight: '700', color: TEXT_H, fontFamily: FONT_B, maxWidth: '60%', textAlign: 'right' },
 
-  // Reference copy box
-  refCopyBox: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: ACCENT + '08', borderRadius: 14,
-    borderWidth: 1.5, borderColor: ACCENT + '30',
-    paddingHorizontal: 16, paddingVertical: 14,
-    marginBottom: 10,
-  },
-  refCopyLabel:  { fontSize: 11, color: TEXT_M, fontFamily: FONT_R, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.6 },
-  refCopyCode:   { fontSize: 18, fontWeight: '900', color: BRAND, fontFamily: FONT_B, letterSpacing: 1 },
-  refCopyBtn:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingLeft: 12 },
-  refCopyBtnTxt: { fontSize: 12, fontWeight: '700', color: ACCENT, fontFamily: FONT_M },
-
-  // Change image
-  changeImgBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 14, marginBottom: 4 },
-  changeImgTxt: { fontSize: 13, fontWeight: '700', color: ACCENT, fontFamily: FONT_M },
-
-  // Uploading row
-  uploadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center', marginTop: 12 },
-  uploadingTxt: { fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
-
-  // Receipt
-  receiptBox: {
-    borderRadius: 18, borderWidth: 2, borderColor: '#E0E0E0',
+  // Receipt upload
+  receiptTapArea: {
+    borderRadius: 20, borderWidth: 2, borderColor: ACCENT + '40',
     borderStyle: 'dashed', overflow: 'hidden',
-    backgroundColor: '#F7F8FA', marginBottom: 12,
-    minHeight: 180,
+    backgroundColor: WHITE, minHeight: 200,
   },
-  receiptImg: { width: '100%', height: 220 },
-  receiptPlaceholder: { flex: 1, minHeight: 180, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  receiptTxt: { fontSize: 14, fontWeight: '700', color: TEXT_M, fontFamily: FONT_M },
-  receiptSub: { fontSize: 12, color: TEXT_M + 'AA', fontFamily: FONT_R },
-  reUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center' },
-  reUploadTxt: { fontSize: 13, color: ACCENT, fontFamily: FONT_M, fontWeight: '700' },
+  receiptImg:         { width: '100%', height: 240 },
+  receiptPlaceholder: { minHeight: 200, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 },
+  uploadIconCircle:   { width: 68, height: 68, borderRadius: 34, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
+  receiptTxt:         { fontSize: 15, fontWeight: '700', color: TEXT_H, fontFamily: FONT_M },
+  receiptSub:         { fontSize: 12, color: TEXT_M, fontFamily: FONT_R },
+  changeImgBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', paddingVertical: 10 },
+  changeImgTxt:       { fontSize: 13, fontWeight: '700', color: ACCENT, fontFamily: FONT_M },
+  uploadingRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center' },
+  uploadingTxt:       { fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
 
   // Status pill
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: ORANGE + '18', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 7 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: ORANGE + '18', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
   statusDot:  { width: 8, height: 8, borderRadius: 4, backgroundColor: ORANGE },
   statusTxt:  { fontSize: 13, fontWeight: '800', color: ORANGE, fontFamily: FONT_B },
 
   // Success
-  successCircle: { width: 110, height: 110, borderRadius: 55, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  successCard:   { width: '100%', backgroundColor: '#F7F8FA', borderRadius: 16, overflow: 'hidden', marginTop: 6 },
-  successWrap:       { flex: 1, alignItems: 'center', paddingTop: 60, gap: 14, paddingHorizontal: 24 },
-  successIcon:       { marginBottom: 8 },
-  successTitle:      { fontSize: 26, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, textAlign: 'center' },
-  successMsg:        { fontSize: 14, color: TEXT_M, fontFamily: FONT_R, lineHeight: 22, textAlign: 'center' },
-  successDetail:     { flexDirection: 'row', justifyContent: 'space-between', width: '100%', backgroundColor: '#F7F8FA', borderRadius: 14, padding: 16, marginTop: 10 },
-  successDetailKey:  { fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
-  successDetailVal:  { fontSize: 15, fontWeight: '900', color: BRAND, fontFamily: FONT_B },
+  successWrap:  { flex: 1, alignItems: 'center', paddingTop: 60, gap: 16, paddingHorizontal: 24 },
+  successCircle: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
+  successCard:  { width: '100%', backgroundColor: WHITE, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: '#EBEBEB' },
+  successTitle: { fontSize: 28, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, textAlign: 'center' },
+  successMsg:   { fontSize: 14, color: TEXT_M, fontFamily: FONT_R, lineHeight: 22, textAlign: 'center' },
 
   // Footer
-  footer: { paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
-  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, justifyContent: 'center' },
-  errorTxt: { fontSize: 12.5, color: DANGER, fontFamily: FONT_R, flex: 1 },
+  footer:    { paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0', backgroundColor: WHITE },
+  errorRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  errorTxt:  { fontSize: 12.5, color: DANGER, fontFamily: FONT_R, flex: 1 },
   ctaBtn: {
-    backgroundColor: BRAND, borderRadius: 16, paddingVertical: 16,
+    backgroundColor: BRAND, borderRadius: 16, paddingVertical: 17,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    shadowColor: BRAND, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 6,
   },
-  ctaBtnTxt:      { fontSize: 15, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
+  ctaBtnTxt:      { fontSize: 16, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
   ctaBtnDisabled: { opacity: 0.45, shadowOpacity: 0 },
 });

@@ -89,7 +89,6 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   const [likesCount, setLikesCount] = useState(likes_count ?? 0);
   const [myReaction, setMyReaction] = useState(my_reaction || (is_liked ? 'like' : null));
   const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [following, setFollowing]   = useState(false);
 
   /** Called by ReelEngagementBar when any reaction is sent */
   const handleReaction = useCallback((reactionType) => {
@@ -127,11 +126,6 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   const handleOpenProfile = useCallback(() => {
     if (userId) navigation.push('UserProfile', { userId });
   }, [userId, navigation]);
-
-  const handleFollow = useCallback(() => {
-    setFollowing(f => !f);
-    // TODO: wire follow API
-  }, []);
 
   // Parse caption — split hashtags out for separate display
   const rawCaption = caption ? decodeHtml(caption) : '';
@@ -172,27 +166,15 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
           </View>
         </TouchableOpacity>
 
-        {/* Username + follow */}
-        <View style={styles.userRow}>
-          <TouchableOpacity activeOpacity={0.8} onPress={handleOpenProfile} style={styles.usernameWrap}>
-            {user?.verified ? (
-              <Ionicons name="checkmark-circle" size={13} color={ACCENT} style={{ marginRight: 3 }} />
-            ) : null}
-            <Text style={styles.username} numberOfLines={1}>
-              @{user?.username}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.followBtn, following && styles.followBtnActive]}
-            activeOpacity={0.8}
-            onPress={handleFollow}
-          >
-            <Text style={[styles.followTxt, following && styles.followTxtActive]}>
-              {following ? 'Following' : 'Follow'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Username */}
+        <TouchableOpacity activeOpacity={0.8} onPress={handleOpenProfile} style={styles.userRow}>
+          {user?.verified ? (
+            <Ionicons name="checkmark-circle" size={13} color={ACCENT} style={{ marginRight: 3 }} />
+          ) : null}
+          <Text style={styles.username} numberOfLines={1}>
+            @{user?.username}
+          </Text>
+        </TouchableOpacity>
 
         {/* Caption */}
         {captionText ? (
@@ -325,40 +307,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 7,
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  usernameWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   username: {
     fontSize: 14,
     fontFamily: 'ReadexPro_600SemiBold',
     color: Colors.white,
     ...TEXT_SHADOW,
-  },
-
-  // Follow button
-  followBtn: {
-    borderWidth: 1.5,
-    borderColor: Colors.white,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  followBtnActive: {
-    backgroundColor: withOpacity(Colors.white, 0.18),
-    borderColor: withOpacity(Colors.white, 0.4),
-  },
-  followTxt: {
-    color: Colors.white,
-    fontSize: 12,
-    fontFamily: 'WorkSans_600SemiBold',
-    ...TEXT_SHADOW,
-  },
-  followTxtActive: {
-    color: withOpacity(Colors.white, 0.7),
   },
 
   // Caption

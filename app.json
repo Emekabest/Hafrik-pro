@@ -20,10 +20,21 @@
         "AVAudioSessionCategory": "ambient",
         "AVAudioSessionCategoryOptions": [
           "mixWithOthers"
-        ]
+        ],
+        "NSPhotoLibraryUsageDescription": "Hafrik needs access to your photo library to send images in chats.",
+        "NSMicrophoneUsageDescription": "Hafrik needs microphone access to record and send voice messages.",
+        "NSCameraUsageDescription": "Hafrik needs camera access to take and send photos."
       }
     },
     "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Hafrik needs access to your photo library to send images in chats.",
+          "cameraPermission": "Hafrik needs camera access to take and send photos.",
+          "microphonePermission": "Hafrik needs microphone access to record voice messages."
+        }
+      ],
       ["expo-font", {
         "fonts": [
           "./assets/fonts/ionicons.ttf",

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Modal, TouchableWithoutFeedback, Alert, Linking, ActivityIndicator } from "react-native";
+import { useNavigation } from '@react-navigation/native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,9 +34,11 @@ const formatCount = (n) => {
 
 const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followingsCount, groupsCount, pagesCount, isOwner, isFollowing, onProfileUpdated }) => {
     
-    const {token} = useAuth();
+    const { token } = useAuth();
+    const navigation = useNavigation();
 
-    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editModalVisible,   setEditModalVisible]   = useState(false);
+    const [editSheetVisible,   setEditSheetVisible]   = useState(false);
     const [coverImage, setCoverImage] = useState(null);
     const [avatarImage, setAvatarImage] = useState(null);
     const [fullscreenImage, setFullscreenImage] = useState(null);
@@ -51,10 +54,14 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
     };
 
     const biography = userDetails?.bio || userDetails?.about_me || userDetails?.biography || userDetails?.user_biography || '';
-    const countryLabel = userDetails?.country_name || userDetails?.country_label || userDetails?.user_country_name || userDetails?.country || '';
-    const cityLabel = userDetails?.current_city || userDetails?.city || userDetails?.user_current_city || '';
-    const roleLabel = userDetails?.role || '';
-    const originLabel = userDetails?.origin || userDetails?.hometown || userDetails?.from || '';
+    // country_name is set by profilecontroller; never use raw country/user_country (those are IDs)
+    const countryLabel = userDetails?.country_name || userDetails?.country_title || userDetails?.country_label || userDetails?.user_country_name || '';
+
+    // current_city = where they live now (set by profilecontroller from user_current_city / current_city / city)
+    const cityLabel   = userDetails?.current_city || userDetails?.user_current_city || '';
+    const roleLabel   = userDetails?.role || '';
+    // hometown = where they are FROM (set by profilecontroller from user_hometown / hometown)
+    const originLabel = userDetails?.hometown || userDetails?.user_hometown || '';
     const dobLabel = userDetails?.dob || userDetails?.date_of_birth || '';
     const monetizationEnabled = !!userDetails?.monetization_enabled;
 
@@ -339,7 +346,7 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     <Text style={styles.bioText}>{biography}</Text>
                 )}
 
-                {/* Info chips — only rendered if value exists */}
+                {/* Info chips — gender, dob, groups, pages */}
                 <View style={styles.infoChipsRow}>
                     {!!getGender(userDetails?.gender) && getGender(userDetails?.gender) !== 'Unknown' && (
                         <View style={styles.infoChip}>
@@ -349,20 +356,6 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                                 color={ACCENT}
                             />
                             <Text style={styles.infoChipText}>{getGender(userDetails?.gender)}</Text>
-                        </View>
-                    )}
-                    {!!(cityLabel || countryLabel) && (
-                        <View style={styles.infoChip}>
-                            <Ionicons name="location-outline" size={13} color={ACCENT} />
-                            <Text style={styles.infoChipText}>
-                                Lives in {[cityLabel, countryLabel].filter(Boolean).join(', ')}
-                            </Text>
-                        </View>
-                    )}
-                    {!!originLabel && (
-                        <View style={styles.infoChip}>
-                            <Ionicons name="home-outline" size={13} color={ACCENT} />
-                            <Text style={styles.infoChipText}>From {originLabel}</Text>
                         </View>
                     )}
                     {!!dobLabel && (
@@ -405,10 +398,22 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
 
                 {/* Action buttons */}
                 {isOwner ? (
-                    <TouchableOpacity style={styles.editButton} activeOpacity={0.8} onPress={() => setEditModalVisible(true)}>
-                        <Ionicons name="create-outline" size={16} color={BRAND} />
-                        <Text style={styles.editButtonText}>Edit Profile</Text>
-                    </TouchableOpacity>
+                    <View style={styles.ownerActions}>
+                        <TouchableOpacity style={styles.editButton} activeOpacity={0.8} onPress={() => setEditSheetVisible(true)}>
+                            <Ionicons name="create-outline" size={15} color={BRAND} />
+                            <Text style={styles.editButtonText}>Edit Profile</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            style={styles.membershipBtn}
+                            onPress={() => navigation.navigate('InAppBrowser', { title: 'Membership', url: 'https://hafrik.com/settings/membership' })}
+                        >
+                            <LinearGradient colors={[BRAND, '#0f5060']} style={styles.membershipGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                                <Ionicons name="star" size={13} color="#fbbf24" />
+                                <Text style={styles.membershipTxt}>Membership</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
                 ) : (
                     <View style={styles.actionButtonsRow}>
                         {/* Follow / Following toggle */}
@@ -452,12 +457,53 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                 )}
             </View>
 
-            <EditModal 
-                visible={editModalVisible} 
+            <EditModal
+                visible={editModalVisible}
                 onClose={() => setEditModalVisible(false)}
                 userDetails={userDetails || user}
                 onProfileUpdated={onProfileUpdated}
             />
+
+            {/* ── Edit Profile Tab Sheet ── */}
+            <Modal visible={editSheetVisible} transparent animationType="slide" onRequestClose={() => setEditSheetVisible(false)}>
+                <TouchableWithoutFeedback onPress={() => setEditSheetVisible(false)}>
+                    <View style={styles.editSheetOverlay}>
+                        <TouchableWithoutFeedback>
+                            <View style={styles.editSheet}>
+                                <View style={styles.editSheetHandle} />
+                                <Text style={styles.editSheetTitle}>Edit Profile</Text>
+                                <Text style={styles.editSheetSub}>Choose a section to edit</Text>
+                                {[
+                                    { icon: 'person',       grad: [BRAND, '#0f5060'],        label: 'Personal Info',  sub: 'Name, bio, birthday, gender',    url: 'https://hafrik.com/settings/profile' },
+                                    { icon: 'location',     grad: ['#10b981', '#047857'],    label: 'Location',       sub: 'City, country, hometown',        url: 'https://hafrik.com/settings/profile/location' },
+                                    { icon: 'briefcase',    grad: ['#f97316', '#c2410c'],    label: 'Work',           sub: 'Job title, company, industry',   url: 'https://hafrik.com/settings/profile/work' },
+                                    { icon: 'school',       grad: ['#8b5cf6', '#5b21b6'],    label: 'Education',      sub: 'Schools, degrees, fields',       url: 'https://hafrik.com/settings/profile/education' },
+                                    { icon: 'share-social', grad: ['#3b82f6', '#1d4ed8'],    label: 'Social Links',   sub: 'Instagram, LinkedIn, YouTube…',  url: 'https://hafrik.com/settings/profile/social' },
+                                ].map((item, i, arr) => (
+                                    <TouchableOpacity
+                                        key={i}
+                                        activeOpacity={0.8}
+                                        style={[styles.editSheetRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}
+                                        onPress={() => {
+                                            setEditSheetVisible(false);
+                                            setTimeout(() => navigation.navigate('InAppBrowser', { title: item.label, url: item.url }), 120);
+                                        }}
+                                    >
+                                        <LinearGradient colors={item.grad} style={styles.editSheetRowIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                                            <Ionicons name={item.icon} size={17} color={Colors.white} />
+                                        </LinearGradient>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.editSheetRowLabel}>{item.label}</Text>
+                                            <Text style={styles.editSheetRowSub}>{item.sub}</Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={15} color="#c0c8cc" />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
             
             {/* Avatar options bottom sheet */}
             <Modal visible={avatarOptionsVisible} transparent animationType="fade" onRequestClose={() => setAvatarOptionsVisible(false)}>
@@ -711,6 +757,52 @@ const styles = StyleSheet.create({
         fontFamily: AppDetails.fontFamily?.body,
     },
 
+    // ── Location cards ────────────────────────────────────────────
+    locationCardsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 14,
+        gap: 10,
+    },
+    locationCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.surfaceCool,
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: Colors.borderSoft ?? '#e5e7eb',
+        flex: 1,
+        minWidth: 130,
+    },
+    locationCardIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+    },
+    locationCardBody: {
+        flex: 1,
+    },
+    locationCardLabel: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: Colors.mutedBlueGray,
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+        marginBottom: 2,
+    },
+    locationCardValue: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: Colors.textBodyIndigo ?? BRAND,
+        fontFamily: AppDetails.fontFamily?.inter?.bold,
+    },
+
     // ── Info chips ────────────────────────────────────────────────
     infoChipsRow: {
         flexDirection: 'row',
@@ -789,24 +881,112 @@ const styles = StyleSheet.create({
     },
 
     // ── Action buttons ────────────────────────────────────────────
+    ownerActions: {
+        flexDirection: 'row',
+        marginTop: 16,
+        gap: 10,
+    },
     editButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 5,
         backgroundColor: Colors.surfaceCool,
         borderRadius: 12,
         height: 44,
-        marginTop: 16,
-        borderWidth: 1,
-        borderColor: Colors.borderSoft,
+        borderWidth: 1.5,
+        borderColor: BRAND + '40',
     },
     editButtonText: {
-        fontSize: 15,
+        fontSize: 13.5,
         fontFamily: AppDetails.fontFamily?.outfit?.medium,
         color: BRAND,
-        marginLeft: 6,
-        fontWeight: '600',
+        fontWeight: '700',
     },
+    membershipBtn: {
+        flex: 1,
+        borderRadius: 12,
+        overflow: 'hidden',
+        height: 44,
+    },
+    membershipGrad: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        borderRadius: 12,
+    },
+    membershipTxt: {
+        fontSize: 13.5,
+        fontWeight: '700',
+        color: Colors.white,
+        fontFamily: AppDetails.fontFamily?.outfit?.medium,
+    },
+
+    // ── Edit sheet ──
+    editSheetOverlay: {
+        flex: 1,
+        backgroundColor: '#00000066',
+        justifyContent: 'flex-end',
+    },
+    editSheet: {
+        backgroundColor: Colors.white,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingHorizontal: 18,
+        paddingTop: 12,
+        paddingBottom: 40,
+    },
+    editSheetHandle: {
+        width: 38,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#c0c8cc',
+        alignSelf: 'center',
+        marginBottom: 18,
+    },
+    editSheetTitle: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: BRAND,
+        marginBottom: 3,
+        fontFamily: AppDetails.fontFamily?.redex?.bold,
+    },
+    editSheetSub: {
+        fontSize: 12.5,
+        color: Colors.secondaryText,
+        marginBottom: 20,
+    },
+    editSheetRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingVertical: 14,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: Colors.borderSoft ?? '#e5e7eb',
+    },
+    editSheetRowIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: 13,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+    },
+    editSheetRowLabel: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: BRAND,
+        fontFamily: AppDetails.fontFamily?.redex?.bold,
+    },
+    editSheetRowSub: {
+        fontSize: 11.5,
+        color: Colors.secondaryText,
+        marginTop: 2,
+    },
+
     actionButtonsRow: {
         flexDirection: 'row',
         marginTop: 16,

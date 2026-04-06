@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   Modal,
   Animated,
@@ -19,8 +18,7 @@ import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, CommonActions } from "@react-navigation/native";
-import apiClient from '../../api/apiClient';
-
+import apiClient from "../../api/apiClient";
 import AppDetails from "../../helpers/appdetails";
 import { useAuth } from "../../AuthContext";
 import useStore from "../../repository/store";
@@ -28,87 +26,104 @@ import { Colors } from "../../theme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
-// ─── Brand ────────────────────────────────────────────────────────────────────
-const BRAND  = Colors.primaryDark;
-const ACCENT = Colors.primary;
-const CREAM  = Colors.background;
-const DARK   = Colors.black;
-const MUTED  = Colors.secondaryText;
-const WHITE  = Colors.white;
-const DANGER = Colors.destructive;
-const BLACK  = Colors.black;
+const BRAND   = Colors.primaryDark;
+const ACCENT  = Colors.primary;
+const CREAM   = Colors.background;
+const DARK    = Colors.black;
+const MUTED   = Colors.secondaryText;
+const WHITE   = Colors.white;
+const DANGER  = Colors.destructive;
 
-const FONT_B = AppDetails?.fontFamily?.redex?.bold ?? "System";
+const FONT_B = AppDetails?.fontFamily?.redex?.bold    ?? "System";
 const FONT_R = AppDetails?.fontFamily?.inter?.regular ?? "System";
-const FONT_M = AppDetails?.fontFamily?.inter?.medium ?? "System";
+const FONT_M = AppDetails?.fontFamily?.inter?.medium  ?? "System";
 
-const DRAWER_W = Math.min(SCREEN_W * 0.82, 340);
+const DRAWER_W = Math.min(SCREEN_W * 0.84, 340);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const safeTitle = (s = "") => String(s || "").trim();
-const capName   = (name = "") =>
-  name ? name.charAt(0).toUpperCase() + name.slice(1).toLowerCase() : "User";
-
-const initials = (name = "") => {
+const capName   = (n = "") => n ? n.charAt(0).toUpperCase() + n.slice(1).toLowerCase() : "User";
+const initials  = (name = "") => {
   const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "🙂";
   const a = parts[0]?.[0] || "";
   const b = parts[1]?.[0] || "";
   return (a + b).toUpperCase() || "🙂";
 };
-
 const fmtBalance = (amount, currency = "NGN") => {
   const sym = currency === "NGN" ? "₦" : currency === "USD" ? "$" : currency === "GHS" ? "₵" : currency + " ";
   return `${sym}${Number(amount ?? 0).toLocaleString()}`;
 };
 
-// ─── Drawer Item ──────────────────────────────────────────────────────────────
-const DrawerItem = ({ icon, title, subtitle, onPress, iconColor, iconBg, badge }) => (
-  <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={styles.item}>
-    <View style={[styles.itemIconWrap, iconBg && { backgroundColor: iconBg }]}>
-      <Ionicons name={icon} size={17} color={iconColor || ACCENT} />
-    </View>
-    <View style={styles.itemTextWrap}>
-      <Text style={styles.itemTitle} numberOfLines={1}>{title}</Text>
-      {!!subtitle && <Text style={styles.itemSub} numberOfLines={1}>{subtitle}</Text>}
+// ── Quick action button ───────────────────────────────────────────────────────
+const QuickBtn = ({ icon, label, gradient, onPress }) => (
+  <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={qb.wrap}>
+    <LinearGradient colors={gradient} style={qb.icon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <Ionicons name={icon} size={18} color={WHITE} />
+    </LinearGradient>
+    <Text style={qb.label} numberOfLines={1}>{label}</Text>
+  </TouchableOpacity>
+);
+const qb = StyleSheet.create({
+  wrap:  { flex: 1, alignItems: "center", gap: 6, paddingVertical: 4 },
+  icon:  { width: 48, height: 48, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  label: { fontSize: 10.5, fontWeight: "700", color: DARK, fontFamily: FONT_M, textAlign: "center" },
+});
+
+// ── Menu row ─────────────────────────────────────────────────────────────────
+const MenuItem = ({ icon, label, sub, onPress, iconGrad, badge, last }) => (
+  <TouchableOpacity activeOpacity={0.75} onPress={onPress} style={[mi.row, last && { borderBottomWidth: 0 }]}>
+    <LinearGradient colors={iconGrad} style={mi.iconWrap} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <Ionicons name={icon} size={16} color={WHITE} />
+    </LinearGradient>
+    <View style={mi.text}>
+      <Text style={mi.label} numberOfLines={1}>{label}</Text>
+      {!!sub && <Text style={mi.sub} numberOfLines={1}>{sub}</Text>}
     </View>
     {badge ? (
-      <View style={styles.badgeWrap}>
-        <Text style={styles.badgeText}>{badge}</Text>
-      </View>
+      <View style={mi.badge}><Text style={mi.badgeTxt}>{badge}</Text></View>
     ) : (
-      <Ionicons name="chevron-forward" size={15} color={BLACK + "33"} />
+      <Ionicons name="chevron-forward" size={14} color={DARK + "28"} />
     )}
   </TouchableOpacity>
 );
+const mi = StyleSheet.create({
+  row: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.borderSoft ?? "#e5e7eb",
+  },
+  iconWrap: { width: 36, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  text:  { flex: 1 },
+  label: { fontSize: 13.5, fontWeight: "800", color: DARK, fontFamily: FONT_B },
+  sub:   { fontSize: 11, color: MUTED, marginTop: 1, fontFamily: FONT_R },
+  badge: { backgroundColor: DANGER, borderRadius: 10, minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
+  badgeTxt: { fontSize: 10, fontWeight: "900", color: WHITE, fontFamily: FONT_B },
+});
 
-// ─── Grid shortcut button ─────────────────────────────────────────────────────
-const GridBtn = ({ icon, label, onPress, gradient }) => (
-  <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={styles.gridBtn}>
-    <LinearGradient colors={gradient} style={styles.gridIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-      <Ionicons name={icon} size={17} color={WHITE} />
-    </LinearGradient>
-    <Text style={styles.gridLabel} numberOfLines={1}>{label}</Text>
-  </TouchableOpacity>
+// ── Section label ─────────────────────────────────────────────────────────────
+const SectionLabel = ({ children }) => (
+  <Text style={sl.text}>{children}</Text>
 );
-
-// ─── Section Header ───────────────────────────────────────────────────────────
-const SectionTitle = ({ children }) => (
-  <Text style={styles.sectionTitle}>{children}</Text>
-);
+const sl = StyleSheet.create({
+  text: {
+    fontSize: 10, fontWeight: "800", color: MUTED,
+    letterSpacing: 1.5, textTransform: "uppercase",
+    fontFamily: FONT_B, paddingHorizontal: 16,
+    paddingTop: 20, paddingBottom: 8,
+  },
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 const DrawerNavigation = ({ isVisible, onClose }) => {
-  const navigation  = useNavigation();
+  const navigation              = useNavigation();
   const { user, logout, token } = useAuth();
-  const userAvatar  = useStore((s) => s.userAvatar);
-  const insets      = useSafeAreaInsets();
+  const userAvatar              = useStore((s) => s.userAvatar);
+  const insets                  = useSafeAreaInsets();
 
   const [showModal, setShowModal] = useState(false);
-
-  // ── Balance state ───────────────────────────────────────────────────────────
-  const [wallet, setWallet] = useState(null);
-  const [points, setPoints] = useState(null);
+  const [wallet,    setWallet]    = useState(null);
+  const [points,    setPoints]    = useState(null);
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -138,205 +153,243 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
     [userAvatar, user]
   );
 
-  // ── Animation helpers ───────────────────────────────────────────────────────
   const close = useCallback(() => {
     Animated.parallel([
-      Animated.timing(translateX,     { toValue: -DRAWER_W, duration: 200, useNativeDriver: true }),
-      Animated.timing(overlayOpacity, { toValue: 0,         duration: 200, useNativeDriver: true }),
-    ]).start(() => {
-      setShowModal(false);
-      onClose?.();
-    });
+      Animated.timing(translateX,     { toValue: -DRAWER_W, duration: 220, useNativeDriver: true }),
+      Animated.timing(overlayOpacity, { toValue: 0,         duration: 220, useNativeDriver: true }),
+    ]).start(() => { setShowModal(false); onClose?.(); });
   }, [onClose, overlayOpacity, translateX]);
 
   const open = useCallback(() => {
     setShowModal(true);
     Animated.parallel([
-      Animated.timing(translateX,     { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(overlayOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.spring(translateX,     { toValue: 0, tension: 70, friction: 12, useNativeDriver: true }),
+      Animated.timing(overlayOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
     ]).start();
   }, [overlayOpacity, translateX]);
 
   useEffect(() => {
-    if (isVisible) {
-      open();
-      fetchBalance();
-    } else if (showModal) {
-      close();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (isVisible) { open(); fetchBalance(); }
+    else if (showModal) { close(); }
   }, [isVisible]);
 
-  // ── Auto-refresh drawer data every 30 s in the background ───────────────
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchBalance();
-    }, 30_000);
+    const interval = setInterval(fetchBalance, 30_000);
     return () => clearInterval(interval);
   }, [fetchBalance]);
 
-  // ── Navigation helpers ──────────────────────────────────────────────────────
-  const handleNavigate = useCallback(
-    (screen, params) => {
-      close();
-      setTimeout(() => navigation.navigate(screen, params), 180);
-    },
-    [close, navigation]
-  );
+  const go = useCallback((screen, params) => {
+    close();
+    setTimeout(() => navigation.navigate(screen, params), 200);
+  }, [close, navigation]);
 
-  const openWeb = useCallback(
-    (_title, url) => {
-      close();
-      Linking.openURL(url).catch(() => {});
-    },
-    [close]
-  );
+  const openWeb = useCallback((title, url) => {
+    close();
+    setTimeout(() => navigation.navigate("InAppBrowser", { title, url }), 200);
+  }, [close, navigation]);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
   const handleLogout = useCallback(() => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out of Hafrik?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            close();
-            await logout();
-            navigation.dispatch(
-              CommonActions.reset({ index: 0, routes: [{ name: "Login" }] })
-            );
-          },
+    Alert.alert("Sign Out", "Are you sure you want to sign out of Hafrik?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out", style: "destructive",
+        onPress: async () => {
+          close();
+          await logout();
+          navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: "Login" }] }));
         },
-      ]
-    );
+      },
+    ]);
   }, [close, logout, navigation]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <Modal
-      animationType="none"
-      transparent
-      visible={showModal}
-      onRequestClose={close}
-      statusBarTranslucent
-    >
-      <View style={styles.modalRoot}>
+    <Modal animationType="none" transparent visible={showModal} onRequestClose={close} statusBarTranslucent>
+      <View style={s.root}>
+
         {/* Dim overlay */}
         <TouchableWithoutFeedback onPress={close}>
-          <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]} />
+          <Animated.View style={[s.overlay, { opacity: overlayOpacity }]} />
         </TouchableWithoutFeedback>
 
-        {/* Drawer panel */}
-        <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
-          {/* ── Header ── */}
-          <View style={[styles.drawerHeader, { paddingTop: insets.top + 12 }]}>
+        {/* Drawer */}
+        <Animated.View style={[s.drawer, { transform: [{ translateX }] }]}>
+
+          {/* ══ HEADER ══ */}
+          <LinearGradient
+            colors={[BRAND, "#0d4f56", "#1a8a92"]}
+            style={[s.header, { paddingTop: insets.top + 16 }]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            {/* Background orb */}
+            <View style={s.headerOrb} pointerEvents="none" />
+
             {/* Top row */}
-            <View style={styles.headerTopRow}>
-              <TouchableOpacity onPress={close} activeOpacity={0.8} style={styles.closeBtn}>
+            <View style={s.headerTop}>
+              <View style={s.appBadge}>
+                <Text style={s.appBadgeTxt}>🌍</Text>
+                <Text style={s.appBadgeLabel}>Hafrik</Text>
+              </View>
+              <TouchableOpacity onPress={close} style={s.closeBtn} activeOpacity={0.8}>
                 <Ionicons name="close" size={18} color={WHITE} />
               </TouchableOpacity>
             </View>
 
-            {/* Profile area */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => handleNavigate("Profile")}
-              style={styles.profileArea}
-            >
-              {avatarUrl ? (
-                <ExpoImage
-                  source={{ uri: avatarUrl }}
-                  style={styles.avatar}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarInitials}>{initials(fullName)}</Text>
+            {/* Profile */}
+            <TouchableOpacity activeOpacity={0.85} onPress={() => go("Profile")} style={s.profile}>
+              <View style={s.avatarRing}>
+                {avatarUrl ? (
+                  <ExpoImage source={{ uri: avatarUrl }} style={s.avatar} contentFit="cover" cachePolicy="memory-disk" />
+                ) : (
+                  <View style={s.avatarFallback}>
+                    <Text style={s.avatarInitials}>{initials(fullName)}</Text>
+                  </View>
+                )}
+                <View style={s.onlineDot} />
+              </View>
+              <View style={s.profileInfo}>
+                <Text style={s.name} numberOfLines={1}>{safeTitle(fullName)}</Text>
+                {!!username && <Text style={s.handle} numberOfLines={1}>{username}</Text>}
+                <View style={s.viewProfilePill}>
+                  <Text style={s.viewProfileTxt}>View Profile</Text>
+                  <Ionicons name="arrow-forward" size={9} color={WHITE + "cc"} />
                 </View>
-              )}
-              <View style={styles.profileInfo}>
-                <Text style={styles.name} numberOfLines={1}>{safeTitle(fullName)}</Text>
-                {!!username && <Text style={styles.handle} numberOfLines={1}>{username}</Text>}
-              </View>
-              <View style={styles.profileArrow}>
-                <Ionicons name="chevron-forward" size={16} color={WHITE + "88"} />
               </View>
             </TouchableOpacity>
 
-            {/* ── Finance strip — taps go to Earnings ── */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => handleNavigate("Earnings")}
-              style={styles.financeStrip}
-            >
-              <View style={styles.financeItem}>
-                <Ionicons name="wallet" size={15} color={WHITE} />
-                <Text style={styles.financeValue}>
-                  {wallet ? fmtBalance(wallet.available, wallet.currency) : "₦0"}
-                </Text>
-                <Text style={styles.financeLabel}>Wallet</Text>
+            {/* Wallet strip */}
+            <TouchableOpacity activeOpacity={0.85} onPress={() => go("Earnings")} style={s.walletStrip}>
+              <View style={s.walletItem}>
+                <View style={s.walletIconWrap}>
+                  <Ionicons name="wallet" size={14} color="#fbbf24" />
+                </View>
+                <View>
+                  <Text style={s.walletValue}>{wallet ? fmtBalance(wallet.available, wallet.currency) : "₦0"}</Text>
+                  <Text style={s.walletLabel}>Wallet</Text>
+                </View>
               </View>
-              <View style={styles.financeDivider} />
-              <View style={styles.financeItem}>
-                <Ionicons name="star" size={15} color={Colors.star ?? "#ffd700"} />
-                <Text style={styles.financeValue}>
-                  {points ? Number(points.available).toLocaleString() : "0"}
-                </Text>
-                <Text style={styles.financeLabel}>Points</Text>
+              <View style={s.walletDivider} />
+              <View style={s.walletItem}>
+                <View style={[s.walletIconWrap, { backgroundColor: "#a78bfa22" }]}>
+                  <Ionicons name="star" size={14} color="#a78bfa" />
+                </View>
+                <View>
+                  <Text style={s.walletValue}>{points ? Number(points.available).toLocaleString() : "0"}</Text>
+                  <Text style={s.walletLabel}>Points</Text>
+                </View>
               </View>
-              <View style={styles.financeArrow}>
-                <Ionicons name="arrow-forward" size={14} color={ACCENT} />
-              </View>
+              <LinearGradient colors={[ACCENT, "#0d5560"]} style={s.walletArrow}>
+                <Ionicons name="arrow-forward" size={13} color={WHITE} />
+              </LinearGradient>
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
 
-          {/* ── Scrollable content ── */}
+          {/* ══ BODY ══ */}
           <ScrollView
-            style={styles.scrollBody}
-            contentContainerStyle={{ paddingBottom: insets.bottom + 30 }}
+            style={s.body}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
           >
-            {/* ── Product grid ── */}
-            <SectionTitle>Hafrik Products</SectionTitle>
-            <View style={styles.gridRow}>
-              <GridBtn icon="tv" label="HafrikTV" gradient={[ACCENT, BRAND]} onPress={() => openWeb("TV", "https://tv.hafrik.com")} />
-              <GridBtn icon="musical-notes" label="Play" gradient={[Colors.purple ?? "#9c27b0", Colors.violetDeep ?? "#6d28d9"]} onPress={() => openWeb("Play", "https://hafrikplay.com/myapp.php")} />
-              <GridBtn icon="cloud" label="Drive" gradient={[Colors.blueAccent ?? "#3b82f6", Colors.blueDeep ?? "#1d4ed8"]} onPress={() => openWeb("Drive", "https://drive.hafrik.com")} />
-              <GridBtn icon="restaurant" label="Food" gradient={[Colors.orangeStrong ?? "#f97316", Colors.orangeDeep ?? "#ea580c"]} onPress={() => openWeb("Food", "https://food.hafrik.com")} />
+
+            {/* HafrikX banner */}
+            <TouchableOpacity activeOpacity={0.85} onPress={() => go("HafrikXHome")} style={s.hafrikXWrap}>
+              <LinearGradient colors={["#0a1428", "#132244", "#1a2e50"]} style={s.hafrikX} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                <View style={s.hafrikXOrb} pointerEvents="none" />
+                <View style={s.hafrikXBadge}>
+                  <Text style={s.hafrikXBadgeTxt}>X</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.hafrikXTitle}>HafrikX</Text>
+                  <Text style={s.hafrikXSub}>Import · RMB Exchange · Suppliers</Text>
+                </View>
+                <View style={s.hafrikXArrow}>
+                  <Ionicons name="arrow-forward" size={14} color="#c9a84c" />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Quick actions */}
+            <SectionLabel>Hafrik Products</SectionLabel>
+            <View style={s.quickRow}>
+              <QuickBtn icon="tv"            label="HafrikTV" gradient={[ACCENT, BRAND]}                                        onPress={() => openWeb("HafrikTV", "https://tv.hafrik.com")} />
+              <QuickBtn icon="musical-notes" label="Play"     gradient={["#9c27b0", "#6d28d9"]}                                 onPress={() => openWeb("Play", "https://hafrikplay.com/myapp.php")} />
+              <QuickBtn icon="cloud"         label="Drive"    gradient={["#3b82f6", "#1d4ed8"]}                                 onPress={() => openWeb("Drive", "https://drive.hafrik.com")} />
+              <QuickBtn icon="restaurant"    label="Food"     gradient={["#f97316", "#ea580c"]}                                 onPress={() => openWeb("Food", "https://food.hafrik.com")} />
             </View>
 
-            {/* ── Main Menu ── */}
-            <SectionTitle>Menu</SectionTitle>
-            <View style={styles.card}>
-              <DrawerItem icon="person-outline" title="My Profile" subtitle="View & edit your profile" onPress={() => handleNavigate("Profile")} />
-              <DrawerItem icon="bookmark-outline" title="Saved Posts" subtitle="Posts you've bookmarked" iconColor={ACCENT} onPress={() => handleNavigate("SavedPosts")} />
-              <DrawerItem icon="storefront-outline" title="My Businesses" subtitle="Businesses you follow" onPress={() => handleNavigate("LikedBusinesses")} />
-              <DrawerItem icon="people-outline" title="My Communities" subtitle="Communities you belong to" onPress={() => handleNavigate("JoinedCommunities")} />
-              <DrawerItem icon="wallet-outline" title="Earnings" subtitle="Wallet, points & transactions" iconColor={ACCENT} onPress={() => handleNavigate("Earnings")} />
+            {/* Menu */}
+            <SectionLabel>Menu</SectionLabel>
+            <View style={s.card}>
+              <MenuItem
+                icon="bookmark"
+                label="Saved Posts"
+                sub="Your bookmarked content"
+                iconGrad={[ACCENT, BRAND]}
+                onPress={() => go("SavedPosts")}
+              />
+              <MenuItem
+                icon="storefront"
+                label="My Businesses"
+                sub="Pages you manage or follow"
+                iconGrad={["#f97316", "#c2410c"]}
+                onPress={() => go("LikedBusinesses")}
+              />
+              <MenuItem
+                icon="people"
+                label="My Communities"
+                sub="Groups you belong to"
+                iconGrad={["#8b5cf6", "#5b21b6"]}
+                onPress={() => go("JoinedCommunities")}
+                last
+              />
             </View>
 
-            {/* ── Account ── */}
-            <SectionTitle>Account</SectionTitle>
-            <View style={styles.card}>
-              <DrawerItem icon="settings-outline" title="Settings" subtitle="Privacy & preferences" onPress={() => handleNavigate("Settings")} />
-              <DrawerItem icon="help-circle-outline" title="Help & Support" subtitle="FAQs & support center" onPress={() => handleNavigate("InAppBrowser", { url: "https://hafrik.com/hafrikhelpcenter.html", title: "Help & Support" })} />
+            {/* Explore */}
+            <SectionLabel>Explore</SectionLabel>
+            <View style={s.card}>
+              <MenuItem
+                icon="map"
+                label="City Guide"
+                sub="China cities — jobs, rent, markets"
+                iconGrad={["#10b981", "#047857"]}
+                onPress={() => go("CityGuide")}
+                last
+              />
             </View>
 
-            {/* ── Footer ── */}
-            <View style={styles.footerMeta}>
-              <Text style={styles.footerText}>Hafrik Media & Technology</Text>
-              <Text style={styles.footerSub}>Built for Africans, everywhere.</Text>
+            {/* Account */}
+            <SectionLabel>Account</SectionLabel>
+            <View style={s.card}>
+              <MenuItem
+                icon="settings"
+                label="Settings"
+                sub="Privacy & preferences"
+                iconGrad={[BRAND, "#0d5560"]}
+                onPress={() => go("Settings")}
+              />
+              <MenuItem
+                icon="help-circle"
+                label="Help & Support"
+                sub="FAQs & support center"
+                iconGrad={["#3b82f6", "#1d4ed8"]}
+                onPress={() => openWeb("Help & Support", "https://hafrik.com/hafrikhelpcenter.html")}
+                last
+              />
             </View>
 
             {/* Sign out */}
-            <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.8} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={17} color={DANGER} />
-              <Text style={styles.logoutText}>Sign Out</Text>
+            <TouchableOpacity activeOpacity={0.8} onPress={handleLogout} style={s.logoutBtn}>
+              <Ionicons name="log-out-outline" size={16} color={DANGER} />
+              <Text style={s.logoutTxt}>Sign Out</Text>
             </TouchableOpacity>
+
+            {/* Footer */}
+            <View style={s.footer}>
+              <Text style={s.footerBrand}>Hafrik</Text>
+              <Text style={s.footerTagline}>Built for Africans, everywhere 🌍</Text>
+            </View>
+
           </ScrollView>
         </Animated.View>
       </View>
@@ -344,297 +397,219 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   );
 };
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  modalRoot: { flex: 1, backgroundColor: "transparent" },
+export default DrawerNavigation;
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  root: { flex: 1 },
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: BLACK + "70",
+    backgroundColor: "#000000aa",
   },
 
   drawer: {
     position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
+    left: 0, top: 0, bottom: 0,
     width: DRAWER_W,
     backgroundColor: CREAM,
     borderTopRightRadius: 28,
     borderBottomRightRadius: 28,
     overflow: "hidden",
-    shadowColor: BLACK,
-    shadowOffset: { width: 6, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    elevation: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 8, height: 0 },
+    shadowOpacity: 0.22,
+    shadowRadius: 28,
+    elevation: 20,
   },
 
   // ── Header ──
-  drawerHeader: {
-    backgroundColor: BRAND,
+  header: {
     paddingHorizontal: 18,
-    paddingBottom: 18,
+    paddingBottom: 20,
+    overflow: "hidden",
   },
-  drawerLogo: {
-    height: 26,
-    width: 110,
+  headerOrb: {
+    position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: WHITE,
+    opacity: 0.04,
+    top: -80,
+    right: -60,
   },
-
-  headerTopRow: {
+  headerTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 18,
+    marginBottom: 20,
   },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: WHITE + "20",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // ── Profile ──
-  profileArea: {
+  appBadge: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 14,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: WHITE + "30",
-    borderWidth: 2.5,
-    borderColor: WHITE + "44",
-  },
-  avatarFallback: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: WHITE + "20",
-    borderWidth: 2.5,
-    borderColor: WHITE + "44",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitials: {
-    color: WHITE,
-    fontSize: 15,
-    fontWeight: "900",
-    fontFamily: FONT_B,
-  },
-  profileInfo: { flex: 1 },
-  name: {
-    color: WHITE,
-    fontSize: 16,
-    fontWeight: "900",
-    fontFamily: FONT_B,
-    letterSpacing: -0.2,
-  },
-  handle: {
-    color: WHITE + "99",
-    fontSize: 12,
-    fontFamily: FONT_R,
-    marginTop: 2,
-  },
-  profileArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: WHITE + "14",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // ── Finance strip ──
-  financeStrip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: WHITE + "14",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: WHITE + "18",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  financeItem: {
-    flex: 1,
-    alignItems: "center",
-    gap: 2,
-  },
-  financeValue: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: WHITE,
-    fontFamily: FONT_B,
-    marginTop: 3,
-  },
-  financeLabel: {
-    fontSize: 10,
-    color: WHITE + "88",
-    fontWeight: "600",
-    fontFamily: FONT_R,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  financeDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: WHITE + "22",
-    marginHorizontal: 12,
-  },
-  financeArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: WHITE + "20",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 6,
-  },
-
-  // ── Scroll body ──
-  scrollBody: {
-    flex: 1,
-    backgroundColor: CREAM,
-  },
-
-  // ── Section title ──
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: MUTED,
-    letterSpacing: 1.3,
-    textTransform: "uppercase",
-    fontFamily: FONT_B,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 8,
-  },
-
-  // ── Product grid ──
-  gridRow: {
-    flexDirection: "row",
-    paddingHorizontal: 14,
-    gap: 8,
-    marginBottom: 4,
-  },
-  gridBtn: {
-    flex: 1,
     alignItems: "center",
     gap: 6,
-    paddingVertical: 10,
+    backgroundColor: WHITE + "18",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: WHITE + "20",
   },
-  gridIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  gridLabel: {
-    fontSize: 10.5,
-    fontWeight: "700",
-    color: DARK,
-    fontFamily: FONT_M,
-    textAlign: "center",
+  appBadgeTxt:   { fontSize: 14 },
+  appBadgeLabel: { fontSize: 12, fontWeight: "900", color: WHITE, fontFamily: FONT_B, letterSpacing: -0.2 },
+  closeBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: WHITE + "20",
+    alignItems: "center", justifyContent: "center",
   },
 
-  // ── Card ──
+  // Profile
+  profile:    { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 },
+  avatarRing: { position: "relative" },
+  avatar: {
+    width: 56, height: 56, borderRadius: 28,
+    borderWidth: 2.5, borderColor: WHITE + "55",
+  },
+  avatarFallback: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: WHITE + "20",
+    borderWidth: 2.5, borderColor: WHITE + "55",
+    alignItems: "center", justifyContent: "center",
+  },
+  avatarInitials: { color: WHITE, fontSize: 18, fontWeight: "900", fontFamily: FONT_B },
+  onlineDot: {
+    position: "absolute", bottom: 2, right: 2,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: "#22c55e",
+    borderWidth: 2, borderColor: BRAND,
+  },
+  profileInfo: { flex: 1, gap: 2 },
+  name:   { color: WHITE, fontSize: 17, fontWeight: "900", fontFamily: FONT_B, letterSpacing: -0.3 },
+  handle: { color: WHITE + "99", fontSize: 12, fontFamily: FONT_R },
+  viewProfilePill: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    marginTop: 4, alignSelf: "flex-start",
+    backgroundColor: WHITE + "18",
+    borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3,
+    borderWidth: 1, borderColor: WHITE + "20",
+  },
+  viewProfileTxt: { fontSize: 10, color: WHITE + "cc", fontWeight: "700", fontFamily: FONT_M },
+
+  // Wallet strip
+  walletStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: WHITE + "12",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: WHITE + "1a",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  walletItem:    { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  walletIconWrap: {
+    width: 30, height: 30, borderRadius: 9,
+    backgroundColor: "#fbbf2422",
+    alignItems: "center", justifyContent: "center",
+  },
+  walletValue: { fontSize: 14, fontWeight: "900", color: WHITE, fontFamily: FONT_B },
+  walletLabel: { fontSize: 9.5, color: WHITE + "77", fontWeight: "600", fontFamily: FONT_R, textTransform: "uppercase", letterSpacing: 0.4 },
+  walletDivider: { width: 1, height: 30, backgroundColor: WHITE + "22" },
+  walletArrow: {
+    width: 30, height: 30, borderRadius: 9,
+    alignItems: "center", justifyContent: "center",
+  },
+
+  // ── Body ──
+  body: { flex: 1, backgroundColor: CREAM },
+
+  // HafrikX
+  hafrikXWrap: {
+    marginHorizontal: 14,
+    marginTop: 16,
+    borderRadius: 18,
+    overflow: "hidden",
+    shadowColor: "#c9a84c",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hafrikX: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#1e2d45",
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+  hafrikXOrb: {
+    position: "absolute",
+    width: 120, height: 120, borderRadius: 60,
+    backgroundColor: "#c9a84c",
+    opacity: 0.06,
+    top: -40, right: -30,
+  },
+  hafrikXBadge: {
+    width: 42, height: 42, borderRadius: 13,
+    backgroundColor: "#c9a84c",
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  hafrikXBadgeTxt: { color: "#000", fontSize: 20, fontWeight: "900", fontFamily: FONT_B, letterSpacing: -1 },
+  hafrikXTitle:    { color: WHITE, fontSize: 15, fontWeight: "900", fontFamily: FONT_B, letterSpacing: -0.2 },
+  hafrikXSub:      { color: "#6b7f95", fontSize: 10.5, fontFamily: FONT_R, marginTop: 2 },
+  hafrikXArrow: {
+    width: 30, height: 30, borderRadius: 10,
+    backgroundColor: "#c9a84c22",
+    alignItems: "center", justifyContent: "center",
+  },
+
+  // Quick row
+  quickRow: {
+    flexDirection: "row",
+    paddingHorizontal: 14,
+    gap: 4,
+    marginBottom: 4,
+  },
+
+  // Card
   card: {
     backgroundColor: WHITE,
     marginHorizontal: 14,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.borderSoft ?? Colors.border,
+    borderColor: Colors.borderSoft ?? "#e5e7eb",
     overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
 
-  // ── Item ──
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.borderSoft ?? Colors.border,
-  },
-  itemIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: ACCENT + "14",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  itemTextWrap: { flex: 1 },
-  itemTitle: {
-    fontSize: 13.5,
-    fontWeight: "800",
-    color: DARK,
-    fontFamily: FONT_B,
-  },
-  itemSub: {
-    fontSize: 11,
-    color: MUTED,
-    marginTop: 1,
-    fontFamily: FONT_R,
-  },
-  badgeWrap: {
-    backgroundColor: DANGER,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 6,
-  },
-  badgeText: { fontSize: 10, fontWeight: "900", color: WHITE, fontFamily: FONT_B },
-
-  // ── Footer ──
-  footerMeta: {
-    alignItems: "center",
-    paddingTop: 24,
-    paddingBottom: 4,
-  },
-  footerText: {
-    color: DARK,
-    fontSize: 11.5,
-    fontWeight: "800",
-    fontFamily: FONT_B,
-  },
-  footerSub: {
-    color: MUTED,
-    fontSize: 10.5,
-    marginTop: 2,
-    fontFamily: FONT_R,
-  },
-
-  // ── Logout ──
+  // Sign out
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     marginHorizontal: 14,
-    marginTop: 14,
+    marginTop: 20,
     paddingVertical: 13,
-    borderRadius: 14,
-    backgroundColor: DANGER + "0C",
+    borderRadius: 16,
+    backgroundColor: DANGER + "0d",
     borderWidth: 1,
-    borderColor: DANGER + "22",
+    borderColor: DANGER + "25",
   },
-  logoutText: {
-    color: DANGER,
-    fontSize: 13.5,
-    fontWeight: "800",
-    fontFamily: FONT_B,
-  },
-});
+  logoutTxt: { color: DANGER, fontSize: 13.5, fontWeight: "800", fontFamily: FONT_B },
 
-export default DrawerNavigation;
+  // Footer
+  footer: { alignItems: "center", paddingTop: 20, paddingBottom: 4, gap: 3 },
+  footerBrand:   { fontSize: 13, fontWeight: "900", color: BRAND, fontFamily: FONT_B, letterSpacing: -0.3 },
+  footerTagline: { fontSize: 11, color: MUTED, fontFamily: FONT_R },
+});

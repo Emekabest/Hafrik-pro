@@ -145,13 +145,15 @@ const useStore = create((set, get) => ({
     addFeedsToList: (listName, feedsArray) => set((state) => {
         const feedsById = { ...state.feeds.feedsById };
         const existingList = state.feeds.lists[listName] || [];
+        const seenIds = new Set(existingList.map(String));
         const idsToAdd = [];
 
         feedsArray.forEach(feed => {
             feedsById[feed.id] = feed;
 
-            if (!existingList.includes(feed.id)) {
-            idsToAdd.push(feed.id);
+            if (!seenIds.has(String(feed.id))) {
+                seenIds.add(String(feed.id));
+                idsToAdd.push(feed.id);
             }
         });
 
@@ -172,12 +174,13 @@ const useStore = create((set, get) => ({
     prependFeedsToList: (listName, feedsArray) => set((state) => {
         const feedsById = { ...state.feeds.feedsById };
         const existingList = state.feeds.lists[listName] || [];
-        const existingIds = new Set(existingList.map(String));
+        const seenIds = new Set(existingList.map(String));
         const newIds = [];
 
         feedsArray.forEach(feed => {
             feedsById[feed.id] = feed;
-            if (!existingIds.has(String(feed.id))) {
+            if (!seenIds.has(String(feed.id))) {
+                seenIds.add(String(feed.id));
                 newIds.push(feed.id);
             }
         });

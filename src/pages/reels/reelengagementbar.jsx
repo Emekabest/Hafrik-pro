@@ -248,7 +248,11 @@ const ReelEngagementBar = forwardRef(({
           shares_count: (Number(currentFeed.shares_count ?? currentFeed.shares ?? 0)) + 1,
         });
       }
-      await Share.share({ message: 'Check out this reel on Hafrik!' });
+      const link = `https://hafrik.com/post/${postId}`;
+      await Share.share({
+        message: `Check out this reel on Hafrik! ${link}`,
+        url: link,
+      });
     } catch {}
   }, [postId, token]);
 

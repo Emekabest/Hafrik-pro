@@ -311,7 +311,7 @@ function SplashScreen({ fadeAnim }) {
             >
               <Image
                 source={require('../../assl.js/logo1.png')}
-                style={styles.logoImage}
+                style={[styles.logoImage, { tintColor: '#ffffff' }]}
                 resizeMode="contain"
               />
             </LinearGradient>
