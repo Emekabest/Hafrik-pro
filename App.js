@@ -77,6 +77,7 @@ import PointsScreen          from './src/pages/earnings/PointsScreen';
 import WalletScreen          from './src/pages/earnings/WalletScreen';
 import AffiliatesScreen      from './src/pages/earnings/AffiliatesScreen';
 import SendMoneyScreen       from './src/pages/earnings/SendMoneyScreen';
+import ComingSoonScreen      from './src/pages/ComingSoonScreen';
 import MyPagesAndGroupsScreen   from './src/pages/mypages/MyPagesAndGroupsScreen';
 import JoinedCommunitiesScreen from './src/pages/communities/JoinedCommunitiesScreen';
 import LikedBusinessesScreen   from './src/pages/businesses/LikedBusinessesScreen';
@@ -456,6 +457,7 @@ function AppNavigator() {
               <Stack.Screen name="HashtagScreen" component={HashtagScreen} options={{ headerShown: false }} />
               <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ cardStyle: { backgroundColor: '#fff' } }} />
               <Stack.Screen name="TrendingOnHafrik" component={TrendingOnHafrikScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ComingSoon" component={ComingSoonScreen} options={{ headerShown: false }} />
               <Stack.Screen name="MyPagesAndGroups"    component={MyPagesAndGroupsScreen}   options={{ headerShown: false }} />
               <Stack.Screen name="JoinedCommunities" component={JoinedCommunitiesScreen}  options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="LikedBusinesses"   component={LikedBusinessesScreen}    options={{ headerShown: false, gestureEnabled: true }} />

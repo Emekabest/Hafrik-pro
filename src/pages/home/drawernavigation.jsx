@@ -293,7 +293,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
           >
 
             {/* HafrikX banner */}
-            <TouchableOpacity activeOpacity={0.85} onPress={() => go("HafrikXHome")} style={s.hafrikXWrap}>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => go("ComingSoon", { feature: "HafrikX" })} style={s.hafrikXWrap}>
               <LinearGradient colors={["#0a1428", "#132244", "#1a2e50"]} style={s.hafrikX} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={s.hafrikXOrb} pointerEvents="none" />
                 <View style={s.hafrikXBadge}>
