@@ -15,7 +15,9 @@ import Photos from './photos';
 import Videos from './videos';
 import BusinessPages from './businesspages/BusinessPages';
 import Communities from './Communities';
+import ProfileReels from './ProfileReels';
 import ProgressBarLoader from '../progressbarloader';
+import BrandLoader from '../../components/BrandLoader';
 import PostComposerModal from '../home/PostComposerModal';
 import { useLiveCounts } from '../../hooks/useLiveCounts';
 import { Colors } from '../../theme/colors';
@@ -67,12 +69,13 @@ const ProfileScreen = () => {
     // ])
 
     const tabs = useRef([
-        {label: "Timeline",  value: "timeline",       icon: "home-outline"},
-        {label: "Followers", value: "followers",       icon: "people-outline"},
-        {label: "Photos",    value: "photos",          icon: "image-outline"},
-        {label: "Videos",    value: "videos",          icon: "videocam-outline"},
-        {label: "Business",  value: "business_pages",  icon: "storefront-outline"},
-        {label: "Communities", value: "communities",   icon: "globe-outline"},
+        {label: "Timeline",    value: "timeline",       icon: "home-outline"},
+        {label: "Reels",       value: "reels",          icon: "play-circle-outline"},
+        {label: "Followers",   value: "followers",      icon: "people-outline"},
+        {label: "Photos",      value: "photos",         icon: "image-outline"},
+        {label: "Videos",      value: "videos",         icon: "videocam-outline"},
+        {label: "Business",    value: "business_pages", icon: "storefront-outline"},
+        {label: "Communities", value: "communities",    icon: "globe-outline"},
     ])
 
 
@@ -185,12 +188,10 @@ const ProfileScreen = () => {
             <StatusBar barStyle="light-content" />
             <ProgressBarLoader visible={false} />
             {/* Header already handles top safe-area via useSafeAreaInsets internally */}
-            <AppHeader onOpenDrawer={openDrawer} />
+            <AppHeader onOpenDrawer={openDrawer} hideSearch />
             <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
             {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={AppDetails.primaryColor} />
-                </View>
+                <BrandLoader />
             ) : (
                 <View style={{ flex: 1 }}>
                     {activeTab.value === 'timeline' && (
@@ -204,6 +205,16 @@ const ProfileScreen = () => {
                             userId={userId}
                             refreshing={refreshing}
                             onRefresh={handleRefreshProfile}
+                        />
+                    )}
+
+                    {activeTab.value === 'reels' && (
+                        <ProfileReels
+                            header={profileHeader}
+                            tabs={tabs.current}
+                            activeTab={activeTab}
+                            onTabChange={handleTabChange}
+                            userId={userId}
                         />
                     )}
 

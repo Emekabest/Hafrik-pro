@@ -19,7 +19,9 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../api/apiClient';
 import { Colors } from '../theme';
@@ -35,7 +37,9 @@ const SURFACE = Colors.surfaceTint;
 
 const Profile = () => {
   const { user, token, updateUser, logout } = useAuth();
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('posts');
+  const [editSheetVisible, setEditSheetVisible] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -615,6 +619,11 @@ const Profile = () => {
   const followers = profileData?.followers || [];
   const followings = profileData?.followings || [];
 
+  const openEditTab = (title, url) => {
+    setEditSheetVisible(false);
+    setTimeout(() => navigation.navigate('InAppBrowser', { title, url }), 100);
+  };
+
   // Get safe image URLs
   const avatarUrl = getAvatarUrl(userData);
   const coverUrl = getCoverUrl(userData);
@@ -735,9 +744,19 @@ const Profile = () => {
             <View style={styles.actionButtons}>
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={() => setEditProfileModalVisible(true)}
+                onPress={() => setEditSheetVisible(true)}
               >
+                <Ionicons name="create-outline" size={15} color={BRAND} style={{ marginRight: 4 }} />
                 <Text style={styles.actionButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.membershipBtn]}
+                onPress={() => navigation.navigate('InAppBrowser', { title: 'Membership', url: 'https://hafrik.com/settings/membership' })}
+              >
+                <LinearGradient colors={[BRAND, '#0f5060']} style={styles.membershipGrad}>
+                  <Ionicons name="star" size={14} color="#fbbf24" />
+                  <Text style={styles.membershipTxt}>Membership</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -805,6 +824,50 @@ const Profile = () => {
           )
         )}
       </ScrollView>
+
+      {/* ── Edit Profile Tab Sheet ── */}
+      <Modal
+        visible={editSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditSheetVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.sheetOverlay}
+          onPress={() => setEditSheetVisible(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
+            {/* Handle */}
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Edit Profile</Text>
+            <Text style={styles.sheetSub}>Choose a section to edit</Text>
+
+            {[
+              { icon: 'person',       color: [BRAND, '#0f5060'],       label: 'Personal Info',  sub: 'Name, bio, birthday, location',  url: 'https://hafrik.com/settings/profile' },
+              { icon: 'briefcase',    color: ['#f97316', '#c2410c'],   label: 'Work',           sub: 'Job title, company, industry',   url: 'https://hafrik.com/settings/profile/work' },
+              { icon: 'school',       color: ['#8b5cf6', '#5b21b6'],   label: 'Education',      sub: 'Schools, degrees, fields',       url: 'https://hafrik.com/settings/profile/education' },
+              { icon: 'share-social', color: ['#3b82f6', '#1d4ed8'],   label: 'Social Links',   sub: 'Instagram, LinkedIn, YouTube…',  url: 'https://hafrik.com/settings/profile/social' },
+            ].map((item, i) => (
+              <TouchableOpacity
+                key={i}
+                activeOpacity={0.8}
+                style={styles.sheetRow}
+                onPress={() => openEditTab(item.label, item.url)}
+              >
+                <LinearGradient colors={item.color} style={styles.sheetRowIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                  <Ionicons name={item.icon} size={17} color={WHITE} />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sheetRowLabel}>{item.label}</Text>
+                  <Text style={styles.sheetRowSub}>{item.sub}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={15} color={MUTED + '66'} />
+              </TouchableOpacity>
+            ))}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Edit Profile Modal */}
       <Modal
@@ -1206,15 +1269,100 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: BRAND,
+    borderRadius: 10,
+    backgroundColor: WHITE,
+    borderWidth: 1.5,
+    borderColor: BRAND,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: BRAND,
+  },
+  membershipBtn: {
+    borderWidth: 0,
+    padding: 0,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+    borderRadius: 10,
+  },
+  membershipGrad: {
+    flex: 1,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  membershipTxt: {
+    fontSize: 13.5,
+    fontWeight: '700',
     color: WHITE,
+  },
+
+  // ── Edit sheet ──
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: '#00000066',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: WHITE,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 36,
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: MUTED + '44',
+    alignSelf: 'center',
+    marginBottom: 18,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: DARK,
+    marginBottom: 4,
+  },
+  sheetSub: {
+    fontSize: 12.5,
+    color: MUTED,
+    marginBottom: 20,
+  },
+  sheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: BORDER,
+  },
+  sheetRowIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  sheetRowLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: DARK,
+  },
+  sheetRowSub: {
+    fontSize: 11.5,
+    color: MUTED,
+    marginTop: 2,
   },
   tabContainer: {
     flexDirection: 'row',

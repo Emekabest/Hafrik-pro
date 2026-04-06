@@ -432,7 +432,7 @@ function AppNavigator() {
               <Stack.Screen name="PagesScreen" component={PagesScreen} />
               <Stack.Screen name="BusinessDetails" component={BusinessDetails} />
               <Stack.Screen name="BusinessPages" component={BusinessList} />
-        <Stack.Screen name="Reels2" component={Reels2} />
+        <Stack.Screen name="Reels2" component={Reels2} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
         <Stack.Screen name="CreateReel" component={CreateReels} options={{ headerShown: false }} />
 <Stack.Screen
   name="GroupDetails"

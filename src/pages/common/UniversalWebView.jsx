@@ -23,7 +23,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  ActivityIndicator,
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +33,7 @@ import { useAuth } from '../../AuthContext';
 import { buildWebViewUrl, REDIRECT_GUARD, HIDE_SITE_CHROME } from '../../hooks/useWebViewSession';
 import AuthenticatedWebView from '../../components/AuthenticatedWebView';
 import AppDetails from '../../helpers/appdetails';
+import BrandLoader from '../../components/BrandLoader';
 import { Colors } from '../../theme/colors';
 
 const BRAND  = Colors.primaryDark;
@@ -84,17 +84,15 @@ export default function UniversalWebView() {
 
   const webRef = useRef(null);
 
-  const [loading,   setLoading]   = useState(true);
-  const [error,     setError]     = useState(false);
-  const [progress,  setProgress]  = useState(0);
-  const [canGoBack, setCanGoBack] = useState(false);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  // ── Android hardware back ──────────────────────────────────────────────────
+  // ── Always go back to the app — never navigate within the webview ─────────
   const handleBack = useCallback(() => {
-    if (canGoBack) { webRef.current?.goBack(); return true; }
     navigation.goBack();
-    return false;
-  }, [canGoBack, navigation]);
+    return true;
+  }, [navigation]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', handleBack);
@@ -140,12 +138,12 @@ export default function UniversalWebView() {
           ref={webRef}
           source={{ uri: authUrl }}
           style={s.webview}
+          injectedJavaScriptBeforeContentLoaded={HIDE_SITE_CHROME}
           injectedJavaScript={HIDE_SITE_CHROME + REDIRECT_GUARD}
           onLoadStart={() => { setLoading(true); setError(false); }}
           onLoadEnd={() => setLoading(false)}
           onError={() => { setLoading(false); setError(true); }}
           onLoadProgress={({ nativeEvent }) => setProgress(nativeEvent.progress)}
-          onNavigationStateChange={(state) => setCanGoBack(state.canGoBack)}
           onContentProcessDidTerminate={handleReload}
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
@@ -155,7 +153,7 @@ export default function UniversalWebView() {
           startInLoadingState
           renderLoading={() => (
             <View style={s.loadingOverlay}>
-              <ActivityIndicator size="large" color={ACCENT} />
+              <BrandLoader inline size="medium" />
             </View>
           )}
         />

@@ -31,56 +31,67 @@ export const buildWebViewUrl = (token, targetUrl = 'https://hafrik.com') => {
  */
 export const HIDE_SITE_CHROME = `
 (function(){
-  var css = [
-    /* semantic elements */
-    'header { display:none!important; }',
-    'footer { display:none!important; }',
-    /* common class patterns */
-    '[class*="navbar"]    { display:none!important; }',
-    '[class*="top-nav"]   { display:none!important; }',
-    '[class*="topnav"]    { display:none!important; }',
-    '[class*="top-bar"]   { display:none!important; }',
-    '[class*="topbar"]    { display:none!important; }',
-    '[class*="site-header"]{ display:none!important; }',
-    '[class*="siteheader"]{ display:none!important; }',
-    '[class*="main-header"]{ display:none!important; }',
-    '[class*="app-header"]{ display:none!important; }',
-    '[class*="page-header"]{ display:none!important; }',
-    '[class*="bottom-nav"]{ display:none!important; }',
-    '[class*="bottomnav"] { display:none!important; }',
-    '[class*="bottom-bar"]{ display:none!important; }',
-    '[class*="bottombar"] { display:none!important; }',
-    '[class*="bottom-tab"]{ display:none!important; }',
-    '[class*="tab-bar"]   { display:none!important; }',
-    '[class*="tabbar"]    { display:none!important; }',
-    '[class*="footer"]    { display:none!important; }',
-    '[class*="site-footer"]{ display:none!important; }',
-    /* ARIA roles */
-    '[role="banner"]      { display:none!important; }',
-    '[role="navigation"]  { display:none!important; }',
-    '[role="contentinfo"] { display:none!important; }',
-    /* common IDs */
-    '#header   { display:none!important; }',
-    '#navbar   { display:none!important; }',
-    '#nav      { display:none!important; }',
-    '#footer   { display:none!important; }',
-    '#bottom-nav{ display:none!important; }',
-  ].join(' ');
-  var s = document.createElement('style');
-  s.textContent = css;
-  (document.head || document.documentElement).appendChild(s);
+  var CSS_ID = '_hfk_app_chrome';
 
-  /* Re-apply after dynamic renders (React/Vue SPA navigation) */
-  if(window.MutationObserver){
-    var mo = new MutationObserver(function(){
-      if(!document.getElementById('_hfk_chrome_style')){
-        s.id = '_hfk_chrome_style';
-        (document.head || document.documentElement).appendChild(s);
-      }
-    });
-    mo.observe(document.documentElement,{childList:true,subtree:true});
-    s.id = '_hfk_chrome_style';
+  var RULES = [
+    /* ── semantic ── */
+    'header','footer','nav',
+    /* ── roles ── */
+    '[role="banner"]','[role="navigation"]','[role="contentinfo"]',
+    /* ── IDs ── */
+    '#header','#site-header','#main-header','#page-header','#top-header',
+    '#navbar','#nav','#navigation','#top-nav','#topnav',
+    '#footer','#site-footer','#page-footer','#bottom-nav','#bottomnav',
+    '#bottom-bar','#bottombar','#tab-bar','#tabbar',
+    /* ── class wildcards via attribute selector ── */
+    '[class*="site-header"]','[class*="siteheader"]','[class*="main-header"]',
+    '[class*="app-header"]','[class*="page-header"]','[class*="top-header"]',
+    '[class*="navbar"]','[class*="nav-bar"]','[class*="topnav"]',
+    '[class*="top-nav"]','[class*="topbar"]','[class*="top-bar"]',
+    '[class*="header-wrap"]','[class*="headerwrap"]','[class*="header-container"]',
+    '[class*="site-footer"]','[class*="sitefooter"]','[class*="page-footer"]',
+    '[class*="footer-wrap"]','[class*="footerwrap"]','[class*="footer-container"]',
+    '[class*="bottom-nav"]','[class*="bottomnav"]','[class*="bottom-bar"]',
+    '[class*="bottombar"]','[class*="tab-bar"]','[class*="tabbar"]',
+    '[class*="bottom-tab"]','[class*="mobile-nav"]','[class*="mobilenav"]',
+    '[class*="sticky-header"]','[class*="fixed-header"]',
+    '[class*="sticky-footer"]','[class*="fixed-footer"]',
+    '[class*="fixed-bottom"]','[class*="sticky-bottom"]',
+  ].map(function(sel){ return sel + '{display:none!important;visibility:hidden!important;}'; }).join('');
+
+  function inject(){
+    if(document.getElementById(CSS_ID)) return;
+    var s = document.createElement('style');
+    s.id = CSS_ID;
+    s.textContent = RULES;
+    var target = document.head || document.documentElement;
+    if(target) target.appendChild(s);
   }
+
+  /* Inject immediately */
+  inject();
+
+  /* Re-inject on DOMContentLoaded (catches pages that clear head) */
+  document.addEventListener('DOMContentLoaded', inject, {once:false});
+
+  /* Re-inject on every load event */
+  window.addEventListener('load', inject, {once:false});
+
+  /* Watch for dynamic DOM changes (SPA navigation) */
+  if(window.MutationObserver){
+    new MutationObserver(inject).observe(
+      document.documentElement,
+      {childList:true, subtree:true}
+    );
+  }
+
+  /* Poll every 400ms for 8 seconds as final safety net for iOS WKWebView */
+  var ticks = 0;
+  var poll = setInterval(function(){
+    inject();
+    if(++ticks > 20) clearInterval(poll);
+  }, 400);
+
 })();true;
 `;
 

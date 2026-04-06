@@ -239,7 +239,7 @@ const Reels2 = () => {
       <FlatList
         ref={flatListRef}
         data={reels}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={(item, index) => `${item.id ?? 'reel'}-${index}`}
         renderItem={renderItem}
         // pagingEnabled gives perfect 1-reel snap, no snapToInterval drift
         pagingEnabled

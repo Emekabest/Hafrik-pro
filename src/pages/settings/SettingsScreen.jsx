@@ -158,6 +158,17 @@ export default function SettingsScreen() {
           />
         </Section>
 
+        {/* Grow */}
+        <Section title="Grow">
+          <Row
+            icon="megaphone-outline"
+            iconColor="#f59e0b"
+            label="Ads Manager"
+            onPress={() => openWeb('Ads Manager', 'https://hafrik.com/ads')}
+            last
+          />
+        </Section>
+
         {/* About */}
         <Section title="About">
           <Row
