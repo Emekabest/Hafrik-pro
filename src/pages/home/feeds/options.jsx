@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, StyleSheet } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
 import ToggleSaveController from '../../../controllers/tooglesavecontroller';
@@ -49,6 +49,10 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
         const response = await BlockUserController({user_id: reportedUserId, action: 'block'}, token)
         
         setShowBlockConfirm(false);
+
+        Alert.alert("Bloked", `${userFullname} has been blocked. You will no longer see content from this user.`, [
+            { text: "OK"}
+        ]);
 
     }
 

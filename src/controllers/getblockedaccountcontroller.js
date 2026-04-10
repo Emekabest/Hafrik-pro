@@ -12,10 +12,10 @@ const GetBlockedAccountController = async (token) => {
             },
         });
 
-        console.log(response.data.data);
+        // console.log(response.data.data);
 
         
-        return { data: response.data, status: response.status };
+        return { data: response.data.data, status: response.status };
         
     } catch (error) {
         return { error: error.message, status: error.response?.status || 500 };
