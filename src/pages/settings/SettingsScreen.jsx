@@ -145,6 +145,11 @@ export default function SettingsScreen() {
             onPress={() => openWeb('Privacy Settings', `https://hafrik.com/settings/privacy?token=${token}`)}
           />
           <Row
+            icon="ban"
+            label="Blocked Accounts"
+            onPress={()=> navigation.navigate("BlockedAccountsScreen")}
+          />
+          <Row
             icon="notifications-outline"
             label="Notification Preferences"
             onPress={() => openWeb('Notifications', `https://hafrik.com/settings/privacy?token=${token}`)}

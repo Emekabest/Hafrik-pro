@@ -115,6 +115,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { NotificationProvider } from './context/notificationcontext';
 import { navigationRef } from './src/helpers/navigationRef';
+import BlockedAccountScreen from './src/pages/settings/blockedaccountsscreen';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -527,6 +528,7 @@ function AppNavigator() {
               <Stack.Screen name="OnboardingFollow"  component={FollowScreen}         options={{ headerShown: false, gestureEnabled: false }} />
               <Stack.Screen name="OnboardingCountry" component={SelectCountryScreen}  options={{ headerShown: false, gestureEnabled: false }} />
               <Stack.Screen name="OnboardingWelcome" component={WelcomeScreen}        options={{ headerShown: false, gestureEnabled: false }} />
+              <Stack.Screen name="BlockedAccountsScreen" component={BlockedAccountScreen}        options={{ headerShown: false, gestureEnabled: false }} />
             </Stack.Navigator>
         </SafeAreaView>
 
