@@ -22,7 +22,7 @@ const ReportPostScreen = () => {
 
     const [reportCategories, setReportCategories] = useState([]);
 
-
+    
 
     useEffect(()=>{
         const getReportCategories = async () => {
