@@ -36,15 +36,15 @@ const ReportPostScreen = () => {
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={24} color={Colors.neutral700} />
-                </TouchableOpacity>
-                <Text style={styles.title}>Report Post</Text>
-            </View>
+                    </TouchableOpacity>
+                    <Text style={styles.title}>Report Post</Text>
+                </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexGrow}>
-                <ScrollView contentContainerStyle={styles.content}>
-                    <Text style={styles.sectionTitle}>Why are you reporting this post?</Text>
-                    <Text style={styles.sectionSubtitle}>
-                        {reportedUserFullname ? `Report a post by ${reportedUserFullname}.` : 'Choose the most relevant reason.'}
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexGrow}>
+                    <ScrollView contentContainerStyle={styles.content}>
+                        <Text style={styles.sectionTitle}>Why are you reporting this post?</Text>
+                        <Text style={styles.sectionSubtitle}>
+                            {reportedUserFullname ? `Report a post by ${reportedUserFullname}.` : 'Choose the most relevant reason.'}
                     </Text>
 
                     {ReportOptions.map((option) => {
