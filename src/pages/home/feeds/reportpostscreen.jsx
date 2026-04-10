@@ -1,44 +1,84 @@
-import React, { useState } from 'react';
-import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AppDetails from '../../../helpers/appdetails';
 import { Colors } from '../../../theme/colors';
+import { getReportCategoriesController, ReportPostController } from '../../../controllers/optionscontroller';
+import { useAuth } from '../../../AuthContext';
 
-const ReportOptions = [
-    { id: 1, label: 'Nudity', icon: 'alert' },
-    { id: 2, label: 'Violence', icon: 'warning' },
-    { id: 3, label: 'Harassment', icon: 'person' },
-    { id: 4, label: 'Suicide or Self-Injury', icon: 'sad-outline' },
-    { id: 5, label: 'False Information', icon: 'document-text-outline' },
-    { id: 6, label: 'Spam', icon: 'mail' },
-    { id: 7, label: 'Unauthorized Sales', icon: 'pricetag-outline' },
-    { id: 8, label: 'Hate Speech', icon: 'warning' },
-    { id: 9, label: 'Terrorism', icon: 'alert-circle-outline' },
-    { id: 10, label: 'Something Else', icon: 'ellipsis-horizontal' },
-];
+
+// const reportCategories = [
+//     { id: 1, label: 'Nudity', icon: 'alert' },
+//     { id: 2, label: 'Violence', icon: 'warning' },
+//     { id: 3, label: 'Harassment', icon: 'person' },
+//     { id: 4, label: 'Suicide or Self-Injury', icon: 'sad-outline' },
+//     { id: 5, label: 'False Information', icon: 'document-text-outline' },
+//     { id: 6, label: 'Spam', icon: 'mail' },
+//     { id: 7, label: 'Unauthorized Sales', icon: 'pricetag-outline' },
+//     { id: 8, label: 'Hate Speech', icon: 'warning' },
+//     { id: 9, label: 'Terrorism', icon: 'alert-circle-outline' },
+//     { id: 10, label: 'Something Else', icon: 'ellipsis-horizontal' },
+// ];
 
 const ReportPostScreen = () => {
+    const {token} = useAuth()
     const route = useRoute();
     const navigation = useNavigation();
-    const { reportedUserFullname } = route.params ?? {};
+    const {postId, reportedUserFullname } = route.params ?? {};
     const [selectedReportId, setSelectedReportId] = useState(null);
     const [description, setDescription] = useState('');
     const canSubmit = !!selectedReportId;
 
-    const handleSubmit = () => {
+    const [reportCategories, setReportCategories] = useState([]);
+
+
+
+    useEffect(()=>{
+        const getReportCategories = async () => {
+
+            const response = await getReportCategoriesController(token)
+
+            setReportCategories(response.data.categories);
+            
+        };
+        getReportCategories();
+    },[])
+
+    const handleSubmit = async() => {
         if (!canSubmit) return;
+
+
+
+        const response = await ReportPostController({ 
+                    id:postId,
+                    "handle": "post",
+                    category: selectedReportId, 
+                    reason: description 
+                }, 
+                token
+            );
+
+
+            if (response.status === 200) {
+
+                console.log('Report submitted successfully');
+
+            }
+
+
         navigation.goBack();
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top']}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={24} color={Colors.neutral700} />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>Report Post</Text>
-                </View>
+                </TouchableOpacity>
+                <Text style={styles.title}>Report Post</Text>
+            </View>
 
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexGrow}>
                     <ScrollView contentContainerStyle={styles.content}>
@@ -47,7 +87,7 @@ const ReportPostScreen = () => {
                             {reportedUserFullname ? `Report a post by ${reportedUserFullname}.` : 'Choose the most relevant reason.'}
                     </Text>
 
-                    {ReportOptions.map((option) => {
+                    {reportCategories.map((option) => {
                         const selected = option.id === selectedReportId;
                         return (
                             <TouchableOpacity
@@ -57,8 +97,7 @@ const ReportPostScreen = () => {
                                 activeOpacity={0.8}
                             >
                                 <View style={styles.optionRowLeft}>
-                                    <Ionicons name={option.icon} size={20} color={selected ? Colors.primary : Colors.neutral700} style={styles.optionIcon} />
-                                    <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{option.label}</Text>
+                                    <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{option.name}</Text>
                                 </View>
                                 {selected && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
                             </TouchableOpacity>
@@ -99,12 +138,13 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.white,
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingTop: 16,
+        // paddingTop: 16,
         paddingBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: Colors.neutral150,
