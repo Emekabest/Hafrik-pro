@@ -64,6 +64,7 @@ import ThreadScreen from './src/pages/messages/ThreadScreen';
 // InAppBrowser replaced by UniversalWebView
 import SplashScreen from './src/pages/common/SplashScreen';
 import PostDetailScreen from './src/pages/home/feeds/PostDetailScreen';
+import ReportPostScreen from './src/pages/home/feeds/reportpostscreen';
 import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen             from './src/pages/settings/SettingsScreen';
 import AboutUsScreen              from './src/pages/settings/AboutUsScreen';
@@ -456,6 +457,7 @@ function AppNavigator() {
               <Stack.Screen name="SearchScreen"  component={SearchScreen} />
               <Stack.Screen name="HashtagScreen" component={HashtagScreen} options={{ headerShown: false }} />
               <Stack.Screen name="PostDetail" component={PostDetailScreen} options={{ cardStyle: { backgroundColor: '#fff' } }} />
+              <Stack.Screen name="ReportPost" component={ReportPostScreen} options={{ headerShown: false }} />
               <Stack.Screen name="TrendingOnHafrik" component={TrendingOnHafrikScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ComingSoon" component={ComingSoonScreen} options={{ headerShown: false }} />
               <Stack.Screen name="MyPagesAndGroups"    component={MyPagesAndGroupsScreen}   options={{ headerShown: false }} />

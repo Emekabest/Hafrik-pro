@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, TouchableWithoutFeedback, StyleSheet } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from '@react-navigation/native';
 import ToggleSaveController from '../../../controllers/tooglesavecontroller';
 import { useAuth } from '../../../AuthContext';
 import AppDetails from '../../../helpers/appdetails';
@@ -15,9 +16,10 @@ const withOpacity = (hex, opacity) => {
 
 
 
-const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = false, userFullname = 'User', onReport, onBlock }) => {
+const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = false, userFullname = 'User', reportedUserId = null, onBlock }) => {
 
-    const {token, user} = useAuth();
+    const navigation = useNavigation();
+    const {token} = useAuth();
 
     const handleSavePost = async () => {
 
@@ -32,7 +34,7 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
 
     const handleReportPost = () => {
         onClose();
-        onReport?.();
+        navigation.navigate('ReportPost', { postId, reportedUserId, reportedUserFullname: userFullname });
     }
 
     const handleBlockUser = () => {
@@ -70,13 +72,13 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
                                 </TouchableOpacity>
                             )}
                            
-                            <TouchableOpacity
-                                style={styles.bottomSheetOption}
-                                onPress={handleReportPost}
-                            >
-                                <Ionicons name="alert" size={24}  />
-                                <Text style={styles.bottomSheetOptionText}>Report Post</Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.bottomSheetOption}
+                                    onPress={handleReportPost}
+                                >
+                                    <Ionicons name="alert" size={24}  />
+                                    <Text style={styles.bottomSheetOptionText}>Report Post</Text>
+                                </TouchableOpacity>
 
                             {isOwner && (
                                 <TouchableOpacity
@@ -87,14 +89,14 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
                                     <Text style={[styles.bottomSheetOptionText, { color: '#E53935' }]}>Delete Post</Text>
                                 </TouchableOpacity>
                             )}
-                    
-                            <TouchableOpacity
-                                style={styles.bottomSheetOption}
-                                onPress={handleBlockUser}
-                            >
-                                <Ionicons name="ban" size={24} color="#E53935" />
-                                <Text style={[styles.bottomSheetOptionText, { color: '#E53935' }]}>Block {userFullname}</Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.bottomSheetOption}
+                                    onPress={handleBlockUser}
+                                >
+                                    <Ionicons name="ban" size={24} color="#E53935" />
+                                    <Text style={[styles.bottomSheetOptionText, { color: '#E53935' }]}>Block {userFullname}</Text>
+                                </TouchableOpacity>
+                            
                         </View>
                     </TouchableWithoutFeedback>
                 </View>
