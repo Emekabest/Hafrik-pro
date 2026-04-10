@@ -43,4 +43,22 @@ const ReportPostController = async (body, token) => {
     }
 }
 
-export { getReportCategoriesController, ReportPostController };
+const BlockUserController  = async (body, token)=>{
+    try{
+        const API_URL = "https://hafrik.com/api/v1/users/block.php"
+        
+        const response = await axios.post(API_URL, body, {
+             headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+
+        return { data: response.data, status: response.status };
+
+    }
+    catch(err){
+
+    }
+}
+
+export { getReportCategoriesController, ReportPostController, BlockUserController };

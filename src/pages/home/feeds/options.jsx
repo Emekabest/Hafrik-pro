@@ -6,6 +6,7 @@ import ToggleSaveController from '../../../controllers/tooglesavecontroller';
 import { useAuth } from '../../../AuthContext';
 import AppDetails from '../../../helpers/appdetails';
 import { Colors } from '../../../theme/colors';
+import { BlockUserController } from '../../../controllers/optionscontroller';
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || "").replace("#", "");
@@ -40,14 +41,20 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
 
     const handleBlockUser = () => {
 
-        console.log('Block user:', userFullname, reportedUserId);
         setShowBlockConfirm(true);
     }
 
-    const handleConfirmBlock = () => {
-        setShowBlockConfirm(false);
-        onClose();
+    const handleConfirmBlock = async() => {
 
+        const response = await BlockUserController({user_id: reportedUserId, action: 'block'}, token)
+        
+        setShowBlockConfirm(false);
+
+    }
+
+    const handleConfirmUnblock = async() => {
+        const response = await BlockUserController({user_id: reportedUserId, action: 'unblock'}, token)
+        
     }
 
 

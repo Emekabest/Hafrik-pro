@@ -823,21 +823,6 @@ const AuthScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
 
-              <View style={styles.orRow}><View style={styles.orLine} /><Text style={styles.orText}>or continue with</Text><View style={styles.orLine} /></View>
-              <View style={styles.socialRow}>
-                <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={handleGoogleSignIn} disabled={!!socialLoading}>
-                  {socialLoading === 'google' ? <ActivityIndicator size="small" color={Colors.google} /> : (
-                    <><Ionicons name="logo-google" size={18} color={Colors.google} /><Text style={styles.socialBtnText}>Google</Text></>
-                  )}
-                </TouchableOpacity>
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8} onPress={handleAppleSignIn} disabled={!!socialLoading}>
-                    {socialLoading === 'apple' ? <ActivityIndicator size="small" color={WHITE} /> : (
-                      <><Ionicons name="logo-apple" size={18} color={WHITE} /><Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text></>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
             </>
           )}
 
