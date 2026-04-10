@@ -13,6 +13,8 @@ const withOpacity = (hex, opacity) => {
 };
 
 
+
+
 const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = false, userFullname = 'User', onReport, onBlock }) => {
 
     const {token, user} = useAuth();
@@ -75,6 +77,7 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
                                 <Ionicons name="alert" size={24}  />
                                 <Text style={styles.bottomSheetOptionText}>Report Post</Text>
                             </TouchableOpacity>
+
                             {isOwner && (
                                 <TouchableOpacity
                                     style={styles.bottomSheetOption}
@@ -84,24 +87,14 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
                                     <Text style={[styles.bottomSheetOptionText, { color: '#E53935' }]}>Delete Post</Text>
                                 </TouchableOpacity>
                             )}
-                            {/* {!isOwner && (
-                                <TouchableOpacity
-                                    style={styles.bottomSheetOption}
-                                    onPress={handleReportPost}
-                                >
-                                    <Ionicons name="flag-outline" size={24} color="#F57C00" />
-                                    <Text style={[styles.bottomSheetOptionText, { color: '#F57C00' }]}>Report Post</Text>
-                                </TouchableOpacity>
-                            )} */}
-                            {!isOwner && (
-                                <TouchableOpacity
-                                    style={styles.bottomSheetOption}
-                                    onPress={handleBlockUser}
-                                >
-                                    <Ionicons name="ban" size={24} color="#E53935" />
-                                    <Text style={[styles.bottomSheetOptionText, { color: '#E53935' }]}>Block {userFullname}</Text>
-                                </TouchableOpacity>
-                            )}
+                    
+                            <TouchableOpacity
+                                style={styles.bottomSheetOption}
+                                onPress={handleBlockUser}
+                            >
+                                <Ionicons name="ban" size={24} color="#E53935" />
+                                <Text style={[styles.bottomSheetOptionText, { color: '#E53935' }]}>Block {userFullname}</Text>
+                            </TouchableOpacity>
                         </View>
                     </TouchableWithoutFeedback>
                 </View>
