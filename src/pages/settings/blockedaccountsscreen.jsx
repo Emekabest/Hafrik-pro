@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Text, View, FlatList, TouchableOpacity, Image, StyleSheet, Platform, StatusBar } from "react-native";
+import { Alert, Text, View, FlatList, TouchableOpacity, Image, StyleSheet, Platform, StatusBar, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,9 +13,11 @@ const BlockedAccountScreen = () => {
     const navigation = useNavigation();
     const { token } = useAuth();
     const [blockedAccounts, setBlockedAccounts] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const getBlockedContactList = async () => {
+            setIsLoading(true);
             try {
                 const response = await GetBlockedAccountController(token);
                 if (response.status === 200) {
@@ -23,6 +25,8 @@ const BlockedAccountScreen = () => {
                 }
             } catch (error) {
                 Alert.alert('Error', 'Failed to fetch blocked accounts. Please try again later.');
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -51,7 +55,11 @@ const BlockedAccountScreen = () => {
             </View>
 
             <View style={styles.content}>
-                {blockedAccounts.length === 0 ? (
+                {isLoading ? (
+                    <View style={styles.loaderContainer}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                    </View>
+                ) : blockedAccounts.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <Text style={styles.emptyText}>No blocked accounts</Text>
                     </View>
@@ -97,6 +105,11 @@ const styles = StyleSheet.create({
     },
     emptyContainer: {
         marginTop: 32,
+        alignItems: 'center',
+    },
+    loaderContainer: {
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
     },
     emptyText: {
