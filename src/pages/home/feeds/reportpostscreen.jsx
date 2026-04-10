@@ -7,20 +7,8 @@ import AppDetails from '../../../helpers/appdetails';
 import { Colors } from '../../../theme/colors';
 import { getReportCategoriesController, ReportPostController } from '../../../controllers/optionscontroller';
 import { useAuth } from '../../../AuthContext';
+import BrandLoader from '../../../components/BrandLoader';
 
-
-// const reportCategories = [
-//     { id: 1, label: 'Nudity', icon: 'alert' },
-//     { id: 2, label: 'Violence', icon: 'warning' },
-//     { id: 3, label: 'Harassment', icon: 'person' },
-//     { id: 4, label: 'Suicide or Self-Injury', icon: 'sad-outline' },
-//     { id: 5, label: 'False Information', icon: 'document-text-outline' },
-//     { id: 6, label: 'Spam', icon: 'mail' },
-//     { id: 7, label: 'Unauthorized Sales', icon: 'pricetag-outline' },
-//     { id: 8, label: 'Hate Speech', icon: 'warning' },
-//     { id: 9, label: 'Terrorism', icon: 'alert-circle-outline' },
-//     { id: 10, label: 'Something Else', icon: 'ellipsis-horizontal' },
-// ];
 
 const ReportPostScreen = () => {
     const {token} = useAuth()
@@ -29,6 +17,7 @@ const ReportPostScreen = () => {
     const {postId, reportedUserFullname } = route.params ?? {};
     const [selectedReportId, setSelectedReportId] = useState(null);
     const [description, setDescription] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const canSubmit = !!selectedReportId;
 
     const [reportCategories, setReportCategories] = useState([]);
@@ -47,86 +36,93 @@ const ReportPostScreen = () => {
     },[])
 
     const handleSubmit = async() => {
-        if (!canSubmit) return;
+        if (!canSubmit || isLoading) return;
 
+        setIsLoading(true);
 
+        try {
+            const response = await ReportPostController({ 
+                        id:postId,
+                        "handle": "post",
+                        category: selectedReportId, 
+                        reason: description 
+                    }, 
+                    token
+                );
 
-        const response = await ReportPostController({ 
-                    id:postId,
-                    "handle": "post",
-                    category: selectedReportId, 
-                    reason: description 
-                }, 
-                token
-            );
-
-
-            if (response.status === 200) {
-
-                console.log('Report submitted successfully');
-
-            }
-
-
-        navigation.goBack();
+              
+        } catch (error) {
+            // Handle error if needed
+        } finally {
+            setIsLoading(false);
+            navigation.goBack();
+        }
     };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={24} color={Colors.neutral700} />
-                </TouchableOpacity>
-                <Text style={styles.title}>Report Post</Text>
-            </View>
+            {isLoading ? (
+                <View style={styles.loaderContainer}>
+                    <BrandLoader />
+                </View>
+            ) : (
+                <>
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                            <Ionicons name="chevron-back" size={24} color={Colors.neutral700} />
+                        </TouchableOpacity>
+                        <Text style={styles.title}>Report Post</Text>
+                    </View>
 
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexGrow}>
-                    <ScrollView contentContainerStyle={styles.content}>
-                        <Text style={styles.sectionTitle}>Why are you reporting this post?</Text>
-                        <Text style={styles.sectionSubtitle}>
-                            {reportedUserFullname ? `Report a post by ${reportedUserFullname}.` : 'Choose the most relevant reason.'}
-                    </Text>
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexGrow}>
+                        <ScrollView contentContainerStyle={styles.content}>
+                            <Text style={styles.sectionTitle}>Why are you reporting this post?</Text>
+                            <Text style={styles.sectionSubtitle}>
+                                {reportedUserFullname ? `Report a post by ${reportedUserFullname}.` : 'Choose the most relevant reason.'}
+                            </Text>
 
-                    {reportCategories.map((option) => {
-                        const selected = option.id === selectedReportId;
-                        return (
+                            {reportCategories.map((option) => {
+                                const selected = option.id === selectedReportId;
+                                return (
+                                    <TouchableOpacity
+                                        key={option.id}
+                                        style={[styles.optionRow, selected && styles.optionRowSelected]}
+                                        onPress={() => setSelectedReportId(option.id)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <View style={styles.optionRowLeft}>
+                                            <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{option.name}</Text>
+                                        </View>
+                                        {selected && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
+                                    </TouchableOpacity>
+                                );
+                            })}
+
+                            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Description</Text>
+                            <Text style={styles.sectionSubtitle}>Tell us more so our team can review this report.</Text>
+                            <TextInput
+                                style={styles.textArea}
+                                value={description}
+                                onChangeText={setDescription}
+                                placeholder="Add any details that may help..."
+                                placeholderTextColor={Colors.neutral430}
+                                multiline
+                                numberOfLines={5}
+                                textAlignVertical="top"
+                            />
+
                             <TouchableOpacity
-                                key={option.id}
-                                style={[styles.optionRow, selected && styles.optionRowSelected]}
-                                onPress={() => setSelectedReportId(option.id)}
+                                style={[styles.submitButton, (!canSubmit || isLoading) && styles.submitButtonDisabled]}
                                 activeOpacity={0.8}
+                                onPress={handleSubmit}
+                                disabled={!canSubmit || isLoading}
                             >
-                                <View style={styles.optionRowLeft}>
-                                    <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{option.name}</Text>
-                                </View>
-                                {selected && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
+                                <Text style={styles.submitButtonText}>Submit Report</Text>
                             </TouchableOpacity>
-                        );
-                    })}
-
-                    <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Description</Text>
-                    <Text style={styles.sectionSubtitle}>Tell us more so our team can review this report.</Text>
-                    <TextInput
-                        style={styles.textArea}
-                        value={description}
-                        onChangeText={setDescription}
-                        placeholder="Add any details that may help..."
-                        placeholderTextColor={Colors.neutral430}
-                        multiline
-                        numberOfLines={5}
-                        textAlignVertical="top"
-                    />
-
-                    <TouchableOpacity
-                        style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-                        activeOpacity={0.8}
-                        onPress={handleSubmit}
-                        disabled={!canSubmit}
-                    >
-                        <Text style={styles.submitButtonText}>Submit Report</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                        </ScrollView>
+                    </KeyboardAvoidingView>
+                </>
+            )}
         </SafeAreaView>
     );
 };
@@ -232,6 +228,11 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 16,
         fontFamily: AppDetails.fontFamily.redex.semiBold,
+    },
+    loaderContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 
