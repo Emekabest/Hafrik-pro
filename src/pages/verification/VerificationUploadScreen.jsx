@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../AuthContext';
-import { submitVerification } from '../../controllers/verificationController';
+import { submitVerification, SubmitVerificationController } from '../../controllers/verificationController';
 import { Colors } from '../../theme/colors';
 import AppDetails from '../../helpers/appdetails';
 import UploadVerificationDocumentController from '../../controllers/uploadmediaverficationcontroller';
@@ -115,7 +115,9 @@ export default function VerificationUploadScreen() {
   const [passportLocal,    setPassportLocal]    = useState(null);
   const [passportPreview,  setPassportPreview]  = useState(null); // { uri: 'https://...' }
   const [passportUploading, setPassportUploading] = useState(false);
-  const [selfie,           setSelfie]           = useState(null);
+  const [selfieLocal,      setSelfieLocal]      = useState(null);
+  const [selfiePreview,    setSelfiePreview]    = useState(null);
+  const [selfieUploading,  setSelfieUploading]  = useState(false);
   const [submitting,       setSubmitting]       = useState(false);
 
   // ── Pick passport from gallery ────────────────────────────────────────────
@@ -137,7 +139,6 @@ export default function VerificationUploadScreen() {
       setPassportUploading(true);
       try {
         const uploadResult = await UploadVerificationDocumentController(media, 'photo', token);
-        console.log("pmpp")
 
         if (uploadResult?.status && uploadResult?.data?.url) {
           setPassportPreview({ uri: uploadResult.data.url });
@@ -168,13 +169,32 @@ export default function VerificationUploadScreen() {
     });
 
     if (!result.canceled && result.assets?.[0]) {
-      setSelfie(result.assets[0]);
+      const media = result.assets[0];
+      setSelfieLocal(media);
+      setSelfiePreview(null);
+      setSelfieUploading(true);
+      try {
+        const uploadResult = await UploadVerificationDocumentController(media, 'photo', token);
+        if (uploadResult?.status && uploadResult?.data?.url) {
+          setSelfiePreview({ uri: uploadResult.data.url });
+        } else {
+          Alert.alert('Upload failed', 'Could not upload selfie. Please try again.');
+        }
+      } catch (err) {
+        Alert.alert('Upload failed', err?.message || 'Please try again.');
+      } finally {
+        setSelfieUploading(false);
+      }
     }
-  }, []);
+  }, [token]);
 
   // ── Submit ────────────────────────────────────────────────────────────────
-  const handleSubmit = useCallback(async () => {
-    if (!passportLocal || !selfie) return;
+  const handleSubmit = async () => {
+    // console.log('Submitting verification with:', {
+    //   passport: passportPreview,
+    //   selfie: selfiePreview,
+    // });
+    if (!passportPreview || !selfiePreview) return;
 
     Alert.alert(
       'Submit Verification',
@@ -186,8 +206,26 @@ export default function VerificationUploadScreen() {
           onPress: async () => {
             setSubmitting(true);
             try {
-              await submitVerification(token, passportLocal, selfie);
-              navigation.replace('VerificationPending');
+              //  await submitVerification(token, passportLocal, selfieLocal);
+
+              const body = {
+                "message": "Verification documents submitted",
+                "photo":selfiePreview.uri,
+                "passport":passportPreview.uri,
+              }
+
+              const reponse = await SubmitVerificationController(token, body);
+
+              console.log(reponse)
+
+              if (reponse?.status === "success") {
+                Alert.alert('Success', reponse?.message || 'Your documents have been submitted for verification.');
+                navigation.replace('VerificationPending');
+              } else {
+                Alert.alert('Submission Failed', reponse?.message || 'Please try again.');
+              }
+              
+              // navigation.replace('VerificationPending');
             } catch (err) {
               Alert.alert('Submission Failed', err.message || 'Please try again.');
             } finally {
@@ -197,9 +235,9 @@ export default function VerificationUploadScreen() {
         },
       ],
     );
-  }, [passportLocal, selfie, token, navigation]);
+  }
 
-  const canSubmit = !!passportLocal && !!selfie && !submitting;
+  const canSubmit = !!passportLocal && !!selfieLocal && !submitting;
 
   return (
     <View style={[styles.root, { paddingTop: top }]}>
@@ -220,10 +258,10 @@ export default function VerificationUploadScreen() {
             <Ionicons name="card-outline" size={16} color={Colors.white} />
             <Text style={styles.progressStepText}>Passport</Text>
           </View>
-          <View style={[styles.progressLine, selfie && styles.progressLineDone]} />
-          <View style={[styles.progressStep, selfie ? styles.progressStepActive : styles.progressStepInactive]}>
-            <Ionicons name="camera-outline" size={16} color={selfie ? Colors.white : Colors.secondaryText} />
-            <Text style={[styles.progressStepText, !selfie && { color: Colors.secondaryText }]}>Selfie</Text>
+          <View style={[styles.progressLine, selfieLocal && styles.progressLineDone]} />
+          <View style={[styles.progressStep, selfieLocal ? styles.progressStepActive : styles.progressStepInactive]}>
+            <Ionicons name="camera-outline" size={16} color={selfieLocal ? Colors.white : Colors.secondaryText} />
+            <Text style={[styles.progressStepText, !selfieLocal && { color: Colors.secondaryText }]}>Selfie</Text>
           </View>
         </View>
 
@@ -261,6 +299,9 @@ export default function VerificationUploadScreen() {
           </View>
         </View>
 
+
+
+
         {/* Step 2: Selfie */}
         <View style={styles.stepSection}>
           <View style={styles.stepHeader}>
@@ -276,9 +317,10 @@ export default function VerificationUploadScreen() {
             icon="person-circle-outline"
             title="Take Selfie"
             hint="Front camera only · No filters · Look directly at the camera"
-            asset={selfie}
+            asset={selfiePreview}
             onPress={captureSelfie}
             disabled={!passportLocal}
+            loading={selfieUploading}
           />
           {/* Tips */}
           <View style={styles.tipsRow}>
@@ -315,7 +357,7 @@ export default function VerificationUploadScreen() {
         {!passportLocal && (
           <Text style={styles.submitHint}>Upload your passport first, then take a selfie to continue.</Text>
         )}
-        {passportLocal && !selfie && (
+        {passportLocal && !selfieLocal && (
           <Text style={styles.submitHint}>Take a selfie to complete your application.</Text>
         )}
 

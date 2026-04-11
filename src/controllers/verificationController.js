@@ -7,6 +7,8 @@
  *   POST https://hafrik.com/api/v1/users/verify.php          → { success, message }
  */
 
+import axios from "axios";
+
 const BASE = 'https://hafrik.com/api/v1/users/verify.php';
 
 /**
@@ -71,3 +73,24 @@ export const submitVerification = async (token, passportAsset, selfieAsset) => {
   }
   return json;
 };
+
+
+export const SubmitVerificationController = async(token, body) => {
+  try {
+      const API_URL = `https://hafrik.com/api/v1/verification/submit.php`;
+      const response = await axios.post(API_URL, body, {
+          headers: {  
+            Authorization: `Bearer ${token}`
+          },
+      })
+
+      console.log(response.data);
+
+      return { status: response.data.status, message: response.data.message }
+
+  } catch (error) {
+    console.log('Error submitting verification:', error);
+  }
+
+}
+
