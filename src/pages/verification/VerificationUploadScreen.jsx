@@ -24,6 +24,8 @@ import { useAuth } from '../../AuthContext';
 import { submitVerification } from '../../controllers/verificationController';
 import { Colors } from '../../theme/colors';
 import AppDetails from '../../helpers/appdetails';
+import UploadVerificationDocumentController from '../../controllers/uploadmediaverficationcontroller';
+
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || '').replace('#', '');
@@ -122,8 +124,16 @@ export default function VerificationUploadScreen() {
 
     if (!result.canceled && result.assets?.[0]) {
       setPassport(result.assets[0]);
+
+      const media = result.assets[0]
+
+      const uploadResult = await UploadVerificationDocumentController(media, "photo", token);
+
+      console.log(uploadResult.data)
     }
   }, []);
+
+
 
   // ── Capture selfie with front camera ─────────────────────────────────────
   const captureSelfie = useCallback(async () => {
