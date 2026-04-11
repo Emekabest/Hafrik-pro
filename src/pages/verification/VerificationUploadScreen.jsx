@@ -216,7 +216,6 @@ export default function VerificationUploadScreen() {
 
               const reponse = await SubmitVerificationController(token, body);
 
-              console.log(reponse)
 
               if (reponse?.status === "success") {
                 Alert.alert('Success', reponse?.message || 'Your documents have been submitted for verification.');
