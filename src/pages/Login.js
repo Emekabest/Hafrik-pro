@@ -479,7 +479,7 @@ const AuthScreen = () => {
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', username: '', email: '',
-    password: '', gender: null,
+    password: '', gender: 3,
   });
   const [genders] = useState([
     { id: 1, label: 'Male' },
@@ -515,7 +515,6 @@ const AuthScreen = () => {
       if (!form.username.trim())  e.username  = 'Username is required';
       if (!form.password)         e.password  = 'Password is required';
       else if (form.password.length < 6) e.password = 'At least 6 characters';
-      if (!form.gender)  e.gender  = 'Please select your gender';
       if (!agreed)       e.terms   = 'You must agree to the terms';
     }
     setErrors(e);
@@ -879,7 +878,7 @@ const AuthScreen = () => {
               </Field>
 
               {/* Gender */}
-              <Field label="Gender" error={errors.gender}>
+              <Field label="Gender (Optional)" error={errors.gender}>
                 <TouchableOpacity style={[styles.input, errors.gender && styles.inputError]} onPress={() => setShowGenderModal(true)} activeOpacity={0.8}>
                   <View style={styles.inputPrefix}><Ionicons name="transgender-outline" size={17} color={MUTED} /></View>
                   <View style={styles.inputDivider} />
