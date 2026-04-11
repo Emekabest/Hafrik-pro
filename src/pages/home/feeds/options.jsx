@@ -16,7 +16,6 @@ const withOpacity = (hex, opacity) => {
 
 
 
-
 const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = false, userFullname = 'User', reportedUserId = null, onBlock }) => {
 
     const navigation = useNavigation();
@@ -47,10 +46,21 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
     const handleConfirmBlock = async() => {
 
         const response = await BlockUserController({user_id: reportedUserId, action: 'block'}, token)
+
         
         setShowBlockConfirm(false);
 
-        Alert.alert("Bloked", `${userFullname} has been blocked. You will no longer see content from this user.`, [
+        const IsBlockedAlready = response.data.data?.error_code;
+
+        if (IsBlockedAlready) {
+              Alert.alert("Blocked", `${userFullname} has been blocked Already.`, [
+                { text: "OK"}
+            ]);
+
+            return;
+        }
+
+        Alert.alert("Blocked", `${userFullname} has been blocked. You will no longer see content from this user.`, [
             { text: "OK"}
         ]);
 
@@ -81,6 +91,7 @@ const OptionsModal = ({ visible, postId, onClose, onEdit, onDelete, isOwner = fa
                                 <Ionicons name="bookmark-outline" size={24} color={Colors.neutral700} />
                                 <Text style={styles.bottomSheetOptionText}>Save Post</Text>
                             </TouchableOpacity>
+
                             {isOwner && (
                                 <TouchableOpacity
                                     style={styles.bottomSheetOption}
