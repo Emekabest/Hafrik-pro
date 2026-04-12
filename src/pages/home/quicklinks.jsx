@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  ScrollView,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -30,6 +29,12 @@ const BORDER = Colors.borderSoft;
 
 const items = [
   {
+    label: "Arrival",
+    icon: (active) => <Ionicons name="airplane" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "ArrivalConcierge",
+    colors: ['#c9a84c', '#8a6820'],
+  },
+  {
     label: "Community",
     icon: (active) => <Ionicons name="people" size={20} color={active ? Colors.white : BRAND} />,
     screen: "GroupScreen",
@@ -43,10 +48,34 @@ const items = [
     colors: [ACCENT, Colors.tealMint],
   },
   {
+    label: "City Guide",
+    icon: (active) => <Ionicons name="map" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "CityGuide",
+    colors: [Colors.teal, Colors.tealDark],
+  },
+  {
+    label: "Exchange",
+    icon: (active) => <Ionicons name="swap-horizontal" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "HafrikXCurrency",
+    colors: ['#c9a84c', '#8a6820'],
+  },
+  {
     label: "Articles",
     icon: (active) => <Ionicons name="newspaper" size={20} color={active ? Colors.white : BRAND} />,
     screen: "ArticlesScreen",
     colors: [Colors.violet, Colors.violetDeep],
+  },
+  {
+    label: "Visa",
+    icon: (active) => <Ionicons name="document-text" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "HafrikXVisa",
+    colors: [Colors.tealNavy, Colors.tealDeepStrong],
+  },
+  {
+    label: "Learn",
+    icon: (active) => <Ionicons name="school" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "HafrikXLearn",
+    colors: [Colors.redStrong, Colors.redDeep],
   },
   {
     label: "Events",
@@ -129,6 +158,10 @@ export default function StaticShortcutRow() {
     navigation.navigate(screen, params);
   };
 
+  // chunk into rows of 5
+  const rows = [];
+  for (let i = 0; i < items.length; i += 5) rows.push(items.slice(i, i + 5));
+
   return (
     <View style={[styles.wrapper, { backgroundColor: tc.surface, borderBottomColor: tc.border }]}>
       {/* Subtle top accent line */}
@@ -139,20 +172,18 @@ export default function StaticShortcutRow() {
         end={{ x: 1, y: 0 }}
       />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
-      >
-        {items.map((item, index) => (
-          <ShortcutItem
-            key={item.label}
-            item={item}
-            index={index}
-            onPress={handlePress}
-          />
-        ))}
-      </ScrollView>
+      {rows.map((row, ri) => (
+        <View key={ri} style={[styles.row, ri > 0 && styles.rowGap]}>
+          {row.map((item, index) => (
+            <ShortcutItem
+              key={item.label}
+              item={item}
+              index={ri * 5 + index}
+              onPress={handlePress}
+            />
+          ))}
+        </View>
+      ))}
     </View>
   );
 }
@@ -176,12 +207,15 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     paddingHorizontal: 14,
-    gap: 10, // more breathing space
+    justifyContent: "space-between",
+  },
+  rowGap: {
+    marginTop: 14,
   },
 
   item: {
     alignItems: "center",
-    width: 72, // slightly wider for better label balance
+    flex: 1,
   },
 
   bubble: {

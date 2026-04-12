@@ -15,13 +15,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
-const BG      = '#070d1a';
-const CARD    = '#0f1a2e';
-const BORDER  = '#1e2d45';
+const BG      = '#f7fff7';
+const CARD    = '#ffffff';
+const BORDER  = '#e4eeef';
 const GOLD    = '#c9a84c';
 const GOLD_LT = '#e8c87a';
-const MUTED   = '#6b7f95';
-const WHITE   = '#f5f6fa';
+const MUTED   = '#5f6b6d';
+const WHITE   = '#ffffff';
+const BRAND   = '#0c3f44';
+const TEAL    = '#1f8e93';
 const ACCENT  = '#3b82f6';
 
 const { width: W } = Dimensions.get('window');
@@ -91,17 +93,17 @@ export default function RequestProduct() {
   }, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Request a Product</Text>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -109,7 +111,7 @@ export default function RequestProduct() {
         showsVerticalScrollIndicator={false}
       >
         {/* Intro banner */}
-        <LinearGradient colors={['#162240', '#0f1a2e']} style={styles.introBanner}>
+        <LinearGradient colors={['#162240', '#ffffff']} style={styles.introBanner}>
           <Ionicons name="cube-outline" size={20} color={GOLD} />
           <Text style={styles.introBannerText}>
             Tell us what you need and our sourcing agents will find the best suppliers in China.
@@ -221,7 +223,7 @@ export default function RequestProduct() {
           activeOpacity={0.85}
           style={{ marginTop: 24, marginBottom: 50 }}
         >
-          <LinearGradient colors={[GOLD, GOLD_LT, GOLD]} style={styles.submitBtn}>
+          <LinearGradient colors={[BRAND, TEAL]} style={styles.submitBtn}>
             <Ionicons name="send" size={18} color={BG} />
             <Text style={styles.submitBtnText}>Submit Request</Text>
           </LinearGradient>
@@ -236,31 +238,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: CARD,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  headerTitle: {
-    flex: 1,
-    fontFamily: 'ReadexPro_600SemiBold',
-    fontSize: 17,
-    color: WHITE,
-    textAlign: 'center',
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 18,
@@ -279,7 +259,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'WorkSans_400Regular',
     fontSize: 13,
-    color: WHITE,
+    color: BRAND,
     lineHeight: 19,
   },
   fieldLabelRow: {
@@ -291,7 +271,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 13,
-    color: WHITE,
+    color: BRAND,
   },
   fieldOptional: {
     fontFamily: 'WorkSans_400Regular',
@@ -307,7 +287,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     fontFamily: 'WorkSans_400Regular',
     fontSize: 14,
-    color: WHITE,
+    color: BRAND,
   },
   inputMultiline: {
     height: 110,
@@ -375,6 +355,6 @@ const styles = StyleSheet.create({
   submitBtnText: {
     fontFamily: 'WorkSans_700Bold',
     fontSize: 16,
-    color: BG,
+    color: WHITE,
   },
 });

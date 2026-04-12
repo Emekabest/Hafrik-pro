@@ -14,13 +14,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
-const BG      = '#070d1a';
-const CARD    = '#0f1a2e';
-const BORDER  = '#1e2d45';
+const BG      = '#f7fff7';
+const CARD    = '#ffffff';
+const BORDER  = '#e4eeef';
 const GOLD    = '#c9a84c';
 const GOLD_LT = '#e8c87a';
-const MUTED   = '#6b7f95';
-const WHITE   = '#f5f6fa';
+const MUTED   = '#5f6b6d';
+const WHITE   = '#ffffff';
+const BRAND   = '#0c3f44';
+const TEAL    = '#1f8e93';
 const ACCENT  = '#3b82f6';
 
 const { width: W } = Dimensions.get('window');
@@ -131,8 +133,8 @@ const ServiceCard = memo(({ service }) => {
     <View style={styles.serviceCard}>
       {/* Icon */}
       <View style={styles.cardIconWrap}>
-        <LinearGradient colors={['#162440', '#0f1a2e']} style={styles.cardIconGrad}>
-          <Ionicons name={service.icon} size={22} color={GOLD} />
+        <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.cardIconGrad}>
+          <Ionicons name={service.icon} size={22} color={TEAL} />
         </LinearGradient>
       </View>
 
@@ -170,27 +172,27 @@ export default function VisaServices() {
   const navigation = useNavigation();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
-        <View style={styles.headerTextWrap}>
+        <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Travel & Services</Text>
           <Text style={styles.headerSub}>China Visit & Processing</Text>
         </View>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero banner */}
-        <LinearGradient colors={['#162440', '#0f1a2e']} style={styles.heroBanner}>
+        <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.heroBanner}>
           <Ionicons name="airplane" size={28} color={GOLD} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.heroTitle}>Plan Your China Trip</Text>
@@ -213,7 +215,7 @@ export default function VisaServices() {
 
         {/* Contact footer */}
         <View style={styles.contactCard}>
-          <Ionicons name="chatbubbles-outline" size={20} color={GOLD} />
+          <Ionicons name="chatbubbles-outline" size={20} color={TEAL} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.contactTitle}>Need custom assistance?</Text>
             <Text style={styles.contactSub}>
@@ -233,39 +235,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: CARD,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   headerTextWrap: {
     flex: 1,
     alignItems: 'center',
   },
-  headerTitle: {
-    fontFamily: 'ReadexPro_600SemiBold',
-    fontSize: 17,
-    color: WHITE,
-  },
-  headerSub: {
-    fontFamily: 'WorkSans_400Regular',
-    fontSize: 12,
-    color: GOLD,
-    marginTop: 2,
-  },
+  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
+  headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'WorkSans_400Regular', marginTop: 2 },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 18,
@@ -282,7 +259,7 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontFamily: 'WorkSans_700Bold',
     fontSize: 15,
-    color: WHITE,
+    color: BRAND,
     marginBottom: 4,
   },
   heroSubtitle: {
@@ -301,12 +278,12 @@ const styles = StyleSheet.create({
     width: 4,
     height: 18,
     borderRadius: 2,
-    backgroundColor: GOLD,
+    backgroundColor: TEAL,
   },
   sectionTitle: {
     fontFamily: 'ReadexPro_600SemiBold',
     fontSize: 16,
-    color: WHITE,
+    color: BRAND,
   },
   serviceCard: {
     flexDirection: 'row',
@@ -329,7 +306,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: GOLD + '40',
+    borderColor: TEAL + '40',
     borderRadius: 12,
   },
   cardBody: {
@@ -338,7 +315,7 @@ const styles = StyleSheet.create({
   serviceTitle: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 13,
-    color: WHITE,
+    color: BRAND,
     marginBottom: 3,
     lineHeight: 18,
   },
@@ -368,14 +345,15 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: GOLD,
+    borderColor: TEAL,
     alignItems: 'center',
     minWidth: 56,
+    backgroundColor: TEAL + '12',
   },
   actionBtnText: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 13,
-    color: GOLD,
+    color: TEAL,
   },
   contactCard: {
     flexDirection: 'row',
@@ -391,7 +369,7 @@ const styles = StyleSheet.create({
   contactTitle: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 14,
-    color: WHITE,
+    color: BRAND,
     marginBottom: 4,
   },
   contactSub: {

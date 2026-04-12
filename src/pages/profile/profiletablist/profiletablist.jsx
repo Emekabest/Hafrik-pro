@@ -17,7 +17,7 @@ import { Colors } from '../../../theme/colors';
 
 const MemoizedProfileTabs = memo(ProfileTabs);
 const MemoizedFilterHeader = memo(FilterHeader);
-const MemomizedProfileTabListCard = memo(ProfileTabListCard);
+const MemoizedProfileTabListCard = memo(ProfileTabListCard);
 
 
 const ProfileTabList = ({ combinedData }) => {
@@ -101,7 +101,7 @@ const ProfileTabList = ({ combinedData }) => {
                         <View style={{paddingHorizontal: 5}}>
                             {item.items.map((subItem, index) => (
                                 <View key={index} style={{paddingVertical: 6}}>
-                                    <MemomizedProfileTabListCard item={subItem} />
+                                    <MemoizedProfileTabListCard item={subItem} />
                                 </View>
                             ))}
                         </View>
@@ -112,7 +112,7 @@ const ProfileTabList = ({ combinedData }) => {
                     <View style={{flexDirection: 'row', paddingHorizontal: 5}}>
                         {item.items.map((subItem, index) => (
                            <View key={index} style={{flex: 1, padding: 2}}>
-                                <MemomizedProfileTabListCard item={subItem} />
+                                <MemoizedProfileTabListCard item={subItem} />
                            </View>
                         ))}
                         {item.items.length === 1 && <View style={{flex: 1, padding: 2}} />}

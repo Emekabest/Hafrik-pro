@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, StatusBar } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, Alert, StatusBar } from "react-native";
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from "../../AuthContext";

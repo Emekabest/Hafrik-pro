@@ -60,8 +60,6 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
     // current_city = where they live now (set by profilecontroller from user_current_city / current_city / city)
     const cityLabel   = userDetails?.current_city || userDetails?.user_current_city || '';
     const roleLabel   = userDetails?.role || '';
-    // hometown = where they are FROM (set by profilecontroller from user_hometown / hometown)
-    const originLabel = userDetails?.hometown || userDetails?.user_hometown || '';
     const dobLabel = userDetails?.dob || userDetails?.date_of_birth || '';
     const monetizationEnabled = !!userDetails?.monetization_enabled;
 
@@ -755,52 +753,6 @@ const styles = StyleSheet.create({
         marginTop: 10,
         lineHeight: 20,
         fontFamily: AppDetails.fontFamily?.body,
-    },
-
-    // ── Location cards ────────────────────────────────────────────
-    locationCardsRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: 14,
-        gap: 10,
-    },
-    locationCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.surfaceCool,
-        borderRadius: 14,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        gap: 10,
-        borderWidth: 1,
-        borderColor: Colors.borderSoft ?? '#e5e7eb',
-        flex: 1,
-        minWidth: 130,
-    },
-    locationCardIcon: {
-        width: 34,
-        height: 34,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-    },
-    locationCardBody: {
-        flex: 1,
-    },
-    locationCardLabel: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: Colors.mutedBlueGray,
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
-        marginBottom: 2,
-    },
-    locationCardValue: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: Colors.textBodyIndigo ?? BRAND,
-        fontFamily: AppDetails.fontFamily?.inter?.bold,
     },
 
     // ── Info chips ────────────────────────────────────────────────

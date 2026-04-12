@@ -463,7 +463,8 @@ const Feeds = ({
   const savedScrollOffset = useRef(0);
   const isFocused         = useIsFocused();
   const { token } = useAuth();
-  const { colors: tc } = useTheme();  const BASE_URL = 'https://hafrik.com';
+  const { colors: tc } = useTheme();
+  const BASE_URL = 'https://hafrik.com';
   const viewedPosts = useRef(new Set());
 
   const addView = useCallback(async (postId) => {

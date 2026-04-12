@@ -9,12 +9,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import apiClient from '../../api/apiClient';
 
-const BG     = '#070d1a';
-const CARD   = '#0f1a2e';
-const BORDER = '#1e2d45';
+const BG     = '#f7fff7';
+const BRAND  = '#0c3f44';
+const TEAL   = '#1f8e93';
+const CARD   = '#ffffff';
+const BORDER = '#e4eeef';
+const MUTED  = '#5f6b6d';
+const WHITE  = '#ffffff';
 const GOLD   = '#c9a84c';
-const MUTED  = '#6b7f95';
-const WHITE  = '#f5f6fa';
 const GREEN  = '#10b981';
 
 const fmtNum = (n) => {
@@ -34,7 +36,7 @@ const CopyRow = ({ label, value }) => {
         <Text style={styles.copyValue} selectable>{value}</Text>
       </View>
       <TouchableOpacity onPress={handleCopy} style={styles.copyBtn} activeOpacity={0.75}>
-        <Ionicons name="copy-outline" size={16} color={GOLD} />
+        <Ionicons name="copy-outline" size={16} color={TEAL} />
       </TouchableOpacity>
     </View>
   );
@@ -80,17 +82,17 @@ export default function ExchangePayment() {
   }, [navigation, order_id, from, amount, converted_amount]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Payment Instructions</Text>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
       {/* Progress steps */}
       <View style={styles.stepsRow}>
@@ -99,7 +101,7 @@ export default function ExchangePayment() {
             <View style={styles.stepItem}>
               <View style={[styles.stepCircle, i <= 1 && styles.stepCircleActive]}>
                 {i < 1
-                  ? <Ionicons name="checkmark" size={12} color={BG} />
+                  ? <Ionicons name="checkmark" size={12} color={WHITE} />
                   : <Text style={[styles.stepNum, i <= 1 && styles.stepNumActive]}>{i + 1}</Text>
                 }
               </View>
@@ -115,7 +117,7 @@ export default function ExchangePayment() {
         showsVerticalScrollIndicator={false}
       >
         {/* Summary card */}
-        <LinearGradient colors={['#0f1f3d', '#091428']} style={styles.summaryCard}>
+        <LinearGradient colors={[BRAND, TEAL]} style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>Order Reference</Text>
           <Text style={styles.summaryOrderId}>{order_id}</Text>
           <View style={styles.summaryRow}>
@@ -124,7 +126,7 @@ export default function ExchangePayment() {
               <Text style={styles.summaryItemVal}>{fmtNum(amount)} {from}</Text>
             </View>
             <View style={styles.summaryArrow}>
-              <Ionicons name="arrow-forward" size={18} color={GOLD} />
+              <Ionicons name="arrow-forward" size={18} color={WHITE} />
             </View>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryItemLabel}>You Receive</Text>
@@ -137,13 +139,13 @@ export default function ExchangePayment() {
         {/* Bank details */}
         {loading ? (
           <View style={styles.loaderWrap}>
-            <ActivityIndicator size="large" color={GOLD} />
+            <ActivityIndicator size="large" color={TEAL} />
             <Text style={styles.loaderTxt}>Loading bank details…</Text>
           </View>
         ) : account ? (
           <View style={styles.bankCard}>
             <View style={styles.bankCardHeader}>
-              <Ionicons name="business" size={18} color={GOLD} />
+              <Ionicons name="business" size={18} color={TEAL} />
               <Text style={styles.bankCardTitle}>Payment Account</Text>
             </View>
 
@@ -156,7 +158,7 @@ export default function ExchangePayment() {
 
             {account.instructions && (
               <View style={styles.instructionBox}>
-                <Ionicons name="information-circle" size={16} color={GOLD} style={{ marginRight: 8, marginTop: 1 }} />
+                <Ionicons name="information-circle" size={16} color={TEAL} style={{ marginRight: 8, marginTop: 1 }} />
                 <Text style={styles.instructionTxt}>{account.instructions}</Text>
               </View>
             )}
@@ -169,10 +171,10 @@ export default function ExchangePayment() {
 
         {/* Important notice */}
         <View style={styles.noticeCard}>
-          <Ionicons name="warning" size={16} color={GOLD} />
+          <Ionicons name="warning" size={16} color={TEAL} />
           <View style={{ flex: 1 }}>
             <Text style={styles.noticeTxt}>
-              Use <Text style={{ color: GOLD, fontFamily: 'WorkSans_700Bold' }}>{order_id}</Text> as your payment reference / narration when making the transfer.
+              Use <Text style={{ color: TEAL, fontFamily: 'WorkSans_700Bold' }}>{order_id}</Text> as your payment reference / narration when making the transfer.
             </Text>
           </View>
         </View>
@@ -206,52 +208,52 @@ export default function ExchangePayment() {
 
 const styles = StyleSheet.create({
   root:        { flex: 1, backgroundColor: BG },
-  header:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER },
-  backBtn:     { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BORDER },
-  headerTitle: { flex: 1, textAlign: 'center', color: WHITE, fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
 
   stepsRow:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 },
   stepItem:         { alignItems: 'center', gap: 4 },
   stepCircle:       { width: 26, height: 26, borderRadius: 13, backgroundColor: BORDER, alignItems: 'center', justifyContent: 'center' },
-  stepCircleActive: { backgroundColor: GOLD },
+  stepCircleActive: { backgroundColor: TEAL },
   stepNum:          { color: MUTED, fontSize: 11, fontFamily: 'WorkSans_700Bold' },
-  stepNumActive:    { color: BG },
+  stepNumActive:    { color: WHITE },
   stepLabel:        { color: MUTED, fontSize: 9, fontFamily: 'WorkSans_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.5 },
-  stepLabelActive:  { color: GOLD },
+  stepLabelActive:  { color: TEAL },
   stepLine:         { flex: 1, height: 2, backgroundColor: BORDER, marginBottom: 12 },
-  stepLineDone:     { backgroundColor: GOLD },
+  stepLineDone:     { backgroundColor: TEAL },
 
   scrollContent: { paddingHorizontal: 16, paddingTop: 6 },
 
-  summaryCard:   { borderRadius: 18, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#1e3060' },
-  summaryLabel:  { color: MUTED, fontSize: 11, fontFamily: 'WorkSans_500Medium', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  summaryCard:   { borderRadius: 18, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: TEAL + '44' },
+  summaryLabel:  { color: WHITE + 'cc', fontSize: 11, fontFamily: 'WorkSans_500Medium', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
   summaryOrderId:{ color: GOLD, fontSize: 16, fontFamily: 'ReadexPro_600SemiBold', marginBottom: 16 },
   summaryRow:    { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   summaryItem:   { flex: 1 },
-  summaryItemLabel:{ color: MUTED, fontSize: 11, fontFamily: 'WorkSans_400Regular', marginBottom: 4 },
+  summaryItemLabel:{ color: WHITE + 'bb', fontSize: 11, fontFamily: 'WorkSans_400Regular', marginBottom: 4 },
   summaryItemVal:  { color: WHITE, fontSize: 18, fontFamily: 'ReadexPro_600SemiBold' },
   summaryArrow:  { paddingHorizontal: 12 },
-  summaryRate:   { color: MUTED, fontSize: 11.5, fontFamily: 'WorkSans_400Regular' },
+  summaryRate:   { color: WHITE + 'bb', fontSize: 11.5, fontFamily: 'WorkSans_400Regular' },
 
   loaderWrap:   { alignItems: 'center', paddingVertical: 40, gap: 12 },
   loaderTxt:    { color: MUTED, fontFamily: 'WorkSans_400Regular', fontSize: 13 },
 
   bankCard:      { backgroundColor: CARD, borderRadius: 18, borderWidth: 1, borderColor: BORDER, padding: 18, marginBottom: 14 },
   bankCardHeader:{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  bankCardTitle: { color: WHITE, fontSize: 14, fontFamily: 'ReadexPro_600SemiBold' },
+  bankCardTitle: { color: BRAND, fontSize: 14, fontFamily: 'ReadexPro_600SemiBold' },
 
   copyRow:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER + '66', gap: 10 },
   copyLeft:   { flex: 1 },
   copyLabel:  { color: MUTED, fontSize: 11, fontFamily: 'WorkSans_500Medium', marginBottom: 3 },
-  copyValue:  { color: WHITE, fontSize: 14, fontFamily: 'WorkSans_600SemiBold' },
-  copyBtn:    { width: 34, height: 34, borderRadius: 8, backgroundColor: GOLD + '14', alignItems: 'center', justifyContent: 'center' },
+  copyValue:  { color: BRAND, fontSize: 14, fontFamily: 'WorkSans_600SemiBold' },
+  copyBtn:    { width: 34, height: 34, borderRadius: 8, backgroundColor: TEAL + '14', alignItems: 'center', justifyContent: 'center' },
 
-  instructionBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: GOLD + '0e', borderRadius: 10, padding: 12, marginTop: 14 },
-  instructionTxt: { flex: 1, color: WHITE, fontSize: 12.5, fontFamily: 'WorkSans_400Regular', lineHeight: 18 },
+  instructionBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: TEAL + '0e', borderRadius: 10, padding: 12, marginTop: 14 },
+  instructionTxt: { flex: 1, color: BRAND, fontSize: 12.5, fontFamily: 'WorkSans_400Regular', lineHeight: 18 },
   errorTxt:       { color: MUTED, textAlign: 'center', fontFamily: 'WorkSans_400Regular', fontSize: 13, padding: 20 },
 
-  noticeCard:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: GOLD + '10', borderRadius: 12, borderWidth: 1, borderColor: GOLD + '2a', padding: 14, marginBottom: 20 },
-  noticeTxt:   { color: WHITE, fontSize: 12.5, fontFamily: 'WorkSans_400Regular', lineHeight: 18 },
+  noticeCard:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: TEAL + '10', borderRadius: 12, borderWidth: 1, borderColor: TEAL + '2a', padding: 14, marginBottom: 20 },
+  noticeTxt:   { color: BRAND, fontSize: 12.5, fontFamily: 'WorkSans_400Regular', lineHeight: 18 },
 
   paidBtnWrap: { marginBottom: 14 },
   paidBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 14, paddingVertical: 16, gap: 10 },

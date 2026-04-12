@@ -15,6 +15,7 @@ import {
   View, StyleSheet, Animated, InteractionManager, AppState,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../AuthContext.js';
 import Feeds from './feeds/feeds.jsx';
 import ReelsGridView from './feeds/ReelsGridView.jsx';
@@ -59,10 +60,18 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const [communityList, setCommunityList] = useState([]);
   const [loadingMore,   setLoadingMore]   = useState(false);
 
-  const isReelsTab    = tabConfig.key === 'reels';
-  const isDiscoverTab = tabConfig.key === 'discover';
+  const isReelsTab = tabConfig.key === 'reels';
   const pageRef    = useRef(1);
   const hasMoreRef = useRef(true);
+
+  // ── Seen-posts tracking (per-tab, persisted in AsyncStorage) ─────────────
+  const SEEN_KEY            = `hafrik_seen_posts_${tabConfig.key}`;
+  const MAX_SEEN_IDS        = 500;
+  const seenIdsRef          = useRef(new Set());
+  const [displayFeeds, setDisplayFeeds] = useState([]);
+  const displayFeedsIdsRef  = useRef(new Set());
+  // Set to true before a hard/refresh load so the effect re-sorts; false → pagination append
+  const pendingFreshSortRef = useRef(true);
 
   // ── Build the API URL from tab config + content filter + country ──────────
   const apiUrl = useMemo(() => {
@@ -106,8 +115,73 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
       .catch(() => {});
   }, [token]);
 
+  // ── Load seen post IDs from AsyncStorage (once per tab key) ─────────────
+  useEffect(() => {
+    AsyncStorage.getItem(SEEN_KEY)
+      .then(raw => {
+        if (raw) {
+          try {
+            const arr = JSON.parse(raw);
+            seenIdsRef.current = new Set(arr.map(String));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [SEEN_KEY]);
+
+  // ── Manage displayFeeds: sort on fresh load, append on pagination ─────────
+  useEffect(() => {
+    if (!initialFetchDone || feeds.length === 0) return;
+
+    if (pendingFreshSortRef.current) {
+      // Fresh load (initial / refresh / tab switch): sort unseen to top, shuffle each group
+      pendingFreshSortRef.current = false;
+
+      const shuffle = (arr) => {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      };
+
+      const unseen = feeds.filter(f => !seenIdsRef.current.has(String(f.id)));
+      const seen   = feeds.filter(f =>  seenIdsRef.current.has(String(f.id)));
+      // If unseen posts exist: shuffle unseen → top, shuffle seen → bottom
+      // If all posts seen: shuffle everything
+      const sorted = unseen.length > 0
+        ? [...shuffle(unseen), ...shuffle(seen)]
+        : shuffle(feeds);
+
+      setDisplayFeeds(sorted);
+      displayFeedsIdsRef.current = new Set(sorted.map(f => String(f.id)));
+
+      // Mark all as seen and persist (cap at MAX_SEEN_IDS to bound storage size)
+      sorted.forEach(f => seenIdsRef.current.add(String(f.id)));
+      if (seenIdsRef.current.size > MAX_SEEN_IDS) {
+        const trimmed = [...seenIdsRef.current].slice(-MAX_SEEN_IDS);
+        seenIdsRef.current = new Set(trimmed);
+      }
+      AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...seenIdsRef.current])).catch(() => {});
+    } else {
+      // Pagination: append only truly new posts (preserve existing display order)
+      const newItems = feeds.filter(f => !displayFeedsIdsRef.current.has(String(f.id)));
+      if (newItems.length === 0) return;
+
+      setDisplayFeeds(prev => [...prev, ...newItems]);
+      newItems.forEach(f => {
+        displayFeedsIdsRef.current.add(String(f.id));
+        seenIdsRef.current.add(String(f.id));
+      });
+      AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...seenIdsRef.current])).catch(() => {});
+    }
+  }, [initialFetchDone, feeds]);
+
   // ── Hard load (clears list and reloads page 1) ─────────────────────────────
   const getFeeds = useCallback(async (url) => {
+    pendingFreshSortRef.current = true;
     clearFeedsList_store(feedsName);
     try {
       const response = await GetFeedsController(url, token, 1);
@@ -125,6 +199,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
 
   // ── Pull-to-refresh ───────────────────────────────────────────────────────
   const onRefresh = useCallback(async () => {
+    pendingFreshSortRef.current = true;
     setRefreshing(true);
     try {
       clearFeedsList_store(feedsName);
@@ -243,8 +318,8 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     let nextInsert = FIRST_AT;
 
     // Partition: pick ONE random boosted/sponsored post for the top, rest go into regular
-    const allBoosted   = feeds.filter(f => !!f.boosted);
-    const regularFeeds = feeds.filter(f => !f.boosted);
+    const allBoosted   = displayFeeds.filter(f => !!f.boosted);
+    const regularFeeds = displayFeeds.filter(f => !f.boosted);
 
     // Show exactly one boosted post at the top (shuffled each render cycle)
     if (allBoosted.length > 0) {
@@ -262,35 +337,10 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     });
 
     return items;
-  }, [feeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName]);
+  }, [displayFeeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName]);
 
-  // ── For discover tab: batch feed items into masonryrow pairs ──────────────
-  const finalCombinedData = useMemo(() => {
-    if (!isDiscoverTab) return combinedData;
-    const result = [];
-    let buf = [];
-    const flush = () => {
-      for (let i = 0; i < buf.length; i += 2) {
-        result.push({ type: 'masonryrow', left: buf[i], right: buf[i + 1] ?? null });
-      }
-      buf = [];
-    };
-    for (const item of combinedData) {
-      // Skip people/biz/community interstitials in discover — only ads pass through
-      if (item.type === 'peoplecard' || item.type === 'bizcard' || item.type === 'communitycard') {
-        continue;
-      }
-      if (item.type === 'feed') {
-        // Skip shared posts
-        if (item.data && item.data.type !== 'shared') buf.push(item);
-      } else {
-        flush();
-        result.push(item);
-      }
-    }
-    flush();
-    return result;
-  }, [isDiscoverTab, combinedData]);
+  // Discover uses the same FeedCard layout as Following (no masonry)
+  const finalCombinedData = combinedData;
 
   const handlePostPress = useCallback((postId) => {
     navigation.navigate('PostDetail', { postId });
