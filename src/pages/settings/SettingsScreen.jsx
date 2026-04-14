@@ -179,7 +179,7 @@ export default function SettingsScreen() {
           <Row
             icon="document-text-outline"
             label="Terms of Use"
-            onPress={() => openWeb('Terms of Use', 'https://hafrik.com/termsofuse.html')}
+            onPress={() => openWeb('Terms of Use', 'https://hafrik.com/static/terms')}
           />
           <Row
             icon="shield-checkmark-outline"
