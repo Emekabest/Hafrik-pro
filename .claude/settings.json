@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python3 -c ':*)",
       "Bash(sed -n '228,236p' RequestProduct.jsx)",
-      "Bash(sed -n '241,249p' TrackShipping.jsx)"
+      "Bash(sed -n '241,249p' TrackShipping.jsx)",
+      "Bash(grep -E \"\\\\.\\(js|jsx|tsx\\)$\")"
     ]
   }
 }

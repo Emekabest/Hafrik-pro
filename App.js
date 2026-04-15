@@ -56,6 +56,8 @@ import BusinessDetails from "./src/pages/pages_/BusinessDetails";
 import BusinessList from './src/pages/pages_/BusinessList';
 import Reels2 from './src/pages/reels/reels2';
 import CreateReels from './src/pages/createreels/createreelscreen';
+import HafrikTVScreen from './src/pages/tv/HafrikTVScreen';
+import HafrikTVPlayerScreen from './src/pages/tv/HafrikTVPlayerScreen';
 import UserProfileScreen from './src/pages/users/UserProfileScreen';
 import PeopleYouMayKnowScreen from './src/pages/users/PeopleYouMayKnowScreen';
 import NotificationsScreen from './src/pages/notifications/NotificationsScreen';
@@ -516,6 +518,10 @@ function AppNavigator() {
               <Stack.Screen name="ArrivalSuccess"        component={ArrivalSuccess}        options={{ headerShown: false, gestureEnabled: false }} />
               <Stack.Screen name="ArrivalBookingDetails" component={ArrivalBookingDetails} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
               <Stack.Screen name="ArrivalMyBookings"     component={ArrivalMyBookings}     options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              {/* ── HafrikTV ── */}
+              <Stack.Screen name="HafrikTV"       component={HafrikTVScreen}       options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="HafrikTVPlayer" component={HafrikTVPlayerScreen} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal', presentation: 'fullScreenModal' }} />
+
               <Stack.Screen name="HafrikXCurrency"    component={HafrikXCurrency}    options={{ headerShown: false }} />
               <Stack.Screen name="HafrikXSuppliers"   component={HafrikXSuppliers}   options={{ headerShown: false }} />
               <Stack.Screen name="HafrikXRequest"     component={HafrikXRequest}     options={{ headerShown: false }} />

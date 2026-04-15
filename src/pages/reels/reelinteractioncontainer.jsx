@@ -124,8 +124,13 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
   useImperativeHandle(ref, () => ({ triggerLike: handleDoubleTapLike }), [handleDoubleTapLike]);
 
   const handleOpenProfile = useCallback(() => {
-    if (userId) navigation.push('UserProfile', { userId });
-  }, [userId, navigation]);
+    const entity = (user?.entity || 'user').toLowerCase();
+    if (entity === 'page') {
+      navigation.push('BusinessDetails', { pageId: Number(userId) });
+    } else {
+      if (userId) navigation.push('UserProfile', { userId });
+    }
+  }, [userId, user, navigation]);
 
   // Parse caption — split hashtags out for separate display
   const rawCaption = caption ? decodeHtml(caption) : '';
@@ -166,14 +171,22 @@ const ReelInteractionContainer = forwardRef(({ reel }, ref) => {
           </View>
         </TouchableOpacity>
 
-        {/* Username */}
-        <TouchableOpacity activeOpacity={0.8} onPress={handleOpenProfile} style={styles.userRow}>
-          {user?.verified ? (
-            <Ionicons name="checkmark-circle" size={13} color={ACCENT} style={{ marginRight: 3 }} />
+        {/* Name + Username */}
+        <TouchableOpacity activeOpacity={0.8} onPress={handleOpenProfile} style={styles.nameBlock}>
+          {/* Full display name */}
+          {(user?.name || (user?.first_name && user?.last_name)) ? (
+            <Text style={styles.fullName} numberOfLines={1}>
+              {user?.name ?? `${user.first_name} ${user.last_name}`}
+            </Text>
           ) : null}
-          <Text style={styles.username} numberOfLines={1}>
-            @{user?.username}
-          </Text>
+          <View style={styles.userRow}>
+            {user?.verified ? (
+              <Ionicons name="checkmark-circle" size={13} color={ACCENT} style={{ marginRight: 3 }} />
+            ) : null}
+            <Text style={styles.username} numberOfLines={1}>
+              @{user?.username}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         {/* Caption */}
@@ -302,16 +315,26 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  // User row
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // Name block (full name + handle)
+  nameBlock: {
     marginBottom: 7,
   },
-  username: {
+  fullName: {
     fontSize: 14,
     fontFamily: 'ReadexPro_600SemiBold',
     color: Colors.white,
+    marginBottom: 1,
+    ...TEXT_SHADOW,
+  },
+  // User row (handle + verified badge)
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  username: {
+    fontSize: 12,
+    fontFamily: 'WorkSans_500Medium',
+    color: withOpacity(Colors.white, 0.75),
     ...TEXT_SHADOW,
   },
 

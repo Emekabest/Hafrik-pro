@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Share } from 'react-native';
 import { Colors } from '../../theme/colors';
 
 const withOpacity = (hex, opacity) => {
@@ -20,12 +19,6 @@ const ReelHeader = ({ onSearchPress, onMorePress }) => {
   const handleBack = useCallback(() => {
     if (navigation.canGoBack()) navigation.goBack();
   }, [navigation]);
-
-  const handleShare = useCallback(async () => {
-    try {
-      await Share.share({ message: 'Check out this reel on Hafrik!' });
-    } catch {}
-  }, []);
 
   return (
     <View style={[styles.header, { paddingTop: top + 10 }]}>
@@ -44,9 +37,6 @@ const ReelHeader = ({ onSearchPress, onMorePress }) => {
       <View style={styles.rightRow}>
         <TouchableOpacity style={styles.iconBtn} activeOpacity={0.8} onPress={onSearchPress}>
           <Ionicons name="search-outline" size={22} color={Colors.white} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn} activeOpacity={0.8} onPress={handleShare}>
-          <Ionicons name="share-social-outline" size={22} color={Colors.white} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.iconBtn} activeOpacity={0.8} onPress={onMorePress}>
           <Ionicons name="ellipsis-vertical" size={22} color={Colors.white} />

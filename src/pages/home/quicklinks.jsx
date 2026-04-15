@@ -172,6 +172,37 @@ export default function StaticShortcutRow() {
         end={{ x: 1, y: 0 }}
       />
 
+      {/* ── HafrikTV featured banner ──────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.tvBanner}
+        activeOpacity={0.88}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.navigate('HafrikTV');
+        }}
+      >
+        <LinearGradient
+          colors={['#071e21', '#0f3539', '#1f8e93']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.tvBannerGrad}
+        >
+          <View style={styles.tvBannerLeft}>
+            <View style={styles.tvIconWrap}>
+              <Ionicons name="tv" size={20} color="#27adb5" />
+            </View>
+            <View>
+              <Text style={styles.tvBannerTitle}>HafrikTV</Text>
+              <Text style={styles.tvBannerSub}>Videos · Reels · More</Text>
+            </View>
+          </View>
+          <View style={styles.tvWatchBtn}>
+            <Text style={styles.tvWatchTxt}>Watch Now</Text>
+            <Ionicons name="play" size={11} color="#071e21" style={{ paddingLeft: 1 }} />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+
       {rows.map((row, ri) => (
         <View key={ri} style={[styles.row, ri > 0 && styles.rowGap]}>
           {row.map((item, index) => (
@@ -195,6 +226,62 @@ const styles = StyleSheet.create({
     borderBottomColor: BORDER,
     paddingTop: 12,
     paddingBottom: 18,
+  },
+
+  tvBanner: {
+    marginHorizontal: 14,
+    marginBottom: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#071e21',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  tvBannerGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  tvBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  tvIconWrap: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: 'rgba(39,173,181,0.4)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tvBannerTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  tvBannerSub: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  tvWatchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#27adb5',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    gap: 4,
+  },
+  tvWatchTxt: {
+    color: '#071e21',
+    fontSize: 12,
+    fontWeight: '800',
   },
 
   topAccent: {

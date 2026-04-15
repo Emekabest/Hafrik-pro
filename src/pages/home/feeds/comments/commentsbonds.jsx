@@ -184,7 +184,7 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
           </View>
         )}
         {showReplies && !loadingReplies && replies.map((r, i) => (
-          <View key={r.id ?? i} style={cs.replyRow}>
+          <View key={r.id ?? `reply-${i}`} style={cs.replyRow}>
             <Image source={{ uri: r.user?.avatar }} style={cs.replyAvatar} />
             <View style={{ flex: 1 }}>
               <View style={cs.replyNameRow}>
@@ -245,7 +245,7 @@ const CommentBonds = ({ postId, token, onReply }) => {
   return (
     <View>
       {comments.map((c, i) => (
-        <CommentItem key={c.id ?? i} comment={c} token={token} onReply={onReply} />
+        <CommentItem key={c.id ?? `temp-${i}`} comment={c} token={token} onReply={onReply} />
       ))}
     </View>
   );

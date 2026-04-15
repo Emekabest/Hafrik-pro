@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import useStore from '../../repository/store';
 import ReelMedia from './reelmedia';
 import ReelInteractionContainer from './reelinteractioncontainer';
@@ -43,6 +44,7 @@ const { height: SCREEN_H } = Dimensions.get('window');
 
 const ReelCard = ({ reel, height = SCREEN_H }) => {
   const { token } = useAuth();
+  const navigation = useNavigation();
   const { top: safeTop } = useSafeAreaInsets();
 
   // ── Active state (Zustand – only this card re-renders on change) ──────────
@@ -144,12 +146,16 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
     setHeartKey(String(Date.now()));
     interactionRef.current?.triggerLike();
   }, []);
+  const handleSwipeLeft = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    if (navigation.canGoBack()) navigation.goBack();
+  }, [navigation]);
 
   // Mute button sits just below the overlay header
   const muteBtnTop = safeTop + 58;
 
   return (
-    <ReelGestures onSwipeRight={handleSwipeRight}>
+    <ReelGestures onSwipeRight={handleSwipeRight} onSwipeLeft={handleSwipeLeft}>
       <TouchableWithoutFeedback onPress={handlePress}>
         <View style={[styles.container, { height }]}>
 

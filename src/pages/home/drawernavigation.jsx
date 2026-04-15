@@ -312,7 +312,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             {/* Quick actions */}
             <SectionLabel>Hafrik Products</SectionLabel>
             <View style={s.quickRow}>
-              <QuickBtn icon="tv"            label="HafrikTV" gradient={[ACCENT, BRAND]}                                        onPress={() => openWeb("HafrikTV", "https://tv.hafrik.com")} />
+              <QuickBtn icon="tv"            label="HafrikTV" gradient={[ACCENT, BRAND]}                                        onPress={() => go("HafrikTV")} />
               <QuickBtn icon="musical-notes" label="Play"     gradient={["#9c27b0", "#6d28d9"]}                                 onPress={() => openWeb("Play", "https://hafrikplay.com/myapp.php")} />
               <QuickBtn icon="cloud"         label="Drive"    gradient={["#3b82f6", "#1d4ed8"]}                                 onPress={() => openWeb("Drive", "https://drive.hafrik.com")} />
               <QuickBtn icon="restaurant"    label="Food"     gradient={["#f97316", "#ea580c"]}                                 onPress={() => openWeb("Food", "https://food.hafrik.com")} />
