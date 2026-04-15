@@ -8,8 +8,9 @@ import {
   ActivityIndicator, Image, ScrollView, StatusBar, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import Banner from '../home/banner';
+import StaticShortcutRow from '../home/quicklinks';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import apiClient from '../../api/apiClient';
 import { toggleGroupMembership } from '../groups/services/groupApi';
@@ -396,33 +397,11 @@ export default function ExploreScreen() {
         contentContainerStyle={s.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
       >
-        {/* HafrikTV CTA */}
-        <TouchableOpacity
-          style={s.tvCta}
-          activeOpacity={0.88}
-          onPress={() => navigation.navigate('HafrikTV')}
-        >
-          <LinearGradient
-            colors={['#071e21', '#0f3539', '#1a7a80']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={s.tvCtaGrad}
-          >
-            <View style={s.tvCtaLeft}>
-              <View style={s.tvCtaIcon}>
-                <Ionicons name="tv" size={18} color="#27adb5" />
-              </View>
-              <View>
-                <Text style={s.tvCtaTitle}>HafrikTV</Text>
-                <Text style={s.tvCtaSub}>Watch videos & reels</Text>
-              </View>
-            </View>
-            <View style={s.tvCtaBtn}>
-              <Text style={s.tvCtaBtnTxt}>Watch Now</Text>
-              <Ionicons name="chevron-forward" size={13} color="#071e21" />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
+        {/* Quick links */}
+        <StaticShortcutRow />
+
+        {/* Banner slider (includes HafrikTV slide) */}
+        <Banner />
 
         {/* 1. Communities */}
         <Section
@@ -509,35 +488,6 @@ const CARD_W = 150;
 const s = StyleSheet.create({
   root:   { flex: 1, backgroundColor: BG },
   scroll: { paddingBottom: 100 },
-
-  // ── HafrikTV CTA ──
-  tvCta: {
-    marginHorizontal: 14, marginTop: 14, marginBottom: 4,
-    borderRadius: 14, overflow: 'hidden',
-    shadowColor: '#071e21', shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18, shadowRadius: 8, elevation: 4,
-  },
-  tvCtaGrad: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12, paddingHorizontal: 14,
-  },
-  tvCtaLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  tvCtaIcon: {
-    width: 38, height: 38, borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1, borderColor: 'rgba(39,173,181,0.35)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  tvCtaTitle: { color: '#fff', fontSize: 14, fontWeight: '800', letterSpacing: 0.1 },
-  tvCtaSub:   { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '500', marginTop: 1 },
-  tvCtaBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#27adb5',
-    paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: 18, gap: 3,
-  },
-  tvCtaBtnTxt: { color: '#071e21', fontSize: 12, fontWeight: '800' },
 
   // ── Header ──
   header: {

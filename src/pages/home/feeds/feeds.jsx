@@ -341,68 +341,6 @@ const ldStyles = StyleSheet.create({
   },
 });
 
-// ─── HafrikTV CTA strip ───────────────────────────────────────────────────────
-const HafrikTVCTA = memo(() => {
-  const navigation = useNavigation();
-  return (
-    <TouchableOpacity
-      style={tvCta.wrap}
-      activeOpacity={0.88}
-      onPress={() => navigation.navigate('HafrikTV')}
-    >
-      <LinearGradient
-        colors={['#071e21', '#0f3539', '#1a7a80']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={tvCta.grad}
-      >
-        <View style={tvCta.left}>
-          <View style={tvCta.iconWrap}>
-            <Ionicons name="tv" size={17} color="#27adb5" />
-          </View>
-          <View>
-            <Text style={tvCta.title}>HafrikTV</Text>
-            <Text style={tvCta.sub}>Watch videos & reels</Text>
-          </View>
-        </View>
-        <View style={tvCta.btn}>
-          <Text style={tvCta.btnTxt}>Watch Now</Text>
-          <Ionicons name="chevron-forward" size={13} color="#071e21" />
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-});
-
-const tvCta = StyleSheet.create({
-  wrap: {
-    marginHorizontal: 12, marginVertical: 6,
-    borderRadius: 12, overflow: 'hidden',
-    shadowColor: '#071e21', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
-  },
-  grad: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10, paddingHorizontal: 14,
-  },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconWrap: {
-    width: 34, height: 34, borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1, borderColor: 'rgba(39,173,181,0.35)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  title: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 0.1 },
-  sub:   { color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '500', marginTop: 1 },
-  btn: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#27adb5',
-    paddingHorizontal: 11, paddingVertical: 6,
-    borderRadius: 16, gap: 3,
-  },
-  btnTxt: { color: '#071e21', fontSize: 11, fontWeight: '800' },
-});
 
 // ─── Memoized section components ──────────────────────────────────────────────
 const MemoizedBanner      = memo(Banner);
@@ -657,9 +595,6 @@ const Feeds = ({
 
       case 'locationstrip':
         return <LocationDiscoveryStrip />;
-
-      case 'hafriktvcta':
-        return <HafrikTVCTA />;
 
       case 'profileHeader':
         return item.component;

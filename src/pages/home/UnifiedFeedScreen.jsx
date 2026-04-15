@@ -298,19 +298,13 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     const items = [
       { type: 'banner', feedWidth: feedWidth || 0 },
       { type: 'feedsheader', name: tabConfig.label, description: tabConfig.description, id: feedsName },
-      { type: 'hafriktvcta' },
     ];
 
-    // Interstitial pool
+    // Interstitial pool (fixed order, no shuffle)
     const pool = [];
     if (peopleList.length    > 0) pool.push({ type: 'peoplecard',    data: peopleList });
     if (bizList.length       > 0) pool.push({ type: 'bizcard',       data: bizList });
     if (communityList.length > 0) pool.push({ type: 'communitycard', data: communityList });
-    // Shuffle
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
 
     const MAX_INTERSTITIALS = 3;
     const FIRST_AT          = 4;
@@ -318,18 +312,8 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     let poolIdx    = 0;
     let nextInsert = FIRST_AT;
 
-    // Partition: pick ONE random boosted/sponsored post for the top, rest go into regular
-    const allBoosted   = displayFeeds.filter(f => !!f.boosted);
-    const regularFeeds = displayFeeds.filter(f => !f.boosted);
-
-    // Show exactly one boosted post at the top (shuffled each render cycle)
-    if (allBoosted.length > 0) {
-      const pick = allBoosted[Math.floor(Math.random() * allBoosted.length)];
-      items.push({ type: 'feed', data: pick });
-    }
-
-    // Then regular posts with interstitials
-    regularFeeds.forEach((feed, i) => {
+    // Feed posts in original API order, no boosted re-ordering
+    displayFeeds.forEach((feed, i) => {
       items.push({ type: 'feed', data: feed });
       if ((i + 1) === nextInsert && poolIdx < pool.length && poolIdx < MAX_INTERSTITIALS) {
         items.push(pool[poolIdx++]);
