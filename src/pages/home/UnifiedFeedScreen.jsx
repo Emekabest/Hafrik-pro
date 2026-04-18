@@ -15,7 +15,6 @@ import {
   View, StyleSheet, Animated, InteractionManager, AppState,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../AuthContext.js';
 import Feeds from './feeds/feeds.jsx';
 import ReelsGridView from './feeds/ReelsGridView.jsx';
@@ -64,13 +63,9 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const pageRef    = useRef(1);
   const hasMoreRef = useRef(true);
 
-  // ── Seen-posts tracking (per-tab, persisted in AsyncStorage) ─────────────
-  const SEEN_KEY            = `hafrik_seen_posts_${tabConfig.key}`;
-  const MAX_SEEN_IDS        = 500;
-  const seenIdsRef          = useRef(new Set());
   const [displayFeeds, setDisplayFeeds] = useState([]);
   const displayFeedsIdsRef  = useRef(new Set());
-  // Set to true before a hard/refresh load so the effect re-sorts; false → pagination append
+  // true before a hard/refresh load → replace; false → pagination append
   const pendingFreshSortRef = useRef(true);
 
   // ── Build the API URL from tab config + content filter + country ──────────
@@ -115,67 +110,22 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
       .catch(() => {});
   }, [token]);
 
-  // ── Load seen post IDs from AsyncStorage (once per tab key) ─────────────
-  useEffect(() => {
-    AsyncStorage.getItem(SEEN_KEY)
-      .then(raw => {
-        if (raw) {
-          try {
-            const arr = JSON.parse(raw);
-            seenIdsRef.current = new Set(arr.map(String));
-          } catch {}
-        }
-      })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [SEEN_KEY]);
-
-  // ── Manage displayFeeds: sort on fresh load, append on pagination ─────────
+  // ── Manage displayFeeds: exact API order on fresh load, append on pagination ─
   useEffect(() => {
     if (!initialFetchDone || feeds.length === 0) return;
 
     if (pendingFreshSortRef.current) {
-      // Fresh load (initial / refresh / tab switch): sort unseen to top, shuffle each group
+      // Fresh load — show feeds exactly as returned by the API, no reordering
       pendingFreshSortRef.current = false;
-
-      const shuffle = (arr) => {
-        const a = [...arr];
-        for (let i = a.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [a[i], a[j]] = [a[j], a[i]];
-        }
-        return a;
-      };
-
-      const unseen = feeds.filter(f => !seenIdsRef.current.has(String(f.id)));
-      const seen   = feeds.filter(f =>  seenIdsRef.current.has(String(f.id)));
-      // If unseen posts exist: shuffle unseen → top, shuffle seen → bottom
-      // If all posts seen: shuffle everything
-      const sorted = unseen.length > 0
-        ? [...shuffle(unseen), ...shuffle(seen)]
-        : shuffle(feeds);
-
-      setDisplayFeeds(sorted);
-      displayFeedsIdsRef.current = new Set(sorted.map(f => String(f.id)));
-
-      // Mark all as seen and persist (cap at MAX_SEEN_IDS to bound storage size)
-      sorted.forEach(f => seenIdsRef.current.add(String(f.id)));
-      if (seenIdsRef.current.size > MAX_SEEN_IDS) {
-        const trimmed = [...seenIdsRef.current].slice(-MAX_SEEN_IDS);
-        seenIdsRef.current = new Set(trimmed);
-      }
-      AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...seenIdsRef.current])).catch(() => {});
+      setDisplayFeeds(feeds);
+      displayFeedsIdsRef.current = new Set(feeds.map(f => String(f.id)));
     } else {
       // Pagination: append only truly new posts (preserve existing display order)
       const newItems = feeds.filter(f => !displayFeedsIdsRef.current.has(String(f.id)));
       if (newItems.length === 0) return;
 
       setDisplayFeeds(prev => [...prev, ...newItems]);
-      newItems.forEach(f => {
-        displayFeedsIdsRef.current.add(String(f.id));
-        seenIdsRef.current.add(String(f.id));
-      });
-      AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...seenIdsRef.current])).catch(() => {});
+      newItems.forEach(f => displayFeedsIdsRef.current.add(String(f.id)));
     }
   }, [initialFetchDone, feeds]);
 

@@ -164,7 +164,7 @@ export default function SettingsScreen() {
             icon="megaphone-outline"
             iconColor="#f59e0b"
             label="Ads Manager"
-            onPress={() => openWeb('Ads Manager', 'https://hafrik.com/ads')}
+            onPress={() => Alert.alert('Coming Soon', 'Ads Manager is coming soon!')}
             last
           />
         </Section>

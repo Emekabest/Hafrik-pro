@@ -8,6 +8,7 @@ import {
   ActivityIndicator, Image, ScrollView, StatusBar, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Banner from '../home/banner';
 import StaticShortcutRow from '../home/quicklinks';
@@ -403,6 +404,34 @@ export default function ExploreScreen() {
         {/* Banner slider (includes HafrikTV slide) */}
         <Banner />
 
+        {/* HafrikTV CTA — right above first section */}
+        <TouchableOpacity
+          style={s.tvCta}
+          activeOpacity={0.88}
+          onPress={() => navigation.navigate('HafrikTV')}
+        >
+          <LinearGradient
+            colors={['#071e21', '#0d2d32', '#1c7a80']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={s.tvCtaGrad}
+          >
+            <View style={s.tvCtaLeft}>
+              <View style={s.tvCtaIconWrap}>
+                <Ionicons name="tv" size={20} color="#27adb5" />
+              </View>
+              <View>
+                <Text style={s.tvCtaTitle}>HafrikTV</Text>
+                <Text style={s.tvCtaSub}>Watch videos, reels & live content</Text>
+              </View>
+            </View>
+            <View style={s.tvCtaBtn}>
+              <Text style={s.tvCtaBtnTxt}>Watch Now</Text>
+              <Ionicons name="chevron-forward" size={13} color="#071e21" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* 1. Communities */}
         <Section
           title="Communities"
@@ -488,6 +517,35 @@ const CARD_W = 150;
 const s = StyleSheet.create({
   root:   { flex: 1, backgroundColor: BG },
   scroll: { paddingBottom: 100 },
+
+  // ── HafrikTV CTA ──
+  tvCta: {
+    marginHorizontal: 14, marginTop: 6, marginBottom: 2,
+    borderRadius: 14, overflow: 'hidden',
+    shadowColor: '#071e21', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
+  },
+  tvCtaGrad: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13, paddingHorizontal: 14,
+  },
+  tvCtaLeft:    { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  tvCtaIconWrap: {
+    width: 40, height: 40, borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1, borderColor: 'rgba(39,173,181,0.35)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tvCtaTitle:  { color: '#fff', fontSize: 14, fontWeight: '800', letterSpacing: 0.1 },
+  tvCtaSub:    { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '500', marginTop: 1 },
+  tvCtaBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#27adb5',
+    paddingHorizontal: 13, paddingVertical: 8,
+    borderRadius: 20, gap: 3,
+  },
+  tvCtaBtnTxt: { color: '#071e21', fontSize: 12, fontWeight: '800' },
 
   // ── Header ──
   header: {

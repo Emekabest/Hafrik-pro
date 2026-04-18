@@ -401,16 +401,6 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                             <Ionicons name="create-outline" size={15} color={BRAND} />
                             <Text style={styles.editButtonText}>Edit Profile</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            style={styles.membershipBtn}
-                            onPress={() => navigation.navigate('InAppBrowser', { title: 'Membership', url: 'https://hafrik.com/settings/membership' })}
-                        >
-                            <LinearGradient colors={[BRAND, '#0f5060']} style={styles.membershipGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                                <Ionicons name="star" size={13} color="#fbbf24" />
-                                <Text style={styles.membershipTxt}>Membership</Text>
-                            </LinearGradient>
-                        </TouchableOpacity>
                     </View>
                 ) : (
                     <View style={styles.actionButtonsRow}>

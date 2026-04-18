@@ -215,6 +215,37 @@ export default function StaticShortcutRow() {
           ))}
         </View>
       ))}
+
+      {/* ── Hafrik AI chat button ─────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.aiBanner}
+        activeOpacity={0.88}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.navigate('AIChat');
+        }}
+      >
+        <LinearGradient
+          colors={['#071e21', '#0c2d32', '#1f8e93']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.aiBannerGrad}
+        >
+          <View style={styles.aiBannerLeft}>
+            <View style={styles.aiIconWrap}>
+              <Ionicons name="sparkles" size={18} color="#a8e063" />
+            </View>
+            <View>
+              <Text style={styles.aiBannerTitle}>Hafrik AI</Text>
+              <Text style={styles.aiBannerSub}>Ask anything · Searches the platform</Text>
+            </View>
+          </View>
+          <View style={styles.aiAskBtn}>
+            <Text style={styles.aiAskTxt}>Ask Now</Text>
+            <Ionicons name="arrow-forward" size={11} color="#071e21" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -283,6 +314,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+
+  // ── AI banner ──
+  aiBanner: {
+    marginHorizontal: 14,
+    marginTop: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#071e21',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  aiBannerGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+  },
+  aiBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  aiIconWrap: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: 'rgba(168,224,99,0.12)',
+    borderWidth: 1, borderColor: 'rgba(168,224,99,0.35)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  aiBannerTitle: { color: '#ffffff', fontSize: 14, fontWeight: '800', letterSpacing: 0.1 },
+  aiBannerSub:   { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '500', marginTop: 1 },
+  aiAskBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#a8e063',
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 20, gap: 4,
+  },
+  aiAskTxt: { color: '#071e21', fontSize: 12, fontWeight: '800' },
 
   topAccent: {
     height: 2,

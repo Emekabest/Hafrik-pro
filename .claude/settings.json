@@ -4,7 +4,9 @@
       "Bash(python3 -c ':*)",
       "Bash(sed -n '228,236p' RequestProduct.jsx)",
       "Bash(sed -n '241,249p' TrackShipping.jsx)",
-      "Bash(grep -E \"\\\\.\\(js|jsx|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(js|jsx|tsx\\)$\")",
+      "Bash(head -5 ls /Users/horlaasman/Documents/NEWHAFRIKAPP/Hafrik-pro/*.js)",
+      "Bash(ls /Users/horlaasman/Documents/NEWHAFRIKAPP/Hafrik-pro/.env*)"
     ]
   }
 }
