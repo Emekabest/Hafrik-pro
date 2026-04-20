@@ -14,6 +14,8 @@ import useStore from '../../repository/store';
 import { useTheme } from '../../theme/ThemeContext';
 import { Colors } from '../../theme';
 
+console.log("Hwww")
+
 const BASE_URL  = 'https://hafrik.com';
 const BRAND     = Colors.primaryDark;
 const ACCENT    = Colors.primary;

@@ -121,6 +121,8 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
                 onEdit={onEdit}
                 onDelete={onDelete}
                 isOwner={isOwner}
+                userFullname={feed.user.full_name}
+                reportedUserId={feed.user.id ?? feed.user.user_id}
             />
         </View>
     );

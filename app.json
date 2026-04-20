@@ -11,7 +11,7 @@
     "ios": {
       "bundleIdentifier": "com.hafrik.hafrikpro",
       "icon": "./src/assl.js/icon.png",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [

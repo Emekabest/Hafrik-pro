@@ -10,18 +10,9 @@
  *        → multipart/form-data with passport + selfie fields
  */
 
-import apiClient from '../api/apiClient';
+import axios from "axios";
 
-// Map API status strings → internal UI status values used by the screens
-const mapStatus = (apiStatus) => {
-  switch (apiStatus) {
-    case 'verified':  return 'approved';
-    case 'pending':   return 'pending';
-    case 'declined':  return 'rejected';
-    case 'request':   return 'not_submitted';
-    default:          return 'not_submitted';
-  }
-};
+const BASE = 'https://hafrik.com/api/v1/users/verify.php';
 
 /**
  * Fetch the current verification status for the authenticated user.
@@ -80,3 +71,24 @@ export const submitVerification = async (token, passportAsset, selfieAsset) => {
 
   return res.data;
 };
+
+
+export const SubmitVerificationController = async(token, body) => {
+  try {
+      const API_URL = `https://hafrik.com/api/v1/verification/submit.php`;
+      const response = await axios.post(API_URL, body, {
+          headers: {  
+            Authorization: `Bearer ${token}`
+          },
+      })
+
+      console.log(response.data);
+
+      return { status: response.data.status, message: response.data.message }
+
+  } catch (error) {
+    console.log('Error submitting verification:', error);
+  }
+
+}
+

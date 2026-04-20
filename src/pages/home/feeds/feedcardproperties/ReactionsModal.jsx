@@ -14,7 +14,6 @@ const withOpacity = (hex, opacity) => {
   return `#${n}${a}`;
 };
 
-const API_URL = 'https://hafrik.com/api/v1/feed/reactions.php';
 
 const TABS = [
   { key: 'all',   label: 'All',  emoji: null },
@@ -72,6 +71,11 @@ const ReactionsModal = ({ visible, postId, token, reactions, onClose, currentUse
     }
   }, [followingMap, token]);
 
+
+
+
+
+
   const fetchReactions = useCallback(async (tab, pg = 1) => {
     if (!postId || !token) return;
     setLoading(true);
@@ -79,8 +83,12 @@ const ReactionsModal = ({ visible, postId, token, reactions, onClose, currentUse
       const params = { post_id: postId, page: pg, limit: 20 };
       if (tab !== 'all') params.reaction = tab;
 
+      const API_URL = `https://hafrik.com/api/v1/feed/reactions.php?post_id=${postId}&reaction=${tab}&page=${pg}`;
+
+
       const res = await apiClient.get(API_URL, { params });
-      const items = Array.isArray(res.data?.data) ? res.data.data : [];
+      const items = Array.isArray(res.data?.data?.data) ? res.data.data.data : [];
+
       if (pg === 1) {
         setData(items);
       } else {
@@ -92,6 +100,9 @@ const ReactionsModal = ({ visible, postId, token, reactions, onClose, currentUse
     }
     setLoading(false);
   }, [postId, token]);
+
+
+
 
   // Reset and fetch when tab changes or modal opens
   useEffect(() => {

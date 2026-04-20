@@ -479,7 +479,7 @@ const AuthScreen = () => {
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', username: '', email: '',
-    password: '', gender: null,
+    password: '', gender: 3,
   });
   const [genders] = useState([
     { id: 1, label: 'Male' },
@@ -515,7 +515,6 @@ const AuthScreen = () => {
       if (!form.username.trim())  e.username  = 'Username is required';
       if (!form.password)         e.password  = 'Password is required';
       else if (form.password.length < 6) e.password = 'At least 6 characters';
-      if (!form.gender)  e.gender  = 'Please select your gender';
       if (!agreed)       e.terms   = 'You must agree to the terms';
     }
     setErrors(e);
@@ -823,21 +822,6 @@ const AuthScreen = () => {
                 </LinearGradient>
               </TouchableOpacity>
 
-              <View style={styles.orRow}><View style={styles.orLine} /><Text style={styles.orText}>or continue with</Text><View style={styles.orLine} /></View>
-              <View style={styles.socialRow}>
-                <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={handleGoogleSignIn} disabled={!!socialLoading}>
-                  {socialLoading === 'google' ? <ActivityIndicator size="small" color={Colors.google} /> : (
-                    <><Ionicons name="logo-google" size={18} color={Colors.google} /><Text style={styles.socialBtnText}>Google</Text></>
-                  )}
-                </TouchableOpacity>
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8} onPress={handleAppleSignIn} disabled={!!socialLoading}>
-                    {socialLoading === 'apple' ? <ActivityIndicator size="small" color={WHITE} /> : (
-                      <><Ionicons name="logo-apple" size={18} color={WHITE} /><Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text></>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
             </>
           )}
 
@@ -894,7 +878,7 @@ const AuthScreen = () => {
               </Field>
 
               {/* Gender */}
-              <Field label="Gender" error={errors.gender}>
+              <Field label="Gender (Optional)" error={errors.gender}>
                 <TouchableOpacity style={[styles.input, errors.gender && styles.inputError]} onPress={() => setShowGenderModal(true)} activeOpacity={0.8}>
                   <View style={styles.inputPrefix}><Ionicons name="transgender-outline" size={17} color={MUTED} /></View>
                   <View style={styles.inputDivider} />
@@ -924,22 +908,6 @@ const AuthScreen = () => {
                   )}
                 </LinearGradient>
               </TouchableOpacity>
-
-              <View style={styles.orRow}><View style={styles.orLine} /><Text style={styles.orText}>or sign up with</Text><View style={styles.orLine} /></View>
-              <View style={styles.socialRow}>
-                <TouchableOpacity style={styles.socialBtn} activeOpacity={0.8} onPress={handleGoogleSignIn} disabled={!!socialLoading}>
-                  {socialLoading === 'google' ? <ActivityIndicator size="small" color={Colors.google} /> : (
-                    <><Ionicons name="logo-google" size={18} color={Colors.google} /><Text style={styles.socialBtnText}>Google</Text></>
-                  )}
-                </TouchableOpacity>
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity style={[styles.socialBtn, { backgroundColor: DARK, borderColor: DARK }]} activeOpacity={0.8} onPress={handleAppleSignIn} disabled={!!socialLoading}>
-                    {socialLoading === 'apple' ? <ActivityIndicator size="small" color={WHITE} /> : (
-                      <><Ionicons name="logo-apple" size={18} color={WHITE} /><Text style={[styles.socialBtnText, { color: WHITE }]}>Apple</Text></>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
 
               {/* Gender modal */}
               <Modal visible={showGenderModal} animationType="slide" transparent onRequestClose={() => setShowGenderModal(false)}>

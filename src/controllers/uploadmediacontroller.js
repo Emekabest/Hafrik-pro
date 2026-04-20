@@ -1,3 +1,4 @@
+import axios from 'axios';
 import apiClient from '../api/apiClient';
 
 
@@ -46,5 +47,7 @@ const UploadMediaController = async(media, token, onProgress, uploadType)=>{
     }
 
 }
+
+
 
 export default UploadMediaController;

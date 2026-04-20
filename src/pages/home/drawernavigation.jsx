@@ -188,6 +188,21 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
     setTimeout(() => navigation.navigate("InAppBrowser", { title, url }), 200);
   }, [close, navigation]);
 
+  const openExternal = useCallback((url) => {
+    close();
+    setTimeout(() => {
+      Linking.canOpenURL(url)
+        .then((supported) => {
+          if (supported) {
+            Linking.openURL(url);
+          } else {
+            Alert.alert("Unable to open link");
+          }
+        })
+        .catch(() => Alert.alert("Unable to open link"));
+    }, 200);
+  }, [close]);
+
   const handleLogout = useCallback(() => {
     Alert.alert("Sign Out", "Are you sure you want to sign out of Hafrik?", [
       { text: "Cancel", style: "cancel" },
@@ -293,7 +308,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
           >
 
             {/* HafrikX banner */}
-            <TouchableOpacity activeOpacity={0.85} onPress={() => go("HafrikXHome")} style={s.hafrikXWrap}>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => go("ComingSoon", { feature: "HafrikX" })} style={s.hafrikXWrap}>
               <LinearGradient colors={["#0a1428", "#132244", "#1a2e50"]} style={s.hafrikX} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={s.hafrikXOrb} pointerEvents="none" />
                 <View style={s.hafrikXBadge}>
@@ -312,11 +327,10 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             {/* Quick actions */}
             <SectionLabel>Hafrik Products</SectionLabel>
             <View style={s.quickRow}>
-              <QuickBtn icon="sparkles"      label="AI Chat"  gradient={[ACCENT, '#13c296']}                                    onPress={() => go("AIChat")} />
-              <QuickBtn icon="tv"            label="HafrikTV" gradient={[ACCENT, BRAND]}                                        onPress={() => go("HafrikTV")} />
-              <QuickBtn icon="musical-notes" label="Play"     gradient={["#9c27b0", "#6d28d9"]}                                 onPress={() => openWeb("Play", "https://hafrikplay.com/myapp.php")} />
-              <QuickBtn icon="cloud"         label="Drive"    gradient={["#3b82f6", "#1d4ed8"]}                                 onPress={() => openWeb("Drive", "https://drive.hafrik.com")} />
-              <QuickBtn icon="restaurant"    label="Food"     gradient={["#f97316", "#ea580c"]}                                 onPress={() => openWeb("Food", "https://food.hafrik.com")} />
+              <QuickBtn icon="tv"            label="HafrikTV" gradient={[ACCENT, BRAND]}                  onPress={() => openExternal("https://tv.hafrik.com")} />
+              <QuickBtn icon="musical-notes" label="Play"     gradient={["#9c27b0", "#6d28d9"]}       onPress={() => openExternal("https://hafrikplay.com")} />
+              <QuickBtn icon="cloud"         label="Drive"    gradient={["#3b82f6", "#1d4ed8"]}       onPress={() => openExternal("https://drive.hafrik.com")} />
+              <QuickBtn icon="restaurant"    label="Food"     gradient={["#f97316", "#ea580c"]}       onPress={() => openExternal("https://food.hafrik.com")} />
             </View>
 
             {/* Menu */}
