@@ -791,7 +791,7 @@ export default function EarningsScreen() {
 
                 <TouchableOpacity
                   style={cs.actionBtn}
-                  onPress={() => { setSendVisible(true); if (Platform.OS !== 'android') navigation.navigate('SendMoneyScreen'); }}
+                  onPress={() => { setSendVisible(true); if (Platform.OS !== 'ios') navigation.navigate('SendMoneyScreen'); }}
                   activeOpacity={0.85}
                 >
                     <View style={cs.actionBtnIcon}>
@@ -982,7 +982,7 @@ export default function EarningsScreen() {
         />
       )}
 
-      {Platform.OS === 'android' && (
+      {Platform.OS === 'ios' && (
         <IOSComplianceModal
           visible={sendVisible}
           onClose={() => setSendVisible(false)}
