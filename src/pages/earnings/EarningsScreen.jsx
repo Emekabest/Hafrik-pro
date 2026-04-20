@@ -79,6 +79,8 @@ function IOSComplianceModal({ visible, onClose, title, lines }) {
     onClose();
   };
 
+    
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={ios.overlay}>
@@ -94,6 +96,7 @@ function IOSComplianceModal({ visible, onClose, title, lines }) {
               <Text key={i} style={ios.message}>{line}</Text>
             )
           )}
+
           {/* <TouchableOpacity
             style={ios.primaryBtn}
             onPress={handleOpenWebsite}
@@ -107,7 +110,11 @@ function IOSComplianceModal({ visible, onClose, title, lines }) {
                   <Text style={ios.primaryBtnTxt}>Open Website</Text>
                 </>
             }
-          </TouchableOpacity> */}
+          </TouchableOpacity> */
+          }
+
+
+
           <TouchableOpacity style={ios.closeBtn} onPress={onClose} activeOpacity={0.8}>
             <Text style={ios.closeBtnTxt}>Close</Text>
           </TouchableOpacity>
@@ -159,6 +166,7 @@ function AddFundsModal({ visible, onClose }) {
     // RECEIPT step: just clear proof and stay (don't re-call create)
     if (step === STEPS.RECEIPT) { setProof(null); setProofUrl(''); setStep(STEPS.INSTRUCTIONS); setError(''); return; }
   };
+
 
   // ── STEP 0 → 1: Create payment request ─────────────────────────────────────
   const handleCreate = async () => {
@@ -783,13 +791,13 @@ export default function EarningsScreen() {
 
                 <TouchableOpacity
                   style={cs.actionBtn}
-                  onPress={() => Platform.OS === 'android' ? setSendVisible(true) : navigation.navigate('SendMoneyScreen')}
+                  onPress={() => { setSendVisible(true); if (Platform.OS !== 'android') navigation.navigate('SendMoneyScreen'); }}
                   activeOpacity={0.85}
                 >
-                  <View style={cs.actionBtnIcon}>
-                    <Ionicons name="send" size={16} color={BRAND} />
-                  </View>
-                  <Text style={cs.actionBtnTxt}>Send</Text>
+                    <View style={cs.actionBtnIcon}>
+                      <Ionicons name="send" size={16} color={BRAND} />
+                    </View>
+                    <Text style={cs.actionBtnTxt}>Send</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={cs.actionBtn} onPress={() => navigation.navigate('WalletScreen')} activeOpacity={0.85}>
@@ -974,7 +982,7 @@ export default function EarningsScreen() {
         />
       )}
 
-      {Platform.OS === 'ios' && (
+      {Platform.OS === 'android' && (
         <IOSComplianceModal
           visible={sendVisible}
           onClose={() => setSendVisible(false)}
@@ -1070,7 +1078,7 @@ const ios = StyleSheet.create({
   closeBtnTxt: {
     fontSize: 15,
     fontWeight: '600',
-    color: TEXT_M,
+    color: "#333",
     fontFamily: FONT_M,
   },
 });
