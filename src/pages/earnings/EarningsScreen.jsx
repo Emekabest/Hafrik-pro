@@ -94,7 +94,7 @@ function IOSComplianceModal({ visible, onClose, title, lines }) {
               <Text key={i} style={ios.message}>{line}</Text>
             )
           )}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={ios.primaryBtn}
             onPress={handleOpenWebsite}
             activeOpacity={0.85}
@@ -107,7 +107,7 @@ function IOSComplianceModal({ visible, onClose, title, lines }) {
                   <Text style={ios.primaryBtnTxt}>Open Website</Text>
                 </>
             }
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <TouchableOpacity style={ios.closeBtn} onPress={onClose} activeOpacity={0.8}>
             <Text style={ios.closeBtnTxt}>Close</Text>
           </TouchableOpacity>
@@ -783,7 +783,7 @@ export default function EarningsScreen() {
 
                 <TouchableOpacity
                   style={cs.actionBtn}
-                  onPress={() => Platform.OS === 'ios' ? setSendVisible(true) : navigation.navigate('SendMoneyScreen')}
+                  onPress={() => Platform.OS === 'android' ? setSendVisible(true) : navigation.navigate('SendMoneyScreen')}
                   activeOpacity={0.85}
                 >
                   <View style={cs.actionBtnIcon}>
@@ -964,9 +964,6 @@ export default function EarningsScreen() {
           title="Payments Not Available on iOS"
           lines={[
             'Payments and wallet funding are currently not supported within the iOS app.',
-            'You can access your account and complete transactions securely on our website:',
-            'https://hafrik.com',
-            'You may be required to sign in on the website.',
           ]}
         />
       ) : (
@@ -984,9 +981,6 @@ export default function EarningsScreen() {
           title="Transfers Not Available on iOS"
           lines={[
             'Sending money is currently not supported within the iOS app.',
-            'You can manage transactions and transfers securely on our website:',
-            'https://hafrik.com',
-            'You may be required to sign in on the website.',
           ]}
         />
       )}
