@@ -56,6 +56,9 @@ import BusinessDetails from "./src/pages/pages_/BusinessDetails";
 import BusinessList from './src/pages/pages_/BusinessList';
 import Reels2 from './src/pages/reels/reels2';
 import CreateReels from './src/pages/createreels/createreelscreen';
+import HafrikTVScreen from './src/pages/tv/HafrikTVScreen';
+import HafrikTVPlayerScreen from './src/pages/tv/HafrikTVPlayerScreen';
+import AIChatScreen from './src/pages/ai/AIChatScreen';
 import UserProfileScreen from './src/pages/users/UserProfileScreen';
 import PeopleYouMayKnowScreen from './src/pages/users/PeopleYouMayKnowScreen';
 import NotificationsScreen from './src/pages/notifications/NotificationsScreen';
@@ -92,6 +95,13 @@ import CityGuideHomeScreen   from './src/pages/cityguide/CityGuideHomeScreen';
 import CityDetailScreen      from './src/pages/cityguide/CityDetailScreen';
 // ── HafrikX Module ──
 import HafrikXHome           from './src/pages/hafrikx/HafrikXHome';
+// ── Arrival Concierge ──
+import ArrivalConcierge      from './src/pages/hafrikx/ArrivalConcierge';
+import ArrivalTripDetails    from './src/pages/hafrikx/arrival/TripDetailsScreen';
+import ArrivalReview         from './src/pages/hafrikx/arrival/ReviewBookingScreen';
+import ArrivalSuccess        from './src/pages/hafrikx/arrival/BookingSuccessScreen';
+import ArrivalBookingDetails from './src/pages/hafrikx/arrival/BookingDetailsScreen';
+import ArrivalMyBookings     from './src/pages/hafrikx/arrival/MyBookingsScreen';
 import HafrikXCurrency       from './src/pages/hafrikx/CurrencyExchange';
 import HafrikXSuppliers      from './src/pages/hafrikx/SuppliersDirectory';
 import HafrikXRequest        from './src/pages/hafrikx/RequestProduct';
@@ -115,6 +125,8 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { NotificationProvider } from './context/notificationcontext';
 import { navigationRef } from './src/helpers/navigationRef';
+import PostComposerModal from './src/pages/home/PostComposerModal';
+import CreateMenuSheet from './src/pages/home/CreateMenuSheet';
 import BlockedAccountScreen from './src/pages/settings/blockedaccountsscreen';
 
 Notifications.setNotificationHandler({
@@ -506,6 +518,17 @@ function AppNavigator() {
                   },
                 }}
               />
+              <Stack.Screen name="ArrivalConcierge"      component={ArrivalConcierge}      options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ArrivalTripDetails"    component={ArrivalTripDetails}    options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ArrivalReview"         component={ArrivalReview}         options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ArrivalSuccess"        component={ArrivalSuccess}        options={{ headerShown: false, gestureEnabled: false }} />
+              <Stack.Screen name="ArrivalBookingDetails" component={ArrivalBookingDetails} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ArrivalMyBookings"     component={ArrivalMyBookings}     options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              {/* ── HafrikTV ── */}
+              <Stack.Screen name="HafrikTV"       component={HafrikTVScreen}       options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="HafrikTVPlayer" component={HafrikTVPlayerScreen} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal', presentation: 'fullScreenModal' }} />
+              <Stack.Screen name="AIChat"          component={AIChatScreen}          options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+
               <Stack.Screen name="HafrikXCurrency"    component={HafrikXCurrency}    options={{ headerShown: false }} />
               <Stack.Screen name="HafrikXSuppliers"   component={HafrikXSuppliers}   options={{ headerShown: false }} />
               <Stack.Screen name="HafrikXRequest"     component={HafrikXRequest}     options={{ headerShown: false }} />
@@ -530,6 +553,8 @@ function AppNavigator() {
               <Stack.Screen name="OnboardingWelcome" component={WelcomeScreen}        options={{ headerShown: false, gestureEnabled: false }} />
               <Stack.Screen name="BlockedAccountsScreen" component={BlockedAccountScreen}        options={{ headerShown: false, gestureEnabled: false }} />
             </Stack.Navigator>
+        <CreateMenuSheet />
+        <PostComposerModal />
         </SafeAreaView>
 
 

@@ -9,12 +9,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import apiClient from '../../api/apiClient';
 
-const BG     = '#070d1a';
-const CARD   = '#0f1a2e';
-const BORDER = '#1e2d45';
+const BG     = '#f7fff7';
+const BRAND  = '#0c3f44';
+const TEAL   = '#1f8e93';
+const CARD   = '#ffffff';
+const BORDER = '#e4eeef';
+const MUTED  = '#5f6b6d';
+const WHITE  = '#ffffff';
 const GOLD   = '#c9a84c';
-const MUTED  = '#6b7f95';
-const WHITE  = '#f5f6fa';
 const GREEN  = '#10b981';
 const BLUE   = '#3b82f6';
 const PURPLE = '#8b5cf6';
@@ -54,7 +56,7 @@ const CopyRow = ({ label, value }) => {
         <Text style={styles.copyValue} selectable>{value}</Text>
       </View>
       <TouchableOpacity onPress={handleCopy} style={styles.copyBtn} activeOpacity={0.75}>
-        <Ionicons name="copy-outline" size={16} color={GOLD} />
+        <Ionicons name="copy-outline" size={16} color={TEAL} />
       </TouchableOpacity>
     </View>
   );
@@ -155,20 +157,20 @@ export default function ExchangeOrderStatus() {
 
   if (loading && !order) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top, alignItems: 'center', justifyContent: 'center' }]}>
-        <StatusBar barStyle="light-content" backgroundColor={BG} />
-        <ActivityIndicator size="large" color={GOLD} />
+      <View style={[styles.root, ]}>
+        <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
+        <ActivityIndicator size="large" color={TEAL} />
         <Text style={styles.loadingTxt}>Loading order details…</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
@@ -176,13 +178,13 @@ export default function ExchangeOrderStatus() {
         <TouchableOpacity onPress={() => fetchOrder()} style={styles.refreshIconBtn} activeOpacity={0.7}>
           <Ionicons name="refresh" size={19} color={WHITE} />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={GOLD} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={TEAL} />
         }
       >
         {/* Status hero */}
@@ -204,7 +206,7 @@ export default function ExchangeOrderStatus() {
           {canUploadReceipt && (
             <View style={styles.heroAccountBox}>
               {acctLoading ? (
-                <ActivityIndicator size="small" color={GOLD} />
+                <ActivityIndicator size="small" color={TEAL} />
               ) : account ? (
                 <>
                   <Text style={styles.heroAccountTitle}>Pay to this account</Text>
@@ -215,9 +217,9 @@ export default function ExchangeOrderStatus() {
                   {account.swift_code && <CopyRow label="SWIFT Code"       value={account.swift_code} />}
                   {account.routing    && <CopyRow label="Routing Number"   value={account.routing}    />}
                   <View style={styles.heroNoticeRow}>
-                    <Ionicons name="warning" size={13} color={GOLD} />
+                    <Ionicons name="warning" size={13} color={TEAL} />
                     <Text style={styles.heroNoticeTxt}>
-                      Use <Text style={{ color: GOLD, fontFamily: 'WorkSans_700Bold' }}>{order_id}</Text> as payment reference
+                      Use <Text style={{ color: TEAL, fontFamily: 'WorkSans_700Bold' }}>{order_id}</Text> as payment reference
                     </Text>
                   </View>
                 </>
@@ -271,7 +273,7 @@ export default function ExchangeOrderStatus() {
                 size={20}
                 color={order.receipt_uploaded ? GREEN : MUTED}
               />
-              <Text style={[styles.checkTxt, order.receipt_uploaded && { color: WHITE }]}>
+              <Text style={[styles.checkTxt, order.receipt_uploaded && { color: BRAND }]}>
                 Payment Receipt
               </Text>
               {order.receipt_uploaded && <Text style={styles.checkDone}>Uploaded ✓</Text>}
@@ -282,7 +284,7 @@ export default function ExchangeOrderStatus() {
                 size={20}
                 color={order.qr_uploaded ? GREEN : MUTED}
               />
-              <Text style={[styles.checkTxt, order.qr_uploaded && { color: WHITE }]}>
+              <Text style={[styles.checkTxt, order.qr_uploaded && { color: BRAND }]}>
                 Alipay / WeChat QR Code
               </Text>
               {order.qr_uploaded && <Text style={styles.checkDone}>Uploaded ✓</Text>}
@@ -297,7 +299,7 @@ export default function ExchangeOrderStatus() {
             {TIMELINE_STEPS.map((step, i) => {
               const done   = i < activeStep;
               const active = i === activeStep;
-              const stepColor = done || active ? GOLD : BORDER;
+              const stepColor = done || active ? TEAL : BORDER;
               return (
                 <View key={step.key} style={styles.tlRow}>
                   <View style={styles.tlLeft}>
@@ -307,7 +309,7 @@ export default function ExchangeOrderStatus() {
                       active && styles.tlDotActive,
                     ]}>
                       {done
-                        ? <Ionicons name="checkmark" size={11} color={BG} />
+                        ? <Ionicons name="checkmark" size={11} color={WHITE} />
                         : active
                           ? <View style={styles.tlDotInner} />
                           : null
@@ -344,8 +346,8 @@ export default function ExchangeOrderStatus() {
               converted_amount: order?.converted_amount,
             })}
           >
-            <LinearGradient colors={[GOLD, '#e8c87a']} style={styles.actionBtnGrad}>
-              <Ionicons name="cloud-upload-outline" size={18} color={BG} />
+            <LinearGradient colors={[BRAND, TEAL]} style={styles.actionBtnGrad}>
+              <Ionicons name="cloud-upload-outline" size={18} color={WHITE} />
               <Text style={styles.actionBtnTxt}>Upload Payment Receipt</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -390,10 +392,10 @@ export default function ExchangeOrderStatus() {
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: BG },
   loadingTxt:    { color: MUTED, fontFamily: 'WorkSans_400Regular', fontSize: 13, marginTop: 14 },
-  header:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER },
-  backBtn:       { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BORDER },
-  headerTitle:   { flex: 1, textAlign: 'center', color: WHITE, fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
-  refreshIconBtn:{ width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BORDER },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
+  refreshIconBtn:{ width: 40, height: 40, borderRadius: 20, backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center' },
 
   scrollContent: { paddingHorizontal: 16, paddingTop: 16 },
 
@@ -401,7 +403,7 @@ const styles = StyleSheet.create({
   statusIconCircle: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   statusLabel:      { fontSize: 18, fontFamily: 'ReadexPro_600SemiBold', marginBottom: 6 },
   statusOrderId:    { color: MUTED, fontSize: 12, fontFamily: 'WorkSans_500Medium', marginBottom: 10 },
-  statusMsg:        { color: WHITE, fontSize: 13, fontFamily: 'WorkSans_400Regular', textAlign: 'center', lineHeight: 19, paddingHorizontal: 8 },
+  statusMsg:        { color: BRAND, fontSize: 13, fontFamily: 'WorkSans_400Regular', textAlign: 'center', lineHeight: 19, paddingHorizontal: 8 },
   autoRefreshRow:   { flexDirection: 'row', alignItems: 'center', marginTop: 14 },
   autoRefreshTxt:   { color: MUTED, fontSize: 11, fontFamily: 'WorkSans_400Regular' },
 
@@ -411,7 +413,7 @@ const styles = StyleSheet.create({
   summaryGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   summaryCell:   { minWidth: '42%', flex: 1 },
   summaryCellLabel:{ color: MUTED, fontSize: 11, fontFamily: 'WorkSans_400Regular', marginBottom: 4 },
-  summaryCellVal:  { color: WHITE, fontSize: 14, fontFamily: 'WorkSans_600SemiBold' },
+  summaryCellVal:  { color: BRAND, fontSize: 14, fontFamily: 'WorkSans_600SemiBold' },
 
   checklistCard: { backgroundColor: CARD, borderRadius: 18, borderWidth: 1, borderColor: BORDER, padding: 18, marginBottom: 12 },
   checkRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: BORDER + '66' },
@@ -422,39 +424,39 @@ const styles = StyleSheet.create({
   tlRow:         { flexDirection: 'row', minHeight: 52 },
   tlLeft:        { width: 28, alignItems: 'center' },
   tlDot:         { width: 20, height: 20, borderRadius: 10, backgroundColor: BORDER, borderWidth: 2, borderColor: MUTED, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  tlDotDone:     { backgroundColor: GOLD, borderColor: GOLD },
-  tlDotActive:   { backgroundColor: CARD, borderColor: GOLD, borderWidth: 2.5 },
-  tlDotInner:    { width: 8, height: 8, borderRadius: 4, backgroundColor: GOLD },
+  tlDotDone:     { backgroundColor: TEAL, borderColor: TEAL },
+  tlDotActive:   { backgroundColor: CARD, borderColor: TEAL, borderWidth: 2.5 },
+  tlDotInner:    { width: 8, height: 8, borderRadius: 4, backgroundColor: TEAL },
   tlLine:        { flex: 1, width: 2, backgroundColor: BORDER, marginVertical: 3 },
-  tlLineDone:    { backgroundColor: GOLD },
+  tlLineDone:    { backgroundColor: TEAL },
   tlContent:     { flex: 1, paddingLeft: 12, paddingBottom: 10 },
   tlLabelRow:    { flexDirection: 'row', alignItems: 'center', marginTop: 1 },
   tlLabel:       { color: MUTED, fontSize: 13, fontFamily: 'WorkSans_500Medium' },
-  tlLabelActive: { color: WHITE, fontFamily: 'WorkSans_600SemiBold' },
-  tlActiveNote:  { color: GOLD, fontSize: 11, fontFamily: 'WorkSans_500Medium', marginTop: 3 },
+  tlLabelActive: { color: BRAND, fontFamily: 'WorkSans_600SemiBold' },
+  tlActiveNote:  { color: TEAL, fontSize: 11, fontFamily: 'WorkSans_500Medium', marginTop: 3 },
 
   actionBtn:     { marginBottom: 12 },
   actionBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 14, paddingVertical: 16, gap: 10 },
-  actionBtnTxt:  { fontFamily: 'WorkSans_700Bold', fontSize: 15, color: BG },
+  actionBtnTxt:  { fontFamily: 'WorkSans_700Bold', fontSize: 15, color: WHITE },
 
   rejectedCard:    { backgroundColor: RED + '10', borderRadius: 16, borderWidth: 1, borderColor: RED + '30', padding: 20, alignItems: 'center', gap: 8, marginBottom: 10 },
   rejectedTitle:   { color: RED, fontSize: 16, fontFamily: 'ReadexPro_600SemiBold' },
-  rejectedMsg:     { color: WHITE, fontSize: 13, fontFamily: 'WorkSans_400Regular', textAlign: 'center', lineHeight: 19 },
+  rejectedMsg:     { color: BRAND, fontSize: 13, fontFamily: 'WorkSans_400Regular', textAlign: 'center', lineHeight: 19 },
   rejectedContact: { color: MUTED, fontSize: 12, fontFamily: 'WorkSans_500Medium' },
   rejectedRef:     { color: MUTED, fontSize: 11.5, fontFamily: 'WorkSans_400Regular' },
 
   // Hero account section
   heroAccountBox:   { width: '100%', marginTop: 18, borderTopWidth: 1, borderTopColor: BORDER + '66', paddingTop: 16 },
   heroAccountTitle: { color: MUTED, fontSize: 11, fontFamily: 'WorkSans_700Bold', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 },
-  heroNoticeRow:    { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: GOLD + '10', borderRadius: 10, padding: 10, marginTop: 10 },
-  heroNoticeTxt:    { flex: 1, color: WHITE, fontSize: 12, fontFamily: 'WorkSans_400Regular', lineHeight: 17 },
+  heroNoticeRow:    { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: TEAL + '10', borderRadius: 10, padding: 10, marginTop: 10 },
+  heroNoticeTxt:    { flex: 1, color: BRAND, fontSize: 12, fontFamily: 'WorkSans_400Regular', lineHeight: 17 },
 
   // CopyRow
   copyRow:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: BORDER + '55', gap: 10, width: '100%' },
   copyLeft:  { flex: 1 },
   copyLabel: { color: MUTED, fontSize: 11, fontFamily: 'WorkSans_500Medium', marginBottom: 2 },
-  copyValue: { color: WHITE, fontSize: 14, fontFamily: 'WorkSans_600SemiBold' },
-  copyBtn:   { width: 32, height: 32, borderRadius: 8, backgroundColor: GOLD + '14', alignItems: 'center', justifyContent: 'center' },
+  copyValue: { color: BRAND, fontSize: 14, fontFamily: 'WorkSans_600SemiBold' },
+  copyBtn:   { width: 32, height: 32, borderRadius: 8, backgroundColor: TEAL + '14', alignItems: 'center', justifyContent: 'center' },
 
   acctError: { color: MUTED, fontSize: 12, fontFamily: 'WorkSans_400Regular', textAlign: 'center', paddingVertical: 10 },
 });

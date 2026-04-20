@@ -9,13 +9,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import apiClient from '../../api/apiClient';
 
-const BG      = '#070d1a';
-const CARD    = '#0f1a2e';
-const BORDER  = '#1e2d45';
-const GOLD    = '#c9a84c';
-const GOLD_LT = '#e8c87a';
-const MUTED   = '#6b7f95';
-const WHITE   = '#f5f6fa';
+const BG     = '#f7fff7';
+const BRAND  = '#0c3f44';
+const TEAL   = '#1f8e93';
+const CARD   = '#ffffff';
+const BORDER = '#e4eeef';
+const MUTED  = '#5f6b6d';
+const WHITE  = '#ffffff';
+const GOLD   = '#c9a84c';
 
 const CURRENCIES = [
   { code: 'NGN', flag: '🇳🇬', name: 'Nigerian Naira',     symbol: '₦'   },
@@ -76,7 +77,7 @@ const CurrencyModal = memo(({ visible, selected, onSelect, onClose }) => {
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Select Currency</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close" size={22} color={WHITE} />
+            <Ionicons name="close" size={22} color={BRAND} />
           </TouchableOpacity>
         </View>
         {CURRENCIES.map(c => (
@@ -91,7 +92,7 @@ const CurrencyModal = memo(({ visible, selected, onSelect, onClose }) => {
               <Text style={styles.modalCode}>{c.code}</Text>
               <Text style={styles.modalName}>{c.name}</Text>
             </View>
-            {selected === c.code && <Ionicons name="checkmark-circle" size={20} color={GOLD} />}
+            {selected === c.code && <Ionicons name="checkmark-circle" size={20} color={TEAL} />}
           </TouchableOpacity>
         ))}
       </View>
@@ -110,7 +111,7 @@ const HistoryCard = memo(({ item, onPress }) => {
           {getSymbol(item.from)}{fmtNum(item.amount)} <Text style={styles.histCode}>{item.from}</Text>
         </Text>
         <View style={styles.histArrowRow}>
-          <Ionicons name="arrow-down" size={12} color={GOLD} />
+          <Ionicons name="arrow-down" size={12} color={TEAL} />
         </View>
         <Text style={styles.histTo}>
           ¥{fmtNum(item.converted_amount)} <Text style={styles.histCode}>CNY</Text>
@@ -249,11 +250,11 @@ export default function CurrencyExchange() {
     : `Loading rate…`;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
@@ -262,7 +263,7 @@ export default function CurrencyExchange() {
           <Text style={styles.headerSub}>Exchange to RMB · Manual Order</Text>
         </View>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -270,14 +271,14 @@ export default function CurrencyExchange() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Live rate banner ── */}
-        <LinearGradient colors={['#0f1a2e', '#162440']} style={styles.rateBanner}>
+        <LinearGradient colors={[BRAND, TEAL]} style={styles.rateBanner}>
           {rateLoading
-            ? <ActivityIndicator size="small" color={GOLD} />
-            : <Ionicons name="trending-up" size={15} color={GOLD} />
+            ? <ActivityIndicator size="small" color={WHITE} />
+            : <Ionicons name="trending-up" size={15} color={WHITE} />
           }
           <Text style={styles.rateBannerText}>{rateDisplay}</Text>
           <TouchableOpacity onPress={() => fetchRate(from)} style={styles.refreshBtn}>
-            <Ionicons name="refresh" size={14} color={MUTED} />
+            <Ionicons name="refresh" size={14} color={WHITE} />
           </TouchableOpacity>
         </LinearGradient>
 
@@ -344,10 +345,10 @@ export default function CurrencyExchange() {
           disabled={creating}
           style={[styles.createBtnWrap, creating && { opacity: 0.7 }]}
         >
-          <LinearGradient colors={[GOLD, GOLD_LT, GOLD]} style={styles.createBtn}>
+          <LinearGradient colors={[BRAND, TEAL]} style={styles.createBtn}>
             {creating
-              ? <ActivityIndicator size="small" color={BG} />
-              : <><Ionicons name="arrow-forward-circle" size={20} color={BG} /><Text style={styles.createBtnTxt}>Create Exchange Order</Text></>
+              ? <ActivityIndicator size="small" color={WHITE} />
+              : <><Ionicons name="arrow-forward-circle" size={20} color={WHITE} /><Text style={styles.createBtnTxt}>Create Exchange Order</Text></>
             }
           </LinearGradient>
         </TouchableOpacity>
@@ -355,7 +356,7 @@ export default function CurrencyExchange() {
         {/* ── History section ── */}
         <View style={styles.histHeader}>
           <Text style={styles.histHeaderTxt}>Recent Exchange Orders</Text>
-          {histLoading && <ActivityIndicator size="small" color={GOLD} style={{ marginLeft: 8 }} />}
+          {histLoading && <ActivityIndicator size="small" color={TEAL} style={{ marginLeft: 8 }} />}
         </View>
 
         {!histLoading && history.length === 0 ? (
@@ -386,73 +387,73 @@ export default function CurrencyExchange() {
 
 const styles = StyleSheet.create({
   root:          { flex: 1, backgroundColor: BG },
-  header:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER },
-  backBtn:       { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BORDER },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   headerCenter:  { flex: 1, alignItems: 'center' },
-  headerTitle:   { fontFamily: 'ReadexPro_600SemiBold', fontSize: 17, color: WHITE },
-  headerSub:     { fontFamily: 'WorkSans_400Regular', fontSize: 11, color: GOLD, marginTop: 2 },
+  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
+  headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'WorkSans_400Regular', marginTop: 2 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 18 },
 
-  rateBanner:    { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 18, borderWidth: 1, borderColor: BORDER, gap: 8 },
-  rateBannerText:{ fontFamily: 'WorkSans_500Medium', fontSize: 13, color: GOLD_LT, flex: 1 },
+  rateBanner:    { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 18, gap: 8 },
+  rateBannerText:{ fontFamily: 'WorkSans_500Medium', fontSize: 13, color: WHITE, flex: 1 },
   refreshBtn:    { padding: 4 },
 
   fieldGroup:    { marginBottom: 14 },
   fieldLabel:    { fontFamily: 'WorkSans_500Medium', fontSize: 12, color: MUTED, marginBottom: 7 },
   pickerPill:    { flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 14, paddingVertical: 13, gap: 8 },
   pickerFlag:    { fontSize: 20 },
-  pickerCode:    { fontFamily: 'WorkSans_600SemiBold', fontSize: 14, color: WHITE, flex: 1 },
+  pickerCode:    { fontFamily: 'WorkSans_600SemiBold', fontSize: 14, color: BRAND, flex: 1 },
 
   amountCard:         { backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER, padding: 20, marginBottom: 14 },
   amountLabel:        { fontFamily: 'WorkSans_400Regular', fontSize: 12, color: MUTED, marginBottom: 10 },
-  amountInput:        { fontFamily: 'ReadexPro_600SemiBold', fontSize: 36, color: WHITE, textAlign: 'center', paddingVertical: 4 },
+  amountInput:        { fontFamily: 'ReadexPro_600SemiBold', fontSize: 36, color: BRAND, textAlign: 'center', paddingVertical: 4 },
   amountCurrencyLabel:{ fontFamily: 'WorkSans_500Medium', fontSize: 13, color: MUTED, textAlign: 'center', marginTop: 6 },
 
-  previewCard:   { backgroundColor: '#0a1f14', borderRadius: 12, borderWidth: 1, borderColor: '#1a3a24', padding: 16, marginBottom: 14 },
+  previewCard:   { backgroundColor: '#e8f5f5', borderRadius: 12, borderWidth: 1, borderColor: BORDER, padding: 16, marginBottom: 14 },
   previewLabel:  { fontFamily: 'WorkSans_400Regular', fontSize: 12, color: MUTED, marginBottom: 6 },
-  previewAmount: { fontFamily: 'ReadexPro_600SemiBold', fontSize: 28, color: GOLD_LT },
-  previewCny:    { fontSize: 16, color: GOLD },
+  previewAmount: { fontFamily: 'ReadexPro_600SemiBold', fontSize: 28, color: TEAL },
+  previewCny:    { fontSize: 16, color: TEAL },
   previewNote:   { fontFamily: 'WorkSans_400Regular', fontSize: 11, color: MUTED, marginTop: 4 },
 
   howCard:      { backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER, padding: 16, marginBottom: 18 },
   howTitle:     { fontFamily: 'WorkSans_700Bold', fontSize: 12, color: MUTED, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 14 },
   howStep:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  howNum:       { width: 24, height: 24, borderRadius: 12, backgroundColor: GOLD + '20', borderWidth: 1, borderColor: GOLD + '44', alignItems: 'center', justifyContent: 'center' },
-  howNumTxt:    { color: GOLD, fontSize: 11, fontFamily: 'WorkSans_700Bold' },
-  howStepTxt:   { color: WHITE, fontSize: 13, fontFamily: 'WorkSans_500Medium', flex: 1 },
+  howNum:       { width: 24, height: 24, borderRadius: 12, backgroundColor: TEAL + '20', borderWidth: 1, borderColor: TEAL + '44', alignItems: 'center', justifyContent: 'center' },
+  howNumTxt:    { color: TEAL, fontSize: 11, fontFamily: 'WorkSans_700Bold' },
+  howStepTxt:   { color: BRAND, fontSize: 13, fontFamily: 'WorkSans_500Medium', flex: 1 },
 
   createBtnWrap: { marginBottom: 28 },
   createBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 14, paddingVertical: 16, gap: 10 },
-  createBtnTxt:  { fontFamily: 'WorkSans_700Bold', fontSize: 16, color: BG },
+  createBtnTxt:  { fontFamily: 'WorkSans_700Bold', fontSize: 16, color: WHITE },
 
   histHeader:    { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   histHeaderTxt: { fontFamily: 'WorkSans_700Bold', fontSize: 11, color: MUTED, letterSpacing: 1.4, textTransform: 'uppercase' },
 
   histEmpty:      { backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, padding: 36, alignItems: 'center', gap: 10 },
-  histEmptyTitle: { color: WHITE, fontSize: 15, fontFamily: 'WorkSans_600SemiBold' },
+  histEmptyTitle: { color: BRAND, fontSize: 15, fontFamily: 'WorkSans_600SemiBold' },
   histEmptySub:   { color: MUTED, fontSize: 12, fontFamily: 'WorkSans_400Regular', textAlign: 'center' },
 
   histCard:         { backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, marginBottom: 10, gap: 12 },
   histLeft:         { minWidth: 108 },
-  histFrom:         { fontFamily: 'WorkSans_600SemiBold', fontSize: 14, color: WHITE },
+  histFrom:         { fontFamily: 'WorkSans_600SemiBold', fontSize: 14, color: BRAND },
   histCode:         { color: MUTED, fontSize: 12 },
-  histArrowRow:     { width: 22, height: 22, borderRadius: 11, backgroundColor: GOLD + '18', alignItems: 'center', justifyContent: 'center', marginVertical: 4 },
-  histTo:           { fontFamily: 'ReadexPro_600SemiBold', fontSize: 15, color: GOLD_LT },
+  histArrowRow:     { width: 22, height: 22, borderRadius: 11, backgroundColor: TEAL + '18', alignItems: 'center', justifyContent: 'center', marginVertical: 4 },
+  histTo:           { fontFamily: 'ReadexPro_600SemiBold', fontSize: 15, color: GOLD },
   histDivider:      { width: 1, height: 52, backgroundColor: BORDER },
   histRight:        { flex: 1, gap: 4 },
-  histId:           { fontFamily: 'WorkSans_600SemiBold', fontSize: 11.5, color: WHITE },
+  histId:           { fontFamily: 'WorkSans_600SemiBold', fontSize: 11.5, color: BRAND },
   histDate:         { fontFamily: 'WorkSans_400Regular', fontSize: 11, color: MUTED },
   histStatusBadge:  { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3, alignSelf: 'flex-start' },
   histStatusTxt:    { fontFamily: 'WorkSans_600SemiBold', fontSize: 10.5 },
 
-  modalOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(7,13,26,0.90)', justifyContent: 'flex-end', zIndex: 100 },
+  modalOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(12,63,68,0.60)', justifyContent: 'flex-end', zIndex: 100 },
   modalSheet:    { backgroundColor: CARD, borderTopLeftRadius: 22, borderTopRightRadius: 22, borderTopWidth: 1, borderColor: BORDER, paddingBottom: 40, paddingTop: 4 },
   modalHandle:   { width: 36, height: 4, borderRadius: 2, backgroundColor: MUTED + '44', alignSelf: 'center', marginVertical: 10 },
   modalHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER, marginBottom: 4 },
-  modalTitle:    { fontFamily: 'WorkSans_600SemiBold', fontSize: 16, color: WHITE },
+  modalTitle:    { fontFamily: 'WorkSans_600SemiBold', fontSize: 16, color: BRAND },
   modalItem:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 13, gap: 12 },
   modalItemActive:{ backgroundColor: BORDER + '44' },
   modalFlag:     { fontSize: 24 },
-  modalCode:     { fontFamily: 'WorkSans_600SemiBold', fontSize: 14, color: WHITE },
+  modalCode:     { fontFamily: 'WorkSans_600SemiBold', fontSize: 14, color: BRAND },
   modalName:     { fontFamily: 'WorkSans_400Regular', fontSize: 12, color: MUTED, marginTop: 1 },
 });

@@ -25,19 +25,99 @@ import useStore from '../../repository/store';
 import { Colors } from '../../theme/colors';
 
 const withOpacity = (hex, opacity) => {
-  const normalized = (hex || "").replace("#", "");
-  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
+  const normalized = (hex || '').replace('#', '');
+  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
+    .toString(16).padStart(2, '0');
   return `#${normalized}${alpha}`;
 };
-
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const BRAND_DEEP   = Colors.brandDeep;
 const BRAND_MID    = Colors.primaryDark;
 const BRAND_ACCENT = Colors.tealAccent;
 const BRAND_LIME   = Colors.brandLime;
-const RADIUS       = 18;
+const RADIUS       = 20;
 const AUTO_SCROLL_MS = 4500;
+
+// ── Local slides injected into the slider ─────────────────────────────────────
+const LOCAL_SLIDES = [
+  {
+    id: '__hafriktv__',
+    isLocal: true,
+    navigateTo: 'HafrikTV',
+    tag: 'STREAM',
+    title: 'HafrikTV',
+    subtitle: 'Watch videos, reels & live content from Africa',
+    button_text: 'Watch Now',
+    gradient: ['#071e21', '#0c2d32', '#1f8e93'],
+    gradientDir: { start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
+    accentColor: '#27adb5',
+    darkColor: '#071e21',
+    iconName: 'tv',
+    blob1Color: '#27adb540',
+    blob2Color: '#27adb522',
+    blob3Color: '#27adb515',
+    tagBg: '#27adb5',
+    tagColor: '#071e21',
+  },
+  {
+    id: '__arrival__',
+    isLocal: true,
+    navigateTo: 'ArrivalConcierge',
+    tag: 'ARRIVAL',
+    title: 'Arrival Concierge',
+    subtitle: 'Airport pickup, hotel transfers & seamless city arrivals',
+    button_text: 'Book Now',
+    gradient: ['#071e21', '#0a2e2a', '#0d5c50'],
+    gradientDir: { start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
+    accentColor: '#13c296',
+    darkColor: '#071e21',
+    iconName: 'airplane',
+    blob1Color: '#13c29640',
+    blob2Color: '#13c29622',
+    blob3Color: '#13c29615',
+    tagBg: '#13c296',
+    tagColor: '#071e21',
+  },
+  {
+    id: '__exchange__',
+    isLocal: true,
+    navigateTo: 'HafrikXCurrency',
+    tag: 'EXCHANGE',
+    title: 'Currency Exchange',
+    subtitle: 'Best rates · Instant transfers · Trusted platform',
+    button_text: 'Exchange Now',
+    gradient: ['#071e21', '#0a2832', '#0e5568'],
+    gradientDir: { start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
+    accentColor: '#1f8e93',
+    darkColor: '#071e21',
+    iconName: 'swap-horizontal',
+    blob1Color: '#1f8e9340',
+    blob2Color: '#1f8e9322',
+    blob3Color: '#1f8e9315',
+    tagBg: '#1f8e93',
+    tagColor: '#071e21',
+  },
+  {
+    id: '__visa__',
+    isLocal: true,
+    navigateTo: 'HafrikXVisa',
+    tag: 'VISA',
+    title: 'Visa Services',
+    subtitle: 'Expert guidance for work, study & travel visa applications',
+    button_text: 'Apply Now',
+    gradient: ['#071e21', '#0d2e3a', '#1a5e6e'],
+    gradientDir: { start: { x: 0, y: 0 }, end: { x: 1, y: 1 } },
+    accentColor: '#2aa8b5',
+    darkColor: '#071e21',
+    iconName: 'document-text',
+    blob1Color: '#2aa8b540',
+    blob2Color: '#2aa8b522',
+    blob3Color: '#2aa8b515',
+    tagBg: '#2aa8b5',
+    tagColor: '#071e21',
+  },
+];
 
 // ── Skeleton placeholder ──────────────────────────────────────────────────────
 const SkeletonBanner = memo(({ height }) => {
@@ -55,23 +135,101 @@ const SkeletonBanner = memo(({ height }) => {
   }, [pulse]);
 
   return (
-    <Animated.View style={[styles.skeleton, { height, opacity: pulse }]} />
+    <Animated.View style={[ss.skeleton, { height, opacity: pulse }]} />
   );
 });
 
-// ── Single banner slide ───────────────────────────────────────────────────────
-const BannerSlide = memo(({ item, slideWidth, slideHeight, onPress }) => {
-  const imageUrl =
-    item.image ?? item.banner_image ?? item.image_url ?? null;
-  const tag = item.tag ?? item.category ?? item.badge ?? null;
+// ── Rich local slide ───────────────────────────────────────────────────────────
+const LocalSlide = memo(({ item, slideWidth, slideHeight, onPress }) => {
+  const pressAnim = useRef(new Animated.Value(1)).current;
+
+  const onPressIn = () =>
+    Animated.spring(pressAnim, { toValue: 0.97, useNativeDriver: true, speed: 40 }).start();
+  const onPressOut = () =>
+    Animated.spring(pressAnim, { toValue: 1, useNativeDriver: true, speed: 40 }).start();
+
+  return (
+    <Animated.View style={{ transform: [{ scale: pressAnim }] }}>
+      <TouchableOpacity
+        style={[ss.card, { width: slideWidth, height: slideHeight }]}
+        activeOpacity={1}
+        onPress={() => onPress(item)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+      >
+        {/* Base gradient */}
+        <LinearGradient
+          colors={item.gradient}
+          style={StyleSheet.absoluteFillObject}
+          start={item.gradientDir.start}
+          end={item.gradientDir.end}
+        />
+
+        {/* Decorative blobs — large circle back-right */}
+        <View style={[ss.blob, ss.blobBR, { borderColor: item.blob1Color }]} />
+        {/* Mid circle top-left */}
+        <View style={[ss.blob, ss.blobTL, { borderColor: item.blob2Color }]} />
+        {/* Small filled circle */}
+        <View style={[ss.blobFill, ss.blobFillPos, { backgroundColor: item.blob3Color }]} />
+
+        {/* Watermark icon — very large, translucent, bottom-right */}
+        <View style={ss.watermark} pointerEvents="none">
+          <Ionicons name={item.iconName} size={slideHeight * 0.85} color={item.accentColor} style={{ opacity: 0.06 }} />
+        </View>
+
+        {/* Main icon ring — top-right */}
+        <View
+          style={[
+            ss.iconRing,
+            {
+              borderColor: item.blob1Color,
+              backgroundColor: item.blob3Color,
+              top: slideHeight * 0.12,
+              right: 20,
+            },
+          ]}
+        >
+          <Ionicons name={item.iconName} size={26} color={item.accentColor} />
+        </View>
+
+        {/* Tag pill — top-left */}
+        <View style={[ss.tag, { backgroundColor: item.tagBg, top: slideHeight * 0.12 }]}>
+          <Text style={[ss.tagText, { color: item.tagColor }]}>{item.tag}</Text>
+        </View>
+
+        {/* Bottom scrim */}
+        <LinearGradient
+          colors={['transparent', withOpacity(item.gradient[0], 0.7), item.gradient[0]]}
+          style={[StyleSheet.absoluteFillObject, { top: '30%' }]}
+        />
+
+        {/* Content */}
+        <View style={[ss.content, { bottom: slideHeight * 0.1 }]}>
+          <Text style={ss.title} numberOfLines={1}>{item.title}</Text>
+          <Text style={ss.subtitle} numberOfLines={2}>{item.subtitle}</Text>
+          <View style={ss.ctaRow}>
+            <View style={[ss.ctaBtn, { backgroundColor: item.tagBg }]}>
+              <Text style={[ss.ctaTxt, { color: item.tagColor }]}>{item.button_text}</Text>
+              <Ionicons name="arrow-forward" size={11} color={item.tagColor} />
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+// ── API banner slide (image-based) ────────────────────────────────────────────
+const ApiBannerSlide = memo(({ item, slideWidth, slideHeight, onPress }) => {
+  const imageUrl = item.image ?? item.banner_image ?? item.image_url ?? null;
+  const tag      = item.tag ?? item.category ?? item.badge ?? null;
 
   return (
     <TouchableOpacity
-      style={[styles.card, { width: slideWidth, height: slideHeight }]}
+      style={[ss.card, { width: slideWidth, height: slideHeight }]}
       activeOpacity={0.95}
       onPress={() => onPress(item)}
     >
-      {/* Background */}
       {imageUrl ? (
         <ExpoImage
           source={{ uri: imageUrl }}
@@ -89,43 +247,36 @@ const BannerSlide = memo(({ item, slideWidth, slideHeight, onPress }) => {
         />
       )}
 
-      {/* Scrim for legibility */}
+      {/* Scrim */}
       <LinearGradient
         colors={[withOpacity(Colors.black, 0.04), withOpacity(Colors.black, 0.72)]}
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Tag / badge pill */}
       {!!tag && (
-        <View style={styles.tag}>
-          <Text style={styles.tagText}>{tag.toUpperCase()}</Text>
+        <View style={ss.tag}>
+          <Text style={[ss.tagText, { color: BRAND_DEEP }]}>{tag.toUpperCase()}</Text>
         </View>
       )}
 
-      {/* Bottom content */}
-      <View style={styles.contentArea}>
+      <View style={ss.content}>
         {!!item.title && (
-          <Text style={styles.title} numberOfLines={2}>
-            {item.title}
-          </Text>
+          <Text style={ss.title} numberOfLines={2}>{item.title}</Text>
         )}
-
         {!!(item.subtitle ?? item.description) && (
-          <Text style={styles.subtitle} numberOfLines={2}>
+          <Text style={ss.subtitle} numberOfLines={2}>
             {item.subtitle ?? item.description}
           </Text>
         )}
-
-        {/* CTA — only rendered when a valid link exists */}
         {!!(item.button_link && item.button_link !== '#') && (
-          <View style={styles.ctaWrap}>
+          <View style={ss.ctaRow}>
             <LinearGradient
               colors={[BRAND_ACCENT, BRAND_LIME]}
-              style={styles.ctaGradient}
+              style={ss.ctaGrad}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.ctaLabel} numberOfLines={1}>
+              <Text style={[ss.ctaTxt, { color: BRAND_DEEP }]} numberOfLines={1}>
                 {item.button_text ?? 'Explore'}
               </Text>
               <Ionicons name="arrow-forward" size={13} color={BRAND_DEEP} />
@@ -139,11 +290,11 @@ const BannerSlide = memo(({ item, slideWidth, slideHeight, onPress }) => {
 
 // ── Dot row ───────────────────────────────────────────────────────────────────
 const DotRow = memo(({ count, activeIndex }) => (
-  <View style={styles.dotRow}>
+  <View style={ss.dotRow}>
     {Array.from({ length: count }).map((_, i) => (
       <View
         key={i}
-        style={[styles.dot, i === activeIndex ? styles.dotActive : styles.dotInactive]}
+        style={[ss.dot, i === activeIndex ? ss.dotActive : ss.dotInactive]}
       />
     ))}
   </View>
@@ -156,20 +307,19 @@ const Banner = () => {
   const { width: screenWidth } = useWindowDimensions();
   const refreshSignal          = useStore(s => s.refreshSignal);
 
-  // Responsive sizing — fills phone, capped at 600 on tablets
   const H_PAD       = screenWidth > 600 ? 24 : 16;
   const SLIDE_W     = Math.min(screenWidth - H_PAD * 2, 600);
-  const SLIDE_H     = Math.round(SLIDE_W * 0.42);
+  const SLIDE_H     = Math.round(SLIDE_W * 0.5);   // taller for richer visuals
   const ITEM_STRIDE = SLIDE_W + 12;
 
-  const [banners,     setBanners]     = useState([]);
+  const [banners,     setBanners]     = useState([...LOCAL_SLIDES]);
   const [loading,     setLoading]     = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const flatListRef    = useRef(null);
-  const timerRef       = useRef(null);
-  const isTouching     = useRef(false);
-  const activeIdxRef   = useRef(0);
+  const flatListRef  = useRef(null);
+  const timerRef     = useRef(null);
+  const isTouching   = useRef(false);
+  const activeIdxRef = useRef(0);
 
   // ── Data ─────────────────────────────────────────────────────────────────
   const loadBanners = useCallback(async () => {
@@ -182,16 +332,14 @@ const Banner = () => {
           : Array.isArray(res.data?.data)
             ? res.data.data
             : [];
-        setBanners(list);
+        setBanners([...LOCAL_SLIDES, ...list]);
       }
     } catch {}
     setLoading(false);
   }, []);
 
-  // Initial load
   useEffect(() => { loadBanners(); }, [loadBanners]);
 
-  // Reload when country filter changes (refreshSignal is bumped by FeedsHeader)
   const prevSignal = useRef(refreshSignal);
   useEffect(() => {
     if (refreshSignal === prevSignal.current) return;
@@ -199,19 +347,14 @@ const Banner = () => {
     loadBanners();
   }, [refreshSignal, loadBanners]);
 
-  // ── Auto-scroll (resets when user swipes manually) ───────────────────────
+  // ── Auto-scroll ──────────────────────────────────────────────────────────
   const startTimer = useCallback(() => {
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       if (isTouching.current) return;
-      const next =
-        activeIdxRef.current + 1 >= banners.length
-          ? 0
-          : activeIdxRef.current + 1;
-      flatListRef.current?.scrollToOffset({
-        offset: next * ITEM_STRIDE,
-        animated: true,
-      });
+      const next = activeIdxRef.current + 1 >= banners.length
+        ? 0 : activeIdxRef.current + 1;
+      flatListRef.current?.scrollToOffset({ offset: next * ITEM_STRIDE, animated: true });
       activeIdxRef.current = next;
       setActiveIndex(next);
     }, AUTO_SCROLL_MS);
@@ -222,23 +365,20 @@ const Banner = () => {
     return () => clearInterval(timerRef.current);
   }, [banners.length, startTimer]);
 
-  // ── Event handlers ───────────────────────────────────────────────────────
-  const onScrollBegin = useCallback(() => {
-    isTouching.current = true;
-  }, []);
-
-  const onScrollEnd = useCallback(() => {
-    isTouching.current = false;
-    startTimer(); // restart timer after manual interaction
-  }, [startTimer]);
-
-  const onMomentumScrollEnd = useCallback((e) => {
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const onScrollBeginDrag      = useCallback(() => { isTouching.current = true; },  []);
+  const onMomentumScrollBegin  = useCallback(() => { isTouching.current = false; startTimer(); }, [startTimer]);
+  const onMomentumScrollEnd    = useCallback((e) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / ITEM_STRIDE);
     activeIdxRef.current = idx;
     setActiveIndex(idx);
   }, [ITEM_STRIDE]);
 
   const handleBannerPress = useCallback((banner) => {
+    if (banner.isLocal && banner.navigateTo) {
+      navigation.navigate(banner.navigateTo);
+      return;
+    }
     if (banner.button_link && banner.button_link !== '#') {
       navigation.navigate('WebView', {
         url:   banner.button_link,
@@ -249,24 +389,35 @@ const Banner = () => {
     }
   }, [navigation, token, user]);
 
-  const renderItem = useCallback(({ item }) => (
-    <BannerSlide
-      item={item}
-      slideWidth={SLIDE_W}
-      slideHeight={SLIDE_H}
-      onPress={handleBannerPress}
-    />
-  ), [SLIDE_W, SLIDE_H, handleBannerPress]);
+  const renderItem = useCallback(({ item }) => {
+    if (item.isLocal) {
+      return (
+        <LocalSlide
+          item={item}
+          slideWidth={SLIDE_W}
+          slideHeight={SLIDE_H}
+          onPress={handleBannerPress}
+        />
+      );
+    }
+    return (
+      <ApiBannerSlide
+        item={item}
+        slideWidth={SLIDE_W}
+        slideHeight={SLIDE_H}
+        onPress={handleBannerPress}
+      />
+    );
+  }, [SLIDE_W, SLIDE_H, handleBannerPress]);
 
-  const keyExtractor = useCallback((item, idx) =>
-    `banner-${item.id ?? idx}`, []);
+  const keyExtractor = useCallback((item, idx) => `banner-${item.id ?? idx}`, []);
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={[styles.wrapper, { paddingHorizontal: H_PAD }]}>
+      <View style={[ss.wrapper, { paddingHorizontal: H_PAD }]}>
         <SkeletonBanner height={SLIDE_H} />
-        <DotRow count={3} activeIndex={0} />
+        <DotRow count={4} activeIndex={0} />
       </View>
     );
   }
@@ -274,7 +425,7 @@ const Banner = () => {
   if (!banners.length) return null;
 
   return (
-    <View style={styles.wrapper}>
+    <View style={ss.wrapper}>
       <FlatList
         ref={flatListRef}
         data={banners}
@@ -289,12 +440,12 @@ const Banner = () => {
           paddingHorizontal: (screenWidth - SLIDE_W) / 2,
           gap: 12,
         }}
-        onScrollBeginDrag={onScrollBegin}
-        onMomentumScrollBegin={onScrollEnd}
+        onScrollBeginDrag={onScrollBeginDrag}
+        onMomentumScrollBegin={onMomentumScrollBegin}
         onMomentumScrollEnd={onMomentumScrollEnd}
         removeClippedSubviews
-        initialNumToRender={2}
-        maxToRenderPerBatch={3}
+        initialNumToRender={3}
+        maxToRenderPerBatch={4}
         windowSize={5}
       />
 
@@ -306,85 +457,139 @@ const Banner = () => {
 };
 
 // ── Styles ────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+const ss = StyleSheet.create({
   wrapper: {
-    marginVertical: 6,
+    marginVertical: 8,
   },
 
-  // skeleton
   skeleton: {
     backgroundColor: Colors.bannerSurface,
     borderRadius: RADIUS,
     width: '100%',
   },
 
-  // card
   card: {
     borderRadius: RADIUS,
     overflow: 'hidden',
     backgroundColor: BRAND_DEEP,
   },
 
-  // tag pill
+  // ── Decorative blobs ──
+  blob: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    borderRadius: 9999,
+  },
+  blobBR: {
+    width: 180,
+    height: 180,
+    bottom: -55,
+    right: -55,
+  },
+  blobTL: {
+    width: 110,
+    height: 110,
+    top: -30,
+    left: -30,
+  },
+  blobFill: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 9999,
+  },
+  blobFillPos: {
+    top: '40%',
+    right: '28%',
+  },
+
+  // ── Watermark ──
+  watermark: {
+    position: 'absolute',
+    bottom: -16,
+    right: -12,
+  },
+
+  // ── Icon ring ──
+  iconRing: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Tag pill ──
   tag: {
     position: 'absolute',
-    top: 14,
-    left: 14,
-    backgroundColor: BRAND_ACCENT,
-    borderRadius: 6,
+    left: 16,
+    top: 16,
+    borderRadius: 7,
     paddingHorizontal: 10,
     paddingVertical: 4,
     zIndex: 2,
+    backgroundColor: BRAND_ACCENT,
   },
   tagText: {
     fontSize: 9,
     fontWeight: '800',
+    letterSpacing: 1,
     color: BRAND_DEEP,
-    letterSpacing: 0.8,
   },
 
-  // content
-  contentArea: {
+  // ── Content ──
+  content: {
     position: 'absolute',
     bottom: 18,
     left: 18,
     right: 18,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 21,
+    fontWeight: '900',
     color: Colors.white,
     marginBottom: 5,
     lineHeight: 26,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: 12,
-    color: withOpacity(Colors.white, 0.72),
+    color: withOpacity(Colors.white, 0.68),
     marginBottom: 14,
     lineHeight: 17,
   },
 
-  // CTA
-  ctaWrap: {
+  // ── CTA ──
+  ctaRow: {
     alignSelf: 'flex-start',
     borderRadius: 30,
     overflow: 'hidden',
   },
-  ctaGradient: {
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    gap: 6,
+    borderRadius: 30,
+  },
+  ctaGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 9,
     gap: 6,
   },
-  ctaLabel: {
+  ctaTxt: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     color: BRAND_DEEP,
     maxWidth: 160,
   },
 
-  // dots
+  // ── Dots ──
   dotRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -393,15 +598,15 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   dot: {
-    height: 6,
+    height: 5,
     borderRadius: 3,
   },
   dotActive: {
-    width: 20,
+    width: 22,
     backgroundColor: BRAND_ACCENT,
   },
   dotInactive: {
-    width: 6,
+    width: 5,
     backgroundColor: BRAND_ACCENT,
     opacity: 0.3,
   },

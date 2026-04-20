@@ -91,11 +91,11 @@ export default function VerificationIntroScreen() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await getVerificationStatus(token);
+    const result = await getVerificationStatus();
     setStatus(result.status);
     setRejNote(result.rejectedNote || '');
     setLoading(false);
-  }, [token]);
+  }, []);
 
   // Reload whenever screen comes into focus (e.g. after submission)
   useFocusEffect(useCallback(() => { load(); }, [load]));

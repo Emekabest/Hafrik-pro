@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  ScrollView,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -30,6 +29,12 @@ const BORDER = Colors.borderSoft;
 
 const items = [
   {
+    label: "Arrival",
+    icon: (active) => <Ionicons name="airplane" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "ArrivalConcierge",
+    colors: ['#c9a84c', '#8a6820'],
+  },
+  {
     label: "Community",
     icon: (active) => <Ionicons name="people" size={20} color={active ? Colors.white : BRAND} />,
     screen: "GroupScreen",
@@ -43,10 +48,34 @@ const items = [
     colors: [ACCENT, Colors.tealMint],
   },
   {
+    label: "City Guide",
+    icon: (active) => <Ionicons name="map" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "CityGuide",
+    colors: [Colors.teal, Colors.tealDark],
+  },
+  {
+    label: "Exchange",
+    icon: (active) => <Ionicons name="swap-horizontal" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "HafrikXCurrency",
+    colors: ['#c9a84c', '#8a6820'],
+  },
+  {
     label: "Articles",
     icon: (active) => <Ionicons name="newspaper" size={20} color={active ? Colors.white : BRAND} />,
     screen: "ArticlesScreen",
     colors: [Colors.violet, Colors.violetDeep],
+  },
+  {
+    label: "Visa",
+    icon: (active) => <Ionicons name="document-text" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "HafrikXVisa",
+    colors: [Colors.tealNavy, Colors.tealDeepStrong],
+  },
+  {
+    label: "Learn",
+    icon: (active) => <Ionicons name="school" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "HafrikXLearn",
+    colors: [Colors.redStrong, Colors.redDeep],
   },
   {
     label: "Events",
@@ -129,6 +158,10 @@ export default function StaticShortcutRow() {
     navigation.navigate(screen, params);
   };
 
+  // chunk into rows of 5
+  const rows = [];
+  for (let i = 0; i < items.length; i += 5) rows.push(items.slice(i, i + 5));
+
   return (
     <View style={[styles.wrapper, { backgroundColor: tc.surface, borderBottomColor: tc.border }]}>
       {/* Subtle top accent line */}
@@ -139,20 +172,80 @@ export default function StaticShortcutRow() {
         end={{ x: 1, y: 0 }}
       />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
+      {/* ── HafrikTV featured banner ──────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.tvBanner}
+        activeOpacity={0.88}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.navigate('HafrikTV');
+        }}
       >
-        {items.map((item, index) => (
-          <ShortcutItem
-            key={item.label}
-            item={item}
-            index={index}
-            onPress={handlePress}
-          />
-        ))}
-      </ScrollView>
+        <LinearGradient
+          colors={['#071e21', '#0f3539', '#1f8e93']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.tvBannerGrad}
+        >
+          <View style={styles.tvBannerLeft}>
+            <View style={styles.tvIconWrap}>
+              <Ionicons name="tv" size={20} color="#27adb5" />
+            </View>
+            <View>
+              <Text style={styles.tvBannerTitle}>HafrikTV</Text>
+              <Text style={styles.tvBannerSub}>Videos · Reels · More</Text>
+            </View>
+          </View>
+          <View style={styles.tvWatchBtn}>
+            <Text style={styles.tvWatchTxt}>Watch Now</Text>
+            <Ionicons name="play" size={11} color="#071e21" style={{ paddingLeft: 1 }} />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {rows.map((row, ri) => (
+        <View key={ri} style={[styles.row, ri > 0 && styles.rowGap]}>
+          {row.map((item, index) => (
+            <ShortcutItem
+              key={item.label}
+              item={item}
+              index={ri * 5 + index}
+              onPress={handlePress}
+            />
+          ))}
+        </View>
+      ))}
+
+      {/* ── Hafrik AI chat button ─────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.aiBanner}
+        activeOpacity={0.88}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.navigate('AIChat');
+        }}
+      >
+        <LinearGradient
+          colors={['#071e21', '#0c2d32', '#1f8e93']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.aiBannerGrad}
+        >
+          <View style={styles.aiBannerLeft}>
+            <View style={styles.aiIconWrap}>
+              <Ionicons name="sparkles" size={18} color="#a8e063" />
+            </View>
+            <View>
+              <Text style={styles.aiBannerTitle}>Hafrik AI</Text>
+              <Text style={styles.aiBannerSub}>Ask anything · Searches the platform</Text>
+            </View>
+          </View>
+          <View style={styles.aiAskBtn}>
+            <Text style={styles.aiAskTxt}>Ask Now</Text>
+            <Ionicons name="arrow-forward" size={11} color="#071e21" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -166,6 +259,98 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
 
+  tvBanner: {
+    marginHorizontal: 14,
+    marginBottom: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#071e21',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  tvBannerGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  tvBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  tvIconWrap: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: 'rgba(39,173,181,0.4)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tvBannerTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  tvBannerSub: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  tvWatchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#27adb5',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    gap: 4,
+  },
+  tvWatchTxt: {
+    color: '#071e21',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  // ── AI banner ──
+  aiBanner: {
+    marginHorizontal: 14,
+    marginTop: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#071e21',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  aiBannerGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+  },
+  aiBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  aiIconWrap: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: 'rgba(168,224,99,0.12)',
+    borderWidth: 1, borderColor: 'rgba(168,224,99,0.35)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  aiBannerTitle: { color: '#ffffff', fontSize: 14, fontWeight: '800', letterSpacing: 0.1 },
+  aiBannerSub:   { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '500', marginTop: 1 },
+  aiAskBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#a8e063',
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 20, gap: 4,
+  },
+  aiAskTxt: { color: '#071e21', fontSize: 12, fontWeight: '800' },
+
   topAccent: {
     height: 2,
     width: "100%",
@@ -176,12 +361,15 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     paddingHorizontal: 14,
-    gap: 10, // more breathing space
+    justifyContent: "space-between",
+  },
+  rowGap: {
+    marginTop: 14,
   },
 
   item: {
     alignItems: "center",
-    width: 72, // slightly wider for better label balance
+    flex: 1,
   },
 
   bubble: {

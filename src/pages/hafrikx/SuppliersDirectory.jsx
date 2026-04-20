@@ -14,14 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
-const BG      = '#070d1a';
-const CARD    = '#0f1a2e';
-const BORDER  = '#1e2d45';
-const GOLD    = '#c9a84c';
-const GOLD_LT = '#e8c87a';
-const MUTED   = '#6b7f95';
-const WHITE   = '#f5f6fa';
-const ACCENT  = '#3b82f6';
+const BG     = '#f7fff7';
+const BRAND  = '#0c3f44';
+const TEAL   = '#1f8e93';
+const CARD   = '#ffffff';
+const BORDER = '#e4eeef';
+const MUTED  = '#5f6b6d';
+const WHITE  = '#ffffff';
+const ACCENT = '#3b82f6';
 
 const { width: W } = Dimensions.get('window');
 
@@ -124,12 +124,12 @@ const SupplierCard = memo(({ item }) => (
         <View style={styles.badgeWrap}>
           {item.verified && (
             <View style={styles.verifiedBadge}>
-              <Ionicons name="star" size={10} color={BG} />
+              <Ionicons name="star" size={10} color={WHITE} />
               <Text style={styles.verifiedText}>Verified</Text>
             </View>
           )}
           <View style={styles.ratingRow}>
-            <Ionicons name="star" size={11} color={GOLD} />
+            <Ionicons name="star" size={11} color={TEAL} />
             <Text style={styles.ratingText}>{item.rating}</Text>
           </View>
         </View>
@@ -154,8 +154,8 @@ const SupplierCard = memo(({ item }) => (
           <Text style={styles.chatBtnText}>Chat</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.quoteBtn} activeOpacity={0.8}>
-          <LinearGradient colors={[GOLD, GOLD_LT]} style={styles.quoteBtnGrad}>
-            <Ionicons name="document-text-outline" size={14} color={BG} />
+          <LinearGradient colors={[BRAND, TEAL]} style={styles.quoteBtnGrad}>
+            <Ionicons name="document-text-outline" size={14} color={WHITE} />
             <Text style={styles.quoteBtnText}>Get Quote</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -178,11 +178,11 @@ export default function SuppliersDirectory() {
   const keyExtractor = useCallback(item => item.id, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
@@ -190,7 +190,7 @@ export default function SuppliersDirectory() {
         <TouchableOpacity style={styles.searchBtn} activeOpacity={0.7}>
           <Ionicons name="search" size={20} color={WHITE} />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* Category scroll */}
       <View style={styles.categoryWrap}>
@@ -233,40 +233,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: CARD,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  headerTitle: {
-    flex: 1,
-    fontFamily: 'ReadexPro_600SemiBold',
-    fontSize: 17,
-    color: WHITE,
-    textAlign: 'center',
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
   searchBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: CARD,
+    backgroundColor: WHITE + '22',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
   },
   categoryWrap: {
     borderBottomWidth: 1,
@@ -286,8 +262,8 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
   },
   categoryPillActive: {
-    backgroundColor: GOLD,
-    borderColor: GOLD,
+    backgroundColor: TEAL,
+    borderColor: TEAL,
   },
   categoryPillText: {
     fontFamily: 'WorkSans_500Medium',
@@ -295,7 +271,7 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
   categoryPillTextActive: {
-    color: BG,
+    color: WHITE,
     fontFamily: 'WorkSans_600SemiBold',
   },
   listContent: {
@@ -314,7 +290,7 @@ const styles = StyleSheet.create({
   },
   cardLeftStrip: {
     width: 4,
-    backgroundColor: GOLD,
+    backgroundColor: TEAL,
   },
   cardContent: {
     flex: 1,
@@ -328,7 +304,7 @@ const styles = StyleSheet.create({
   supplierName: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 15,
-    color: WHITE,
+    color: BRAND,
     marginBottom: 4,
   },
   cityRow: {
@@ -348,7 +324,7 @@ const styles = StyleSheet.create({
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: GOLD,
+    backgroundColor: TEAL,
     borderRadius: 10,
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -357,7 +333,7 @@ const styles = StyleSheet.create({
   verifiedText: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 10,
-    color: BG,
+    color: WHITE,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -367,7 +343,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 12,
-    color: GOLD_LT,
+    color: TEAL,
   },
   productsWrap: {
     flexDirection: 'row',
@@ -376,7 +352,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   productTag: {
-    backgroundColor: '#162440',
+    backgroundColor: BORDER,
     borderRadius: 8,
     paddingHorizontal: 9,
     paddingVertical: 4,
@@ -386,7 +362,7 @@ const styles = StyleSheet.create({
   productTagText: {
     fontFamily: 'WorkSans_400Regular',
     fontSize: 11,
-    color: WHITE,
+    color: BRAND,
   },
   minOrderText: {
     fontFamily: 'WorkSans_400Regular',
@@ -429,7 +405,7 @@ const styles = StyleSheet.create({
   quoteBtnText: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 13,
-    color: BG,
+    color: WHITE,
   },
   emptyWrap: {
     alignItems: 'center',
