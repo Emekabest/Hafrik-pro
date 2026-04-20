@@ -171,7 +171,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
   useEffect(() => {
     if (isVisible) { open(); fetchBalance(); }
     else if (showModal) { close(); }
-  }, [isVisible]);
+  }, [isVisible, open, fetchBalance, close, showModal]);
 
   useEffect(() => {
     const interval = setInterval(fetchBalance, 30_000);

@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import RepostModal from '../home/feeds/feedcardproperties/RepostModal';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -123,6 +124,7 @@ const ReelEngagementBar = forwardRef(({
   const [saved,         setSaved]         = useState(isSavedInitial);
   const [commentCount,  setCommentCount]  = useState(initialCommentCount ?? 0);
   const [modalVisible,  setModalVisible]  = useState(false);
+  const [repostVisible, setRepostVisible] = useState(false);
   const [comments,      setComments]      = useState([]);
   const [loadingCmts,   setLoadingCmts]   = useState(false);
   const [commentText,   setCommentText]   = useState('');
@@ -267,7 +269,7 @@ const ReelEngagementBar = forwardRef(({
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={() => sendReaction('like')}>
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
-            size={32}
+            size={26}
             color={isLiked ? Colors.warningPink : Colors.white}
             style={isLiked ? styles.likedGlow : undefined}
           />
@@ -276,7 +278,7 @@ const ReelEngagementBar = forwardRef(({
 
         {/* Comment */}
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={openComments}>
-          <Ionicons name="chatbubble-ellipses" size={30} color={Colors.white} />
+          <Ionicons name="chatbubble-ellipses" size={24} color={Colors.white} />
           <Text style={styles.count}>{commentCount}</Text>
         </TouchableOpacity>
 
@@ -284,7 +286,7 @@ const ReelEngagementBar = forwardRef(({
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={handleSave}>
           <Ionicons
             name={saved ? 'bookmark' : 'bookmark-outline'}
-            size={30}
+            size={24}
             color={saved ? ACCENT : Colors.white}
           />
           {saved ? <Text style={[styles.count, { color: ACCENT }]}>Saved</Text> : <Text style={styles.count}>Save</Text>}
@@ -292,10 +294,24 @@ const ReelEngagementBar = forwardRef(({
 
         {/* Share */}
         <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={handleShare}>
-          <Ionicons name="paper-plane-outline" size={30} color={Colors.white} />
+          <Ionicons name="paper-plane-outline" size={24} color={Colors.white} />
           <Text style={styles.count}>Share</Text>
         </TouchableOpacity>
+
+        {/* Repost */}
+        <TouchableOpacity activeOpacity={0.7} style={styles.item} onPress={() => setRepostVisible(true)}>
+          <Ionicons name="repeat-outline" size={24} color={Colors.white} />
+          <Text style={styles.count}>Repost</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* ── Repost Modal ─────────────────────────────────────────────── */}
+      <RepostModal
+        visible={repostVisible}
+        postId={postId}
+        onClose={() => setRepostVisible(false)}
+        onRepostWithComment={() => setRepostVisible(false)}
+      />
 
       {/* ── Comments Sheet ────────────────────────────────────────────── */}
       <Modal
@@ -338,7 +354,7 @@ const ReelEngagementBar = forwardRef(({
           ) : (
             <FlatList
               data={comments}
-              keyExtractor={(_, i) => String(i)}
+              keyExtractor={(item, i) => String(item?.id ?? `comment-${postId}-${i}`)}
               renderItem={({ item }) => <CommentItem item={item} />}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
@@ -407,7 +423,7 @@ const styles = StyleSheet.create({
   },
   item: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 7,
   },
   count: {
     color: Colors.white,

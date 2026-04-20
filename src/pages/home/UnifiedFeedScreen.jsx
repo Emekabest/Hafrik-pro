@@ -59,10 +59,14 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const [communityList, setCommunityList] = useState([]);
   const [loadingMore,   setLoadingMore]   = useState(false);
 
-  const isReelsTab    = tabConfig.key === 'reels';
-  const isDiscoverTab = tabConfig.key === 'discover';
+  const isReelsTab = tabConfig.key === 'reels';
   const pageRef    = useRef(1);
   const hasMoreRef = useRef(true);
+
+  const [displayFeeds, setDisplayFeeds] = useState([]);
+  const displayFeedsIdsRef  = useRef(new Set());
+  // true before a hard/refresh load → replace; false → pagination append
+  const pendingFreshSortRef = useRef(true);
 
   // ── Build the API URL from tab config + content filter + country ──────────
   const apiUrl = useMemo(() => {
@@ -106,8 +110,28 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
       .catch(() => {});
   }, [token]);
 
+  // ── Manage displayFeeds: exact API order on fresh load, append on pagination ─
+  useEffect(() => {
+    if (!initialFetchDone || feeds.length === 0) return;
+
+    if (pendingFreshSortRef.current) {
+      // Fresh load — show feeds exactly as returned by the API, no reordering
+      pendingFreshSortRef.current = false;
+      setDisplayFeeds(feeds);
+      displayFeedsIdsRef.current = new Set(feeds.map(f => String(f.id)));
+    } else {
+      // Pagination: append only truly new posts (preserve existing display order)
+      const newItems = feeds.filter(f => !displayFeedsIdsRef.current.has(String(f.id)));
+      if (newItems.length === 0) return;
+
+      setDisplayFeeds(prev => [...prev, ...newItems]);
+      newItems.forEach(f => displayFeedsIdsRef.current.add(String(f.id)));
+    }
+  }, [initialFetchDone, feeds]);
+
   // ── Hard load (clears list and reloads page 1) ─────────────────────────────
   const getFeeds = useCallback(async (url) => {
+    pendingFreshSortRef.current = true;
     clearFeedsList_store(feedsName);
     try {
       const response = await GetFeedsController(url, token, 1);
@@ -125,6 +149,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
 
   // ── Pull-to-refresh ───────────────────────────────────────────────────────
   const onRefresh = useCallback(async () => {
+    pendingFreshSortRef.current = true;
     setRefreshing(true);
     try {
       clearFeedsList_store(feedsName);
@@ -225,16 +250,11 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
       { type: 'feedsheader', name: tabConfig.label, description: tabConfig.description, id: feedsName },
     ];
 
-    // Interstitial pool
+    // Interstitial pool (fixed order, no shuffle)
     const pool = [];
     if (peopleList.length    > 0) pool.push({ type: 'peoplecard',    data: peopleList });
     if (bizList.length       > 0) pool.push({ type: 'bizcard',       data: bizList });
     if (communityList.length > 0) pool.push({ type: 'communitycard', data: communityList });
-    // Shuffle
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
 
     const MAX_INTERSTITIALS = 3;
     const FIRST_AT          = 4;
@@ -242,18 +262,8 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     let poolIdx    = 0;
     let nextInsert = FIRST_AT;
 
-    // Partition: pick ONE random boosted/sponsored post for the top, rest go into regular
-    const allBoosted   = feeds.filter(f => !!f.boosted);
-    const regularFeeds = feeds.filter(f => !f.boosted);
-
-    // Show exactly one boosted post at the top (shuffled each render cycle)
-    if (allBoosted.length > 0) {
-      const pick = allBoosted[Math.floor(Math.random() * allBoosted.length)];
-      items.push({ type: 'feed', data: pick });
-    }
-
-    // Then regular posts with interstitials
-    regularFeeds.forEach((feed, i) => {
+    // Feed posts in original API order, no boosted re-ordering
+    displayFeeds.forEach((feed, i) => {
       items.push({ type: 'feed', data: feed });
       if ((i + 1) === nextInsert && poolIdx < pool.length && poolIdx < MAX_INTERSTITIALS) {
         items.push(pool[poolIdx++]);
@@ -262,35 +272,10 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     });
 
     return items;
-  }, [feeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName]);
+  }, [displayFeeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName]);
 
-  // ── For discover tab: batch feed items into masonryrow pairs ──────────────
-  const finalCombinedData = useMemo(() => {
-    if (!isDiscoverTab) return combinedData;
-    const result = [];
-    let buf = [];
-    const flush = () => {
-      for (let i = 0; i < buf.length; i += 2) {
-        result.push({ type: 'masonryrow', left: buf[i], right: buf[i + 1] ?? null });
-      }
-      buf = [];
-    };
-    for (const item of combinedData) {
-      // Skip people/biz/community interstitials in discover — only ads pass through
-      if (item.type === 'peoplecard' || item.type === 'bizcard' || item.type === 'communitycard') {
-        continue;
-      }
-      if (item.type === 'feed') {
-        // Skip shared posts
-        if (item.data && item.data.type !== 'shared') buf.push(item);
-      } else {
-        flush();
-        result.push(item);
-      }
-    }
-    flush();
-    return result;
-  }, [isDiscoverTab, combinedData]);
+  // Discover uses the same FeedCard layout as Following (no masonry)
+  const finalCombinedData = combinedData;
 
   const handlePostPress = useCallback((postId) => {
     navigation.navigate('PostDetail', { postId });

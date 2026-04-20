@@ -20,8 +20,6 @@ import UnifiedFeedScreen from './UnifiedFeedScreen.jsx';
 import SearchModal from '../search/searchmodal.jsx';
 import useStore from '../../repository/store.js';
 import SearchScreen from '../search/searchscreen.jsx';
-import PostComposerModal from './PostComposerModal.jsx';
-import CreateMenuSheet from './CreateMenuSheet.jsx';
 import AppDetails from '../../helpers/appdetails.js';
 import { getProfileAvatarController } from '../../controllers/profilecontroller.js';
 import { useAuth } from '../../AuthContext.js';
@@ -211,8 +209,7 @@ const HomePage = ({ route, navigation }) => {
         <Ionicons name="add" size={28} color={WHITE} />
       </TouchableOpacity>
 
-      {isFocused && <PostComposerModal />}
-      <CreateMenuSheet />
+      {/* PostComposerModal and CreateMenuSheet are now mounted globally in App.js */}
 
       {/* ── Welcome modal (shown once after new registration) ── */}
       <Modal

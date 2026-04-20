@@ -15,13 +15,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
-const BG      = '#070d1a';
-const CARD    = '#0f1a2e';
-const BORDER  = '#1e2d45';
+const BG      = '#f7fff7';
+const CARD    = '#ffffff';
+const BORDER  = '#e4eeef';
 const GOLD    = '#c9a84c';
 const GOLD_LT = '#e8c87a';
-const MUTED   = '#6b7f95';
-const WHITE   = '#f5f6fa';
+const MUTED   = '#5f6b6d';
+const WHITE   = '#ffffff';
+const BRAND   = '#0c3f44';
+const TEAL    = '#1f8e93';
 const ACCENT  = '#3b82f6';
 
 const { width: W } = Dimensions.get('window');
@@ -128,10 +130,10 @@ const COURSES = [
 ];
 
 const TAG_COLORS = {
-  Beginner:       { bg: '#0f2a1a', text: '#4caf77',  border: '#1a4a2a' },
-  Shipping:       { bg: '#0f1e2e', text: '#3b82f6',  border: '#1a2e4a' },
-  Business:       { bg: '#2a1e00', text: GOLD_LT,    border: '#3a2e00' },
-  'China Travel': { bg: '#2a0f1e', text: '#e87ab8',  border: '#4a1a2e' },
+  Beginner:       { bg: '#e8f5ee', text: '#1a7a44',  border: '#c8e6d4' },
+  Shipping:       { bg: '#e8f0f8', text: '#2563eb',  border: '#c8d8ee' },
+  Business:       { bg: '#fef3d8', text: '#92680a',  border: '#f0dfa0' },
+  'China Travel': { bg: '#fde8f3', text: '#c0456a',  border: '#f0c8dc' },
 };
 
 const CategoryPill = memo(({ label, active, onPress }) => (
@@ -165,8 +167,8 @@ const CourseCard = memo(({ item }) => {
     >
       {/* Icon circle */}
       <View style={styles.courseIconWrap}>
-        <LinearGradient colors={['#162440', '#0f1a2e']} style={styles.courseIconGrad}>
-          <Ionicons name={item.icon} size={22} color={item.premium ? GOLD : ACCENT} />
+        <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.courseIconGrad}>
+          <Ionicons name={item.icon} size={22} color={item.premium ? TEAL : ACCENT} />
         </LinearGradient>
       </View>
 
@@ -220,23 +222,23 @@ export default function LearnImporting() {
   const keyExtractor = useCallback(item => item.id, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
-        <View style={styles.headerTextWrap}>
+        <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Learn Importing</Text>
           <Text style={styles.headerSub}>Hafrik Academy</Text>
         </View>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
       {/* Progress banner */}
-      <LinearGradient colors={['#1a2e1a', '#0f1a0f']} style={styles.progressBanner}>
+      <LinearGradient colors={['#e8f5f5', '#f0fafa']} style={styles.progressBanner}>
         <Ionicons name="trophy-outline" size={18} color={GOLD} />
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={styles.progressText}>2 of 14 lessons completed</Text>
@@ -288,39 +290,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: CARD,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   headerTextWrap: {
     flex: 1,
     alignItems: 'center',
   },
-  headerTitle: {
-    fontFamily: 'ReadexPro_600SemiBold',
-    fontSize: 17,
-    color: WHITE,
-  },
-  headerSub: {
-    fontFamily: 'WorkSans_400Regular',
-    fontSize: 12,
-    color: GOLD,
-    marginTop: 2,
-  },
+  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
+  headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'WorkSans_400Regular', marginTop: 2 },
   progressBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -332,7 +309,7 @@ const styles = StyleSheet.create({
   progressText: {
     fontFamily: 'WorkSans_500Medium',
     fontSize: 13,
-    color: WHITE,
+    color: BRAND,
     marginBottom: 6,
   },
   progressBarBg: {
@@ -343,13 +320,13 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: GOLD,
+    backgroundColor: TEAL,
     borderRadius: 3,
   },
   progressPercent: {
     fontFamily: 'WorkSans_700Bold',
     fontSize: 14,
-    color: GOLD,
+    color: TEAL,
     marginLeft: 10,
   },
   categoryWrap: {
@@ -370,8 +347,8 @@ const styles = StyleSheet.create({
     borderColor: BORDER,
   },
   categoryPillActive: {
-    backgroundColor: GOLD,
-    borderColor: GOLD,
+    backgroundColor: TEAL,
+    borderColor: TEAL,
   },
   categoryPillText: {
     fontFamily: 'WorkSans_500Medium',
@@ -379,7 +356,7 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
   categoryPillTextActive: {
-    color: BG,
+    color: WHITE,
     fontFamily: 'WorkSans_600SemiBold',
   },
   listContent: {
@@ -417,7 +394,7 @@ const styles = StyleSheet.create({
   courseTitle: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 14,
-    color: WHITE,
+    color: BRAND,
     marginBottom: 3,
     lineHeight: 19,
   },
@@ -446,7 +423,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: GOLD,
+    backgroundColor: TEAL,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
@@ -454,26 +431,26 @@ const styles = StyleSheet.create({
   premiumBadgeText: {
     fontFamily: 'WorkSans_700Bold',
     fontSize: 10,
-    color: BG,
+    color: WHITE,
   },
   freeBadge: {
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
-    backgroundColor: '#0f2a1a',
+    backgroundColor: TEAL + '18',
     borderWidth: 1,
-    borderColor: '#1a4a2a',
+    borderColor: TEAL + '44',
   },
   freeBadgeText: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 10,
-    color: '#4caf77',
+    color: TEAL,
   },
   startBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#162440',
+    backgroundColor: '#e8f5f5',
     borderWidth: 1,
     borderColor: BORDER,
     alignItems: 'center',

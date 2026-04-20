@@ -13,13 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
-const BG      = '#070d1a';
-const CARD    = '#0f1a2e';
-const BORDER  = '#1e2d45';
+const BG      = '#f7fff7';
+const CARD    = '#ffffff';
+const BORDER  = '#e4eeef';
 const GOLD    = '#c9a84c';
 const GOLD_LT = '#e8c87a';
-const MUTED   = '#6b7f95';
-const WHITE   = '#f5f6fa';
+const MUTED   = '#5f6b6d';
+const WHITE   = '#ffffff';
+const BRAND   = '#0c3f44';
+const TEAL    = '#1f8e93';
 const ACCENT  = '#3b82f6';
 
 const { width: W } = Dimensions.get('window');
@@ -78,7 +80,7 @@ const InfoRow = memo(({ icon, label, value }) => (
 
 const WarehouseCard = memo(({ wh }) => (
   <View style={styles.warehouseCard}>
-    <LinearGradient colors={['#162440', '#0f1a2e']} style={styles.warehouseCardHeader}>
+    <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.warehouseCardHeader}>
       <View>
         <Text style={styles.whName}>{wh.name}</Text>
         <View style={styles.whCityRow}>
@@ -108,7 +110,7 @@ const WarehouseCard = memo(({ wh }) => (
 const StepRow = memo(({ step }) => (
   <View style={styles.stepRow}>
     <View style={styles.stepNumWrap}>
-      <LinearGradient colors={[GOLD, GOLD_LT]} style={styles.stepNum}>
+      <LinearGradient colors={[BRAND, TEAL]} style={styles.stepNum}>
         <Text style={styles.stepNumText}>{step.n}</Text>
       </LinearGradient>
       {step.n < 6 && <View style={styles.stepLine} />}
@@ -125,17 +127,17 @@ export default function WarehouseInfo() {
   const navigation = useNavigation();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Our Warehouses</Text>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
@@ -184,31 +186,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: CARD,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  headerTitle: {
-    flex: 1,
-    fontFamily: 'ReadexPro_600SemiBold',
-    fontSize: 17,
-    color: WHITE,
-    textAlign: 'center',
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 18,
@@ -250,7 +230,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#162440',
+    backgroundColor: '#e8f5f5',
     borderWidth: 1,
     borderColor: GOLD + '60',
     alignItems: 'center',
@@ -274,7 +254,7 @@ const styles = StyleSheet.create({
   infoValue: {
     fontFamily: 'WorkSans_500Medium',
     fontSize: 13,
-    color: WHITE,
+    color: BRAND,
     flex: 1,
   },
   // Sections
@@ -294,7 +274,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'ReadexPro_600SemiBold',
     fontSize: 16,
-    color: WHITE,
+    color: BRAND,
   },
   // Steps
   stepsCard: {
@@ -325,7 +305,7 @@ const styles = StyleSheet.create({
   stepNumText: {
     fontFamily: 'WorkSans_700Bold',
     fontSize: 13,
-    color: BG,
+    color: WHITE,
   },
   stepLine: {
     width: 2,
@@ -341,7 +321,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontFamily: 'WorkSans_600SemiBold',
     fontSize: 14,
-    color: WHITE,
+    color: BRAND,
     marginBottom: 4,
     marginTop: 4,
   },

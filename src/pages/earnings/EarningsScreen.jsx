@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   ScrollView, RefreshControl, Animated, Modal, TextInput,
-  KeyboardAvoidingView, Platform, Image, Alert,
+  KeyboardAvoidingView, Platform, Image, Alert, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,9 +42,80 @@ const fmtPoints = (n) => Number(n ?? 0).toLocaleString(undefined, { maximumFract
 const STEPS = { AMOUNT: 0, INSTRUCTIONS: 1, RECEIPT: 2, SUCCESS: 3 };
 const STEP_LABELS = ['Amount', 'Instructions', 'Proof'];
 
-const PAYMENT_API  = 'https://hafrik.com/api/v1/payment/create.php';
-const UPLOAD_API   = 'https://hafrik.com/api/v1/uploads/media.php';
-const SUBMIT_API   = 'https://hafrik.com/api/v1/payment/submit-payment.php';
+const PAYMENT_API      = 'https://hafrik.com/api/v1/payment/create.php';
+const UPLOAD_API       = 'https://hafrik.com/api/v1/uploads/media.php';
+const SUBMIT_API       = 'https://hafrik.com/api/v1/payment/submit-payment.php';
+const WEB_SESSION_API  = 'https://hafrik.com/api/v1/auth/web-session';
+const HAFRIK_WEB_URL   = 'https://hafrik.com';
+
+// ─── iOS Compliance Modal (App Store — no in-app payments/transfers) ──────────
+// Reusable: pass title + lines (array of strings) for each use-case.
+function IOSComplianceModal({ visible, onClose, title, lines }) {
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  const handleOpenWebsite = async () => {
+    setLoading(true);
+    try {
+      const res  = await fetch(WEB_SESSION_API, {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const json = await res.json().catch(() => ({}));
+      // Backend returns a short-lived, one-time session URL — never a raw token
+      const sessionUrl = json?.data?.session_url ?? json?.session_url ?? null;
+      const sessionId  = json?.data?.session_id  ?? json?.session_id  ?? null;
+      let urlToOpen = HAFRIK_WEB_URL;
+      if (sessionUrl) {
+        urlToOpen = sessionUrl;
+      } else if (sessionId) {
+        urlToOpen = `${HAFRIK_WEB_URL}/session-login?session_id=${encodeURIComponent(sessionId)}`;
+      }
+      await Linking.openURL(urlToOpen);
+    } catch {
+      await Linking.openURL(HAFRIK_WEB_URL).catch(() => {});
+    }
+    setLoading(false);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={ios.overlay}>
+        <View style={ios.sheet}>
+          <View style={ios.iconWrap}>
+            <Ionicons name="lock-closed" size={28} color={BRAND} />
+          </View>
+          <Text style={ios.title}>{title}</Text>
+          {(lines ?? []).map((line, i) =>
+            line.startsWith('https://') ? (
+              <Text key={i} style={ios.link}>{line}</Text>
+            ) : (
+              <Text key={i} style={ios.message}>{line}</Text>
+            )
+          )}
+          <TouchableOpacity
+            style={ios.primaryBtn}
+            onPress={handleOpenWebsite}
+            activeOpacity={0.85}
+            disabled={loading}
+          >
+            {loading
+              ? <ActivityIndicator color={WHITE} />
+              : <>
+                  <Ionicons name="open-outline" size={16} color={WHITE} style={{ marginRight: 6 }} />
+                  <Text style={ios.primaryBtnTxt}>Open Website</Text>
+                </>
+            }
+          </TouchableOpacity>
+          <TouchableOpacity style={ios.closeBtn} onPress={onClose} activeOpacity={0.8}>
+            <Text style={ios.closeBtnTxt}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 // ─── Add Funds Modal ──────────────────────────────────────────────────────────
 function AddFundsModal({ visible, onClose }) {
@@ -599,6 +670,7 @@ export default function EarningsScreen() {
   const [loading,         setLoading]         = useState(true);
   const [refreshing,      setRefreshing]      = useState(false);
   const [addFundsVisible, setAddFundsVisible] = useState(false);
+  const [sendVisible,     setSendVisible]     = useState(false);
 
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(32)).current;
@@ -709,7 +781,11 @@ export default function EarningsScreen() {
                   <Text style={cs.actionBtnTxt}>Add Funds</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={cs.actionBtn} onPress={() => navigation.navigate('SendMoneyScreen')} activeOpacity={0.85}>
+                <TouchableOpacity
+                  style={cs.actionBtn}
+                  onPress={() => Platform.OS === 'ios' ? setSendVisible(true) : navigation.navigate('SendMoneyScreen')}
+                  activeOpacity={0.85}
+                >
                   <View style={cs.actionBtnIcon}>
                     <Ionicons name="send" size={16} color={BRAND} />
                   </View>
@@ -881,14 +957,129 @@ export default function EarningsScreen() {
         )}
       </ScrollView>
 
-      <AddFundsModal
-        visible={addFundsVisible}
-        onClose={() => setAddFundsVisible(false)}
-        userId={user?.id}
-      />
+      {Platform.OS === 'ios' ? (
+        <IOSComplianceModal
+          visible={addFundsVisible}
+          onClose={() => setAddFundsVisible(false)}
+          title="Payments Not Available on iOS"
+          lines={[
+            'Payments and wallet funding are currently not supported within the iOS app.',
+            'You can access your account and complete transactions securely on our website:',
+            'https://hafrik.com',
+            'You may be required to sign in on the website.',
+          ]}
+        />
+      ) : (
+        <AddFundsModal
+          visible={addFundsVisible}
+          onClose={() => setAddFundsVisible(false)}
+          userId={user?.id}
+        />
+      )}
+
+      {Platform.OS === 'ios' && (
+        <IOSComplianceModal
+          visible={sendVisible}
+          onClose={() => setSendVisible(false)}
+          title="Transfers Not Available on iOS"
+          lines={[
+            'Sending money is currently not supported within the iOS app.',
+            'You can manage transactions and transfers securely on our website:',
+            'https://hafrik.com',
+            'You may be required to sign in on the website.',
+          ]}
+        />
+      )}
     </View>
   );
 }
+
+// ─── iOS Compliance Modal Styles ─────────────────────────────────────────────
+const ios = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  sheet: {
+    backgroundColor: WHITE,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  iconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: BRAND + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: BRAND,
+    fontFamily: FONT_B,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  message: {
+    fontSize: 14,
+    color: TEXT_M,
+    fontFamily: FONT_R,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  link: {
+    fontSize: 14,
+    color: ACCENT,
+    fontFamily: FONT_M,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  primaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BRAND,
+    borderRadius: 12,
+    height: 48,
+    width: '100%',
+    marginTop: 18,
+  },
+  primaryBtnTxt: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: WHITE,
+    fontFamily: FONT_M,
+  },
+  closeBtn: {
+    marginTop: 10,
+    height: 44,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: BG,
+  },
+  closeBtnTxt: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: TEXT_M,
+    fontFamily: FONT_M,
+  },
+});
 
 // ─── Main Styles ──────────────────────────────────────────────────────────────
 const cs = StyleSheet.create({
