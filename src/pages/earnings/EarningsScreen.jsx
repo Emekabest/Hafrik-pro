@@ -679,6 +679,7 @@ export default function EarningsScreen() {
   const [refreshing,      setRefreshing]      = useState(false);
   const [addFundsVisible, setAddFundsVisible] = useState(false);
   const [sendVisible,     setSendVisible]     = useState(false);
+  const [withdrawVisible, setWithdrawVisible] = useState(false);
 
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(32)).current;
@@ -800,7 +801,7 @@ export default function EarningsScreen() {
                     <Text style={cs.actionBtnTxt}>Send</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={cs.actionBtn} onPress={() => navigation.navigate('WalletScreen')} activeOpacity={0.85}>
+                <TouchableOpacity style={cs.actionBtn} onPress={() => { setWithdrawVisible(true); if (Platform.OS !== 'ios') navigation.navigate('WalletScreen')}} activeOpacity={0.85}>
                   <View style={cs.actionBtnIcon}>
                     <Ionicons name="download" size={18} color={BRAND} />
                   </View>
@@ -989,6 +990,17 @@ export default function EarningsScreen() {
           title="Transfers Not Available on iOS"
           lines={[
             'Sending money is currently not supported within the iOS app.',
+          ]}
+        />
+      )}
+
+      {Platform.OS === 'ios' && (
+        <IOSComplianceModal
+          visible={withdrawVisible}
+          onClose={() => setWithdrawVisible(false)}
+          title="Withdrawals Not Available on iOS"
+          lines={[
+            'Withdrawing money is currently not supported within the iOS app.',
           ]}
         />
       )}
