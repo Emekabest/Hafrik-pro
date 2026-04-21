@@ -28,12 +28,12 @@ const MIST   = Colors.surfaceTint;
 const BORDER = Colors.borderSoft;
 
 const items = [
-  {
-    label: "Arrival",
-    icon: (active) => <Ionicons name="airplane" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "ArrivalConcierge",
-    colors: ['#c9a84c', '#8a6820'],
-  },
+  // {
+  //   label: "Arrival",
+  //   icon: (active) => <Ionicons name="airplane" size={20} color={active ? Colors.white : BRAND} />,
+  //   screen: "ArrivalConcierge",
+  //   colors: ['#c9a84c', '#8a6820'],
+  // },
   {
     label: "Community",
     icon: (active) => <Ionicons name="people" size={20} color={active ? Colors.white : BRAND} />,
@@ -47,36 +47,36 @@ const items = [
     screen: "BusinessPages",
     colors: [ACCENT, Colors.tealMint],
   },
-  {
-    label: "City Guide",
-    icon: (active) => <Ionicons name="map" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "CityGuide",
-    colors: [Colors.teal, Colors.tealDark],
-  },
-  {
-    label: "Exchange",
-    icon: (active) => <Ionicons name="swap-horizontal" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "HafrikXCurrency",
-    colors: ['#c9a84c', '#8a6820'],
-  },
+  // {
+  //   label: "City Guide",
+  //   icon: (active) => <Ionicons name="map" size={20} color={active ? Colors.white : BRAND} />,
+  //   screen: "CityGuide",
+  //   colors: [Colors.teal, Colors.tealDark],
+  // },
+  // {
+  //   label: "Exchange",
+  //   icon: (active) => <Ionicons name="swap-horizontal" size={20} color={active ? Colors.white : BRAND} />,
+  //   screen: "HafrikXCurrency",
+  //   colors: ['#c9a84c', '#8a6820'],
+  // },
   {
     label: "Articles",
     icon: (active) => <Ionicons name="newspaper" size={20} color={active ? Colors.white : BRAND} />,
     screen: "ArticlesScreen",
     colors: [Colors.violet, Colors.violetDeep],
   },
-  {
-    label: "Visa",
-    icon: (active) => <Ionicons name="document-text" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "HafrikXVisa",
-    colors: [Colors.tealNavy, Colors.tealDeepStrong],
-  },
-  {
-    label: "Learn",
-    icon: (active) => <Ionicons name="school" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "HafrikXLearn",
-    colors: [Colors.redStrong, Colors.redDeep],
-  },
+  // {
+  //   label: "Visa",
+  //   icon: (active) => <Ionicons name="document-text" size={20} color={active ? Colors.white : BRAND} />,
+  //   screen: "HafrikXVisa",
+  //   colors: [Colors.tealNavy, Colors.tealDeepStrong],
+  // },
+  // {
+  //   label: "Learn",
+  //   icon: (active) => <Ionicons name="school" size={20} color={active ? Colors.white : BRAND} />,
+  //   screen: "HafrikXLearn",
+  //   colors: [Colors.redStrong, Colors.redDeep],
+  // },
   {
     label: "Events",
     icon: (active) => <MaterialCommunityIcons name="calendar-star" size={20} color={active ? Colors.white : BRAND} />,
@@ -217,7 +217,7 @@ export default function StaticShortcutRow() {
       ))}
 
       {/* ── Hafrik AI chat button ─────────────────────────────── */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.aiBanner}
         activeOpacity={0.88}
         onPress={() => {
@@ -245,7 +245,7 @@ export default function StaticShortcutRow() {
             <Ionicons name="arrow-forward" size={11} color="#071e21" />
           </View>
         </LinearGradient>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 }

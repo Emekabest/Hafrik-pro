@@ -164,7 +164,7 @@ export default function SettingsScreen() {
         </Section>
 
         {/* Grow */}
-        <Section title="Grow">
+        {/* <Section title="Grow">
           <Row
             icon="megaphone-outline"
             iconColor="#f59e0b"
@@ -172,7 +172,7 @@ export default function SettingsScreen() {
             onPress={() => Alert.alert('Coming Soon', 'Ads Manager is coming soon!')}
             last
           />
-        </Section>
+        </Section> */}
 
         {/* About */}
         <Section title="About">

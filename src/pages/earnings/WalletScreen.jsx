@@ -137,7 +137,7 @@ function IOSTransferModal({ visible, onClose }) {
           <Text style={iosT.message}>
             Sending money is currently not supported within the iOS app.
           </Text>
-          <Text style={iosT.message}>
+          {/* <Text style={iosT.message}>
             You can manage transactions and transfers securely on our website:
           </Text>
           <Text style={iosT.link}>{HAFRIK_WEB_URL}</Text>
@@ -157,7 +157,7 @@ function IOSTransferModal({ visible, onClose }) {
                   <Text style={iosT.primaryBtnTxt}>Open Website</Text>
                 </>
             }
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <TouchableOpacity style={iosT.closeBtn} onPress={onClose} activeOpacity={0.8}>
             <Text style={iosT.closeBtnTxt}>Close</Text>
           </TouchableOpacity>
@@ -577,7 +577,7 @@ const iosT = StyleSheet.create({
   closeBtnTxt: {
     fontSize: 15,
     fontWeight: '600',
-    color: TEXT_M,
+    color: "#333",
     fontFamily: FONT_M,
   },
 });
