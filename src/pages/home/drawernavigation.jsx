@@ -330,7 +330,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
               <QuickBtn icon="tv"            label="HafrikTV" gradient={[ACCENT, BRAND]}                  onPress={()=> navigation.navigate("HafrikTV")} />
               <QuickBtn icon="musical-notes" label="Play"     gradient={["#9c27b0", "#6d28d9"]}       onPress={() => openExternal("https://hafrikplay.com")} />
               <QuickBtn icon="cloud"         label="Drive"    gradient={["#3b82f6", "#1d4ed8"]}       onPress={() => openExternal("https://drive.hafrik.com")} />
-              <QuickBtn icon="restaurant"    label="Food"     gradient={["#f97316", "#ea580c"]}       onPress={() => openExternal("https://food.hafrik.com")} />
+              <QuickBtn icon="restaurant"    label="Food"     gradient={["#f97316", "#ea580c"]}       onPress={() => go("Food")} />
             </View>
 
             {/* Menu */}

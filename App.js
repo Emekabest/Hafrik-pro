@@ -128,6 +128,7 @@ import { navigationRef } from './src/helpers/navigationRef';
 import PostComposerModal from './src/pages/home/PostComposerModal';
 import CreateMenuSheet from './src/pages/home/CreateMenuSheet';
 import BlockedAccountScreen from './src/pages/settings/blockedaccountsscreen';
+import Food from './src/pages/food/food';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -526,6 +527,7 @@ function AppNavigator() {
               <Stack.Screen name="ArrivalMyBookings"     component={ArrivalMyBookings}     options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
               {/* ── HafrikTV ── */}
               <Stack.Screen name="HafrikTV"       component={HafrikTVScreen}       options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="Food"       component={Food}       options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
               <Stack.Screen name="HafrikTVPlayer" component={HafrikTVPlayerScreen} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal', presentation: 'fullScreenModal' }} />
               <Stack.Screen name="AIChat"          component={AIChatScreen}          options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
 
