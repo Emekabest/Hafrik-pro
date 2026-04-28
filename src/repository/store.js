@@ -108,6 +108,7 @@ const useStore = create((set, get) => ({
             popularFeeds: [],
             communityFeeds: [],
             followingFeeds: [],
+            recommendedFeeds: [],
             reelsFeeds: [],
             watchFeeds: [],
         },
@@ -353,6 +354,10 @@ const useStore = create((set, get) => ({
     // ── Country filter (reactive — drives apiUrl rebuild in UnifiedFeedScreen) ─
     selectedCountryId: null, // null | 'all' | number/string country_id
     setSelectedCountryId: (id) => set({ selectedCountryId: id }),
+
+    // ── Cart badge (global count across all marketplace screens) ─────────────
+    cartCount: 0,
+    setCartCount: (n) => set({ cartCount: Number(n ?? 0) }),
 
     // ── Toast ────────────────────────────────────────────────────────────────
     toast: null, // { message: string, emoji: string | null, id: number }

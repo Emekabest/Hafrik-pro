@@ -22,6 +22,8 @@ import GetFeedsController from '../../controllers/getfeedscontroller.js';
 import useStore from '../../repository/store.js';
 import AppDetails from '../../helpers/appdetails.js';
 import { Colors } from '../../theme';
+import OnlineNowStrip from './OnlineNowStrip.jsx';
+import ExchangeRateTicker from './ExchangeRateTicker.jsx';
 
 const BG = Colors.white;
 const AUTO_REFRESH_MS = 30_000;
@@ -247,7 +249,9 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const combinedData = useMemo(() => {
     const items = [
       { type: 'banner', feedWidth: feedWidth || 0 },
-      { type: 'feedsheader', name: tabConfig.label, description: tabConfig.description, id: feedsName },
+      { type: 'feedsheader', name: tabConfig.feedTitle ?? tabConfig.label, description: tabConfig.description, id: feedsName },
+      { type: 'postfeed' },
+      { type: 'onlinestrip', data: peopleList },
     ];
 
     // Interstitial pool (fixed order, no shuffle)
@@ -272,7 +276,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     });
 
     return items;
-  }, [displayFeeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName]);
+  }, [displayFeeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName, tabConfig.description]);
 
   // Discover uses the same FeedCard layout as Following (no masonry)
   const finalCombinedData = combinedData;

@@ -172,37 +172,6 @@ export default function StaticShortcutRow() {
         end={{ x: 1, y: 0 }}
       />
 
-      {/* ── HafrikTV featured banner ──────────────────────────────── */}
-      <TouchableOpacity
-        style={styles.tvBanner}
-        activeOpacity={0.88}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          navigation.navigate('HafrikTV');
-        }}
-      >
-        <LinearGradient
-          colors={['#071e21', '#0f3539', '#1f8e93']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.tvBannerGrad}
-        >
-          <View style={styles.tvBannerLeft}>
-            <View style={styles.tvIconWrap}>
-              <Ionicons name="tv" size={20} color="#27adb5" />
-            </View>
-            <View>
-              <Text style={styles.tvBannerTitle}>HafrikTV</Text>
-              <Text style={styles.tvBannerSub}>Videos · Reels · More</Text>
-            </View>
-          </View>
-          <View style={styles.tvWatchBtn}>
-            <Text style={styles.tvWatchTxt}>Watch Now</Text>
-            <Ionicons name="play" size={11} color="#071e21" style={{ paddingLeft: 1 }} />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-
       {rows.map((row, ri) => (
         <View key={ri} style={[styles.row, ri > 0 && styles.rowGap]}>
           {row.map((item, index) => (
@@ -216,36 +185,6 @@ export default function StaticShortcutRow() {
         </View>
       ))}
 
-      {/* ── Hafrik AI chat button ─────────────────────────────── */}
-      <TouchableOpacity
-        style={styles.aiBanner}
-        activeOpacity={0.88}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          navigation.navigate('AIChat');
-        }}
-      >
-        <LinearGradient
-          colors={['#071e21', '#0c2d32', '#1f8e93']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.aiBannerGrad}
-        >
-          <View style={styles.aiBannerLeft}>
-            <View style={styles.aiIconWrap}>
-              <Ionicons name="sparkles" size={18} color="#a8e063" />
-            </View>
-            <View>
-              <Text style={styles.aiBannerTitle}>Hafrik AI</Text>
-              <Text style={styles.aiBannerSub}>Ask anything · Searches the platform</Text>
-            </View>
-          </View>
-          <View style={styles.aiAskBtn}>
-            <Text style={styles.aiAskTxt}>Ask Now</Text>
-            <Ionicons name="arrow-forward" size={11} color="#071e21" />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
     </View>
   );
 }

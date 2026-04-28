@@ -609,7 +609,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
                           <Text
                             key={i}
                             style={styles.inlineHashtag}
-                            onPress={() => navigation.navigate('HashtagScreen', { hashtag: part.slice(1) })}
+                            onPress={() => navigation.navigate('SearchScreen', { initialQuery: part, initialTab: 2 })}
                           >
                             {part}
                           </Text>
@@ -671,7 +671,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
               <TouchableOpacity
                 key={`${tag}-${idx}`}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('HashtagScreen', { hashtag: tag })}
+                onPress={() => navigation.navigate('SearchScreen', { initialQuery: `#${tag}`, initialTab: 2 })}
               >
                 <Text style={styles.hashtag}>#{tag}</Text>
               </TouchableOpacity>

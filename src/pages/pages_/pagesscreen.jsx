@@ -1657,7 +1657,15 @@ export default function DiscoveryScreen() {
       console.log('[REELS] json.data keys:', Object.keys(json?.data || {}));
       console.log('[REELS] json.data full:', JSON.stringify(json?.data));
       const list = json?.data?.reels ?? json?.data?.posts ?? json?.data?.data ?? json?.data ?? json?.reels ?? json?.posts ?? [];
-      const fresh = Array.isArray(list) ? list : [];
+      const rawFresh = Array.isArray(list) ? list : [];
+      // Deduplicate within the response itself
+      const seenInFresh = new Set();
+      const fresh = rawFresh.filter(r => {
+        const key = String(r.id ?? r.post_id ?? '');
+        if (!key || seenInFresh.has(key)) return false;
+        seenInFresh.add(key);
+        return true;
+      });
       console.log('[REELS] fresh count:', fresh.length, '| first item id:', fresh[0]?.id ?? fresh[0]?.post_id);
       if (fresh.length === 0) {
         setReelsHasMore(false);
@@ -2060,7 +2068,7 @@ export default function DiscoveryScreen() {
                 contentContainerStyle={{ gap: 8, paddingRight: 4 }}
               >
                 {reels.slice(0, 4).map((r, i) => (
-                  <ReelGridCard key={r.id ?? `reel-${i}`} item={r} onPress={() => handleReelPress(i)} />
+                  <ReelGridCard key={`reel-${r.id ?? i}`} item={r} onPress={() => handleReelPress(i)} />
                 ))}
                 <TouchableOpacity
                   style={ss.reelSeeMoreCard}

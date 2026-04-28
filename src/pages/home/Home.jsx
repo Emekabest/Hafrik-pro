@@ -17,6 +17,7 @@ import DrawerNavigation from './drawernavigation.jsx';
 import AppHeader from '../../pages/AppHeader.jsx';
 import FeedTabBar, { ContentFilterBar, FEED_TABS } from './FeedTabBar.jsx';
 import UnifiedFeedScreen from './UnifiedFeedScreen.jsx';
+import { HafrikTVContent } from '../tv/HafrikTVScreen.jsx';
 import SearchModal from '../search/searchmodal.jsx';
 import useStore from '../../repository/store.js';
 import SearchScreen from '../search/searchscreen.jsx';
@@ -110,10 +111,10 @@ const HomePage = ({ route, navigation }) => {
     const { translationX, velocityX, state } = event.nativeEvent;
     if (state === State.END || state === State.FAILED || state === State.CANCELLED) {
       const swipe = translationX + velocityX * 0.1;
-      if (swipe < -60 && activeTab < maxTabIndex) {
-        handleTabChange(activeTab + 1);
-      } else if (swipe > 60 && activeTab > 0) {
-        handleTabChange(activeTab - 1);
+      // Skip nav-only tabs (e.g. TV) when swiping
+      const nextIndex = swipe < -60 ? activeTab + 1 : swipe > 60 ? activeTab - 1 : activeTab;
+      if (nextIndex !== activeTab && nextIndex >= 0 && nextIndex <= maxTabIndex) {
+        handleTabChange(nextIndex);
       }
       Animated.spring(swipeX, {
         toValue: 0,
@@ -142,10 +143,13 @@ const HomePage = ({ route, navigation }) => {
       ) : (
         <>
           {/* ── Primary Tab Bar ── */}
-          <FeedTabBar activeIndex={activeTab} onTabChange={handleTabChange} />
+          <FeedTabBar
+            activeIndex={activeTab}
+            onTabChange={handleTabChange}
+          />
 
-          {/* ── Secondary Content Filter Pills ── */}
-          {showContentFilter && (
+          {/* ── Secondary Content Filter Pills (hidden on TV tab) ── */}
+          {showContentFilter && !currentTabConfig.isTV && (
             <ContentFilterBar
               activeFilter={contentFilter}
               onFilterChange={setContentFilter}
@@ -153,26 +157,32 @@ const HomePage = ({ route, navigation }) => {
           )}
 
           {/* ── Feed Content ── */}
-          <PanGestureHandler
-            onGestureEvent={handleScreenSwipe}
-            onHandlerStateChange={handleScreenSwipeEnd}
-            activeOffsetX={[-15, 15]}
-            failOffsetY={[-20, 20]}
-          >
-            <Animated.View
-              style={[
-                styles.screenArea,
-                { transform: [{ translateX: swipeX }] },
-              ]}
+          {currentTabConfig.isTV ? (
+            <View style={styles.screenArea}>
+              <HafrikTVContent />
+            </View>
+          ) : (
+            <PanGestureHandler
+              onGestureEvent={handleScreenSwipe}
+              onHandlerStateChange={handleScreenSwipeEnd}
+              activeOffsetX={[-15, 15]}
+              failOffsetY={[-20, 20]}
             >
-              <UnifiedFeedScreen
-                key={currentTabConfig.key}
-                tabConfig={currentTabConfig}
-                contentFilter={contentFilter}
-                feedWidth={feedWidthRef.current}
-              />
-            </Animated.View>
-          </PanGestureHandler>
+              <Animated.View
+                style={[
+                  styles.screenArea,
+                  { transform: [{ translateX: swipeX }] },
+                ]}
+              >
+                <UnifiedFeedScreen
+                  key={currentTabConfig.key}
+                  tabConfig={currentTabConfig}
+                  contentFilter={contentFilter}
+                  feedWidth={feedWidthRef.current}
+                />
+              </Animated.View>
+            </PanGestureHandler>
+          )}
         </>
       )}
       <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
@@ -198,16 +208,7 @@ const HomePage = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* FAB — opens composer immediately */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.88} onPress={() => openComposer()}>
-        <LinearGradient
-          colors={[Colors.primaryDark, Colors.primary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <Ionicons name="add" size={28} color={WHITE} />
-      </TouchableOpacity>
+      {/* FAB removed — composer accessible via daily prompt card */}
 
       {/* PostComposerModal and CreateMenuSheet are now mounted globally in App.js */}
 

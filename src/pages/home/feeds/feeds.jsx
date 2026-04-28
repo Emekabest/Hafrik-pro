@@ -34,6 +34,7 @@ import { Colors } from "../../../theme";
 import { useTheme } from "../../../theme/ThemeContext";
 import { FeedSkeletonList } from "./feedskelenton.jsx";
 import DiscoverMasonryCard, { MASONRY_H_PAD, MASONRY_COL_GAP, MASONRY_ROW_H } from "./DiscoverMasonryCard.jsx";
+import OnlineNowStrip from "../OnlineNowStrip.jsx";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const BG_BASE = Colors.surfaceTint;
@@ -54,7 +55,8 @@ const FEED_FILTERS = [
 // ─── People You May Know card ─────────────────────────────────────────────────
 const PeopleYouMayKnow = memo(({ people }) => {
   const navigation = useNavigation();
-  const filtered = (people?.filter(p => !!(p.avatar || p.profile_picture) && !p.is_follow) ?? []).slice(0, 4);
+  // Show anyone not yet followed — no avatar requirement (use fallback initials)
+  const filtered = (people?.filter(p => !p.is_follow && !p.is_following) ?? []).slice(0, 4);
   if (!filtered.length) return null;
   return (
     <View style={styles.sectionCard}>
@@ -70,31 +72,41 @@ const PeopleYouMayKnow = memo(({ people }) => {
         </TouchableOpacity>
       </View>
 
-      {filtered.map((person, idx) => (
-        <TouchableOpacity
-          key={person.id ?? idx}
-          style={[styles.suggestionRow, idx < filtered.length - 1 && styles.suggestionRowBorder]}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('Profile', { userId: person.id })}
-        >
-          <Image
-            source={{ uri: person.avatar || person.profile_picture }}
-            style={styles.suggestionAvatar}
-          />
-          <View style={styles.suggestionInfo}>
-            <Text style={styles.suggestionName} numberOfLines={1}>
-              {person.name || person.username}
-            </Text>
-            {!!person.mutual_friends && (
-              <Text style={styles.suggestionMeta}>{person.mutual_friends} mutual connections</Text>
+      {filtered.map((person, idx) => {
+        const avatarUrl = person.avatar || person.profile_picture || null;
+        const displayName = person.name || person.username || 'User';
+        const initials = displayName.slice(0, 2).toUpperCase();
+        return (
+          <TouchableOpacity
+            key={person.id ?? idx}
+            style={[styles.suggestionRow, idx < filtered.length - 1 && styles.suggestionRowBorder]}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Profile', { userId: person.id })}
+          >
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.suggestionAvatar} />
+            ) : (
+              <View style={[styles.suggestionAvatar, { backgroundColor: BRAND + '22', alignItems: 'center', justifyContent: 'center' }]}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: BRAND }}>{initials}</Text>
+              </View>
             )}
-          </View>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: BRAND }]} activeOpacity={0.8}>
-            <Ionicons name="person-add-outline" size={11} color={Colors.white} style={{ marginRight: 3 }} />
-            <Text style={styles.actionBtnText}>Connect</Text>
+            <View style={styles.suggestionInfo}>
+              <Text style={styles.suggestionName} numberOfLines={1}>{displayName}</Text>
+              {!!person.mutual_friends && (
+                <Text style={styles.suggestionMeta}>{person.mutual_friends} mutual connections</Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: BRAND }]}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Profile', { userId: person.id })}
+            >
+              <Ionicons name="person-add-outline" size={11} color={Colors.white} style={{ marginRight: 3 }} />
+              <Text style={styles.actionBtnText}>Connect</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
-      ))}
+        );
+      })}
     </View>
   );
 });
@@ -661,6 +673,9 @@ const Feeds = ({
           </View>
         );
       }
+
+      case 'onlinestrip':
+        return <OnlineNowStrip people={item.data ?? []} />;
 
       case 'peoplecard':
         return <PeopleYouMayKnow people={item.data} />;

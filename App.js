@@ -34,11 +34,17 @@ import FeatherFont from './assets/fonts/feather.ttf';
 import GroupDetails from "./src/pages/groups/GroupDetails";
 import GuideScreen from './src/pages/GuideScreen';
 import JobsScreen from './src/pages/JobsScreen';
-import MarketplaceScreen from './src/pages/marketplace/index';
+import MarketplaceTabNavigator    from './src/pages/marketplace/MarketplaceTabNavigator';
 import ProductDetailScreen from './src/pages/marketplace/ProductDetailScreen';
 import CreateListingScreen from './src/pages/marketplace/CreateListingScreen';
 // MarketplaceWebviewScreen replaced by UniversalWebView
-import MyListingsScreen from './src/pages/marketplace/MyListingsScreen';
+import MyListingsScreen              from './src/pages/marketplace/MyListingsScreen';
+import CartScreen                    from './src/pages/marketplace/CartScreen';
+import CheckoutScreen                from './src/pages/marketplace/CheckoutScreen';
+import MarketplacePaymentScreen      from './src/pages/marketplace/MarketplacePaymentScreen';
+import MarketplaceOrdersScreen       from './src/pages/marketplace/MarketplaceOrdersScreen';
+import OrderDetailScreen             from './src/pages/marketplace/OrderDetailScreen';
+import SellerOrdersScreen            from './src/pages/marketplace/SellerOrdersScreen';
 import ArticlesScreen from './src/pages/blogs/ArticlesScreen';
 import ArticleDetailsScreen from './src/pages/blogs/ArticleDetailsScreen';
 import EventDetailScreen from './src/pages/events/EventDetailScreen';
@@ -424,11 +430,17 @@ function AppNavigator() {
               <Stack.Screen name="EventsScreen" component={EventsScreen} />
               <Stack.Screen name="GuideScreen" component={GuideScreen} />
               <Stack.Screen name="JobsScreen" component={JobsScreen} />
-              <Stack.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
+              <Stack.Screen name="MarketplaceScreen" component={MarketplaceTabNavigator} options={{ gestureEnabled: false }} />
               <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
               <Stack.Screen name="CreateListing" component={CreateListingScreen} />
               <Stack.Screen name="MarketplaceWebview" component={UniversalWebView} options={{ headerShown: false }} />
-              <Stack.Screen name="MyListings" component={MyListingsScreen} />
+              <Stack.Screen name="MyListings"     component={MyListingsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="CartScreen"                component={CartScreen}               options={{ headerShown: false }} />
+              <Stack.Screen name="CheckoutScreen"           component={CheckoutScreen}           options={{ headerShown: false }} />
+              <Stack.Screen name="MarketplacePaymentScreen" component={MarketplacePaymentScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="MarketplaceOrdersScreen"  component={MarketplaceOrdersScreen}  options={{ headerShown: false }} />
+              <Stack.Screen name="OrderDetailScreen"        component={OrderDetailScreen}         options={{ headerShown: false }} />
+              <Stack.Screen name="SellerOrdersScreen"       component={SellerOrdersScreen}        options={{ headerShown: false }} />
               <Stack.Screen name="Groups" component={GroupsScreen} />
               <Stack.Screen name="WebView" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="WhatsNearby" component={WhatsNearbyScreen} />

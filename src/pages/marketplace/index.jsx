@@ -1,301 +1,812 @@
-// src/pages/marketplace/index.jsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+// src/pages/marketplace/index.jsx — Modern Marketplace (redesigned)
+import React, {
+  useCallback, useEffect, useRef, useState, memo,
+} from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  TextInput,
-  ActivityIndicator,
-  RefreshControl,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  Image, ActivityIndicator, RefreshControl, Animated,
+  Dimensions, ScrollView, TextInput, Platform, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+
 import { useAuth } from '../../AuthContext';
-import { fetchMarketplaceProducts } from './marketplaceApi';
-import { ProductCard } from './ProductCard';
-import { Colors } from '../../theme/colors';
+import { Colors } from '../../theme';
+import AppDetails from '../../helpers/appdetails';
+import useStore from '../../repository/store';
+import {
+  fetchMarketplaceProducts,
+  fetchTrendyProducts,
+  getCategories,
+  getCart,
+} from './marketplaceApi';
 
-const withOpacity = (hex, opacity) => {
-  const normalized = (hex || "").replace("#", "");
-  const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, "0");
-  return `#${normalized}${alpha}`;
-};
-
-
-const API   = 'https://hafrik.com/api/v1/marketplace/get_marketplace.php';
-const LIMIT = 10;
-
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+const { width: SW } = Dimensions.get('window');
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
-const MUTED  = Colors.secondaryText;
-const DARK   = Colors.deepSlate;
-const BORDER = withOpacity(Colors.primaryDark, 0.09);
+const BG     = '#F7F8FA';
+const WHITE  = '#FFFFFF';
+const DARK   = Colors.deepSlate ?? '#0F1923';
+const MUTED  = Colors.secondaryText ?? '#8A96A3';
+const BORDER = '#EAECF0';
 
-const CATS = ['All', 'Electronics', 'Clothing', 'Food', 'Furniture', 'Services', 'Other'];
+const CARD_W   = (SW - 2) / 2;    // two-column flush grid with 2px gap
+const PAGE_SIZE = 12;
 
+const FONT_B = AppDetails?.fontFamily?.redex?.bold    ?? 'System';
+const FONT_M = AppDetails?.fontFamily?.inter?.medium  ?? 'System';
+const FONT_R = AppDetails?.fontFamily?.inter?.regular ?? 'System';
+
+const a = (hex, op) => {
+  const h = (hex || '').replace('#', '');
+  return `#${h}${Math.round(op * 255).toString(16).padStart(2, '0')}`;
+};
+
+const stripHtml = (raw = '') =>
+  (raw || '')
+    .replace(/&#039;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ')
+    .replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+
+// ─── Category icon map ────────────────────────────────────────────────────────
+const catMeta = (name = '') => {
+  const n = name.toLowerCase();
+  if (n.includes('electron') || n.includes('phone') || n.includes('gadget')) return { icon: 'phone-portrait-outline', color: '#0284c7' };
+  if (n.includes('cloth') || n.includes('fashion') || n.includes('wear'))    return { icon: 'shirt-outline',          color: '#db2777' };
+  if (n.includes('food')  || n.includes('drink')   || n.includes('bev'))     return { icon: 'fast-food-outline',      color: '#ea580c' };
+  if (n.includes('furni') || n.includes('home')    || n.includes('decor'))   return { icon: 'home-outline',           color: '#059669' };
+  if (n.includes('health')|| n.includes('medical'))                           return { icon: 'medkit-outline',         color: '#dc2626' };
+  if (n.includes('beauty')|| n.includes('cosmetic'))                         return { icon: 'color-wand-outline',     color: '#ec4899' };
+  if (n.includes('sport') || n.includes('fitness'))                          return { icon: 'football-outline',       color: '#16a34a' };
+  if (n.includes('book')  || n.includes('station'))                          return { icon: 'book-outline',           color: '#ca8a04' };
+  if (n.includes('jewel') || n.includes('access') || n.includes('watch'))   return { icon: 'diamond-outline',        color: '#9333ea' };
+  if (n.includes('baby')  || n.includes('kid'))                              return { icon: 'happy-outline',          color: '#f97316' };
+  if (n.includes('pet')   || n.includes('animal'))                           return { icon: 'paw-outline',            color: '#84cc16' };
+  if (n.includes('tech')  || n.includes('computer')|| n.includes('laptop')) return { icon: 'laptop-outline',         color: '#0891b2' };
+  return { icon: 'storefront-outline', color: BRAND };
+};
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+function Skel({ style }) {
+  const pulse = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1,   duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, []);
+  return <Animated.View style={[{ backgroundColor: '#DDE3EC', borderRadius: 8, opacity: pulse }, style]} />;
+}
+
+function GridSkeleton() {
+  return (
+    <View style={{ flexDirection: 'row', gap: 2, marginBottom: 2 }}>
+      {[0, 1].map(i => (
+        <View key={i} style={{ width: CARD_W, backgroundColor: WHITE, borderRadius: 0, overflow: 'hidden' }}>
+          <Skel style={{ width: '100%', height: CARD_W * 1.1 }} />
+          <View style={{ padding: 12, gap: 7 }}>
+            <Skel style={{ height: 11, width: '85%' }} />
+            <Skel style={{ height: 11, width: '55%' }} />
+            <Skel style={{ height: 18, width: '40%', borderRadius: 6, marginTop: 4 }} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ─── Category pill (compact horizontal) ──────────────────────────────────────
+const CatPill = memo(function CatPill({ cat, isActive, onPress }) {
+  const { icon, color } = cat.id === 0 ? { icon: 'apps', color: BRAND } : catMeta(cat.name);
+  return (
+    <TouchableOpacity
+      style={[p.pill, isActive && { backgroundColor: color, borderColor: color }]}
+      onPress={() => onPress(cat.id)}
+      activeOpacity={0.75}
+    >
+      <Ionicons name={icon} size={13} color={isActive ? WHITE : color} />
+      <Text style={[p.pillTxt, isActive && { color: WHITE }]} numberOfLines={1}>
+        {cat.name}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
+function CategoryRow({ categories, activeCatId, onChange }) {
+  const all = [{ id: 0, name: 'All' }, ...categories];
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={p.pillRow}
+      style={p.pillWrap}
+    >
+      {all.map(cat => (
+        <CatPill key={cat.id} cat={cat} isActive={activeCatId === cat.id} onPress={onChange} />
+      ))}
+    </ScrollView>
+  );
+}
+
+const p = StyleSheet.create({
+  pillWrap: { backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER },
+  pillRow:  { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 13, paddingVertical: 7,
+    borderRadius: 100, borderWidth: 1.5, borderColor: BORDER,
+    backgroundColor: WHITE,
+  },
+  pillTxt: { fontSize: 12.5, fontWeight: '700', color: DARK, fontFamily: FONT_M },
+});
+
+// ─── Product Card ─────────────────────────────────────────────────────────────
+const ProductCard = memo(function ProductCard({ item, onPress }) {
+  const thumb   = item.thumbnail ?? item.photos?.[0] ?? null;
+  const title   = stripHtml(item.title);
+  const inStock = item.in_stock !== false;
+  const price   = item.price_formatted
+    ?? `${item.currency ?? ''} ${Number(item.price ?? 0).toLocaleString()}`;
+
+  return (
+    <TouchableOpacity style={c.card} onPress={onPress} activeOpacity={0.92}>
+      {/* Image */}
+      <View style={c.imgWrap}>
+        {thumb ? (
+          <Image source={{ uri: thumb }} style={c.img} resizeMode="cover" />
+        ) : (
+          <View style={c.imgFallback}>
+            <Ionicons name="image-outline" size={32} color={a(MUTED, 0.4)} />
+          </View>
+        )}
+        {/* Stock badge */}
+        <View style={[c.stockBadge, !inStock && c.stockBadgeOut]}>
+          <View style={c.stockDot} />
+          <Text style={c.stockTxt}>{inStock ? 'In Stock' : 'Sold Out'}</Text>
+        </View>
+        {/* Digital tag */}
+        {item.is_digital && (
+          <View style={c.digitalTag}>
+            <Ionicons name="cloud-download-outline" size={9} color={WHITE} />
+            <Text style={c.digitalTxt}>Digital</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Body */}
+      <View style={c.body}>
+        <Text style={c.title} numberOfLines={2}>{title || '—'}</Text>
+        <Text style={c.price}>{price}</Text>
+
+        {/* Rating row (if available) */}
+        {Number(item.review_count) > 0 && (
+          <View style={c.ratingRow}>
+            <Ionicons name="star" size={10} color="#f59e0b" />
+            <Text style={c.ratingTxt}>
+              {parseFloat(item.average_rating || '0').toFixed(1)}
+              <Text style={c.ratingCount}> ({item.review_count})</Text>
+            </Text>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const c = StyleSheet.create({
+  card: {
+    width: CARD_W,
+    backgroundColor: WHITE,
+    borderRadius: 0,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  imgWrap:    { width: '100%', height: CARD_W * 1.1, backgroundColor: BG },
+  img:        { width: '100%', height: '100%' },
+  imgFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  stockBadge: {
+    position: 'absolute', bottom: 8, left: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#16a34aDD',
+    borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  stockBadgeOut: { backgroundColor: '#dc2626DD' },
+  stockDot:   { width: 5, height: 5, borderRadius: 3, backgroundColor: WHITE },
+  stockTxt:   { fontSize: 9.5, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
+  digitalTag: {
+    position: 'absolute', top: 8, left: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: BRAND, borderRadius: 100,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  digitalTxt: { fontSize: 9, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
+  body:       { padding: 12, gap: 4 },
+  title:      { fontSize: 13, fontWeight: '700', color: DARK, lineHeight: 18, fontFamily: FONT_M },
+  price:      { fontSize: 16, fontWeight: '900', color: ACCENT, fontFamily: FONT_B, marginTop: 2 },
+  ratingRow:  { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  ratingTxt:  { fontSize: 11, color: DARK, fontWeight: '700' },
+  ratingCount:{ color: MUTED, fontWeight: '500' },
+});
+
+// ─── Hot Right Now — full-width auto-scrolling slider ────────────────────────
+const SLIDE_W   = SW - 32;   // card width: 16px margin each side
+const SLIDE_H   = 230;       // card height
+const SLIDE_GAP = 12;
+const SNAP_INT  = SLIDE_W + SLIDE_GAP;
+
+const SlideCard = memo(function SlideCard({ item, onPress }) {
+  const thumb = item.thumbnail ?? item.photos?.[0] ?? null;
+  const price = item.price_formatted
+    ?? `${item.currency ?? ''} ${Number(item.price ?? 0).toLocaleString()}`;
+  const title = stripHtml(item.title);
+  const inStock = item.in_stock !== false;
+
+  return (
+    <TouchableOpacity style={t.slide} onPress={onPress} activeOpacity={0.93}>
+      {/* Full-bleed image */}
+      {thumb ? (
+        <Image source={{ uri: thumb }} style={t.slideImg} resizeMode="cover" />
+      ) : (
+        <View style={[t.slideImg, t.slideImgFb]}>
+          <Ionicons name="image-outline" size={36} color={a(WHITE, 0.3)} />
+        </View>
+      )}
+
+      {/* Dark gradient overlay — bottom 60% */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.78)']}
+        locations={[0, 0.4, 1]}
+        style={t.slideGrad}
+      />
+
+      {/* Top-left: hot badge */}
+      <View style={t.hotBadge}>
+        <Ionicons name="flame" size={10} color={WHITE} />
+        <Text style={t.hotTxt}>HOT</Text>
+      </View>
+
+      {/* Top-right: stock pill */}
+      <View style={[t.slideStock, !inStock && t.slideStockOut]}>
+        <Text style={t.slideStockTxt}>{inStock ? 'In Stock' : 'Sold Out'}</Text>
+      </View>
+
+      {/* Bottom overlay: title + price */}
+      <View style={t.slideBottom}>
+        <Text style={t.slideTitle} numberOfLines={2}>{title}</Text>
+        <View style={t.slidePriceRow}>
+          <Text style={t.slidePrice}>{price}</Text>
+          <View style={t.slideBtn}>
+            <Text style={t.slideBtnTxt}>View</Text>
+            <Ionicons name="arrow-forward" size={11} color={BRAND} />
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+function TrendingStrip({ onProductPress }) {
+  const { token }  = useAuth();
+  const [items,    setItems]    = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [apiPage,  setApiPage]  = useState(1);
+  const [hasMore,  setHasMore]  = useState(true);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const flatRef  = useRef(null);
+  const idxRef   = useRef(0);
+  const timerRef = useRef(null);
+  const seen     = useRef(new Set());
+  const abort    = useRef(null);
+
+  const load = useCallback(async (pg, replace = false) => {
+    abort.current?.abort();
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    try {
+      const res   = await fetchTrendyProducts(pg, 10, ctrl.signal, token);
+      const fresh = (res.data ?? []).filter(p => {
+        const k = String(p.post_id ?? p.id ?? '');
+        if (!k || seen.current.has(k)) return false;
+        seen.current.add(k);
+        return true;
+      });
+      setItems(prev => replace ? fresh : [...prev, ...fresh]);
+      setHasMore(res.has_more);
+      setApiPage(pg);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [token]);
+
+  useEffect(() => {
+    load(1, true);
+    return () => abort.current?.abort();
+  }, [load]);
+
+  // Auto-advance every 3.5 s
+  useEffect(() => {
+    if (items.length < 2) return;
+    timerRef.current = setInterval(() => {
+      const next = (idxRef.current + 1) % items.length;
+      idxRef.current = next;
+      setActiveIdx(next);
+      flatRef.current?.scrollToIndex({ index: next, animated: true });
+    }, 3500);
+    return () => clearInterval(timerRef.current);
+  }, [items.length]);
+
+  const onScroll = useCallback((e) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / SNAP_INT);
+    if (idx !== idxRef.current) {
+      idxRef.current = idx;
+      setActiveIdx(idx);
+    }
+    // fetch more when near end
+    if (idx >= items.length - 3 && hasMore) {
+      load(apiPage + 1, false);
+    }
+  }, [items.length, hasMore, apiPage, load]);
+
+  if (!loading && items.length === 0) return null;
+
+  return (
+    <View style={t.section}>
+      {/* Section heading */}
+      <View style={t.topRow}>
+        <View style={t.flamePill}>
+          <Ionicons name="flame" size={11} color={WHITE} />
+          <Text style={t.flameTxt}>TRENDING</Text>
+        </View>
+        <Text style={t.heading}>Hot Right Now</Text>
+        <Text style={t.count}>{items.length > 0 ? `${items.length} items` : ''}</Text>
+      </View>
+
+      {/* Slider */}
+      {loading ? (
+        // Skeleton slide
+        <View style={{ paddingHorizontal: 16 }}>
+          <Skel style={{ width: SLIDE_W, height: SLIDE_H, borderRadius: 18 }} />
+        </View>
+      ) : (
+        <FlatList
+          ref={flatRef}
+          data={items}
+          keyExtractor={item => `tr-${item.post_id ?? item.id}`}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={SNAP_INT}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          contentContainerStyle={t.listContent}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          renderItem={({ item }) => (
+            <SlideCard item={item} onPress={() => onProductPress(item)} />
+          )}
+          getItemLayout={(_, i) => ({ length: SNAP_INT, offset: SNAP_INT * i, index: i })}
+        />
+      )}
+
+      {/* Dot indicators */}
+      {items.length > 1 && (
+        <View style={t.dots}>
+          {items.slice(0, Math.min(items.length, 10)).map((_, i) => (
+            <TouchableOpacity
+              key={i}
+              onPress={() => {
+                idxRef.current = i;
+                setActiveIdx(i);
+                flatRef.current?.scrollToIndex({ index: i, animated: true });
+              }}
+            >
+              <Animated.View style={[t.dot, i === activeIdx && t.dotActive]} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const t = StyleSheet.create({
+  section: {
+    backgroundColor: WHITE,
+    paddingTop: 22,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  topRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, marginBottom: 14, gap: 10,
+  },
+  flamePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#ef4444', borderRadius: 100,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  flameTxt: { fontSize: 9.5, fontWeight: '900', color: WHITE, fontFamily: FONT_B, letterSpacing: 0.8 },
+  heading:  { fontSize: 19, fontWeight: '900', color: DARK, fontFamily: FONT_B, letterSpacing: -0.4, flex: 1 },
+  count:    { fontSize: 12, color: MUTED, fontFamily: FONT_R },
+
+  // List
+  listContent: { paddingHorizontal: 16, gap: SLIDE_GAP },
+
+  // Individual slide card
+  slide: {
+    width: SLIDE_W, height: SLIDE_H,
+    borderRadius: 18, overflow: 'hidden',
+    backgroundColor: '#1a1a2e',
+  },
+  slideImg:   { width: '100%', height: '100%', position: 'absolute' },
+  slideImgFb: { backgroundColor: '#2a2a3e', alignItems: 'center', justifyContent: 'center' },
+  slideGrad:  { position: 'absolute', left: 0, right: 0, bottom: 0, height: SLIDE_H * 0.65 },
+
+  // Hot badge (top-left)
+  hotBadge: {
+    position: 'absolute', top: 12, left: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#ef4444',
+    borderRadius: 100, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  hotTxt: { fontSize: 9.5, fontWeight: '900', color: WHITE, fontFamily: FONT_B, letterSpacing: 0.8 },
+
+  // Stock pill (top-right)
+  slideStock: {
+    position: 'absolute', top: 12, right: 12,
+    backgroundColor: '#16a34add',
+    borderRadius: 100, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  slideStockOut: { backgroundColor: '#dc2626dd' },
+  slideStockTxt: { fontSize: 9.5, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
+
+  // Bottom text overlay
+  slideBottom: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    padding: 16, gap: 8,
+  },
+  slideTitle: {
+    fontSize: 15, fontWeight: '800', color: WHITE,
+    fontFamily: FONT_B, lineHeight: 20, letterSpacing: -0.2,
+  },
+  slidePriceRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  slidePrice: {
+    fontSize: 20, fontWeight: '900', color: WHITE,
+    fontFamily: FONT_B, letterSpacing: -0.4,
+  },
+  slideBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: WHITE, borderRadius: 100,
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  slideBtnTxt: { fontSize: 12, fontWeight: '800', color: BRAND, fontFamily: FONT_B },
+
+  // Dot indicators
+  dots: {
+    flexDirection: 'row', justifyContent: 'center',
+    gap: 5, marginTop: 12,
+  },
+  dot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: a(DARK, 0.18),
+  },
+  dotActive: {
+    width: 20, height: 6, borderRadius: 3,
+    backgroundColor: BRAND,
+  },
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function MarketplaceScreen({ navigation }) {
-  const { token } = useAuth();
-  const { top }   = useSafeAreaInsets();
+  const { token }    = useAuth();
+  const insets       = useSafeAreaInsets();
+  const cartCount    = useStore(s => s.cartCount);
+  const setCartCount = useStore(s => s.setCartCount);
 
-  const [products,     setProducts]     = useState([]);
-  const [search,       setSearch]       = useState('');
-  const [category,     setCategory]     = useState('All');
-  const [page,         setPage]         = useState(1);
-  const [hasMore,      setHasMore]      = useState(true);
-  const [loading,      setLoading]      = useState(true);
-  const [refreshing,   setRefreshing]   = useState(false);
-  const [loadingMore,  setLoadingMore]  = useState(false);
-  const [error,        setError]        = useState(null);
+  const [products,    setProducts]    = useState([]);
+  const [categories,  setCategories]  = useState([]);
+  const [activeCatId, setActiveCatId] = useState(0);
+  const [search,      setSearch]      = useState('');
+  const [page,        setPage]        = useState(1);
+  const [hasMore,     setHasMore]     = useState(true);
+  const [loading,     setLoading]     = useState(true);
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [loadMore,    setLoadMore]    = useState(false);
+  const [error,       setError]       = useState(null);
 
-  const abortRef      = useRef(null);
-  const isFirstMount  = useRef(true);
+  const abortRef   = useRef(null);
+  const firstMount = useRef(true);
 
-  // ─── Core fetch ──────────────────────────────────────────────
-  const fetchPage = useCallback(async (pageNum, q, cat, replace) => {
-    if (abortRef.current) abortRef.current.abort();
+  useFocusEffect(useCallback(() => {
+    if (!token) return;
+    getCart(token).then(c => setCartCount(c.count)).catch(() => {});
+  }, [token, setCartCount]));
+
+  useEffect(() => {
+    if (!token) return;
+    getCategories(token).then(setCategories).catch(() => {});
+  }, [token]);
+
+  const fetchPage = useCallback(async (pg, q, catId, replace) => {
+    abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-
     try {
       const data = await fetchMarketplaceProducts(
-        API,
-        {
-          page:     pageNum,
-          limit:    LIMIT,
-          search:   q   || undefined,
-          category: cat !== 'All' ? cat : undefined,
-        },
+        { page: pg, limit: PAGE_SIZE, search: q || undefined, category_id: catId || undefined },
         ctrl.signal,
         token,
       );
-
-      const incoming = data.products ?? [];
-      setProducts(prev => replace ? incoming : [...prev, ...incoming]);
-      setHasMore(pageNum * LIMIT < data.total);
-      setPage(pageNum);
+      const list = data.products ?? [];
+      setProducts(prev => replace ? list : [...prev, ...list]);
+      setHasMore(pg * PAGE_SIZE < (data.total ?? 0));
+      setPage(pg);
       setError(null);
     } catch (e) {
-      if (e.name !== 'AbortError') {
-        setError('Could not load listings. Pull down to retry.');
-      }
+      if (e?.name !== 'AbortError') setError('Could not load products.');
     } finally {
       setLoading(false);
       setRefreshing(false);
-      setLoadingMore(false);
+      setLoadMore(false);
     }
   }, [token]);
 
-  // Initial load
-  useEffect(() => {
-    fetchPage(1, '', 'All', true);
-  }, [fetchPage]);
+  useEffect(() => { fetchPage(1, '', 0, true); }, [fetchPage]);
 
-  // Reload when search or category changes (skip first mount)
   useEffect(() => {
-    if (isFirstMount.current) { isFirstMount.current = false; return; }
-    const delay = search ? 400 : 0;
-    const t = setTimeout(() => {
-      setLoading(true);
-      setProducts([]);
-      fetchPage(1, search, category, true);
+    if (firstMount.current) { firstMount.current = false; return; }
+    const delay = search ? 420 : 0;
+    const id = setTimeout(() => {
+      setLoading(true); setProducts([]);
+      fetchPage(1, search, activeCatId, true);
     }, delay);
-    return () => clearTimeout(t);
-  }, [search, category]);
+    return () => clearTimeout(id);
+  }, [search, activeCatId]);
 
-  // ─── Actions ─────────────────────────────────────────────────
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchPage(1, search, category, true);
-  }, [search, category, fetchPage]);
-
+  const onRefresh    = useCallback(() => { setRefreshing(true); fetchPage(1, search, activeCatId, true); }, [search, activeCatId, fetchPage]);
   const onEndReached = useCallback(() => {
-    if (!hasMore || loadingMore || loading || refreshing) return;
-    setLoadingMore(true);
-    fetchPage(page + 1, search, category, false);
-  }, [hasMore, loadingMore, loading, refreshing, page, search, category, fetchPage]);
+    if (!hasMore || loadMore || loading || refreshing) return;
+    setLoadMore(true);
+    fetchPage(page + 1, search, activeCatId, false);
+  }, [hasMore, loadMore, loading, refreshing, page, search, activeCatId, fetchPage]);
 
-  const openProduct = useCallback((product) => {
-    navigation.navigate('ProductDetail', { product });
-  }, [navigation]);
+  const openProduct = useCallback(item => navigation.navigate('ProductDetail', { product: item }), [navigation]);
+  const handleCat   = useCallback(id => setActiveCatId(id), []);
 
-  // ─── Render helpers ──────────────────────────────────────────
+  const activeCatName = activeCatId === 0
+    ? (search ? `"${search}"` : 'All Products')
+    : (categories.find(c => c.id === activeCatId)?.name ?? 'Products');
+
+  // ── List header ────────────────────────────────────────────────────────────
+  const ListHeader = useCallback(() => (
+    <>
+      <TrendingStrip onProductPress={openProduct} />
+      <CategoryRow categories={categories} activeCatId={activeCatId} onChange={handleCat} />
+
+      {/* Section label + sell CTA */}
+      <View style={m.sectionRow}>
+        <View>
+          <Text style={m.sectionLabel}>{activeCatName}</Text>
+          {!loading && !error && (
+            <Text style={m.sectionCount}>{products.length} item{products.length !== 1 ? 's' : ''}</Text>
+          )}
+        </View>
+        <TouchableOpacity style={m.sellBtn} activeOpacity={0.85} onPress={() => useStore.getState().showToast('Selling — coming soon!', '🛒')}>
+          <Ionicons name="time-outline" size={13} color={WHITE} />
+          <Text style={m.sellBtnTxt}>Coming Soon</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  ), [categories, activeCatId, handleCat, activeCatName, loading, error, products.length, openProduct]);
+
+  const ListFooter = useCallback(() => (
+    loadMore
+      ? <View style={{ paddingVertical: 24, alignItems: 'center' }}><ActivityIndicator size="small" color={ACCENT} /></View>
+      : <View style={{ height: 80 }} />
+  ), [loadMore]);
+
+  const ListEmpty = useCallback(() => {
+    if (loading) return null;
+    return (
+      <View style={m.empty}>
+        <View style={m.emptyIcon}>
+          <Ionicons name={error ? 'cloud-offline-outline' : 'search-outline'} size={40} color={a(MUTED, 0.5)} />
+        </View>
+        <Text style={m.emptyTitle}>{error ? 'Something went wrong' : 'No products found'}</Text>
+        <Text style={m.emptySub}>{error ?? 'Try a different search or category.'}</Text>
+        <TouchableOpacity style={m.retryBtn} onPress={onRefresh}>
+          <Ionicons name="refresh" size={13} color={WHITE} />
+          <Text style={m.retryTxt}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }, [loading, error, onRefresh]);
+
   const renderItem = useCallback(({ item }) => (
     <ProductCard item={item} onPress={() => openProduct(item)} />
   ), [openProduct]);
 
-  const ListFooter = () =>
-    loadingMore ? (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={BRAND} />
-      </View>
-    ) : null;
-
-  const ListEmpty = () => (
-    <View style={styles.emptyWrap}>
-      <Ionicons name="storefront-outline" size={56} color={MUTED} />
-      <Text style={styles.emptyTitle}>No listings found</Text>
-      <Text style={styles.emptySub}>Try adjusting your search or filters.</Text>
-    </View>
-  );
-
-  // ─── Render ──────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BRAND} />
+    <View style={m.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} translucent={false} />
 
-      {/* Header */}
-      <LinearGradient
-        colors={[BRAND, Colors.tealHeader]}
-        style={[styles.header, { paddingTop: top + 4 }]}
-      >
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerTitle}>Marketplace</Text>
-            <Text style={styles.headerSub}>Buy, sell &amp; trade</Text>
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <View style={m.header}>
+        {/* Nav row */}
+        <View style={m.navRow}>
+          <TouchableOpacity style={m.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+            <Ionicons name="arrow-back" size={20} color={WHITE} />
+          </TouchableOpacity>
+
+          <View style={m.brandRow}>
+            <Ionicons name="storefront" size={15} color={a(WHITE, 0.8)} />
+            <Text style={m.headerTitle}>Marketplace</Text>
           </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => navigation.navigate('MyListings')}
-            >
-              <Ionicons name="list-outline" size={20} color={Colors.white} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.iconBtn, { backgroundColor: ACCENT }]}
-              onPress={() => navigation.navigate('CreateListing')}
-            >
-              <Ionicons name="add" size={22} color={BRAND} />
-            </TouchableOpacity>
-          </View>
+
+          <TouchableOpacity style={m.iconBtn} onPress={() => navigation.navigate('CartScreen')} activeOpacity={0.85}>
+            <Ionicons name="bag-outline" size={21} color={WHITE} />
+            {cartCount > 0 && (
+              <View style={m.cartBadge}>
+                <Text style={m.cartBadgeTxt}>{cartCount > 99 ? '99+' : cartCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Search */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color={withOpacity(Colors.white, 0.7)} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search listings..."
-            placeholderTextColor={withOpacity(Colors.white, 0.45)}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={17} color={withOpacity(Colors.white, 0.55)} />
-            </TouchableOpacity>
-          )}
+        <View style={m.searchRow}>
+          <View style={m.searchBar}>
+            <Ionicons name="search-outline" size={16} color={a(WHITE, 0.6)} />
+            <TextInput
+              style={m.searchInput}
+              placeholder="Search products..."
+              placeholderTextColor={a(WHITE, 0.4)}
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={16} color={a(WHITE, 0.55)} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </LinearGradient>
 
-      {/* Category chips */}
-      <View style={styles.catsRow}>
-        <FlatList
-          data={CATS}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={c => c}
-          contentContainerStyle={styles.catsList}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.catPill, category === item && styles.catPillActive]}
-              onPress={() => setCategory(item)}
-            >
-              <Text style={[styles.catTxt, category === item && styles.catTxtActive]}>
-                {item}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
+        {/* Accent underline — matches AppHeader */}
+        <View style={m.headerUnderline} />
       </View>
 
-      {/* States */}
+      {/* ── Product grid ───────────────────────────────────────────────── */}
       {loading && !refreshing ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={BRAND} />
-        </View>
-      ) : error ? (
-        <View style={styles.centered}>
-          <Ionicons name="cloud-offline-outline" size={48} color={MUTED} />
-          <Text style={styles.errorTxt}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={onRefresh}>
-            <Text style={styles.retryTxt}>Retry</Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}>
+          <TrendingStrip onProductPress={openProduct} />
+          <CategoryRow categories={categories} activeCatId={activeCatId} onChange={handleCat} />
+          <View style={{ height: 16 }} />
+          <GridSkeleton />
+          <GridSkeleton />
+          <GridSkeleton />
+        </ScrollView>
       ) : (
         <FlatList
           data={products}
-          keyExtractor={item => String(item.id)}
+          keyExtractor={item => `p-${item.post_id ?? item.id}`}
           renderItem={renderItem}
           numColumns={2}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.grid}
+          columnWrapperStyle={m.row}
+          contentContainerStyle={[m.grid, { paddingBottom: insets.bottom + 80 }]}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
           onEndReached={onEndReached}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={ListFooter}
-          ListEmptyComponent={ListEmpty}
+          onEndReachedThreshold={0.5}
+          ListHeaderComponent={<ListHeader />}
+          ListFooterComponent={<ListFooter />}
+          ListEmptyComponent={<ListEmpty />}
+          removeClippedSubviews={Platform.OS === 'android'}
+          maxToRenderPerBatch={8}
+          windowSize={10}
+          initialNumToRender={8}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.surfaceSky },
+// ─── Main Styles ──────────────────────────────────────────────────────────────
+const m = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
 
-  header: { paddingHorizontal: 16, paddingBottom: 14 },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+  // ── Header ──
+  header: {
+    backgroundColor: BRAND,
+    paddingBottom: 0,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  headerTitle: { color: Colors.white, fontSize: 22, fontWeight: '800' },
-  headerSub:   { color: withOpacity(Colors.white, 0.65), fontSize: 12, marginTop: 2 },
-  headerActions: { flexDirection: 'row', gap: 8 },
+  navRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingTop: 52, paddingBottom: 10,
+    gap: 10,
+  },
+  brandRow: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6,
+  },
+  headerTitle: {
+    fontSize: 17, fontWeight: '900',
+    color: WHITE, fontFamily: FONT_B, letterSpacing: 0.3,
+  },
   iconBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: withOpacity(Colors.white, 0.15),
-    justifyContent: 'center', alignItems: 'center',
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: a(WHITE, 0.1),
+    borderWidth: 1, borderColor: a(WHITE, 0.14),
+    alignItems: 'center', justifyContent: 'center',
   },
+  cartBadge: {
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: ACCENT, borderRadius: 9,
+    minWidth: 16, height: 16,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 3, borderWidth: 1.5, borderColor: BRAND,
+  },
+  cartBadgeTxt: { color: WHITE, fontSize: 9, fontWeight: '900', fontFamily: FONT_B },
+
+  // Search
+  searchRow: { paddingHorizontal: 14, paddingBottom: 12 },
   searchBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: withOpacity(Colors.white, 0.15),
-    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: a(WHITE, 0.12), borderRadius: 12,
+    paddingHorizontal: 13, paddingVertical: 10,
+    borderWidth: 1, borderColor: a(WHITE, 0.1),
   },
-  searchInput: { flex: 1, color: Colors.white, fontSize: 14 },
+  searchInput: { flex: 1, fontSize: 14, color: WHITE, fontFamily: FONT_R },
+  headerUnderline: { height: 1, backgroundColor: a(ACCENT, 0.2) },
 
-  catsRow: {
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
+  // Section row
+  sectionRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12,
   },
-  catsList:     { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
-  catPill:      { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 100, borderWidth: 1.5, borderColor: BORDER },
-  catPillActive:{ backgroundColor: BRAND, borderColor: BRAND },
-  catTxt:       { fontSize: 12, fontWeight: '600', color: MUTED },
-  catTxtActive: { color: Colors.white },
+  sectionLabel: { fontSize: 18, fontWeight: '900', color: DARK, fontFamily: FONT_B, letterSpacing: -0.3 },
+  sectionCount: { fontSize: 12, color: MUTED, fontFamily: FONT_R, marginTop: 2 },
+  sellBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: BRAND, borderRadius: 100,
+    paddingHorizontal: 16, paddingVertical: 9,
+  },
+  sellBtnTxt: { fontSize: 13, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
 
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  errorTxt:  { fontSize: 14, color: MUTED, textAlign: 'center', paddingHorizontal: 24 },
-  retryBtn:  { backgroundColor: BRAND, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 10 },
-  retryTxt:  { color: Colors.white, fontWeight: '700', fontSize: 14 },
+  // Grid — flush, square-card layout
+  grid: { paddingHorizontal: 0, backgroundColor: BG },
+  row:  { gap: 2, marginBottom: 2 },
 
-  grid: { paddingHorizontal: 10, paddingTop: 10, paddingBottom: 40 },
-  row:  { gap: 8 },
-
-  footerLoader: { paddingVertical: 20, alignItems: 'center' },
-
-  emptyWrap:  { alignItems: 'center', paddingTop: 60, gap: 8, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: Colors.deepSlate },
-  emptySub:   { fontSize: 13, color: MUTED, textAlign: 'center' },
+  // Empty / error
+  empty: { alignItems: 'center', paddingTop: 70, paddingHorizontal: 40, gap: 10 },
+  emptyIcon: {
+    width: 88, height: 88, borderRadius: 28,
+    backgroundColor: a(BRAND, 0.06),
+    alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '900', color: DARK, fontFamily: FONT_B, textAlign: 'center' },
+  emptySub:   { fontSize: 13, color: MUTED, fontFamily: FONT_R, textAlign: 'center', lineHeight: 20 },
+  retryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 10, backgroundColor: BRAND, borderRadius: 100,
+    paddingHorizontal: 24, paddingVertical: 12,
+  },
+  retryTxt: { color: WHITE, fontWeight: '700', fontSize: 14, fontFamily: FONT_M },
 });

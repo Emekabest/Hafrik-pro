@@ -6,7 +6,13 @@
       "Bash(sed -n '241,249p' TrackShipping.jsx)",
       "Bash(grep -E \"\\\\.\\(js|jsx|tsx\\)$\")",
       "Bash(head -5 ls /Users/horlaasman/Documents/NEWHAFRIKAPP/Hafrik-pro/*.js)",
-      "Bash(ls /Users/horlaasman/Documents/NEWHAFRIKAPP/Hafrik-pro/.env*)"
+      "Bash(ls /Users/horlaasman/Documents/NEWHAFRIKAPP/Hafrik-pro/.env*)",
+      "WebFetch(domain:developer.woocommerce.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s \"https://shop.itstrendymart.com/wp-json/wc/store/v1/payment-gateways\")",
+      "Bash(curl -s https://shop.itstrendymart.com/wp-json/wc/store/v1/checkout -X POST -H 'Content-Type: application/json' -d '{\"billing_address\":{\"first_name\":\"Test\",\"last_name\":\"User\",\"address_1\":\"123 Street\",\"city\":\"Lagos\",\"country\":\"NG\",\"email\":\"test@test.com\",\"phone\":\"08000000000\",\"state\":\"\",\"postcode\":\"\",\"address_2\":\"\",\"company\":\"\"},\"shipping_address\":{\"first_name\":\"Test\",\"last_name\":\"User\",\"address_1\":\"123 Street\",\"city\":\"Lagos\",\"country\":\"NG\",\"phone\":\"08000000000\",\"state\":\"\",\"postcode\":\"\",\"address_2\":\"\",\"company\":\"\"},\"payment_method\":\"paystack\",\"customer_note\":\"\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s \"https://shop.itstrendymart.com/wp-json/wc/store/v1/checkout\" -X POST -H \"Content-Type: application/json\" -d '{\"billing_address\":{\"first_name\":\"Test\",\"last_name\":\"User\",\"address_1\":\"123 Street\",\"city\":\"Lagos\",\"country\":\"NG\",\"email\":\"test@test.com\",\"phone\":\"08000000000\",\"state\":\"\",\"postcode\":\"\",\"address_2\":\"\",\"company\":\"\"},\"shipping_address\":{\"first_name\":\"Test\",\"last_name\":\"User\",\"address_1\":\"123 Street\",\"city\":\"Lagos\",\"country\":\"NG\",\"phone\":\"08000000000\",\"state\":\"\",\"postcode\":\"\",\"address_2\":\"\",\"company\":\"\"},\"payment_method\":\"paystack\",\"customer_note\":\"\"}')"
     ]
   }
 }

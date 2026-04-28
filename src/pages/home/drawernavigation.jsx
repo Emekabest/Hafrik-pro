@@ -350,6 +350,13 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             <SectionLabel>Explore</SectionLabel>
             <View style={s.card}>
               <MenuItem
+                icon="bag-handle"
+                label="Marketplace"
+                sub="Browse, buy & sell products"
+                iconGrad={["#f97316", "#dc2626"]}
+                onPress={() => go("MarketplaceScreen")}
+              />
+              <MenuItem
                 icon="map"
                 label="City Guide"
                 sub="China cities — jobs, rent, markets"

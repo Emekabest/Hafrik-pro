@@ -1,10 +1,11 @@
 /**
- * HafrikTV — Premium video discovery screen.
+ * HafrikTV — Redesigned with Hafrik brand style.
  *
  * Layout:
- *  1. Page-profile hero  (full-width, edge-to-edge, top of app)
- *  2. Weekly Top 🔥      (horizontal snap cards)
- *  3. New on HafrikTV 🆕 (classic vertical list with pagination)
+ *  1. Brand header (solid dark, fixed)
+ *  2. Featured hero slider (auto-scroll, weekly top)
+ *  3. Reels strip (portrait horizontal)
+ *  4. New on HafrikTV (clean vertical list)
  */
 import React, {
   useCallback, useEffect, useMemo, useRef, useState, memo,
@@ -25,39 +26,63 @@ import {
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import { fetchWeeklyTop, fetchNewVideos } from './hafriktvapi';
 import { getBusinessDetails, followBusiness, unfollowBusiness } from '../pages_/Businessapi';
-import ProgressBarLoader from '../progressbarloader';
+import { Colors } from '../../theme';
+import AppDetails from '../../helpers/appdetails';
 
 const HAFRIKTV_PAGE_ID = 3;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const { width: W } = Dimensions.get('window');
-const COVER_H      = Math.round(W * 0.38);   // cover image height — compact
-const CARD_W       = 190;
-const CARD_H       = Math.round(CARD_W * (9 / 16));
-const REEL_W       = 108;
-const REEL_H       = Math.round(REEL_W * (16 / 9));  // portrait
-const THUMB_W      = 118;
-const THUMB_H      = Math.round(THUMB_W * (9 / 16));
-const PAD          = 16;
-const CARD_GAP     = 12;
+// ─── Dimensions & constants ───────────────────────────────────────────────────
+const { width: SW } = Dimensions.get('window');
+const PAD           = 16;
+const CARD_GAP      = 10;
 
-// ─── Brand colours ────────────────────────────────────────────────────────────
-const BG           = '#071e21';
-const BG_CARD      = '#0d2d32';
-const BG_ROW       = '#0f3539';
-const ACCENT       = '#1f8e93';
-const ACCENT_LIGHT = '#27adb5';
-const WHITE        = '#ffffff';
-const WHITE_DIM    = 'rgba(255,255,255,0.65)';
-const WHITE_MUTED  = 'rgba(255,255,255,0.38)';
-const BORDER       = 'rgba(255,255,255,0.07)';
+// Featured slider
+const FEAT_W   = SW - 32;
+const FEAT_H   = 220;
+const FEAT_GAP = 12;
+const SNAP_INT = FEAT_W + FEAT_GAP;
+
+// Reel card (portrait)
+const REEL_W = 110;
+const REEL_H = Math.round(REEL_W * (16 / 9));
+
+// Video card (landscape)
+const VID_W = 200;
+const VID_H = Math.round(VID_W * (9 / 16));
+
+// List row thumbnail
+const THUMB_W = 112;
+const THUMB_H = Math.round(THUMB_W * (9 / 16));
+
+// ─── Brand tokens ─────────────────────────────────────────────────────────────
+const BRAND     = '#071e21';          // deepest brand dark
+const BRAND_MID = '#0c3f44';          // card bg
+const BRAND_ROW = '#0f3539';          // subtle row
+const ACCENT    = '#1f8e93';          // teal
+const ACCENT_LT = '#27adb5';          // lighter teal
+const LIME      = '#a8e063';          // brand lime (accent sparingly)
+const WHITE     = '#ffffff';
+const W_70      = 'rgba(255,255,255,0.70)';
+const W_40      = 'rgba(255,255,255,0.40)';
+const W_14      = 'rgba(255,255,255,0.14)';
+const W_08      = 'rgba(255,255,255,0.08)';
+const BORDER    = 'rgba(255,255,255,0.07)';
+
+const FONT_B = AppDetails?.fontFamily?.redex?.bold    ?? 'System';
+const FONT_M = AppDetails?.fontFamily?.inter?.medium  ?? 'System';
+const FONT_R = AppDetails?.fontFamily?.inter?.regular ?? 'System';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const a = (hex, op) => {
+  const h = (hex || '').replace('#', '');
+  return `#${h}${Math.round(op * 255).toString(16).padStart(2, '0')}`;
+};
+
 function fmtCount(n) {
   if (!n || n < 1) return '0';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -72,11 +97,6 @@ function fmtTime(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function truncate(str, max) {
-  if (!str) return '';
-  return str.length > max ? str.slice(0, max).trimEnd() + '…' : str;
-}
-
 function cleanText(str = '') {
   return String(str)
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
@@ -85,23 +105,35 @@ function cleanText(str = '') {
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-const SkeletonBox = memo(({ style }) => {
+const Skel = memo(({ style }) => {
   const pulse = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.65, duration: 850, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.3,  duration: 850, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.7,  duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ])
     ).start();
-  }, [pulse]);
-  return (
-    <Animated.View style={[{ backgroundColor: BG_ROW, borderRadius: 8 }, style, { opacity: pulse }]} />
-  );
+  }, []);
+  return <Animated.View style={[{ backgroundColor: BRAND_ROW, borderRadius: 10 }, style, { opacity: pulse }]} />;
 });
 
-// ─── Full-width Page Hero ─────────────────────────────────────────────────────
-const PageHero = memo(({ safeTop }) => {
+// ─── Section heading ──────────────────────────────────────────────────────────
+function SectionHead({ icon, label, count, accent }) {
+  return (
+    <View style={m.secHead}>
+      <View style={[m.secPill, { backgroundColor: accent ?? ACCENT }]}>
+        <Ionicons name={icon} size={10} color={WHITE} />
+        <Text style={m.secPillTxt}>{label.toUpperCase()}</Text>
+      </View>
+      <Text style={m.secTitle}>{label}</Text>
+      {count != null && <Text style={m.secCount}>{count}</Text>}
+    </View>
+  );
+}
+
+// ─── Page Hero (channel info) ─────────────────────────────────────────────────
+const PageHero = memo(() => {
   const [page,        setPage]        = useState(null);
   const [loading,     setLoading]     = useState(true);
   const [liked,       setLiked]       = useState(false);
@@ -140,17 +172,16 @@ const PageHero = memo(({ safeTop }) => {
     }
   }, [liked, likeLoading]);
 
-  // ── Loading skeleton ──────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={styles.heroWrap}>
-        <SkeletonBox style={{ height: COVER_H, borderRadius: 0 }} />
-        <View style={styles.heroInfo}>
-          <SkeletonBox style={{ width: 52, height: 52, borderRadius: 26, flexShrink: 0 }} />
-          <View style={{ flex: 1, gap: 7 }}>
-            <SkeletonBox style={{ height: 15, width: '60%' }} />
-            <SkeletonBox style={{ height: 11, width: '90%' }} />
-            <SkeletonBox style={{ height: 11, width: '75%' }} />
+      <View style={h.heroWrap}>
+        <Skel style={{ height: 140, borderRadius: 0 }} />
+        <View style={h.heroBody}>
+          <Skel style={{ width: 56, height: 56, borderRadius: 28 }} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <Skel style={{ height: 14, width: '55%' }} />
+            <Skel style={{ height: 11, width: '80%' }} />
+            <Skel style={{ height: 28, width: 110, borderRadius: 100, marginTop: 4 }} />
           </View>
         </View>
       </View>
@@ -159,84 +190,72 @@ const PageHero = memo(({ safeTop }) => {
 
   if (!page) return null;
 
-  const name       = cleanText(page.title || page.name || 'HafrikTV');
-  const about      = cleanText(page.about || page.description || '');
-  const cover      = page.cover || null;
-  const avatar     = page.avatar || page.logo || null;
-  const isVerified = page.verified === true || page.verified === 1 || page.verified_value === 1;
-  const category   = cleanText(page.category || '');
+  const name     = cleanText(page.title || page.name || 'HafrikTV');
+  const about    = cleanText(page.about || page.description || '');
+  const cover    = page.cover ?? null;
+  const avatar   = page.avatar ?? page.logo ?? null;
+  const verified = page.verified === true || page.verified === 1;
 
   return (
-    <View style={styles.heroWrap}>
-      {/* ── Cover image ───────────────────────────────────────────── */}
-      <View style={[styles.coverImg, { height: COVER_H }]}>
+    <View style={h.heroWrap}>
+      {/* Cover */}
+      <View style={h.cover}>
         {cover ? (
-          <ExpoImage
-            source={{ uri: cover }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            contentPosition="top"
-            cachePolicy="memory-disk"
-          />
+          <ExpoImage source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
         ) : (
-          <LinearGradient
-            colors={['#0c3f44', '#1f8e93', '#0c3f44']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <LinearGradient colors={['#0c3f44', '#1a7a82', '#0c3f44']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         )}
-        <LinearGradient
-          colors={['transparent', 'rgba(7,30,33,0.55)', BG_CARD]}
-          locations={[0.35, 0.75, 1]}
-          style={StyleSheet.absoluteFill}
-        />
+        {/* TV watermark */}
+        <View style={h.coverWatermark}>
+          <Ionicons name="tv" size={48} color={a(WHITE, 0.06)} />
+        </View>
+        <LinearGradient colors={['transparent', a(BRAND_MID, 0.5), BRAND_MID]} locations={[0.3, 0.7, 1]} style={StyleSheet.absoluteFill} />
       </View>
 
-      {/* ── Compact side-by-side info row ─────────────────────────── */}
-      <View style={styles.heroInfo}>
+      {/* Info row */}
+      <View style={h.heroBody}>
         {/* Avatar */}
-        <View style={styles.avatarWrap}>
+        <View style={h.avatarRing}>
           {avatar ? (
-            <ExpoImage source={{ uri: avatar }} style={styles.avatarImg} contentFit="cover" cachePolicy="memory-disk" />
+            <ExpoImage source={{ uri: avatar }} style={h.avatar} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
-            <View style={[styles.avatarImg, { backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }]}>
-              <Ionicons name="tv" size={22} color={WHITE} />
+            <View style={[h.avatar, { backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }]}>
+              <Ionicons name="tv" size={24} color={WHITE} />
             </View>
           )}
         </View>
 
-        {/* Text block */}
-        <View style={styles.heroTextBlock}>
-          <View style={styles.nameRow}>
-            <Text style={styles.heroName} numberOfLines={1}>{name}</Text>
-            {isVerified ? <Ionicons name="checkmark-circle" size={15} color={ACCENT} style={{ marginLeft: 4 }} /> : null}
+        {/* Text + actions */}
+        <View style={h.heroText}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Text style={h.name} numberOfLines={1}>{name}</Text>
+            {verified && <Ionicons name="checkmark-circle" size={15} color={ACCENT_LT} />}
           </View>
-          {category ? <Text style={styles.heroCategory}>{category}</Text> : null}
-          {about ? (
-            <Text style={styles.heroAbout} numberOfLines={2}>{truncate(about, 120)}</Text>
-          ) : null}
 
-          {/* Stats + Like in one line */}
-          <View style={styles.heroFooter}>
-            <View style={styles.heroStat}>
-              <Ionicons name="heart" size={12} color={liked ? '#ff4d6d' : ACCENT} />
-              <Text style={styles.heroStatNum}>{fmtCount(likesCount)}</Text>
-              <Text style={styles.heroStatLabel}> likes</Text>
+          {about ? <Text style={h.about} numberOfLines={2}>{about}</Text> : null}
+
+          <View style={h.footer}>
+            {/* Likes */}
+            <View style={h.stat}>
+              <Ionicons name="heart" size={11} color={liked ? '#ff4d6d' : ACCENT_LT} />
+              <Text style={h.statNum}>{fmtCount(likesCount)}</Text>
+              <Text style={h.statLabel}> fans</Text>
             </View>
+
+            {/* Follow button */}
             <TouchableOpacity
-              style={[styles.likeBtn, liked && styles.likeBtnFilled]}
+              style={[h.followBtn, liked && h.followBtnActive]}
               onPress={handleLike}
               activeOpacity={0.8}
               disabled={likeLoading}
             >
-              {likeLoading ? (
-                <ActivityIndicator size="small" color={liked ? BG : WHITE} style={{ marginRight: 4 }} />
-              ) : (
-                <Ionicons name={liked ? 'heart' : 'heart-outline'} size={12} color={liked ? BG : WHITE} style={{ marginRight: 4 }} />
-              )}
-              <Text style={[styles.likeBtnTxt, liked && { color: BG }]}>
-                {liked ? 'Liked' : 'Like Page'}
-              </Text>
+              {likeLoading
+                ? <ActivityIndicator size="small" color={liked ? BRAND : WHITE} />
+                : <>
+                    <Ionicons name={liked ? 'heart' : 'heart-outline'} size={12} color={liked ? BRAND : WHITE} />
+                    <Text style={[h.followTxt, liked && { color: BRAND }]}>{liked ? 'Following' : 'Follow'}</Text>
+                  </>
+              }
             </TouchableOpacity>
           </View>
         </View>
@@ -245,46 +264,193 @@ const PageHero = memo(({ safeTop }) => {
   );
 });
 
-// ─── Horizontal video card ────────────────────────────────────────────────────
-const VideoCard = memo(({ item, onPress }) => {
-  const scale = useRef(new Animated.Value(1)).current;
-  const onIn  = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 40 }).start();
-  const onOut = () => Animated.spring(scale, { toValue: 1,    useNativeDriver: true, speed: 20 }).start();
+const h = StyleSheet.create({
+  heroWrap: { backgroundColor: BRAND_MID },
+  cover: { height: 140, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
+  coverWatermark: { position: 'absolute', right: 20, bottom: 20 },
+  heroBody: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    paddingHorizontal: PAD, paddingTop: 8, paddingBottom: 16,
+  },
+  avatarRing: {
+    marginTop: -22,
+    borderRadius: 32, borderWidth: 2.5, borderColor: BRAND_MID,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 8,
+  },
+  avatar: { width: 56, height: 56, borderRadius: 28 },
+  heroText: { flex: 1, paddingTop: 4, gap: 4 },
+  name: { color: WHITE, fontSize: 16, fontFamily: FONT_B, fontWeight: '900', letterSpacing: 0.2, flexShrink: 1 },
+  about: { color: W_70, fontSize: 12, fontFamily: FONT_R, lineHeight: 17 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  statNum: { color: WHITE, fontSize: 12, fontFamily: FONT_B, fontWeight: '700' },
+  statLabel: { color: W_40, fontSize: 11, fontFamily: FONT_R },
+  followBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 100, borderWidth: 1.5, borderColor: ACCENT_LT,
+    backgroundColor: 'transparent',
+  },
+  followBtnActive: { backgroundColor: ACCENT_LT, borderColor: ACCENT_LT },
+  followTxt: { color: WHITE, fontSize: 12, fontFamily: FONT_B, fontWeight: '800' },
+});
 
+// ─── Featured Slide Card ──────────────────────────────────────────────────────
+const FeatSlide = memo(({ item, onPress }) => {
+  const isReel = item.type === 'reel';
   return (
-    <Pressable onPress={() => onPress(item)} onPressIn={onIn} onPressOut={onOut}>
-      <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
-        <View style={styles.cardThumb}>
-          <ExpoImage
-            source={{ uri: item.thumbnail }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            transition={250}
-          />
-          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={StyleSheet.absoluteFill} />
-          <View style={styles.cardPlay}>
-            <Ionicons name="play" size={14} color={WHITE} style={{ paddingLeft: 1 }} />
-          </View>
-          {item.views > 0 ? (
-            <View style={styles.cardViews}>
-              <Ionicons name="eye-outline" size={9} color={WHITE} style={{ marginRight: 2 }} />
-              <Text style={styles.cardViewsTxt}>{fmtCount(item.views)}</Text>
-            </View>
-          ) : null}
-          <View style={styles.cardTypeBadge}>
-            <Text style={styles.cardTypeTxt}>{item.type === 'reel' ? 'REEL' : 'VIDEO'}</Text>
-          </View>
+    <TouchableOpacity style={f.slide} onPress={() => onPress(item)} activeOpacity={0.92}>
+      {item.thumbnail ? (
+        <ExpoImage source={{ uri: item.thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={300} />
+      ) : (
+        <LinearGradient colors={['#0c3f44', '#1f8e93']} style={StyleSheet.absoluteFill} />
+      )}
+
+      {/* Gradient overlay */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.80)']}
+        locations={[0, 0.4, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Type badge — top left */}
+      <View style={[f.typeBadge, isReel && { backgroundColor: ACCENT }]}>
+        <Ionicons name={isReel ? 'play-circle' : 'film'} size={9} color={WHITE} />
+        <Text style={f.typeTxt}>{isReel ? 'REEL' : 'VIDEO'}</Text>
+      </View>
+
+      {/* Views — top right */}
+      {item.views > 0 && (
+        <View style={f.views}>
+          <Ionicons name="eye-outline" size={9} color={WHITE} />
+          <Text style={f.viewsTxt}>{fmtCount(item.views)}</Text>
         </View>
-        {item.title ? (
-          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-        ) : null}
-      </Animated.View>
-    </Pressable>
+      )}
+
+      {/* Bottom content */}
+      <View style={f.bottom}>
+        {item.title ? <Text style={f.title} numberOfLines={2}>{item.title}</Text> : null}
+        <View style={f.metaRow}>
+          <View style={f.playBtn}>
+            <Ionicons name="play" size={11} color={BRAND} style={{ paddingLeft: 1 }} />
+            <Text style={f.playTxt}>Play</Text>
+          </View>
+          {item.time ? <Text style={f.date}>{fmtTime(item.time)}</Text> : null}
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 });
 
-// ─── Portrait reel card ───────────────────────────────────────────────────────
+const f = StyleSheet.create({
+  slide: {
+    width: FEAT_W, height: FEAT_H,
+    borderRadius: 16, overflow: 'hidden',
+    backgroundColor: BRAND_ROW,
+  },
+  typeBadge: {
+    position: 'absolute', top: 12, left: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4,
+  },
+  typeTxt: { color: WHITE, fontSize: 9, fontFamily: FONT_B, fontWeight: '800', letterSpacing: 0.7 },
+  views: {
+    position: 'absolute', top: 12, right: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4,
+  },
+  viewsTxt: { color: WHITE, fontSize: 9, fontFamily: FONT_M, fontWeight: '600' },
+  bottom: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14, gap: 8 },
+  title: { color: WHITE, fontSize: 15, fontFamily: FONT_B, fontWeight: '800', lineHeight: 20, letterSpacing: -0.2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  playBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: WHITE, borderRadius: 100,
+    paddingHorizontal: 13, paddingVertical: 6,
+  },
+  playTxt: { color: BRAND, fontSize: 12, fontFamily: FONT_B, fontWeight: '800' },
+  date: { color: W_40, fontSize: 11, fontFamily: FONT_R },
+});
+
+// ─── Featured Slider ──────────────────────────────────────────────────────────
+function FeaturedSlider({ items, loading, onPlay }) {
+  const flatRef   = useRef(null);
+  const idxRef    = useRef(0);
+  const timerRef  = useRef(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    if (items.length < 2) return;
+    timerRef.current = setInterval(() => {
+      const next = (idxRef.current + 1) % items.length;
+      idxRef.current = next;
+      setActiveIdx(next);
+      flatRef.current?.scrollToIndex({ index: next, animated: true });
+    }, 3500);
+    return () => clearInterval(timerRef.current);
+  }, [items.length]);
+
+  const onScroll = useCallback((e) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / SNAP_INT);
+    if (idx !== idxRef.current) { idxRef.current = idx; setActiveIdx(idx); }
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ paddingHorizontal: PAD, marginBottom: 6 }}>
+        <Skel style={{ width: FEAT_W, height: FEAT_H, borderRadius: 16 }} />
+      </View>
+    );
+  }
+  if (!items.length) return null;
+
+  return (
+    <View>
+      <FlatList
+        ref={flatRef}
+        data={items}
+        keyExtractor={item => `feat-${item.id}`}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={SNAP_INT}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingHorizontal: PAD, gap: FEAT_GAP }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        renderItem={({ item }) => <FeatSlide item={item} onPress={onPlay} />}
+        getItemLayout={(_, i) => ({ length: SNAP_INT, offset: SNAP_INT * i, index: i })}
+        removeClippedSubviews
+      />
+      {/* Dot indicators */}
+      {items.length > 1 && (
+        <View style={sl.dots}>
+          {items.slice(0, Math.min(items.length, 10)).map((_, i) => (
+            <TouchableOpacity
+              key={i}
+              onPress={() => {
+                idxRef.current = i; setActiveIdx(i);
+                flatRef.current?.scrollToIndex({ index: i, animated: true });
+              }}
+            >
+              <View style={[sl.dot, i === activeIdx && sl.dotActive]} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const sl = StyleSheet.create({
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 10, marginBottom: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: a(WHITE, 0.2) },
+  dotActive: { width: 20, height: 6, borderRadius: 3, backgroundColor: ACCENT_LT },
+});
+
+// ─── Reel Card ────────────────────────────────────────────────────────────────
 const ReelCard = memo(({ item, onPress }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const onIn  = () => Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 40 }).start();
@@ -293,130 +459,149 @@ const ReelCard = memo(({ item, onPress }) => {
   return (
     <Pressable onPress={() => onPress(item)} onPressIn={onIn} onPressOut={onOut}>
       <Animated.View style={{ transform: [{ scale }] }}>
-        <View style={styles.reelThumb}>
+        <View style={r.thumb}>
           {item.thumbnail ? (
-            <ExpoImage
-              source={{ uri: item.thumbnail }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              transition={200}
-            />
+            <ExpoImage source={{ uri: item.thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={200} />
           ) : (
             <LinearGradient colors={['#0c3f44', '#1f8e93']} style={StyleSheet.absoluteFill} />
           )}
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.72)']} style={StyleSheet.absoluteFill} />
-          <View style={styles.reelPlay}>
-            <Ionicons name="play" size={12} color={WHITE} style={{ paddingLeft: 1 }} />
+          {/* Play circle */}
+          <View style={r.play}>
+            <Ionicons name="play" size={11} color={WHITE} style={{ paddingLeft: 1 }} />
           </View>
-          {item.views > 0 ? (
-            <View style={styles.reelViews}>
-              <Ionicons name="eye-outline" size={8} color={WHITE} style={{ marginRight: 2 }} />
-              <Text style={styles.reelViewsTxt}>{fmtCount(item.views)}</Text>
+          {item.views > 0 && (
+            <View style={r.views}>
+              <Ionicons name="eye-outline" size={8} color={WHITE} />
+              <Text style={r.viewsTxt}>{fmtCount(item.views)}</Text>
             </View>
-          ) : null}
+          )}
         </View>
-        {item.title ? (
-          <Text style={styles.reelTitle} numberOfLines={2}>{item.title}</Text>
-        ) : null}
+        {item.title ? <Text style={r.label} numberOfLines={2}>{item.title}</Text> : null}
       </Animated.View>
     </Pressable>
   );
 });
 
-// ─── Classic list row ─────────────────────────────────────────────────────────
+const r = StyleSheet.create({
+  thumb: {
+    width: REEL_W, height: REEL_H, borderRadius: 12,
+    backgroundColor: BRAND_ROW, overflow: 'hidden',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  play: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1.5, borderColor: W_40,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  views: {
+    position: 'absolute', bottom: 7, left: 7,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2,
+  },
+  viewsTxt: { color: WHITE, fontSize: 8, fontFamily: FONT_M, fontWeight: '600' },
+  label: {
+    color: W_70, fontSize: 11, fontFamily: FONT_M, fontWeight: '600',
+    marginTop: 6, lineHeight: 15, width: REEL_W,
+  },
+});
+
+// ─── List Row ─────────────────────────────────────────────────────────────────
 const ListRow = memo(({ item, onPress, isLast }) => (
   <TouchableOpacity
-    style={[styles.listRow, isLast && { borderBottomWidth: 0 }]}
+    style={[li.row, isLast && { borderBottomWidth: 0 }]}
     activeOpacity={0.78}
     onPress={() => onPress(item)}
   >
-    <View style={styles.listThumb}>
-      <ExpoImage
-        source={{ uri: item.thumbnail }}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        transition={220}
-      />
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.58)']} style={StyleSheet.absoluteFill} />
-      <View style={styles.listPlay}>
-        <Ionicons name="play" size={11} color={WHITE} style={{ paddingLeft: 1 }} />
+    {/* Thumbnail */}
+    <View style={li.thumb}>
+      <ExpoImage source={{ uri: item.thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={220} />
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} />
+      <View style={li.play}>
+        <Ionicons name="play" size={10} color={WHITE} style={{ paddingLeft: 1 }} />
       </View>
     </View>
 
-    <View style={styles.listInfo}>
-      <Text style={styles.listTitle} numberOfLines={2}>
-        {item.title || truncate(item.description, 60)}
+    {/* Info */}
+    <View style={li.info}>
+      <Text style={li.title} numberOfLines={2}>
+        {item.title || item.description?.slice(0, 60) || '—'}
       </Text>
-      <View style={styles.listMeta}>
-        <View style={styles.metaItem}>
-          <Ionicons name="eye-outline" size={11} color={WHITE_MUTED} />
-          <Text style={styles.metaTxt}>{fmtCount(item.views)} views</Text>
-        </View>
+      <View style={li.meta}>
+        {item.views > 0 && (
+          <View style={li.metaItem}>
+            <Ionicons name="eye-outline" size={10} color={W_40} />
+            <Text style={li.metaTxt}>{fmtCount(item.views)} views</Text>
+          </View>
+        )}
         {item.time ? (
-          <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={11} color={WHITE_MUTED} />
-            <Text style={styles.metaTxt}>{fmtTime(item.time)}</Text>
+          <View style={li.metaItem}>
+            <Ionicons name="time-outline" size={10} color={W_40} />
+            <Text style={li.metaTxt}>{fmtTime(item.time)}</Text>
           </View>
         ) : null}
       </View>
-      <View style={styles.listTypeRow}>
-        <View style={[
-          styles.typePill,
-          item.type === 'reel' && { borderColor: ACCENT, backgroundColor: 'rgba(31,142,147,0.15)' },
-        ]}>
-          <Text style={[styles.typeTxt, item.type === 'reel' && { color: ACCENT_LIGHT }]}>
-            {item.type === 'reel' ? 'Reel' : item.type === 'media' ? 'Media' : 'Video'}
-          </Text>
-        </View>
+      <View style={[li.typePill, item.type === 'reel' && li.typePillReel]}>
+        <Text style={[li.typeText, item.type === 'reel' && li.typeTextReel]}>
+          {item.type === 'reel' ? 'Reel' : 'Video'}
+        </Text>
       </View>
     </View>
 
-    <Ionicons name="chevron-forward" size={15} color={WHITE_MUTED} style={{ alignSelf: 'center' }} />
+    <Ionicons name="chevron-forward" size={14} color={W_40} style={{ alignSelf: 'center' }} />
   </TouchableOpacity>
 ));
 
-// ─── Section label ────────────────────────────────────────────────────────────
-const SectionLabel = ({ emoji, label }) => (
-  <View style={styles.sectionHeader}>
-    <Text style={styles.sectionEmoji}>{emoji}</Text>
-    <Text style={styles.sectionTitle}>{label}</Text>
-  </View>
-);
+const li = StyleSheet.create({
+  row: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    padding: 12, borderBottomWidth: 1, borderBottomColor: BORDER,
+  },
+  thumb: {
+    width: THUMB_W, height: THUMB_H, borderRadius: 9,
+    backgroundColor: BRAND_ROW, overflow: 'hidden',
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  play: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1.5, borderColor: W_40,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  info: { flex: 1, marginLeft: 12, gap: 5, justifyContent: 'center' },
+  title: { color: WHITE, fontSize: 13, fontFamily: FONT_M, fontWeight: '600', lineHeight: 18 },
+  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaTxt: { color: W_40, fontSize: 10.5, fontFamily: FONT_R },
+  typePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: W_08, borderWidth: 1, borderColor: W_14,
+    borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2,
+  },
+  typePillReel: { borderColor: a(ACCENT_LT, 0.35), backgroundColor: a(ACCENT, 0.12) },
+  typeText: { color: W_40, fontSize: 10, fontFamily: FONT_M, fontWeight: '600' },
+  typeTextReel: { color: ACCENT_LT },
+});
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-export default function HafrikTVScreen() {
-  const { token }  = useAuth();
-  const navigation = useNavigation();
-  const { top }    = useSafeAreaInsets();
+// ─── Shared TV content (used inline in Home and standalone) ──────────────────
+export function HafrikTVContent() {
+  const { token }   = useAuth();
+  const navigation  = useNavigation();
+  const { bottom }  = useSafeAreaInsets();
 
-  // Weekly top
-  const [weeklyTop,  setWeeklyTop]  = useState([]);
-  const [loadingTop, setLoadingTop] = useState(true);
+  const [weeklyTop,   setWeeklyTop]   = useState([]);
+  const [loadingTop,  setLoadingTop]  = useState(true);
+  const [newVideos,   setNewVideos]   = useState([]);
+  const [loadingNew,  setLoadingNew]  = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages,  setTotalPages]  = useState(1);
 
-  // New videos + pagination
-  const [newVideos,    setNewVideos]    = useState([]);
-  const [loadingNew,   setLoadingNew]   = useState(true);
-  const [loadingMore,  setLoadingMore]  = useState(false);
-  const [currentPage,  setCurrentPage]  = useState(1);
-  const [totalPages,   setTotalPages]   = useState(1);
-
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerBg = scrollY.interpolate({
-    inputRange: [0, COVER_H - top - 10],
-    outputRange: ['rgba(7,30,33,0)', 'rgba(7,30,33,1)'],
-    extrapolate: 'clamp',
-  });
-
-  // Initial loads
   useEffect(() => {
     let alive = true;
-
-    fetchWeeklyTop(token).then((d) => {
-      if (alive) { setWeeklyTop(d); setLoadingTop(false); }
-    });
-
+    fetchWeeklyTop(token).then((d) => { if (alive) { setWeeklyTop(d); setLoadingTop(false); } });
     fetchNewVideos(token, 1).then((res) => {
       if (!alive) return;
       setNewVideos(res.videos);
@@ -424,7 +609,6 @@ export default function HafrikTVScreen() {
       setCurrentPage(1);
       setLoadingNew(false);
     });
-
     return () => { alive = false; };
   }, [token]);
 
@@ -436,8 +620,7 @@ export default function HafrikTVScreen() {
       const res = await fetchNewVideos(token, next);
       setNewVideos((prev) => {
         const ids = new Set(prev.map((v) => v.id));
-        const fresh = res.videos.filter((v) => !ids.has(v.id));
-        return [...prev, ...fresh];
+        return [...prev, ...res.videos.filter((v) => !ids.has(v.id))];
       });
       setCurrentPage(next);
       setTotalPages(res.totalPages);
@@ -445,11 +628,7 @@ export default function HafrikTVScreen() {
     setLoadingMore(false);
   }, [loadingMore, currentPage, totalPages, token]);
 
-  // ── Reels pagination ────────────────────────────────────────────
-  const REELS_PER_PAGE = 10;
-  const [reelPage, setReelPage] = useState(1);
-
-  // ── Derived lists (deduplicated) ────────────────────────────────
+  // Derived: reels (portrait) — from both weekly + new, deduped
   const reelItems = useMemo(() => {
     const seen = new Set();
     return [...weeklyTop, ...newVideos]
@@ -457,6 +636,7 @@ export default function HafrikTVScreen() {
       .filter((v) => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
   }, [weeklyTop, newVideos]);
 
+  // Derived: plain videos (list)
   const videoItems = useMemo(() => {
     const seen = new Set();
     return newVideos
@@ -464,21 +644,16 @@ export default function HafrikTVScreen() {
       .filter((v) => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
   }, [newVideos]);
 
-  // Weekly Top shows everything (reels + videos) — it's a popularity ranking
-  const weeklyTopDeduped = useMemo(() => {
+  // Derived: featured = weekly top deduped
+  const featured = useMemo(() => {
     const seen = new Set();
     return weeklyTop.filter((v) => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
   }, [weeklyTop]);
 
-  // Show all reels — user scrolls horizontally to see them all
-  const visibleReels = reelItems;
-
   const handlePlay = useCallback((video) => {
     if (video.type === 'reel') {
       const reelIndex = Math.max(0, reelItems.findIndex((v) => v.id === video.id));
-      navigation.navigate('HafrikTVPlayer', {
-        video, reels: reelItems, reelIndex, related: [],
-      });
+      navigation.navigate('HafrikTVPlayer', { video, reels: reelItems, reelIndex, related: [] });
     } else {
       const seen = new Set([video.id]);
       const related = [...weeklyTop, ...newVideos]
@@ -491,55 +666,37 @@ export default function HafrikTVScreen() {
   const hasMore = currentPage < totalPages;
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <ProgressBarLoader visible={loadingTop || loadingNew} />
+    <View style={m.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} translucent={false} />
 
-      {/* ── Floating header ───────────────────────────────────────── */}
-      <Animated.View style={[styles.header, { paddingTop: top + 4, backgroundColor: headerBg }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color={WHITE} />
-        </TouchableOpacity>
-        <View style={styles.logoRow}>
-          <Ionicons name="tv" size={17} color={ACCENT} style={{ marginRight: 7 }} />
-          <Text style={styles.logoText}>HafrikTV</Text>
-        </View>
-        <View style={{ width: 38 }} />
-      </Animated.View>
-
-      {/* ── Scroll body ───────────────────────────────────────────── */}
-      <Animated.ScrollView
-        style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: 40 }}
+      {/* ── Scroll body ────────────────────────────────────────────── */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: bottom + 80 }}
         showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        scrollEventThrottle={16}
       >
-        {/* ① Hero — full width, starts at y=0 (behind status bar) */}
-        <PageHero safeTop={top} />
+        {/* Channel hero */}
+        <PageHero />
 
-        {/* ② Reels — 2-row horizontal grid */}
+        {/* ① Featured — weekly top slider */}
+        <View style={m.section}>
+          <SectionHead icon="flame" label="Weekly Top" count={featured.length || undefined} accent="#ef4444" />
+          <FeaturedSlider items={featured} loading={loadingTop} onPlay={handlePlay} />
+        </View>
+
+        {/* ② Reels strip */}
         {(loadingTop || reelItems.length > 0) ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionEmoji}>🎬</Text>
-              <Text style={styles.sectionTitle}>Reels</Text>
-              {reelItems.length > 0 ? (
-                <Text style={styles.sectionCount}>{reelItems.length} reels</Text>
-              ) : null}
-            </View>
+          <View style={m.section}>
+            <SectionHead icon="play-circle" label="Reels" count={reelItems.length || undefined} accent={ACCENT} />
             <FlatList
               horizontal
-              data={loadingTop ? [0,1,2,3,4,5] : visibleReels}
+              data={loadingTop ? [0,1,2,3,4] : reelItems}
               keyExtractor={(v, i) => loadingTop ? `rsk-${i}` : `reel-${v.id}`}
               renderItem={({ item }) => loadingTop
-                ? <SkeletonBox style={{ width: REEL_W, height: REEL_H + 36 }} />
+                ? <Skel style={{ width: REEL_W, height: REEL_H + 40, borderRadius: 12 }} />
                 : <ReelCard item={item} onPress={handlePlay} />
               }
-              contentContainerStyle={[styles.hScroll, { alignItems: 'flex-start' }]}
+              contentContainerStyle={{ paddingHorizontal: PAD, gap: CARD_GAP }}
               showsHorizontalScrollIndicator={false}
               snapToInterval={REEL_W + CARD_GAP}
               snapToAlignment="start"
@@ -549,56 +706,26 @@ export default function HafrikTVScreen() {
           </View>
         ) : null}
 
-        {/* ③ Weekly Top — all items ranked by popularity */}
-        {(loadingTop || weeklyTopDeduped.length > 0) ? (
-          <View style={styles.section}>
-            <SectionLabel emoji="🔥" label="Weekly Top" />
-            {loadingTop ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.hScroll} scrollEnabled={false}>
-                {[0,1,2,3].map((i) => (
-                  <SkeletonBox key={i} style={{ width: CARD_W, height: CARD_H + 46 }} />
-                ))}
-              </ScrollView>
-            ) : (
-              <FlatList
-                horizontal
-                data={weeklyTopDeduped}
-                keyExtractor={(v) => `top-${v.id}`}
-                renderItem={({ item }) => <VideoCard item={item} onPress={handlePlay} />}
-                contentContainerStyle={styles.hScroll}
-                showsHorizontalScrollIndicator={false}
-                snapToInterval={CARD_W + CARD_GAP}
-                snapToAlignment="start"
-                decelerationRate="fast"
-                removeClippedSubviews
-              />
-            )}
-          </View>
-        ) : null}
+        {/* ③ New on HafrikTV — vertical list */}
+        <View style={m.section}>
+          <SectionHead icon="add-circle" label="New on HafrikTV" accent={ACCENT_LT} />
 
-        {/* ④ New on HafrikTV — classic list, videos only, paginated */}
-        <View style={styles.section}>
-          <SectionLabel emoji="🆕" label="New on HafrikTV" />
-
-          <View style={styles.listCard}>
+          <View style={m.listCard}>
             {loadingNew ? (
               [0,1,2,3,4].map((i) => (
-                <View key={i} style={styles.listRow}>
-                  <SkeletonBox style={{ width: THUMB_W, height: THUMB_H, borderRadius: 8, flexShrink: 0 }} />
-                  <View style={{ flex: 1, gap: 8, marginLeft: 12 }}>
-                    <SkeletonBox style={{ height: 13, width: '88%' }} />
-                    <SkeletonBox style={{ height: 11, width: '65%' }} />
-                    <SkeletonBox style={{ height: 9,  width: '40%' }} />
+                <View key={i} style={{ flexDirection: 'row', padding: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+                  <Skel style={{ width: THUMB_W, height: THUMB_H, borderRadius: 9, flexShrink: 0 }} />
+                  <View style={{ flex: 1, gap: 8, justifyContent: 'center' }}>
+                    <Skel style={{ height: 13, width: '85%' }} />
+                    <Skel style={{ height: 11, width: '60%' }} />
+                    <Skel style={{ height: 18, width: 55, borderRadius: 4 }} />
                   </View>
                 </View>
               ))
             ) : videoItems.length === 0 ? (
-              <View style={{ padding: 28, alignItems: 'center' }}>
-                <Ionicons name="film-outline" size={32} color={WHITE_MUTED} />
-                <Text style={{ color: WHITE_MUTED, fontFamily: 'WorkSans_400Regular', fontSize: 13, marginTop: 10 }}>
-                  No videos yet
-                </Text>
+              <View style={m.empty}>
+                <Ionicons name="film-outline" size={36} color={W_40} />
+                <Text style={m.emptyTxt}>No videos yet</Text>
               </View>
             ) : (
               videoItems.map((item, idx) => (
@@ -612,271 +739,127 @@ export default function HafrikTVScreen() {
             )}
           </View>
 
-          {/* Load more / pagination */}
-          {!loadingNew && hasMore ? (
+          {/* Load more */}
+          {!loadingNew && hasMore && (
             <TouchableOpacity
-              style={styles.loadMoreBtn}
+              style={m.loadMoreBtn}
               onPress={handleLoadMore}
               disabled={loadingMore}
               activeOpacity={0.75}
             >
-              {loadingMore ? (
-                <ActivityIndicator size="small" color={ACCENT} />
-              ) : (
-                <>
-                  <Text style={styles.loadMoreTxt}>Load More</Text>
-                  <Ionicons name="chevron-down" size={15} color={ACCENT} style={{ marginLeft: 5 }} />
-                </>
-              )}
+              {loadingMore
+                ? <ActivityIndicator size="small" color={ACCENT_LT} />
+                : <>
+                    <Text style={m.loadMoreTxt}>Load More</Text>
+                    <Ionicons name="chevron-down" size={14} color={ACCENT_LT} />
+                  </>
+              }
             </TouchableOpacity>
-          ) : null}
+          )}
 
-          {/* Page indicator */}
-          {!loadingNew && totalPages > 1 ? (
-            <Text style={styles.pageIndicator}>
-              Page {currentPage} of {totalPages}
-            </Text>
-          ) : null}
+          {!loadingNew && totalPages > 1 && (
+            <Text style={m.pageIndicator}>Page {currentPage} of {totalPages}</Text>
+          )}
         </View>
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
-  scroll: { flex: 1 },
+// ─── Standalone screen (accessed via stack nav) ───────────────────────────────
+export default function HafrikTVScreen() {
+  const navigation = useNavigation();
+  return (
+    <View style={{ flex: 1, backgroundColor: BRAND }}>
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} translucent={false} />
+      <SafeAreaView edges={['top']} style={m.header}>
+        <View style={m.headerInner}>
+          <TouchableOpacity style={m.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+            <Ionicons name="arrow-back" size={20} color={WHITE} />
+          </TouchableOpacity>
+          <View style={m.brandRow}>
+            <View style={m.tvIconWrap}>
+              <Ionicons name="tv" size={14} color={ACCENT_LT} />
+            </View>
+            <Text style={m.headerTitle}>HafrikTV</Text>
+          </View>
+          <View style={{ width: 34 }} />
+        </View>
+        <View style={m.underline} />
+      </SafeAreaView>
+      <HafrikTVContent />
+    </View>
+  );
+}
 
-  // ── Floating header ───────────────────────────────────────────────
+// ─── Main + Section styles ────────────────────────────────────────────────────
+const m = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BRAND },
+
+  // Header — mirrors AppHeader exactly
   header: {
-    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: PAD, paddingBottom: 10,
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  logoRow: { flexDirection: 'row', alignItems: 'center' },
-  logoText: {
-    color: WHITE, fontSize: 17,
-    fontFamily: 'ReadexPro_700Bold', letterSpacing: 0.3,
-  },
-
-  // ── Hero ──────────────────────────────────────────────────────────
-  heroWrap: {
-    width: W,
-    backgroundColor: BG_CARD,
-  },
-  coverImg: {
-    width: W,
-    overflow: 'hidden',
-  },
-  heroInfo: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    backgroundColor: BG_CARD,
-    paddingHorizontal: PAD, paddingTop: 10, paddingBottom: 14,
-    gap: 12,
-  },
-  avatarWrap: {
-    marginTop: -20,
-    borderRadius: 28,
-    borderWidth: 2.5,
-    borderColor: BG_CARD,
-    flexShrink: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    backgroundColor: BRAND,
+    zIndex: 10,
     elevation: 6,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
   },
-  avatarImg: {
-    width: 52, height: 52, borderRadius: 26,
+  headerInner: {
+    height: 44,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  heroTextBlock: {
-    flex: 1, paddingTop: 2, gap: 3,
-  },
-  nameRow: {
-    flexDirection: 'row', alignItems: 'center',
-  },
-  heroName: {
-    color: WHITE, fontSize: 16,
-    fontFamily: 'ReadexPro_700Bold', letterSpacing: 0.1, flexShrink: 1,
-  },
-  heroCategory: {
-    color: ACCENT_LIGHT, fontSize: 10,
-    fontFamily: 'WorkSans_600SemiBold',
-    letterSpacing: 0.8, textTransform: 'uppercase',
-  },
-  heroAbout: {
-    color: WHITE_DIM, fontSize: 12,
-    fontFamily: 'WorkSans_400Regular',
-    lineHeight: 17,
-  },
-  heroFooter: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4,
-  },
-  heroStat: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-  },
-  heroStatNum: {
-    color: WHITE, fontSize: 12,
-    fontFamily: 'ReadexPro_600SemiBold',
-  },
-  heroStatLabel: {
-    color: WHITE_MUTED, fontSize: 11,
-    fontFamily: 'WorkSans_400Regular',
-  },
-  likeBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 16, borderWidth: 1.5, borderColor: ACCENT,
-  },
-  likeBtnFilled: {
-    backgroundColor: ACCENT, borderColor: ACCENT,
-  },
-  likeBtnTxt: {
-    color: WHITE, fontSize: 11,
-    fontFamily: 'WorkSans_700Bold',
-  },
-
-  // ── Sections ──────────────────────────────────────────────────────
-  section: { marginTop: 22 },
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: PAD, marginBottom: 12, gap: 6,
-  },
-  sectionEmoji: { fontSize: 17 },
-  sectionTitle: {
-    color: WHITE, fontSize: 16,
-    fontFamily: 'ReadexPro_600SemiBold', letterSpacing: 0.2,
-    flex: 1,
-  },
-  sectionCount: {
-    color: WHITE_MUTED, fontSize: 12,
-    fontFamily: 'WorkSans_400Regular',
-  },
-
-  // ── Horizontal cards ──────────────────────────────────────────────
-  hScroll: { paddingLeft: PAD, paddingRight: PAD / 2, gap: CARD_GAP },
-  card: { width: CARD_W },
-  cardThumb: {
-    width: CARD_W, height: CARD_H, borderRadius: 10,
-    backgroundColor: BG_CARD, overflow: 'hidden',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  cardPlay: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)',
+  underline: { height: 1, backgroundColor: ACCENT + '33' },
+  iconBtn: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: WHITE + '1A',
+    borderWidth: 1, borderColor: WHITE + '24',
     alignItems: 'center', justifyContent: 'center',
   },
-  cardViews: {
-    position: 'absolute', bottom: 7, left: 7,
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2,
-  },
-  cardViewsTxt: { color: WHITE, fontSize: 9, fontFamily: 'WorkSans_600SemiBold' },
-  cardTypeBadge: {
-    position: 'absolute', top: 7, right: 7,
-    backgroundColor: 'rgba(31,142,147,0.75)',
-    borderRadius: 3, paddingHorizontal: 5, paddingVertical: 2,
-  },
-  cardTypeTxt: { color: WHITE, fontSize: 8, fontFamily: 'WorkSans_700Bold', letterSpacing: 0.5 },
-  cardTitle: {
-    color: WHITE_DIM, fontSize: 12, fontFamily: 'WorkSans_500Medium',
-    marginTop: 7, lineHeight: 17,
-  },
-
-  // ── Portrait reel cards ───────────────────────────────────────
-  reelThumb: {
-    width: REEL_W, height: REEL_H, borderRadius: 10,
-    backgroundColor: BG_CARD, overflow: 'hidden',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  reelPlay: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)',
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tvIconWrap: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: a(ACCENT, 0.2), borderWidth: 1, borderColor: a(ACCENT_LT, 0.35),
     alignItems: 'center', justifyContent: 'center',
   },
-  reelViews: {
-    position: 'absolute', bottom: 6, left: 6,
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2,
-  },
-  reelViewsTxt: { color: WHITE, fontSize: 8, fontFamily: 'WorkSans_600SemiBold' },
-  reelTitle: {
-    color: WHITE_DIM, fontSize: 11, fontFamily: 'WorkSans_500Medium',
-    marginTop: 5, lineHeight: 15, width: REEL_W,
-  },
-  reelLoadMore: {
-    width: 64, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 8, gap: 4,
-  },
-  reelLoadMoreTxt: {
-    color: ACCENT, fontSize: 10, fontFamily: 'WorkSans_600SemiBold',
-  },
+  headerTitle: { color: WHITE, fontSize: 17, fontFamily: FONT_B, fontWeight: '900', letterSpacing: 0.3 },
 
-  // ── Classic list ──────────────────────────────────────────────────
+  // Section
+  section: { marginTop: 24 },
+  secHead: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: PAD, marginBottom: 14,
+  },
+  secPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4,
+  },
+  secPillTxt: { color: WHITE, fontSize: 9, fontFamily: FONT_B, fontWeight: '900', letterSpacing: 0.8 },
+  secTitle: { color: WHITE, fontSize: 18, fontFamily: FONT_B, fontWeight: '900', letterSpacing: -0.3, flex: 1 },
+  secCount: { color: W_40, fontSize: 12, fontFamily: FONT_R },
+
+  // List card
   listCard: {
     marginHorizontal: PAD,
-    backgroundColor: BG_CARD,
+    backgroundColor: BRAND_MID,
     borderRadius: 14, overflow: 'hidden',
     borderWidth: 1, borderColor: BORDER,
   },
-  listRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    padding: 12,
-    borderBottomWidth: 1, borderBottomColor: BORDER,
-  },
-  listThumb: {
-    width: THUMB_W, height: THUMB_H, borderRadius: 8,
-    backgroundColor: BG_ROW, overflow: 'hidden',
-    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
-  },
-  listPlay: {
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: 'rgba(0,0,0,0.52)',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  listInfo: { flex: 1, marginLeft: 12, gap: 4, justifyContent: 'center' },
-  listTitle: {
-    color: WHITE, fontSize: 13,
-    fontFamily: 'WorkSans_600SemiBold', lineHeight: 18,
-  },
-  listMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaTxt: { color: WHITE_MUTED, fontSize: 11, fontFamily: 'WorkSans_400Regular' },
-  listTypeRow: { flexDirection: 'row', marginTop: 2 },
-  typePill: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2,
-  },
-  typeTxt: { color: WHITE_MUTED, fontSize: 10, fontFamily: 'WorkSans_600SemiBold' },
+  empty: { padding: 32, alignItems: 'center', gap: 8 },
+  emptyTxt: { color: W_40, fontSize: 13, fontFamily: FONT_R },
 
-  // ── Pagination ────────────────────────────────────────────────────
+  // Load more
   loadMoreBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    marginHorizontal: PAD, marginTop: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginHorizontal: PAD, marginTop: 10,
     paddingVertical: 12,
-    backgroundColor: BG_CARD,
-    borderRadius: 12, borderWidth: 1, borderColor: ACCENT,
-    gap: 4,
+    backgroundColor: BRAND_MID, borderRadius: 12,
+    borderWidth: 1, borderColor: a(ACCENT_LT, 0.35),
   },
-  loadMoreTxt: {
-    color: ACCENT, fontSize: 14,
-    fontFamily: 'WorkSans_600SemiBold',
-  },
-  pageIndicator: {
-    textAlign: 'center', marginTop: 8,
-    color: WHITE_MUTED, fontSize: 11,
-    fontFamily: 'WorkSans_400Regular',
-  },
+  loadMoreTxt: { color: ACCENT_LT, fontSize: 14, fontFamily: FONT_M, fontWeight: '600' },
+  pageIndicator: { textAlign: 'center', marginTop: 8, color: W_40, fontSize: 11, fontFamily: FONT_R },
 });

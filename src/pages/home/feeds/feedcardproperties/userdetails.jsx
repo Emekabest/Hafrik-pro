@@ -1,10 +1,10 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Animated } from "react-native";
 import AppDetails from "../../../../helpers/appdetails";
 import SvgIcon from "../../../../assl.js/svg/svg";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import moment from 'moment';
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useRef, useCallback } from "react";
 import OptionsModal from "../options.jsx";
 import { Colors } from '../../../../theme/colors';
 
@@ -17,11 +17,26 @@ const withOpacity = (hex, opacity) => {
 const ACCENT = Colors.primary;
 const MUTED  = Colors.secondaryText;
 
-const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress, feelingText, privacyIcon, onEdit, onDelete, isOwner = false }) => {
+const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress, feelingText, privacyIcon, onEdit, onDelete, isOwner = false, onFollow }) => {
     const navigation = useNavigation();
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
 
     const elapsedTime = useMemo(() => feed.created ? moment(feed.created).fromNow() : '', [feed.created]);
+
+    // ── Follow state ────────────────────────────────────────────────────────────
+    // Show "Follow" for real user posts not yet followed (API may return false or 0)
+    const isUserEntity  = (feed?.user?.entity || 'user').toLowerCase() === 'user';
+    const notFollowing  = feed?.user?.is_following === false || feed?.user?.is_following === 0;
+    const showFollow    = (
+        source === 'feedcard' &&
+        !isOwner &&
+        !!onFollow &&
+        isUserEntity &&
+        notFollowing
+    );
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const pressIn   = useCallback(() => Animated.spring(scaleAnim, { toValue: 0.9, useNativeDriver: true, tension: 200, friction: 8 }).start(), [scaleAnim]);
+    const pressOut  = useCallback(() => Animated.spring(scaleAnim, { toValue: 1,   useNativeDriver: true, tension: 200, friction: 8 }).start(), [scaleAnim]);
 
     // Context from feed.context (legacy group / event on same post object)
     const legacyContext = useMemo(() => {
@@ -95,11 +110,29 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
 
 
 
-                {/* ── Line 3: Timestamp + privacy ── */}
+                {/* ── Line 3: Timestamp + privacy + Follow ── */}
                 <View style={styles.elapsedRow}>
                     <Text style={styles.elapsedTime}>{elapsedTime}</Text>
                     {!!privacyIcon && (
                         <Ionicons name={privacyIcon} size={11} color={withOpacity(Colors.neutral430, 1.0)} style={{ marginLeft: 6 }} />
+                    )}
+                    {showFollow && (
+                        <>
+                            <Text style={styles.elapsedDot}>·</Text>
+                            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                                <TouchableOpacity
+                                    onPress={onFollow}
+                                    onPressIn={pressIn}
+                                    onPressOut={pressOut}
+                                    activeOpacity={1}
+                                    style={styles.followBtn}
+                                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                                >
+                                    <Ionicons name="person-add-outline" size={10} color={ACCENT} />
+                                    <Text style={styles.followBtnTxt}>Follow</Text>
+                                </TouchableOpacity>
+                            </Animated.View>
+                        </>
                     )}
                 </View>
             </View>
@@ -203,23 +236,49 @@ const styles = StyleSheet.create({
         width:       '7%',
         alignItems: 'flex-end',
     },
+
+    // ── Follow button ─────────────────────────────────────────────────────────
+    elapsedDot: {
+        color:      withOpacity(Colors.neutral430, 1.0),
+        fontSize:   12,
+        marginHorizontal: 4,
+    },
+    followBtn: {
+        flexDirection:   'row',
+        alignItems:      'center',
+        gap:             4,
+        paddingHorizontal: 8,
+        paddingVertical:   3,
+        borderRadius:    100,
+        borderWidth:     1.2,
+        borderColor:     ACCENT,
+        backgroundColor: withOpacity(ACCENT, 0.07),
+    },
+    followBtnTxt: {
+        fontSize:   11,
+        fontWeight: '700',
+        color:      ACCENT,
+        fontFamily: AppDetails.fontFamily?.body,
+    },
 });
 
 export default memo(UserDetails, (prev, next) => {
     return (
-        prev.feed.id                   === next.feed.id                   &&
-        prev.feed.user.full_name       === next.feed.user.full_name       &&
-        prev.feed.user.verified        === next.feed.user.verified        &&
-        prev.source                    === next.source                    &&
-        prev.postContext?.id           === next.postContext?.id           &&
-        prev.postContext?.type         === next.postContext?.type         &&
-        prev.postContext?.title        === next.postContext?.title        &&
-        prev.onOwnerPress              === next.onOwnerPress              &&
-        prev.onPostContextPress        === next.onPostContextPress        &&
-        prev.feelingText               === next.feelingText               &&
-        prev.privacyIcon               === next.privacyIcon               &&
-        prev.onEdit                    === next.onEdit                    &&
-        prev.onDelete                  === next.onDelete                  &&
-        prev.isOwner                   === next.isOwner
+        prev.feed.id                    === next.feed.id                    &&
+        prev.feed.user.full_name        === next.feed.user.full_name        &&
+        prev.feed.user.verified         === next.feed.user.verified         &&
+        !!prev.feed.user?.is_following   === !!next.feed.user?.is_following  &&
+        prev.source                     === next.source                     &&
+        prev.postContext?.id            === next.postContext?.id            &&
+        prev.postContext?.type          === next.postContext?.type          &&
+        prev.postContext?.title         === next.postContext?.title         &&
+        prev.onOwnerPress               === next.onOwnerPress               &&
+        prev.onPostContextPress         === next.onPostContextPress         &&
+        prev.feelingText                === next.feelingText                &&
+        prev.privacyIcon                === next.privacyIcon                &&
+        prev.onEdit                     === next.onEdit                     &&
+        prev.onDelete                   === next.onDelete                   &&
+        prev.isOwner                    === next.isOwner                    &&
+        prev.onFollow                   === next.onFollow
     );
 });

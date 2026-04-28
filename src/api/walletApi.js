@@ -52,3 +52,12 @@ export const withdrawAffiliates = async (token, amount) => {
   });
   return res.data;
 };
+
+// ─── Initiate wallet top-up via Paystack ──────────────────────────────────────
+// Returns { payment_url, reference }
+export const initTopup = async (token, amount) => {
+  const res = await apiClient.post('/marketplace/topup_init.php', {
+    amount: Number(amount),
+  });
+  return res.data;
+};
