@@ -1,12 +1,13 @@
 import React, { useState, memo, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Alert, Dimensions, StatusBar, ActivityIndicator,
+  ScrollView, Alert, Dimensions, StatusBar, ActivityIndicator, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../../api/apiClient';
 
 const BG     = '#f7fff7';
@@ -144,6 +145,14 @@ export default function CurrencyExchange() {
   const [amount,       setAmount]       = useState('');
   const [pickerOpen,   setPickerOpen]   = useState(false);
 
+  // Payout method
+  const [payoutMethod, setPayoutMethod] = useState('wallet');  // 'wallet' | 'wechat' | 'bank'
+  const [wechatQr,     setWechatQr]     = useState(null);      // { uri, type, name }
+  const [bankName,     setBankName]     = useState('');
+  const [bankAccount,  setBankAccount]  = useState('');
+  const [accountName,  setAccountName]  = useState('');
+  const [bankBranch,   setBankBranch]   = useState('');
+
   // Live rate
   const [liveRate,    setLiveRate]    = useState(null);
   const [rateLoading, setRateLoading] = useState(false);
@@ -210,6 +219,24 @@ export default function CurrencyExchange() {
     ? (parseFloat(amount) * liveRate).toFixed(2)
     : null;
 
+  // ── Pick WeChat QR Image ───────────────────────────────────────────────────
+  const handlePickQR = useCallback(async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.cancelled && result.assets?.[0]) {
+      const asset = result.assets[0];
+      setWechatQr({
+        uri: asset.uri,
+        type: asset.type,
+        name: asset.fileName || 'wechat_qr.jpg',
+      });
+    }
+  }, []);
+
   // ── Create Order ───────────────────────────────────────────────────────────
   const handleCreateOrder = useCallback(async () => {
     const num = parseFloat(amount);
@@ -217,28 +244,108 @@ export default function CurrencyExchange() {
       Alert.alert('Invalid Amount', 'Please enter a valid amount to exchange.');
       return;
     }
+
+    // Validation: WeChat Pay requires QR
+    if (payoutMethod === 'wechat' && !wechatQr) {
+      Alert.alert('Missing QR Code', 'Please upload your WeChat Pay QR code.');
+      return;
+    }
+
+    // Validation: Bank account requires all fields
+    if (payoutMethod === 'bank') {
+      if (!accountName.trim()) {
+        Alert.alert('Missing Info', 'Please enter your account holder name.');
+        return;
+      }
+      if (!bankAccount.trim()) {
+        Alert.alert('Missing Info', 'Please enter your bank account number.');
+        return;
+      }
+      if (!bankName.trim()) {
+        Alert.alert('Missing Info', 'Please enter your bank name.');
+        return;
+      }
+    }
+
     setCreating(true);
     try {
-      const res = await apiClient.post('/hafrikx/exchange/create-order.php', {
+      const bodyData = {
         from,
         amount: num,
-      });
-      if (res.data?.status === 'success') {
-        const order = res.data.data ?? res.data;
-        setAmount('');
-        fetchHistory();
-        navigation.navigate('ExchangeOrderStatus', {
-          order_id: order.order_id,
+        payout_method: payoutMethod,
+      };
+
+      // WeChat Pay: Attach QR image
+      if (payoutMethod === 'wechat' && wechatQr) {
+        const formData = new FormData();
+        formData.append('from', from);
+        formData.append('amount', num);
+        formData.append('payout_method', 'wechat');
+        formData.append('wechat_qr', {
+          uri: wechatQr.uri,
+          type: wechatQr.type,
+          name: wechatQr.name,
         });
-      } else {
-        Alert.alert('Error', res.data?.message ?? 'Could not create order. Please try again.');
+
+        const res = await apiClient.post('/hafrikx/exchange/create-order.php', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+
+        if (res.data?.status === 'success') {
+          const order = res.data.data ?? res.data;
+          setAmount('');
+          setWechatQr(null);
+          fetchHistory();
+          navigation.navigate('ExchangeOrderStatus', {
+            order_id: order.order_id,
+          });
+        } else {
+          Alert.alert('Error', res.data?.message ?? 'Could not create order. Please try again.');
+        }
       }
-    } catch {
+      // Bank account: Attach bank details
+      else if (payoutMethod === 'bank') {
+        bodyData.bank_account_holder = accountName.trim();
+        bodyData.bank_account_number = bankAccount.trim();
+        bodyData.bank_name = bankName.trim();
+        bodyData.bank_branch = bankBranch.trim();
+
+        const res = await apiClient.post('/hafrikx/exchange/create-order.php', bodyData);
+        if (res.data?.status === 'success') {
+          const order = res.data.data ?? res.data;
+          setAmount('');
+          setAccountName('');
+          setBankAccount('');
+          setBankName('');
+          setBankBranch('');
+          fetchHistory();
+          navigation.navigate('ExchangeOrderStatus', {
+            order_id: order.order_id,
+          });
+        } else {
+          Alert.alert('Error', res.data?.message ?? 'Could not create order. Please try again.');
+        }
+      }
+      // Wallet payment (no additional data)
+      else {
+        const res = await apiClient.post('/hafrikx/exchange/create-order.php', bodyData);
+        if (res.data?.status === 'success') {
+          const order = res.data.data ?? res.data;
+          setAmount('');
+          fetchHistory();
+          navigation.navigate('ExchangeOrderStatus', {
+            order_id: order.order_id,
+          });
+        } else {
+          Alert.alert('Error', res.data?.message ?? 'Could not create order. Please try again.');
+        }
+      }
+    } catch (err) {
       Alert.alert('Error', 'Unable to reach server. Please check your connection.');
     } finally {
       setCreating(false);
     }
-  }, [amount, from, navigation, fetchHistory]);
+  }, [amount, from, payoutMethod, wechatQr, accountName, bankAccount, bankName, bankBranch, navigation, fetchHistory]);
 
   // ── Open order status ──────────────────────────────────────────────────────
   const handleHistoryPress = useCallback((item) => {
@@ -311,6 +418,179 @@ export default function CurrencyExchange() {
           />
           <Text style={styles.amountCurrencyLabel}>{getFlag(from)} {from}</Text>
         </View>
+
+        {/* ── Payout Method ── */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Where to Receive Money</Text>
+          <View style={styles.payoutGrid}>
+            {/* Hafrik Wallet */}
+            <TouchableOpacity
+              style={[styles.payoutCard, payoutMethod === 'wallet' && styles.payoutCardActive]}
+              onPress={() => setPayoutMethod('wallet')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.payoutIcon, payoutMethod === 'wallet' && styles.payoutIconActive]}>
+                <Ionicons name="wallet" size={24} color={payoutMethod === 'wallet' ? WHITE : TEAL} />
+              </View>
+              <Text style={[styles.payoutLabel, payoutMethod === 'wallet' && styles.payoutLabelActive]}>
+                Hafrik Wallet
+              </Text>
+              {payoutMethod === 'wallet' && (
+                <View style={styles.payoutCheckmark}>
+                  <Ionicons name="checkmark-circle" size={20} color={TEAL} />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* WeChat Pay */}
+            <TouchableOpacity
+              style={[styles.payoutCard, payoutMethod === 'wechat' && styles.payoutCardActive]}
+              onPress={() => setPayoutMethod('wechat')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.payoutIcon, payoutMethod === 'wechat' && styles.payoutIconActive]}>
+                <Ionicons name="logo-wechat" size={24} color={payoutMethod === 'wechat' ? WHITE : TEAL} />
+              </View>
+              <Text style={[styles.payoutLabel, payoutMethod === 'wechat' && styles.payoutLabelActive]}>
+                WeChat Pay
+              </Text>
+              {payoutMethod === 'wechat' && (
+                <View style={styles.payoutCheckmark}>
+                  <Ionicons name="checkmark-circle" size={20} color={TEAL} />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* Bank Account */}
+            <TouchableOpacity
+              style={[styles.payoutCard, payoutMethod === 'bank' && styles.payoutCardActive]}
+              onPress={() => setPayoutMethod('bank')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.payoutIcon, payoutMethod === 'bank' && styles.payoutIconActive]}>
+                <Ionicons name="card" size={24} color={payoutMethod === 'bank' ? WHITE : TEAL} />
+              </View>
+              <Text style={[styles.payoutLabel, payoutMethod === 'bank' && styles.payoutLabelActive]}>
+                Bank Account
+              </Text>
+              {payoutMethod === 'bank' && (
+                <View style={styles.payoutCheckmark}>
+                  <Ionicons name="checkmark-circle" size={20} color={TEAL} />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Conditional: Wallet Info ── */}
+        {payoutMethod === 'wallet' && (
+          <View style={[styles.infoBox, { backgroundColor: TEAL + '12', borderColor: TEAL + '44' }]}>
+            <Ionicons name="information-circle" size={16} color={TEAL} />
+            <Text style={[styles.infoText, { color: BRAND }]}>
+              Funds will be credited to your Hafrik wallet in RMB
+            </Text>
+          </View>
+        )}
+
+        {/* ── Conditional: WeChat QR Upload ── */}
+        {payoutMethod === 'wechat' && (
+          <View>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Your WeChat Pay / Alipay QR Code</Text>
+              <TouchableOpacity
+                style={[styles.qrUploadBox, wechatQr && styles.qrUploadBoxFilled]}
+                onPress={handlePickQR}
+                activeOpacity={0.75}
+              >
+                {wechatQr ? (
+                  <>
+                    <Image
+                      source={{ uri: wechatQr.uri }}
+                      style={styles.qrPreview}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.qrRemoveBtn}
+                      onPress={() => setWechatQr(null)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close-circle" size={24} color={WHITE} />
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload-outline" size={32} color={TEAL} />
+                    <Text style={styles.qrUploadText}>Tap to upload QR code</Text>
+                    <Text style={styles.qrUploadSub}>From your photo library</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.infoBox, { backgroundColor: TEAL + '12', borderColor: TEAL + '44' }]}>
+              <Ionicons name="information-circle" size={16} color={TEAL} />
+              <Text style={[styles.infoText, { color: BRAND }]}>
+                We'll send RMB to your WeChat / Alipay account using this QR code
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Conditional: Bank Account Details ── */}
+        {payoutMethod === 'bank' && (
+          <View>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Account Holder Name *</Text>
+              <TextInput
+                style={styles.bankInput}
+                value={accountName}
+                onChangeText={setAccountName}
+                placeholder="Enter your full name"
+                placeholderTextColor={MUTED}
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Bank Account Number *</Text>
+              <TextInput
+                style={styles.bankInput}
+                value={bankAccount}
+                onChangeText={setBankAccount}
+                placeholder="e.g. 6225762100000123456"
+                placeholderTextColor={MUTED}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Bank Name *</Text>
+              <TextInput
+                style={styles.bankInput}
+                value={bankName}
+                onChangeText={setBankName}
+                placeholder="e.g. China Construction Bank"
+                placeholderTextColor={MUTED}
+              />
+            </View>
+
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Bank Branch (Optional)</Text>
+              <TextInput
+                style={styles.bankInput}
+                value={bankBranch}
+                onChangeText={setBankBranch}
+                placeholder="e.g. Guangzhou Finance"
+                placeholderTextColor={MUTED}
+              />
+            </View>
+
+            <View style={[styles.infoBox, { backgroundColor: TEAL + '12', borderColor: TEAL + '44' }]}>
+              <Ionicons name="information-circle" size={16} color={TEAL} />
+              <Text style={[styles.infoText, { color: BRAND }]}>
+                We'll transfer RMB directly to your Chinese bank account
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* ── Preview ── */}
         {estimatedRmb && (
@@ -445,6 +725,31 @@ const styles = StyleSheet.create({
   histDate:         { fontFamily: 'WorkSans_400Regular', fontSize: 11, color: MUTED },
   histStatusBadge:  { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3, alignSelf: 'flex-start' },
   histStatusTxt:    { fontFamily: 'WorkSans_600SemiBold', fontSize: 10.5 },
+
+  // Payout method
+  payoutGrid:    { flexDirection: 'row', gap: 12 },
+  payoutCard:    { flex: 1, backgroundColor: CARD, borderRadius: 12, borderWidth: 1.5, borderColor: BORDER, padding: 14, alignItems: 'center', position: 'relative' },
+  payoutCardActive: { borderColor: TEAL, backgroundColor: TEAL + '08' },
+  payoutIcon:    { width: 48, height: 48, borderRadius: 24, backgroundColor: TEAL + '18', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  payoutIconActive: { backgroundColor: TEAL },
+  payoutLabel:   { fontFamily: 'WorkSans_600SemiBold', fontSize: 12, color: BRAND, textAlign: 'center' },
+  payoutLabelActive: { color: TEAL },
+  payoutCheckmark: { position: 'absolute', top: 8, right: 8 },
+
+  // Info box
+  infoBox:       { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 16 },
+  infoText:      { flex: 1, fontFamily: 'WorkSans_400Regular', fontSize: 12 },
+
+  // QR upload
+  qrUploadBox:   { backgroundColor: CARD, borderRadius: 12, borderWidth: 2, borderColor: TEAL + '40', borderStyle: 'dashed', padding: 32, alignItems: 'center', justifyContent: 'center' },
+  qrUploadBoxFilled: { borderStyle: 'solid', padding: 0 },
+  qrPreview:     { width: '100%', height: 200, borderRadius: 12 },
+  qrRemoveBtn:   { position: 'absolute', top: 8, right: 8, backgroundColor: TEAL, borderRadius: 16, padding: 0 },
+  qrUploadText:  { fontFamily: 'WorkSans_600SemiBold', fontSize: 13, color: TEAL, marginTop: 10 },
+  qrUploadSub:   { fontFamily: 'WorkSans_400Regular', fontSize: 11, color: MUTED, marginTop: 4 },
+
+  // Bank input fields
+  bankInput:     { backgroundColor: CARD, borderRadius: 12, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 14, paddingVertical: 12, fontFamily: 'WorkSans_400Regular', fontSize: 13, color: BRAND },
 
   modalOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(12,63,68,0.60)', justifyContent: 'flex-end', zIndex: 100 },
   modalSheet:    { backgroundColor: CARD, borderTopLeftRadius: 22, borderTopRightRadius: 22, borderTopWidth: 1, borderColor: BORDER, paddingBottom: 40, paddingTop: 4 },

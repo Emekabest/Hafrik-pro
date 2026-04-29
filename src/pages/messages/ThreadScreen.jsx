@@ -250,6 +250,9 @@ const ImageWithLoader = React.memo(({ uri, style }) => {
   );
 });
 
+/* ─── Translate helper ───────────────────────────────────────────────────── */
+const TRANSLATE_URL = 'https://translate.googleapis.com/translate_a/single';
+
 /* ─── Bubble ─────────────────────────────────────────────────────────────── */
 const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePress, convSeen }) => {
   const text      = item.message ?? item.message_text ?? item.text ?? '';
@@ -262,6 +265,24 @@ const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePres
   const lastInGrp = item._lastInGroup !== false;
   const av        = isMe ? myAv : otherAv;
   const replyMsg  = item.reply_to_message ?? item.replied_message ?? null;
+
+  const [xlText, setXlText] = useState('');
+  const [xling,  setXling]  = useState(false);
+
+  const handleTranslate = useCallback(async () => {
+    if (xlText) { setXlText(''); return; }
+    if (!text)  return;
+    setXling(true);
+    try {
+      const params = new URLSearchParams({ client: 'gtx', sl: 'auto', tl: 'en', dt: 't', q: text });
+      const res  = await fetch(`${TRANSLATE_URL}?${params}`);
+      const json = await res.json();
+      if (Array.isArray(json) && Array.isArray(json[0])) {
+        setXlText(json[0].map(c => (Array.isArray(c) ? c[0] : '')).join(''));
+      }
+    } catch {}
+    finally { setXling(false); }
+  }, [text, xlText]);
 
   const avatarSlot = (
     <View style={isMe ? s.avSlotMe : s.avSlot}>
@@ -332,6 +353,25 @@ const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePres
             {/* Text */}
             {!!text && (
               <Text style={[s.bubbleTxt, isMe ? s.bubbleTxtMe : s.bubbleTxtThem]}>{text}</Text>
+            )}
+
+            {/* Translate */}
+            {!!text && (
+              <View>
+                <TouchableOpacity onPress={handleTranslate} activeOpacity={0.7} style={s.xlBtn}>
+                  {xling
+                    ? <ActivityIndicator size={10} color={isMe ? WHITE + 'BB' : ACCENT} />
+                    : <Ionicons name="language-outline" size={11} color={isMe ? WHITE + 'BB' : ACCENT} />}
+                  <Text style={[s.xlBtnTxt, isMe ? s.xlBtnTxtMe : s.xlBtnTxtThem]}>
+                    {xling ? 'Translating…' : xlText ? 'See original' : 'Translate'}
+                  </Text>
+                </TouchableOpacity>
+                {!!xlText && (
+                  <View style={[s.xlBox, isMe ? s.xlBoxMe : s.xlBoxThem]}>
+                    <Text style={[s.xlText, isMe ? s.xlTextMe : s.xlTextThem]}>{xlText}</Text>
+                  </View>
+                )}
+              </View>
             )}
           </View>
 
@@ -1108,6 +1148,18 @@ const s = StyleSheet.create({
   replyBoxThem: { backgroundColor: BRAND + '12' },
   replyBar:     { width: 3, borderRadius: 2 },
   replyBoxTxt:  { fontSize: 12, flex: 1 },
+
+  // Translate inside bubble
+  xlBtn:        { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
+  xlBtnTxt:     { fontSize: 11, fontWeight: '600' },
+  xlBtnTxtMe:   { color: WHITE + 'BB' },
+  xlBtnTxtThem: { color: ACCENT },
+  xlBox:        { marginTop: 5, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6 },
+  xlBoxMe:      { backgroundColor: WHITE + '18' },
+  xlBoxThem:    { backgroundColor: BRAND + '10' },
+  xlText:       { fontSize: 13.5, lineHeight: 19 },
+  xlTextMe:     { color: WHITE + 'DD' },
+  xlTextThem:   { color: DARK },
 
   bubbleImg:     { width: 210, height: 165, borderRadius: 12, marginBottom: 2 },
   uploadOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.28)', borderRadius: 12 },

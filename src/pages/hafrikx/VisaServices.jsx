@@ -1,18 +1,19 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Dimensions,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import apiClient from '../../api/apiClient';
 
 const BG      = '#f7fff7';
 const CARD    = '#ffffff';
@@ -27,149 +28,94 @@ const ACCENT  = '#3b82f6';
 
 const { width: W } = Dimensions.get('window');
 
-const SERVICES = [
-  {
-    id: '1',
-    icon: 'id-card-outline',
-    title: 'China Visa Processing',
-    description: 'We handle your full visa application',
-    processing: '5–7 days',
-    price: 'From $150',
-    action: 'Apply',
-  },
-  {
-    id: '2',
-    icon: 'school-outline',
-    title: 'School Admission in China',
-    description: 'University & college admissions',
-    processing: '2–4 weeks',
-    price: 'Varies',
-    action: 'Apply',
-  },
-  {
-    id: '3',
-    icon: 'mail-outline',
-    title: 'Business Invitation Letter',
-    description: 'Official invite for business visa',
-    processing: '3–5 days',
-    price: 'From $80',
-    action: 'Apply',
-  },
-  {
-    id: '4',
-    icon: 'ribbon-outline',
-    title: 'Canton Fair Invitation',
-    description: 'Official Canton Fair registration badge',
-    processing: '2–3 days',
-    price: 'From $60',
-    action: 'Apply',
-  },
-  {
-    id: '5',
-    icon: 'car-outline',
-    title: 'Airport Pickup',
-    description: 'Driver meets you on arrival',
-    processing: 'Instant booking',
-    price: 'From $30',
-    action: 'Book',
-  },
-  {
-    id: '6',
-    icon: 'language-outline',
-    title: 'Translator / Interpreter',
-    description: 'English-Chinese translator',
-    processing: 'Per day rate',
-    price: 'From $50/day',
-    action: 'Book',
-  },
-  {
-    id: '7',
-    icon: 'business-outline',
-    title: 'Factory Visit Arrangement',
-    description: 'We organize your factory trips',
-    processing: 'Varies',
-    price: 'From $100',
-    action: 'Book',
-  },
-  {
-    id: '8',
-    icon: 'bed-outline',
-    title: 'Hotel Booking',
-    description: 'Recommended hotels near markets',
-    processing: 'Instant',
-    price: 'Varies',
-    action: 'Book',
-  },
-  {
-    id: '9',
-    icon: 'globe-outline',
-    title: 'Company Registration Help',
-    description: 'Register a business in China',
-    processing: '2–3 weeks',
-    price: 'From $500',
-    action: 'Apply',
-  },
-  {
-    id: '10',
-    icon: 'map-outline',
-    title: 'Tour Guide Booking',
-    description: 'Experienced Hafrik city guides',
-    processing: 'Per day',
-    price: 'From $40/day',
-    action: 'Book',
-  },
-];
-
-const ServiceCard = memo(({ service }) => {
-  const handlePress = useCallback(() => {
-    Alert.alert(
-      service.title,
-      'Our team will contact you within 24 hours to discuss this service.',
-      [{ text: 'OK' }],
-    );
-  }, [service.title]);
-
+const ServiceCard = memo(({ service, onPress }) => {
   return (
-    <View style={styles.serviceCard}>
+    <TouchableOpacity 
+      style={styles.serviceCard}
+      onPress={() => onPress(service)}
+      activeOpacity={0.85}
+    >
       {/* Icon */}
       <View style={styles.cardIconWrap}>
         <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.cardIconGrad}>
-          <Ionicons name={service.icon} size={22} color={TEAL} />
+          <Ionicons name="checkmark-circle-outline" size={22} color={TEAL} />
         </LinearGradient>
       </View>
 
       {/* Body */}
       <View style={styles.cardBody}>
-        <Text style={styles.serviceTitle}>{service.title}</Text>
+        <Text style={styles.serviceTitle}>{service.name}</Text>
         <Text style={styles.serviceDesc}>{service.description}</Text>
 
         <View style={styles.cardMetaRow}>
-          <View style={styles.cardMetaItem}>
-            <Ionicons name="time-outline" size={12} color={MUTED} />
-            <Text style={styles.cardMetaText}>{service.processing}</Text>
-          </View>
-          <View style={styles.cardMetaItem}>
-            <Ionicons name="pricetag-outline" size={12} color={MUTED} />
-            <Text style={styles.cardMetaText}>{service.price}</Text>
-          </View>
+          {service.processing_time && (
+            <View style={styles.cardMetaItem}>
+              <Ionicons name="time-outline" size={12} color={MUTED} />
+              <Text style={styles.cardMetaText}>{service.processing_time}</Text>
+            </View>
+          )}
+          {(service.price_label || service.price) && (
+            <View style={styles.cardMetaItem}>
+              <Ionicons name="pricetag-outline" size={12} color={MUTED} />
+              <Text style={styles.cardMetaText}>{service.price_label || service.price}</Text>
+            </View>
+          )}
         </View>
       </View>
 
-      {/* Action button */}
-      <TouchableOpacity
-        style={styles.actionBtn}
-        onPress={handlePress}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.actionBtnText}>{service.action}</Text>
-      </TouchableOpacity>
-    </View>
+      {/* Arrow indicator */}
+      <Ionicons name="chevron-forward" size={20} color={MUTED} />
+    </TouchableOpacity>
   );
 });
 
 export default function VisaServices() {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation();
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await apiClient.get('/services/list.php');
+      const data = res.data?.data ?? res.data ?? [];
+      setServices(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message ?? 'Failed to load services');
+      setServices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleServicePress = useCallback((service) => {
+    const name = service.name ?? '';
+
+    if (name === 'Arrival Pickup') {
+      navigation.navigate('ArrivalConcierge');
+      return;
+    }
+
+    if (name === 'Tour Guide') {
+      navigation.navigate('TourGuideScreen');
+      return;
+    }
+
+    navigation.navigate('ServiceApplyScreen', {
+      service_id:      service.id,
+      service_name:    service.name,
+      description:     service.description,
+      price:           service.price_label || service.price,
+      processing_time: service.processing_time,
+    });
+  }, [navigation]);
 
   return (
     <View style={styles.container}>
@@ -181,51 +127,78 @@ export default function VisaServices() {
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Travel & Services</Text>
-          <Text style={styles.headerSub}>China Visit & Processing</Text>
+          <Text style={styles.headerTitle}>Services</Text>
+          <Text style={styles.headerSub}>Everything you need for your China visit</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={() => navigation.navigate('MyApplications')} style={styles.myAppsBtn} activeOpacity={0.7}>
+          <Ionicons name="clipboard-outline" size={22} color={WHITE} />
+        </TouchableOpacity>
       </LinearGradient>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero banner */}
-        <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.heroBanner}>
-          <Ionicons name="airplane" size={28} color={GOLD} />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.heroTitle}>Plan Your China Trip</Text>
-            <Text style={styles.heroSubtitle}>
-              From visa to factory visits — we handle it all for you.
-            </Text>
-          </View>
-        </LinearGradient>
-
-        {/* Section label */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionBar} />
-          <Text style={styles.sectionTitle}>Available Services</Text>
+      {loading ? (
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={TEAL} />
         </View>
-
-        {/* Service cards */}
-        {SERVICES.map(service => (
-          <ServiceCard key={service.id} service={service} />
-        ))}
-
-        {/* Contact footer */}
-        <View style={styles.contactCard}>
-          <Ionicons name="chatbubbles-outline" size={20} color={TEAL} />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.contactTitle}>Need custom assistance?</Text>
-            <Text style={styles.contactSub}>
-              Chat with our China team directly on WhatsApp or via the app.
-            </Text>
-          </View>
+      ) : error ? (
+        <View style={styles.centerContent}>
+          <Ionicons name="alert-circle-outline" size={48} color={MUTED} />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={fetchServices}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
         </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero banner */}
+          <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.heroBanner}>
+            <Ionicons name="airplane" size={28} color={GOLD} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.heroTitle}>Plan Your China Trip</Text>
+              <Text style={styles.heroSubtitle}>
+                From visa to factory visits — we handle it all for you.
+              </Text>
+            </View>
+          </LinearGradient>
 
-        <View style={{ height: 50 }} />
-      </ScrollView>
+          {/* Section label */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionBar} />
+            <Text style={styles.sectionTitle}>Available Services</Text>
+          </View>
+
+          {/* Service cards */}
+          {services.length > 0 ? (
+            services.map((service, idx) => (
+              <ServiceCard 
+                key={service.id ?? idx} 
+                service={service}
+                onPress={handleServicePress}
+              />
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="cube-outline" size={40} color={MUTED} />
+              <Text style={styles.emptyText}>No services available</Text>
+            </View>
+          )}
+
+          {/* Contact footer */}
+          <View style={styles.contactCard}>
+            <Ionicons name="chatbubbles-outline" size={20} color={TEAL} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.contactTitle}>Need custom assistance?</Text>
+              <Text style={styles.contactSub}>
+                Chat with our China team directly on WhatsApp or via the app.
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ height: 50 }} />
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -237,6 +210,7 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
   backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  myAppsBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   headerTextWrap: {
     flex: 1,
     alignItems: 'center',
@@ -377,5 +351,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: MUTED,
     lineHeight: 18,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BG,
+  },
+  errorText: {
+    fontFamily: 'WorkSans_500Medium',
+    fontSize: 14,
+    color: MUTED,
+    marginTop: 12,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: TEAL,
+  },
+  retryBtnText: {
+    fontFamily: 'WorkSans_600SemiBold',
+    fontSize: 13,
+    color: WHITE,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontFamily: 'WorkSans_500Medium',
+    fontSize: 14,
+    color: MUTED,
+    marginTop: 12,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
 });

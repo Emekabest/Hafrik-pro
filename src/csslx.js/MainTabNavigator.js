@@ -70,7 +70,7 @@ const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
           }
         };
 
-        // ── BIG CENTER BUTTON = FEED ─────────────────────
+        // ── BIG CENTER BUTTON = FEED (HomePage) ─────────────────────
         if (route.name === 'Feed') {
           return <FeedFab key={route.key} onPress={onPress} notifCount={notifCount} />;
         }
@@ -78,11 +78,11 @@ const CustomTabBar = ({ state, navigation, unreadCount, notifCount }) => {
         let icon;
         let label;
 
-        if (route.name === 'Home') {
-          label = 'Home';
+        if (route.name === 'Explore') {
+          label = 'Explore';
           icon = (
             <Ionicons
-              name={isFocused ? 'home' : 'home-outline'}
+              name={isFocused ? 'compass' : 'compass-outline'}
               size={24}
               color={isFocused ? BRAND : MUTED}
             />
@@ -211,19 +211,19 @@ const MainTabNavigator = () => {
 
   return (
     <Tab.Navigator
-      initialRouteName="Home"
+      initialRouteName="Explore"
       tabBar={props => <CustomTabBar {...props} unreadCount={unReadCount} notifCount={notifCount} />}
       screenOptions={{ headerShown: false }}
     >
-      {/* Home tab → Main Feed */}
-      <Tab.Screen name="Home"          component={HomePage} />
+      {/* Explore tab → Discovery / Pages screen */}
+      <Tab.Screen name="Explore"       component={DiscoveryScreen} />
       <Tab.Screen name="Reels"         component={Reels2} />
 
-      {/* BIG CENTER FAB → Explore / Discovery */}
-      <Tab.Screen name="Feed"          component={DiscoveryScreen} />
+      {/* BIG CENTER FAB → Feed / Home */}
+      <Tab.Screen name="Feed"          component={HomePage} />
 
       {/* Messages tab */}
-      <Tab.Screen name="Messages" component={InboxScreen} />
+      <Tab.Screen name="Messages"      component={InboxScreen} />
       <Tab.Screen name="Profile"       component={ProfileScreen} />
     </Tab.Navigator>
   );

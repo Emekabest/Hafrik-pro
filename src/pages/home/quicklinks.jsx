@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Animated,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -35,19 +35,6 @@ const items = [
     colors: ['#c9a84c', '#8a6820'],
   },
   {
-    label: "Community",
-    icon: (active) => <Ionicons name="people" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "GroupScreen",
-    params: { initialTab: 0 },
-    colors: [BRAND, Colors.tealDeep],
-  },
-  {
-    label: "Business",
-    icon: (active) => <Ionicons name="business" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "BusinessPages",
-    colors: [ACCENT, Colors.tealMint],
-  },
-  {
     label: "City Guide",
     icon: (active) => <Ionicons name="map" size={20} color={active ? Colors.white : BRAND} />,
     screen: "CityGuide",
@@ -60,13 +47,7 @@ const items = [
     colors: ['#c9a84c', '#8a6820'],
   },
   {
-    label: "Articles",
-    icon: (active) => <Ionicons name="newspaper" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "ArticlesScreen",
-    colors: [Colors.violet, Colors.violetDeep],
-  },
-  {
-    label: "Visa",
+    label: "Services",
     icon: (active) => <Ionicons name="document-text" size={20} color={active ? Colors.white : BRAND} />,
     screen: "HafrikXVisa",
     colors: [Colors.tealNavy, Colors.tealDeepStrong],
@@ -76,18 +57,6 @@ const items = [
     icon: (active) => <Ionicons name="school" size={20} color={active ? Colors.white : BRAND} />,
     screen: "HafrikXLearn",
     colors: [Colors.redStrong, Colors.redDeep],
-  },
-  {
-    label: "Events",
-    icon: (active) => <MaterialCommunityIcons name="calendar-star" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "EventsScreen",
-    colors: [Colors.orangeStrong, Colors.orangeDeep],
-  },
-  {
-    label: "Jobs",
-    icon: (active) => <MaterialCommunityIcons name="briefcase" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "JobsScreen",
-    colors: [Colors.pinkBright, Colors.pinkDeep],
   },
 ];
 

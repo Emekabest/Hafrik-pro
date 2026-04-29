@@ -249,6 +249,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const combinedData = useMemo(() => {
     const items = [
       { type: 'banner', feedWidth: feedWidth || 0 },
+      { type: 'feedquicklinks' },
       { type: 'feedsheader', name: tabConfig.feedTitle ?? tabConfig.label, description: tabConfig.description, id: feedsName },
       { type: 'postfeed' },
       { type: 'onlinestrip', data: peopleList },

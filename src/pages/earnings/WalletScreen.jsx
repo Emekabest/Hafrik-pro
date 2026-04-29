@@ -4,7 +4,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, RefreshControl, Animated, Alert,
   Modal, TextInput, KeyboardAvoidingView, Platform,
-  TouchableWithoutFeedback, Keyboard, Linking,
+  TouchableWithoutFeedback, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -93,80 +93,6 @@ const TxRow = ({ tx }) => {
   );
 };
 
-const WEB_SESSION_API = 'https://hafrik.com/api/v1/auth/web-session';
-const HAFRIK_WEB_URL  = 'https://hafrik.com';
-
-// ─── iOS Transfer Modal (App Store compliance — no in-app money movement) ─────
-function IOSTransferModal({ visible, onClose }) {
-  const { token } = useAuth();
-  const [loading, setLoading] = useState(false);
-
-  const handleOpenWebsite = async () => {
-    setLoading(true);
-    try {
-      const res  = await fetch(WEB_SESSION_API, {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      const json = await res.json().catch(() => ({}));
-      // Backend returns a short-lived, one-time session URL — never a raw token
-      const sessionUrl = json?.data?.session_url ?? json?.session_url ?? null;
-      const sessionId  = json?.data?.session_id  ?? json?.session_id  ?? null;
-      let urlToOpen = HAFRIK_WEB_URL;
-      if (sessionUrl) {
-        urlToOpen = sessionUrl;
-      } else if (sessionId) {
-        urlToOpen = `${HAFRIK_WEB_URL}/session-login?session_id=${encodeURIComponent(sessionId)}`;
-      }
-      await Linking.openURL(urlToOpen);
-    } catch {
-      await Linking.openURL(HAFRIK_WEB_URL).catch(() => {});
-    }
-    setLoading(false);
-    onClose();
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={iosT.overlay}>
-        <View style={iosT.sheet}>
-          <View style={iosT.iconWrap}>
-            <Ionicons name="lock-closed" size={28} color={BRAND} />
-          </View>
-          <Text style={iosT.title}>Transfers Not Available on iOS</Text>
-          <Text style={iosT.message}>
-            Sending money is currently not supported within the iOS app.
-          </Text>
-          <Text style={iosT.message}>
-            You can manage transactions and transfers securely on our website:
-          </Text>
-          <Text style={iosT.link}>{HAFRIK_WEB_URL}</Text>
-          <Text style={iosT.message}>
-            You may be required to sign in on the website.
-          </Text>
-          <TouchableOpacity
-            style={iosT.primaryBtn}
-            onPress={handleOpenWebsite}
-            activeOpacity={0.85}
-            disabled={loading}
-          >
-            {loading
-              ? <ActivityIndicator color={WHITE} />
-              : <>
-                  <Ionicons name="open-outline" size={16} color={WHITE} style={{ marginRight: 6 }} />
-                  <Text style={iosT.primaryBtnTxt}>Open Website</Text>
-                </>
-            }
-          </TouchableOpacity>
-          <TouchableOpacity style={iosT.closeBtn} onPress={onClose} activeOpacity={0.8}>
-            <Text style={iosT.closeBtnTxt}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 // ─── Amount modal (for convert/withdraw affiliates) ───────────────────────────
 const AmountModal = ({ visible, onClose, title, subtitle, icon, gradient, availableLabel, availableValue, onSubmit, submitting, error }) => {
   const [amount, setAmount] = useState('');
@@ -249,8 +175,6 @@ export default function WalletScreen() {
   const [affOpen,      setAffOpen]      = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
   const [modalError,   setModalError]   = useState('');
-  const [sendVisible,  setSendVisible]  = useState(false);
-
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
 
@@ -368,7 +292,7 @@ export default function WalletScreen() {
           icon="send"
           label="Send Money"
           color={ACCENT}
-          onPress={() => Platform.OS === 'ios' ? setSendVisible(true) : navigation.navigate('SendMoneyScreen')}
+          onPress={() => navigation.navigate('SendMoneyScreen')}
         />
         <ActionBtn
           icon="star"
@@ -446,13 +370,6 @@ export default function WalletScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={WHITE} />}
       />
 
-      {Platform.OS === 'ios' && (
-        <IOSTransferModal
-          visible={sendVisible}
-          onClose={() => setSendVisible(false)}
-        />
-      )}
-
       <AmountModal
         visible={convertOpen}
         onClose={() => setConvertOpen(false)}
@@ -494,93 +411,6 @@ const ActionBtn = ({ icon, label, color, onPress }) => (
 );
 
 const VIOLET = '#6d28d9';
-
-// ─── iOS Transfer Modal Styles ────────────────────────────────────────────────
-const iosT = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  sheet: {
-    backgroundColor: WHITE,
-    borderRadius: 20,
-    padding: 24,
-    width: '100%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: BRAND + '12',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: BRAND,
-    fontFamily: FONT_B,
-    textAlign: 'center',
-    marginBottom: 14,
-  },
-  message: {
-    fontSize: 14,
-    color: TEXT_M,
-    fontFamily: FONT_R,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 6,
-  },
-  link: {
-    fontSize: 14,
-    color: ACCENT,
-    fontFamily: FONT_M,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  primaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: BRAND,
-    borderRadius: 12,
-    height: 48,
-    width: '100%',
-    marginTop: 18,
-  },
-  primaryBtnTxt: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: WHITE,
-    fontFamily: FONT_M,
-  },
-  closeBtn: {
-    marginTop: 10,
-    height: 44,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: BG,
-  },
-  closeBtnTxt: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: TEXT_M,
-    fontFamily: FONT_M,
-  },
-});
 
 const ws = StyleSheet.create({
   root: { flex: 1, backgroundColor: BRAND },

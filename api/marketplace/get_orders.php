@@ -2,6 +2,9 @@
 /**
  * get_orders.php — Buyer's marketplace orders
  * GET /api/v1/marketplace/get_orders.php
+ *
+ * Reads directly from the Hafrik (Sngine) native `orders` and `orders_items`
+ * tables. Does NOT use $user->get_orders() and has no WooCommerce dependency.
  */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -12,25 +15,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 require_once '../init.php';
 require_once __DIR__ . '/jwt_auth.php';
 
-$viewer_id = (int) $user->_data->user_id;
-$page   = max(1, (int) ($_GET['page']  ?? 1));
-$limit  = min(50, max(1, (int) ($_GET['limit'] ?? 20)));
-$offset = ($page - 1) * $limit;
-
-$stmt = $pdo->prepare("
-    SELECT o.*,
-           (SELECT COUNT(*) FROM marketplace_order_items WHERE order_id = o.id) AS items_count
-    FROM marketplace_orders o
-    WHERE o.buyer_id = ?
-    ORDER BY o.created_at DESC
-    LIMIT ? OFFSET ?
-");
-$stmt->execute([$viewer_id, $limit, $offset]);
-$orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-foreach ($orders as &$o) {
-    $o['items_count'] = (int) $o['items_count'];
-    $o['total']       = (float) $o['total'];
+// ── Auth ──────────────────────────────────────────────────────────────────────
+if (!isset($user) || empty($user->_data->user_id)) {
+    http_response_code(401);
+    echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+    exit;
 }
 
-echo json_encode(['status' => 'success', 'data' => $orders, 'page' => $page, 'limit' => $limit]);
+$buyer_id = (int) $user->_data->user_id;
+
+// ── Query ─────────────────────────────────────────────────────────────────────
+try {
+    $stmt = $pdo->prepare("
+        SELECT
+            o.order_id,
+            o.order_hash,
+            o.sub_total,
+            o.status,
+            o.insert_time,
+            COUNT(oi.id) AS items_count
+        FROM orders o
+        LEFT JOIN orders_items oi ON oi.order_id = o.order_id
+        WHERE o.buyer_id = ?
+        GROUP BY o.order_id
+        ORDER BY o.order_id DESC
+    ");
+    $stmt->execute([$buyer_id]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Failed to fetch orders']);
+    exit;
+}
+
+// ── Normalise & return ────────────────────────────────────────────────────────
+$data = [];
+foreach ($rows as $row) {
+    $data[] = [
+        'order_id'    => (int)    $row['order_id'],
+        'order_hash'  => (string) ($row['order_hash']  ?? ''),
+        'total'       => (float)  ($row['sub_total']   ?? 0),
+        'status'      => (string) ($row['status']      ?? 'placed'),
+        'created_at'  => (string) ($row['insert_time'] ?? ''),
+        'items_count' => (int)    ($row['items_count'] ?? 0),
+    ];
+}
+
+echo json_encode(['status' => 'success', 'data' => $data]);

@@ -107,6 +107,8 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   const [editDraftText,    setEditDraftText]    = useState('');
   const [editSaving,       setEditSaving]       = useState(false);
   const [editError,        setEditError]        = useState('');
+  const [xlText,           setXlText]           = useState('');
+  const [xling,            setXling]            = useState(false);
 
   // ── Double-tap heart animation ─────────────────────────────────────────────
   const heartScaleAnim   = useRef(new Animated.Value(0)).current;
@@ -420,6 +422,22 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
 
   const mediaTapHandler = useDoubleTap(handleDoubleTapLike, handleMoveToCommentScreen);
 
+  // ── Translate post text ───────────────────────────────────────────────────
+  const handleTranslate = useCallback(async () => {
+    if (xlText) { setXlText(''); return; }
+    if (!displayText) return;
+    setXling(true);
+    try {
+      const params = new URLSearchParams({ client: 'gtx', sl: 'auto', tl: 'en', dt: 't', q: displayText });
+      const res  = await fetch(`https://translate.googleapis.com/translate_a/single?${params}`);
+      const json = await res.json();
+      if (Array.isArray(json) && Array.isArray(json[0])) {
+        setXlText(json[0].map(c => (Array.isArray(c) ? c[0] : '')).join(''));
+      }
+    } catch {}
+    finally { setXling(false); }
+  }, [displayText, xlText]);
+
   // ── Follow author ─────────────────────────────────────────────────────────
   const handleFollow = useCallback(async () => {
     const userId = feed?.user?.id;
@@ -620,6 +638,30 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
                       {showSeeMore ? <Text style={styles.seeMore}> see more</Text> : null}
                     </Text>
                   </TouchableOpacity>
+                ) : null}
+
+                {/* ── Translate button + result ── */}
+                {displayText ? (
+                  <View>
+                    <TouchableOpacity
+                      onPress={handleTranslate}
+                      activeOpacity={0.7}
+                      style={styles.translateBtn}
+                    >
+                      {xling
+                        ? <ActivityIndicator size={10} color={ACCENT} style={{ marginRight: 4 }} />
+                        : <Ionicons name="language-outline" size={12} color={ACCENT} />}
+                      <Text style={styles.translateBtnTxt}>
+                        {xling ? 'Translating…' : xlText ? 'See original' : 'Translate'}
+                      </Text>
+                    </TouchableOpacity>
+                    {!!xlText && (
+                      <View style={styles.xlBox}>
+                        <Text style={styles.xlText}>{xlText}</Text>
+                        <Text style={styles.xlPowered}>Translated by Google</Text>
+                      </View>
+                    )}
+                  </View>
                 ) : null}
               </>
             )}
@@ -1009,6 +1051,40 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontFamily: AppDetails.fontFamily?.heading,
     marginTop: 2,
+  },
+
+  // ── Translate ──────────────────────────────────────────────────────────────
+  translateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  translateBtnTxt: {
+    fontSize: 12,
+    color: ACCENT,
+    fontWeight: '600',
+  },
+  xlBox: {
+    marginTop: 6,
+    backgroundColor: ACCENT + '0d',
+    borderLeftWidth: 2,
+    borderLeftColor: ACCENT + '66',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  xlText: {
+    fontSize: 14,
+    color: TEXT_BODY,
+    lineHeight: 21,
+  },
+  xlPowered: {
+    fontSize: 10,
+    color: ACCENT + '88',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 
   // ── Adult content overlay ──────────────────────────────────────────────────

@@ -362,6 +362,13 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                 sub="China cities — jobs, rent, markets"
                 iconGrad={["#10b981", "#047857"]}
                 onPress={() => go("CityGuide")}
+              />
+              <MenuItem
+                icon="language"
+                label="Translator"
+                sub="Translate to & from any language"
+                iconGrad={["#06b6d4", "#0e7490"]}
+                onPress={() => go("TranslatorScreen")}
                 last
               />
             </View>

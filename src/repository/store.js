@@ -359,6 +359,10 @@ const useStore = create((set, get) => ({
     cartCount: 0,
     setCartCount: (n) => set({ cartCount: Number(n ?? 0) }),
 
+    // ── Marketplace display currency (shared across all marketplace screens) ──
+    marketplaceCurrency: 'NGN',
+    setMarketplaceCurrency: (c) => set({ marketplaceCurrency: c }),
+
     // ── Toast ────────────────────────────────────────────────────────────────
     toast: null, // { message: string, emoji: string | null, id: number }
     showToast: (message, emoji = null, duration = 2600) => {

@@ -113,9 +113,14 @@ import HafrikXTrack          from './src/pages/hafrikx/TrackShipping';
 import HafrikXWarehouses     from './src/pages/hafrikx/WarehouseInfo';
 import HafrikXLearn          from './src/pages/hafrikx/LearnImporting';
 import HafrikXVisa           from './src/pages/hafrikx/VisaServices';
-import HafrikXMyOrders       from './src/pages/hafrikx/MyOrders';
-import HafrikXMyShipments    from './src/pages/hafrikx/MyShipments';
-import HafrikXMyRequests     from './src/pages/hafrikx/MyRequests';
+import HafrikXMyOrders          from './src/pages/hafrikx/MyOrders';
+import HafrikXMyShipments       from './src/pages/hafrikx/MyShipments';
+import HafrikXMyRequests        from './src/pages/hafrikx/MyRequests';
+import ServiceApplyScreen       from './src/pages/hafrikx/ServiceApplyScreen';
+import MyApplicationsScreen     from './src/pages/hafrikx/MyApplicationsScreen';
+import ApplicationDetailScreen  from './src/pages/hafrikx/ApplicationDetailScreen';
+import TourGuideScreen          from './src/pages/hafrikx/TourGuideScreen';
+import TranslatorScreen        from './src/pages/translator/TranslatorScreen';
 import ExchangePayment        from './src/pages/hafrikx/ExchangePayment';
 import ExchangeUploadReceipt  from './src/pages/hafrikx/ExchangeUploadReceipt';
 import ExchangeUploadQR       from './src/pages/hafrikx/ExchangeUploadQR';
@@ -546,6 +551,11 @@ function AppNavigator() {
               <Stack.Screen name="HafrikXMyOrders"    component={HafrikXMyOrders}    options={{ headerShown: false }} />
               <Stack.Screen name="HafrikXMyShipments" component={HafrikXMyShipments} options={{ headerShown: false }} />
               <Stack.Screen name="HafrikXMyRequests"  component={HafrikXMyRequests}  options={{ headerShown: false }} />
+              <Stack.Screen name="TourGuideScreen"        component={TourGuideScreen}         options={{ headerShown: false }} />
+              <Stack.Screen name="ServiceApplyScreen"     component={ServiceApplyScreen}      options={{ headerShown: false }} />
+              <Stack.Screen name="MyApplications"         component={MyApplicationsScreen}    options={{ headerShown: false }} />
+              <Stack.Screen name="ApplicationDetail"      component={ApplicationDetailScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="TranslatorScreen"       component={TranslatorScreen}        options={{ headerShown: false }} />
               <Stack.Screen name="ExchangePayment"       component={ExchangePayment}       options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeUploadReceipt" component={ExchangeUploadReceipt} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeUploadQR"      component={ExchangeUploadQR}      options={{ headerShown: false }} />

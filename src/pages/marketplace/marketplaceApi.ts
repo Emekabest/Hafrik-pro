@@ -1,7 +1,36 @@
 // src/pages/marketplace/marketplaceApi.ts
 // Powered by WooCommerce Store API — https://shop.itstrendymart.com/wp-json/wc/store/v1
 
+import apiClient from '../../api/apiClient';
+
 const WC_BASE = 'https://shop.itstrendymart.com/wp-json/wc/store/v1';
+
+// ─── Exchange Rate ────────────────────────────────────────────────────────────
+// Fetches live rate from open.er-api.com (free, no key required).
+// Cached in-memory for 1 hour so repeated renders don't hammer the API.
+const _rateCache: Record<string, { rate: number; expiry: number }> = {};
+
+export async function getExchangeRate(from: string, to: string): Promise<number> {
+  const key    = `${from}_${to}`;
+  const cached = _rateCache[key];
+  if (cached && Date.now() < cached.expiry) return cached.rate;
+
+  try {
+    const res  = await fetch(`https://open.er-api.com/v6/latest/${from}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error('Rate fetch failed');
+    const data = await res.json();
+    const rate = Number(data?.rates?.[to]);
+    if (!rate) throw new Error(`No rate for ${to}`);
+    // Cache for 1 hour
+    _rateCache[key] = { rate, expiry: Date.now() + 60 * 60 * 1000 };
+    return rate;
+  } catch {
+    // Approximate fallback (NGN→CNY ~0.0052 as of 2024)
+    return from === 'NGN' && to === 'CNY' ? 0.0052 : 1;
+  }
+}
 
 // ─── Cart Token + Nonce ────────────────────────────────────────────────────────
 // The Store API issues a Cart-Token AND a Nonce on every cart/checkout response.
@@ -153,6 +182,8 @@ export type CheckoutFields = {
   countryName: string;      // display label
   phone:       string;
   note?:       string;
+  amount_ngn?: number;      // order total in NGN — sent so server can convert to CNY
+  amount_cny?: number;      // estimated CNY equivalent (informational)
 };
 
 export type MarketplaceOrder = {
@@ -170,6 +201,16 @@ export type TrendyResponse = {
   page:     number;
   has_more: boolean;
   data:     MarketplaceProduct[];
+};
+
+export type CheckoutPreview = {
+  subtotal: number;
+  shipping_fee: number;
+  total: number;
+  wallet: {
+    balance: number;
+    can_pay: boolean;
+  };
 };
 
 // ─── Normalisers ──────────────────────────────────────────────────────────────
@@ -455,92 +496,76 @@ export async function removeCartItem(
   return { message: 'Removed' };
 }
 
-// ─── Checkout ─────────────────────────────────────────────────────────────────
+// ─── Checkout (WooCommerce Store API → Paystack) ─────────────────────────────
 
-// Ensure Cart-Token + Nonce are both initialised before any checkout call.
-// WooCommerce requires a valid Nonce on all POST/PUT/DELETE requests.
 export async function ensureCartToken(): Promise<void> {
-  if (_cartToken && _nonce) return;   // already have both
-  try {
-    const res = await fetch(`${WC_BASE}/cart`, { headers: cartHeaders() });
-    captureCartToken(res);
-  } catch { /* ignore — checkout will surface its own error */ }
+  if (_cartToken && _nonce) return;
+  const res = await fetch(`${WC_BASE}/cart`, { headers: cartHeaders() });
+  captureCartToken(res);
 }
 
 export async function checkout(
-  _token: string,
+  _token: string | null,
   fields: CheckoutFields,
 ): Promise<CheckoutResponse> {
-  // Ensure the Cart-Token session is established before placing the order
   await ensureCartToken();
 
-  // Always include all standard WooCommerce billing fields to satisfy validation
-  const sharedAddr = {
+  const billing = {
     first_name: fields.firstName,
     last_name:  fields.lastName,
-    company:    '',
+    email:      fields.email,
     address_1:  fields.street,
     address_2:  '',
     city:       fields.city,
-    state:      fields.state?.trim()    || '',
-    postcode:   fields.postcode?.trim() || '',
-    country:    fields.country,   // 2-letter ISO code
+    state:      fields.state    ?? '',
+    postcode:   fields.postcode ?? '',
+    country:    fields.country,
     phone:      fields.phone,
+    company:    '',
   };
 
   const res = await fetch(`${WC_BASE}/checkout`, {
     method:  'POST',
     headers: cartHeaders(),
     body: JSON.stringify({
-      billing_address:  { ...sharedAddr, email: fields.email },
-      shipping_address: sharedAddr,
-      payment_method:   'paystack',
+      billing_address:  billing,
+      shipping_address: billing,
       customer_note:    fields.note ?? '',
+      payment_method:   'paystack',
     }),
   });
   captureCartToken(res);
+
   const json = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    // WC Store API nests details as an object keyed by field name
-    const details = json?.data?.details ?? {};
-    const firstDetail = Object.values(details)[0] as any;
-    const detail =
-      firstDetail?.message ??
-      json?.data?.message  ??
-      json.message;
-    throw new Error(detail ?? 'Checkout failed. Please try again.');
+    // Extract the most useful error message from WC's response shape
+    const detailVals = Object.values((json?.data?.details ?? json?.details ?? {}) as Record<string, any[]>);
+    const wcMsg =
+      json?.message ??
+      detailVals[0]?.[0]?.message ??
+      `Checkout failed (${res.status})`;
+    throw new Error(wcMsg);
   }
 
-  const paymentStatus = json.payment_result?.payment_status ?? '';
-  const paid = paymentStatus === 'success' || json.status === 'processing';
-  const redirectUrl = json.payment_result?.redirect_url ?? '';
+  // WooCommerce returns payment_result.redirect_url for redirect-based gateways
+  const redirectUrl = json?.payment_result?.redirect_url ?? json?.redirect_url ?? null;
+  const minorUnit   = json?.totals?.currency_minor_unit ?? 2;
+  const total       = parsePrice(json?.totals?.total_price, minorUnit);
 
   return {
-    paid,
-    type:                 paid ? 'free' : 'payment',
-    orders_collection_id: String(json.order_key  ?? json.order_id ?? ''),
-    order_id:             String(json.order_id   ?? ''),
-    amount:               0,
-    currency:             '',
-    total:                0,
-    message:              paid ? 'Order placed successfully!' : 'Proceed to payment',
-    redirect_url:         redirectUrl,
+    paid:                 !redirectUrl,
+    type:                 redirectUrl ? 'payment' : 'free',
+    orders_collection_id: String(json?.order_id ?? ''),
+    order_id:             String(json?.order_id ?? ''),
+    amount:               total,
+    currency:             json?.totals?.currency_code ?? 'NGN',
+    total,
+    message:              json?.message ?? '',
+    redirect_url:         redirectUrl ?? undefined,
   };
 }
 
-export async function verifyMarketplacePayment(
-  _token: string,
-  _orderId: string,
-  _paymentRef: string,
-): Promise<{ success: boolean; message: string }> {
-  // WooCommerce payment verification is handled by the gateway directly.
-  // Kept for interface compatibility with MarketplacePaymentScreen.
-  return { success: true, message: 'Payment verified' };
-}
-
-// ─── Hafrik backend — use apiClient (handles auth + base URL automatically) ───
-import apiClient from '../../api/apiClient';
 
 // ─── Extended types ───────────────────────────────────────────────────────────
 
@@ -585,55 +610,163 @@ export type HafrikOrder = {
 
 export async function getOrders(_token: string): Promise<HafrikOrder[]> {
   try {
-    const res = await apiClient.get('/marketplace/get_orders.php');
-    return res.data?.data ?? [];
+    const res  = await apiClient.get('/marketplace/get_orders.php');
+    const rows = res.data?.data ?? [];
+    // Normalise native Sngine field names to the app's HafrikOrder shape
+    return rows.map((o: any): HafrikOrder => ({
+      id:             Number(o.order_id   ?? 0),
+      order_ref:      String(o.order_hash ?? o.order_ref ?? ''),
+      buyer_id:       0,
+      seller_id:      null,
+      status:         String(o.status     ?? 'placed'),
+      total:          Number(o.total      ?? o.sub_total ?? 0),
+      currency:       String(o.currency   ?? 'NGN'),
+      payment_method: (o.payment_method ?? 'wallet') as 'wallet' | 'paystack',
+      items_count:    Number(o.items_count ?? 0),
+      created_at:     String(o.created_at ?? o.insert_time ?? ''),
+    }));
   } catch {
     return [];
   }
 }
 
-export async function getOrderDetail(_token: string, orderRef: string): Promise<HafrikOrder | null> {
+export async function getOrderDetail(_token: string, orderId: string | number): Promise<HafrikOrder | null> {
   try {
     const res = await apiClient.get('/marketplace/get_order_detail.php', {
-      params: { order_ref: orderRef },
+      params: { order_id: Number(orderId) },
     });
-    return res.data?.data ?? null;
+    const d = res.data?.data;
+    if (!d) return null;
+    return {
+      id:             Number(d.order_id   ?? 0),
+      order_ref:      String(d.order_hash ?? ''),
+      buyer_id:       0,
+      seller_id:      null,
+      status:         String(d.status     ?? 'placed'),
+      total:          Number(d.total      ?? 0),
+      currency:       String(d.currency   ?? 'NGN'),
+      payment_method: (d.payment_method ?? 'wallet') as 'wallet' | 'paystack',
+      created_at:     String(d.created_at ?? ''),
+      items:          (d.items ?? []).map((i: any) => ({
+        id:         Number(i.item_id    ?? 0),
+        product_id: Number(i.product_id ?? 0),
+        title:      String(i.title      ?? ''),
+        price:      Number(i.price      ?? 0),
+        quantity:   Number(i.quantity   ?? 1),
+        variations: i.variations ?? [],
+        thumbnail:  i.thumbnail  ?? null,
+      })),
+    };
   } catch {
     return null;
   }
 }
 
-// ─── Wallet checkout ──────────────────────────────────────────────────────────
+// ─── Wallet checkout ─────────────────────────────────────────
+
+export async function checkoutPreview(
+  _token: string,
+  cartItems: CartItem[]
+): Promise<CheckoutPreview> {
+
+  if (!cartItems.length) {
+    throw new Error('Cart is empty');
+  }
+
+  try {
+    const [previewRes, balanceRes] = await Promise.all([
+      apiClient.post('/marketplace/checkout_preview.php', {
+        items: cartItems,
+      }),
+      apiClient.get('/wallet/balance.php'),
+    ]);
+
+    const preview = previewRes.data?.data ?? previewRes.data;
+    const balanceData = balanceRes.data?.data ?? balanceRes.data;
+
+    if (!preview) {
+      throw new Error('Could not load checkout preview');
+    }
+
+    const total = Number(preview.total ?? 0);
+
+    const balance = Number(
+      balanceData?.wallet_balance ??
+      balanceData?.balance ??
+      0
+    );
+
+    return {
+      subtotal: Number(preview.subtotal ?? 0),
+      shipping_fee: Number(preview.shipping_fee ?? 0),
+      total,
+      wallet: {
+        balance,
+        can_pay: balance >= total,
+      },
+    };
+
+  } catch (err: any) {
+    throw new Error(
+      err?.response?.data?.message ||
+      err?.message ||
+      'Failed to load checkout preview'
+    );
+  }
+}
+
+
+// ─── Wallet Checkout ─────────────────────────────────────────
 
 export async function walletCheckout(
   _token: string,
   fields: CheckoutFields,
   cartItems: CartItem[],
-): Promise<{ order_ref: string; order_id: number }> {
-  const total    = cartItems.reduce((sum, i) => sum + (Number(i.total ?? 0) || Number(i.price ?? 0) * Number(i.quantity ?? 1)), 0);
-  const currency = cartItems[0]?.currency ?? 'CNY';
+): Promise<{ order_id: string; order_ref: string }> {
 
-  const res = await apiClient.post('/marketplace/wallet_checkout.php', {
-    amount: total,
-    currency,
-    items: cartItems,
-    address: {
-      first_name: fields.firstName,
-      last_name:  fields.lastName,
-      street:     fields.street,
-      city:       fields.city,
-      state:      fields.state    ?? '',
-      postcode:   fields.postcode ?? '',
-      country:    fields.country,
-      phone:      fields.phone,
-      email:      fields.email,
-    },
-    note: fields.note ?? '',
-  });
+  if (!cartItems.length) {
+    throw new Error('Cart is empty');
+  }
 
-  const json = res.data;
-  if (json?.status !== 'success') throw new Error(json?.message ?? 'Wallet checkout failed');
-  return { order_ref: json.order_ref, order_id: json.order_id };
+  try {
+    const res = await apiClient.post('/marketplace/wallet_checkout.php', {
+      items: cartItems,
+      address: {
+        first_name: fields.firstName,
+        last_name:  fields.lastName,
+        street:     fields.street,
+        city:       fields.city,
+        state:      fields.state ?? '',
+        postcode:   fields.postcode ?? '',
+        country:    fields.country,
+        phone:      fields.phone,
+        email:      fields.email,
+      },
+      note:       fields.note ?? '',
+      // Send both amounts so the server can do the NGN→CNY conversion correctly
+      amount_ngn: fields.amount_ngn ?? 0,
+      amount_cny: fields.amount_cny ?? 0,
+      currency:   'NGN',
+    });
+
+    const json = res.data;
+
+    if (json?.status !== 'success') {
+      throw new Error(json?.message ?? 'Wallet checkout failed');
+    }
+
+    return {
+      order_id: String(json.data?.order_id ?? ''),
+      order_ref: String(json.data?.order_hash ?? ''),
+    };
+
+  } catch (err: any) {
+    throw new Error(
+      err?.response?.data?.message ||
+      err?.message ||
+      'Checkout failed'
+    );
+  }
 }
 
 // ─── Save WooCommerce order to Hafrik DB (after Paystack success) ─────────────

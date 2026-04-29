@@ -4,11 +4,9 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import MarketplaceScreen       from './index';
 import CartScreen              from './CartScreen';
 import MarketplaceOrdersScreen from './MarketplaceOrdersScreen';
-import MyListingsScreen        from './MyListingsScreen';
 
 import useStore      from '../../repository/store';
 import { Colors }    from '../../theme/colors';
@@ -18,12 +16,11 @@ const Tab   = createBottomTabNavigator();
 const BRAND = Colors.primaryDark;
 const MUTED = Colors.secondaryText;
 
-// ─── Tab definitions ────────────────────────────────────────────────────────
+// ─── Tab definitions ─────────────────────────────────────────────────────────
 const TAB_CONFIG = [
-  { name: 'MktShop',   label: 'Shop',     icon: 'storefront',  iconOutline: 'storefront-outline'  },
-  { name: 'MktCart',   label: 'Cart',     icon: 'bag',         iconOutline: 'bag-outline',          badge: true },
-  { name: 'MktOrders', label: 'Orders',   icon: 'receipt',     iconOutline: 'receipt-outline'      },
-  { name: 'MktSell',   label: 'My Shop',  icon: 'pricetag',    iconOutline: 'pricetag-outline'     },
+  { name: 'MktShop',   label: 'Shop',   icon: 'storefront', iconOutline: 'storefront-outline' },
+  { name: 'MktCart',   label: 'Cart',   icon: 'bag',        iconOutline: 'bag-outline',        badge: true },
+  { name: 'MktOrders', label: 'Orders', icon: 'receipt',    iconOutline: 'receipt-outline'    },
 ];
 
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
@@ -44,9 +41,7 @@ const MarketplaceTabBar = ({ state, navigation }) => {
             target: route.key,
             canPreventDefault: true,
           });
-          if (!event.defaultPrevented) {
-            navigation.navigate(route.name);
-          }
+          if (!event.defaultPrevented) navigation.navigate(route.name);
         };
 
         return (
@@ -92,7 +87,6 @@ const MarketplaceTabNavigator = () => (
     <Tab.Screen name="MktShop"   component={MarketplaceScreen} />
     <Tab.Screen name="MktCart"   component={CartScreen} />
     <Tab.Screen name="MktOrders" component={MarketplaceOrdersScreen} />
-    <Tab.Screen name="MktSell"   component={MyListingsScreen} />
   </Tab.Navigator>
 );
 

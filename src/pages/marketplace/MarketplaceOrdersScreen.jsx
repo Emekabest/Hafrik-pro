@@ -185,7 +185,7 @@ export default function MarketplaceOrdersScreen({ navigation }) {
           renderItem={({ item }) => (
             <OrderCard
               order={item}
-              onPress={() => navigation.navigate('OrderDetailScreen', { order_ref: item.order_ref ?? String(item.id) })}
+              onPress={() => navigation.navigate('OrderDetailScreen', { order_id: item.id, order_ref: item.order_ref })}
             />
           )}
           contentContainerStyle={[or.list, { paddingBottom: insets.bottom + 24 }]}

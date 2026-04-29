@@ -1,7 +1,10 @@
 <?php
 /**
- * get_order_detail.php — Single order + items + status history
- * GET /api/v1/marketplace/get_order_detail.php?order_ref=HMO-xxxx
+ * get_order_detail.php — Single order + items
+ * GET /api/v1/marketplace/get_order_detail.php?order_id=29
+ *
+ * Reads from native Sngine `orders` and `orders_items` tables only.
+ * Does NOT use WooCommerce or $user->get_orders().
  */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -12,22 +15,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 require_once '../init.php';
 require_once __DIR__ . '/jwt_auth.php';
 
-$viewer_id = (int) $user->_data->user_id;
-$order_ref = trim($_GET['order_ref'] ?? '');
-
-if (!$order_ref) {
-    http_response_code(400);
-    echo json_encode(['status' => 'error', 'message' => 'order_ref is required']);
+// ── Auth ──────────────────────────────────────────────────────────────────────
+if (!isset($user) || empty($user->_data->user_id)) {
+    http_response_code(401);
+    echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
     exit;
 }
 
-// Buyer OR seller can view
-$stmt = $pdo->prepare("
-    SELECT * FROM marketplace_orders
-    WHERE order_ref = ? AND (buyer_id = ? OR seller_id = ?)
-");
-$stmt->execute([$order_ref, $viewer_id, $viewer_id]);
-$order = $stmt->fetch(PDO::FETCH_ASSOC);
+$buyer_id = (int) $user->_data->user_id;
+
+// ── Input validation ──────────────────────────────────────────────────────────
+$order_id = (int) ($_GET['order_id'] ?? 0);
+
+if ($order_id <= 0) {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Invalid order_id']);
+    exit;
+}
+
+// ── Fetch order (must belong to this buyer) ───────────────────────────────────
+try {
+    $stmt = $pdo->prepare("
+        SELECT
+            order_id,
+            order_hash,
+            sub_total,
+            status,
+            insert_time
+        FROM orders
+        WHERE order_id = ? AND buyer_id = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$order_id, $buyer_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Failed to fetch order']);
+    exit;
+}
 
 if (!$order) {
     http_response_code(404);
@@ -35,33 +60,46 @@ if (!$order) {
     exit;
 }
 
-$order_id = (int) $order['id'];
-$order['total'] = (float) $order['total'];
-
-// Items
-$is = $pdo->prepare("SELECT * FROM marketplace_order_items WHERE order_id = ?");
-$is->execute([$order_id]);
-$items = $is->fetchAll(PDO::FETCH_ASSOC);
-foreach ($items as &$item) {
-    $item['price']    = (float) $item['price'];
-    $item['quantity'] = (int)   $item['quantity'];
-    $item['variations'] = json_decode($item['variations_json'] ?? '[]', true);
+// ── Fetch order items ─────────────────────────────────────────────────────────
+try {
+    $is = $pdo->prepare("
+        SELECT
+            id,
+            product_post_id,
+            quantity,
+            price,
+            selected_variations
+        FROM orders_items
+        WHERE order_id = ?
+    ");
+    $is->execute([$order_id]);
+    $rows = $is->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Failed to fetch order items']);
+    exit;
 }
-$order['items'] = $items;
 
-// Status history (oldest first → timeline)
-$hs = $pdo->prepare("
-    SELECT * FROM marketplace_order_status_history
-    WHERE order_id = ? ORDER BY created_at ASC
-");
-$hs->execute([$order_id]);
-$order['history'] = $hs->fetchAll(PDO::FETCH_ASSOC);
+$items = [];
+foreach ($rows as $row) {
+    $items[] = [
+        'item_id'    => (int)   $row['id'],
+        'product_id' => (int)   ($row['product_post_id'] ?? 0),
+        'quantity'   => (int)   $row['quantity'],
+        'price'      => (float) $row['price'],
+        'variations' => json_decode($row['selected_variations'] ?? '[]', true) ?? [],
+    ];
+}
 
-// Buyer info
-$bs = $pdo->prepare("SELECT username, avatar FROM users WHERE user_id = ?");
-$bs->execute([(int) $order['buyer_id']]);
-$buyer = $bs->fetch(PDO::FETCH_ASSOC);
-$order['buyer_username'] = $buyer['username'] ?? null;
-$order['buyer_avatar']   = $buyer['avatar']   ?? null;
-
-echo json_encode(['status' => 'success', 'data' => $order]);
+// ── Response ──────────────────────────────────────────────────────────────────
+echo json_encode([
+    'status' => 'success',
+    'data'   => [
+        'order_id'   => (int)    $order['order_id'],
+        'order_hash' => (string) ($order['order_hash']  ?? ''),
+        'total'      => (float)  ($order['sub_total']   ?? 0),
+        'status'     => (string) ($order['status']      ?? 'placed'),
+        'created_at' => (string) ($order['insert_time'] ?? ''),
+        'items'      => $items,
+    ],
+]);

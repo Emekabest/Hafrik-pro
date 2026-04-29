@@ -12,9 +12,13 @@ import { useAuth }   from '../../AuthContext';
 import { Colors }    from '../../theme';
 import AppDetails    from '../../helpers/appdetails';
 import useStore      from '../../repository/store';
-import { checkout, getCountries, ensureCartToken, walletCheckout, initWalletTopup } from './marketplaceApi';
+import { getCountries, ensureCartToken, walletCheckout } from './marketplaceApi';
 import { getWalletBalance } from '../../api/walletApi';
-import { Linking } from 'react-native';
+import AddFundsModal from '../../components/AddFundsModal';
+
+
+// Fixed exchange rate: 1 CNY = 215 NGN  →  1 NGN = 1/215 CNY
+const NGN_TO_CNY = 1 / 215;
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const BRAND     = '#0c3f44';
@@ -254,46 +258,28 @@ export default function CheckoutScreen({ navigation, route }) {
     if (user.email      && !email)     setEmail(user.email);
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Payment method ────────────────────────────────────────────────────────
-  const [payMethod,       setPayMethod]       = useState('paystack'); // 'paystack' | 'wallet'
-  const [walletBalance,   setWalletBalance]   = useState(null);       // null = loading
+  // ── Wallet payment (only payment method) ─────────────────────────────────
+  const [walletBalance,   setWalletBalance]   = useState(null); // CNY balance
   const [loadingWallet,   setLoadingWallet]   = useState(true);
-  const [toppingUp,       setToppingUp]       = useState(false);
-  const [topupAmount,     setTopupAmount]      = useState('');
-  const [showTopupSheet,  setShowTopupSheet]  = useState(false);
+  const [addFundsVisible, setAddFundsVisible] = useState(false);
 
-  // WalletScreen pattern: response is { status: 'success', data: <balance_number> }
-  const parseBalance = (d) => d?.status === 'success' ? Number(d.data ?? 0) : Number(d?.data ?? d?.balance ?? 0);
+  // API returns { wallet_balance, currency, ... } — same shape as WalletScreen
+  const parseBalance = (d) => {
+    if (!d) return 0;
+    const raw = d.wallet_balance ?? d.balance ?? d.data?.wallet_balance ?? d.data?.balance ?? d.data ?? 0;
+    const n = Number(raw);
+    return isNaN(n) ? 0 : n;
+  };
 
-  useEffect(() => {
+  const refreshWallet = useCallback(() => {
+    setLoadingWallet(true);
     getWalletBalance(token)
       .then(d => setWalletBalance(parseBalance(d)))
       .catch(() => setWalletBalance(0))
       .finally(() => setLoadingWallet(false));
   }, [token]);
 
-  const refreshWalletBalance = useCallback(async () => {
-    try {
-      const d = await getWalletBalance(token);
-      setWalletBalance(parseBalance(d));
-    } catch { /* silent */ }
-  }, [token]);
-
-  const handleTopup = useCallback(async () => {
-    const amt = parseFloat(topupAmount);
-    if (!amt || amt < 1) { showToast('Enter a valid amount', '⚠️'); return; }
-    setToppingUp(true);
-    try {
-      const { payment_url } = await initWalletTopup(token, amt);
-      setShowTopupSheet(false);
-      await Linking.openURL(payment_url);
-      // Re-fetch balance after user returns from browser
-      setTimeout(() => refreshWalletBalance(), 3000);
-    } catch (e) {
-      showToast(e.message ?? 'Top-up failed', '⚠️');
-    }
-    setToppingUp(false);
-  }, [token, topupAmount, showToast, refreshWalletBalance]);
+  useEffect(() => { refreshWallet(); }, [refreshWallet]);
 
   // ── Countries + cart token init ───────────────────────────────────────────
   const [countries,        setCountries]        = useState([]);
@@ -315,8 +301,14 @@ export default function CheckoutScreen({ navigation, route }) {
     !!firstName.trim() && !!lastName.trim() &&
     !!email.trim()     && !!street.trim()   &&
     !!city.trim()      && !!country         && !!phone.trim();
-  const walletOk = payMethod === 'wallet' && walletBalance !== null && walletBalance >= grandTotal;
-  const canSubmit = isFormValid && !placing && (payMethod === 'paystack' || walletOk);
+
+  // Convert NGN → CNY using fixed rate (1 CNY = 215 NGN)
+  const grandTotalInCny = grandTotal * NGN_TO_CNY;
+
+  // Balance is sufficient if wallet covers the CNY equivalent
+  const walletSufficient = walletBalance !== null && walletBalance >= grandTotalInCny;
+
+  const canSubmit = isFormValid && !placing && walletBalance !== null && walletBalance > 0;
 
   const handlePlaceOrder = useCallback(async () => {
     if (!firstName.trim() || !lastName.trim() || !email.trim() ||
@@ -328,31 +320,8 @@ export default function CheckoutScreen({ navigation, route }) {
     setPlacing(true);
     setError('');
 
-    // ── Wallet payment path ────────────────────────────────────────────────
-    if (payMethod === 'wallet') {
-      try {
-        const fields = {
-          firstName: firstName.trim(), lastName: lastName.trim(),
-          email: email.trim(), street: street.trim(), city: city.trim(),
-          country: country.code, countryName: country.name,
-          phone: phone.trim(), note: note.trim(),
-          ...(state.trim()    ? { state: state.trim() }       : {}),
-          ...(postcode.trim() ? { postcode: postcode.trim() } : {}),
-        };
-        await walletCheckout(token, fields, items);
-        setCartCount(0);
-        showToast('Order placed from wallet!', '✅');
-        navigation.replace('MarketplaceOrdersScreen');
-      } catch (e) {
-        setError(e.message ?? 'Wallet payment failed. Please try again.');
-      }
-      setPlacing(false);
-      return;
-    }
-
-    // ── Paystack payment path ─────────────────────────────────────────────
     try {
-      const result = await checkout(token, {
+      const fields = {
         firstName:   firstName.trim(),
         lastName:    lastName.trim(),
         email:       email.trim(),
@@ -362,31 +331,22 @@ export default function CheckoutScreen({ navigation, route }) {
         countryName: country.name,
         phone:       phone.trim(),
         note:        note.trim(),
+        amount_ngn:  grandTotal,
+        amount_cny:  grandTotalInCny,
         ...(state.trim()    ? { state:    state.trim()    } : {}),
         ...(postcode.trim() ? { postcode: postcode.trim() } : {}),
-      });
-
-      if (!result.paid) {
-        navigation.replace('MarketplacePaymentScreen', {
-          order_id:             result.order_id,
-          orders_collection_id: result.orders_collection_id,
-          amount:               result.amount,
-          currency:             result.currency || currency,
-          message:              result.message,
-          redirect_url:         result.redirect_url,
-        });
-      } else {
-        setCartCount(0);
-        showToast('Order placed successfully!', null);
-        navigation.replace('MarketplaceOrdersScreen');
-      }
+      };
+      await walletCheckout(token, fields, items);
+      setCartCount(0);
+      showToast('Order placed successfully!', '✅');
+      navigation.replace('MarketplaceOrdersScreen');
     } catch (e) {
-      setError(e.message ?? 'Checkout failed. Please try again.');
+      setError(e.message ?? 'Payment failed. Please try again.');
     }
 
     setPlacing(false);
   }, [firstName, lastName, email, street, city, state, postcode, country, phone, note,
-      token, currency, setCartCount, showToast, navigation]);
+      token, grandTotal, grandTotalInCny, items, setCartCount, showToast, navigation]);
 
   // ── Input style helper ────────────────────────────────────────────────────
   const inputStyle = (val) => [
@@ -587,104 +547,46 @@ export default function CheckoutScreen({ navigation, route }) {
 
           {/* ── Payment Method ── */}
           <View style={ch.sectionCard}>
-            <SectionHeader icon="card-outline" title="Payment Method" />
+            <SectionHeader icon="wallet-outline" title="Payment Method" />
 
-            {/* Paystack option */}
-            <TouchableOpacity
-              style={[ch.payOption, payMethod === 'paystack' && ch.payOptionActive]}
-              onPress={() => setPayMethod('paystack')}
-              activeOpacity={0.8}
-            >
-              <View style={[ch.payRadio, payMethod === 'paystack' && ch.payRadioActive]}>
-                {payMethod === 'paystack' && <View style={ch.payRadioDot} />}
+            {/* Wallet — only payment method */}
+            <View style={[ch.payOption, ch.payOptionActive]}>
+              <View style={[ch.payRadio, ch.payRadioActive]}>
+                <View style={ch.payRadioDot} />
               </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[ch.payOptionLabel, payMethod === 'paystack' && ch.payOptionLabelActive]}>
-                  Pay with Paystack
-                </Text>
-                <Text style={ch.payOptionSub}>Card · Bank Transfer · USSD</Text>
-              </View>
-              <Ionicons name="card-outline" size={22} color={payMethod === 'paystack' ? ACCENT : MUTED} />
-            </TouchableOpacity>
-
-            {/* Wallet option */}
-            <TouchableOpacity
-              style={[ch.payOption, payMethod === 'wallet' && ch.payOptionActive]}
-              onPress={() => setPayMethod('wallet')}
-              activeOpacity={0.8}
-            >
-              <View style={[ch.payRadio, payMethod === 'wallet' && ch.payRadioActive]}>
-                {payMethod === 'wallet' && <View style={ch.payRadioDot} />}
-              </View>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={[ch.payOptionLabel, payMethod === 'wallet' && ch.payOptionLabelActive]}>
-                  Hafrik Wallet
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={[ch.payOptionLabel, ch.payOptionLabelActive]}>
+                  Hafrik Wallet (CNY ¥)
                 </Text>
                 {loadingWallet ? (
                   <ActivityIndicator size="small" color={MUTED} style={{ alignSelf: 'flex-start' }} />
                 ) : (
-                  <Text style={[ch.payOptionSub, walletBalance !== null && walletBalance >= grandTotal && { color: '#22c55e' }]}>
-                    Balance: ¥{Number(walletBalance ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    {walletBalance !== null && walletBalance < grandTotal ? ' — not enough' : ' — sufficient'}
-                  </Text>
-                )}
-              </View>
-              <Ionicons name="wallet-outline" size={22} color={payMethod === 'wallet' ? ACCENT : MUTED} />
-            </TouchableOpacity>
-
-            {/* Top-up prompt if wallet selected but balance low */}
-            {payMethod === 'wallet' && walletBalance !== null && walletBalance < grandTotal && (
-              <View style={ch.topupRow}>
-                <Ionicons name="information-circle-outline" size={14} color={DANGER} />
-                <Text style={ch.topupHint}>
-                  Need ¥{Number(grandTotal - (walletBalance ?? 0)).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} more.
-                </Text>
-                <TouchableOpacity
-                  style={ch.topupBtn}
-                  onPress={() => setShowTopupSheet(true)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={ch.topupBtnTxt}>Top Up</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* ── Top-up sheet (inline) ── */}
-          {showTopupSheet && (
-            <View style={ch.topupSheet}>
-              <View style={ch.topupSheetHeader}>
-                <Text style={ch.topupSheetTitle}>Top Up Wallet</Text>
-                <TouchableOpacity onPress={() => setShowTopupSheet(false)}>
-                  <Ionicons name="close-circle" size={22} color={MUTED} />
-                </TouchableOpacity>
-              </View>
-              <Text style={ch.topupSheetSub}>Enter amount in CNY (¥) to add to your Hafrik wallet</Text>
-              <TextInput
-                style={[ch.input, { borderColor: a(ACCENT, 0.5) }]}
-                placeholder="e.g. 100"
-                placeholderTextColor={MUTED}
-                value={topupAmount}
-                onChangeText={setTopupAmount}
-                keyboardType="decimal-pad"
-              />
-              <TouchableOpacity
-                style={[ch.topupConfirmBtn, toppingUp && { opacity: 0.65 }]}
-                onPress={handleTopup}
-                disabled={toppingUp}
-                activeOpacity={0.86}
-              >
-                {toppingUp ? (
-                  <ActivityIndicator size="small" color={WHITE} />
-                ) : (
                   <>
-                    <Ionicons name="arrow-up-circle-outline" size={17} color={WHITE} />
-                    <Text style={ch.topupConfirmTxt}>Continue to Payment</Text>
+                    <Text style={ch.payOptionSub}>
+                      Balance: ¥{Number(walletBalance ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Text>
+                    <Text style={[ch.payOptionSub, walletSufficient ? { color: GREEN } : { color: DANGER }]}>
+                      Order: ¥{grandTotalInCny.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {walletSufficient ? ' ✓' : ' — insufficient'}
+                    </Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </View>
+              <Ionicons name="wallet-outline" size={22} color={ACCENT} />
             </View>
-          )}
+
+            {/* Top-up button when balance is insufficient */}
+            {!loadingWallet && !walletSufficient && (
+              <TouchableOpacity
+                style={ch.topupBtn}
+                onPress={() => setAddFundsVisible(true)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="add-circle-outline" size={16} color={WHITE} />
+                <Text style={ch.topupBtnTxt}>Top Up Wallet</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* ── Security card ── */}
           <View style={ch.securityCard}>
@@ -738,6 +640,14 @@ export default function CheckoutScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </View>
+
+      <AddFundsModal
+        visible={addFundsVisible}
+        onClose={() => {
+          setAddFundsVisible(false);
+          refreshWallet();
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -965,8 +875,13 @@ const ch = StyleSheet.create({
     borderWidth: 1, borderColor: a(DANGER, 0.15),
   },
   topupHint:   { flex: 1, fontSize: 12.5, color: DANGER, fontFamily: FONT_R },
-  topupBtn:    { backgroundColor: DANGER, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  topupBtnTxt: { fontSize: 12.5, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
+  topupBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: ACCENT, borderRadius: 12,
+    paddingHorizontal: 18, paddingVertical: 12, marginTop: 10,
+    shadowColor: ACCENT, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.28, shadowRadius: 8, elevation: 4,
+  },
+  topupBtnTxt: { fontSize: 14, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
 
   topupSheet: {
     backgroundColor: WHITE, borderRadius: 18, padding: 18, gap: 12,

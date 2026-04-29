@@ -17,6 +17,7 @@ import { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
 import AppDetails from "../../../helpers/appdetails";
 import Banner from "../banner.jsx";
 import QuickLinks from "../quicklinks.jsx";
+import FeedQuickLinks from "../feedquicklinks.jsx";
 import PostFeed from "../postfeed.jsx";
 import { useAuth } from "../../../AuthContext.js";
 import FeedsHeader from "../feedsheader.jsx";
@@ -355,8 +356,9 @@ const ldStyles = StyleSheet.create({
 
 
 // ─── Memoized section components ──────────────────────────────────────────────
-const MemoizedBanner      = memo(Banner);
-const MemoizedQuickLinks  = memo(QuickLinks);
+const MemoizedBanner         = memo(Banner);
+const MemoizedQuickLinks     = memo(QuickLinks);
+const MemoizedFeedQuickLinks = memo(FeedQuickLinks);
 const MemoizedPostFeed    = memo(PostFeed);
 const MemoizedFeedsHeader = memo(FeedsHeader);
 
@@ -598,6 +600,9 @@ const Feeds = ({
 
       case 'quicklinks':
         return <MemoizedQuickLinks />;
+
+      case 'feedquicklinks':
+        return <MemoizedFeedQuickLinks />;
 
       case 'postfeed':
         return <MemoizedPostFeed />;

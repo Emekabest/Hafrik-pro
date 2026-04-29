@@ -45,6 +45,69 @@ const a = (hex, op) => {
   return `#${h}${Math.round(op * 255).toString(16).padStart(2, '0')}`;
 };
 
+// ─── Currency conversion (1 CNY = 215 NGN — fixed) ───────────────────────────
+const CNY_NGN_RATE = 215;
+
+function convertAndFormat(price, fromCurrency, toCurrency) {
+  const raw = Number(price ?? 0);
+  let converted = raw;
+  if (fromCurrency === 'NGN' && toCurrency === 'CNY') converted = raw / CNY_NGN_RATE;
+  else if (fromCurrency === 'CNY' && toCurrency === 'NGN') converted = raw * CNY_NGN_RATE;
+  if (toCurrency === 'NGN') return `₦${Math.round(converted).toLocaleString('en')}`;
+  if (toCurrency === 'CNY') return `¥${converted.toFixed(2)}`;
+  return `${toCurrency} ${raw.toLocaleString()}`;
+}
+
+// ─── Currency Toggle ──────────────────────────────────────────────────────────
+function CurrencyToggle({ currency, onChange }) {
+  return (
+    <View style={cy.wrap}>
+      <TouchableOpacity
+        style={[cy.pill, currency === 'NGN' && cy.active]}
+        onPress={() => onChange('NGN')}
+        activeOpacity={0.8}
+      >
+        <Text style={[cy.txt, currency === 'NGN' && cy.activeTxt]}>₦ NGN</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[cy.pill, currency === 'CNY' && cy.active]}
+        onPress={() => onChange('CNY')}
+        activeOpacity={0.8}
+      >
+        <Text style={[cy.txt, currency === 'CNY' && cy.activeTxt]}>¥ CNY</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const cy = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    backgroundColor: a(WHITE, 0.12),
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: a(WHITE, 0.18),
+    padding: 3,
+  },
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 100,
+  },
+  active: {
+    backgroundColor: WHITE,
+  },
+  txt: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: a(WHITE, 0.6),
+    fontFamily: FONT_B,
+  },
+  activeTxt: {
+    color: BRAND,
+  },
+});
+
 const stripHtml = (raw = '') =>
   (raw || '')
     .replace(/&#039;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<')
@@ -146,12 +209,14 @@ const p = StyleSheet.create({
 });
 
 // ─── Product Card ─────────────────────────────────────────────────────────────
-const ProductCard = memo(function ProductCard({ item, onPress }) {
+const ProductCard = memo(function ProductCard({ item, onPress, displayCurrency = 'NGN' }) {
   const thumb   = item.thumbnail ?? item.photos?.[0] ?? null;
   const title   = stripHtml(item.title);
   const inStock = item.in_stock !== false;
-  const price   = item.price_formatted
-    ?? `${item.currency ?? ''} ${Number(item.price ?? 0).toLocaleString()}`;
+  const itemCcy = item.currency ?? 'NGN';
+  const price   = (itemCcy === 'NGN' || itemCcy === 'CNY')
+    ? convertAndFormat(item.price, itemCcy, displayCurrency)
+    : (item.price_formatted ?? `${itemCcy} ${Number(item.price ?? 0).toLocaleString()}`);
 
   return (
     <TouchableOpacity style={c.card} onPress={onPress} activeOpacity={0.92}>
@@ -243,10 +308,12 @@ const SLIDE_H   = 230;       // card height
 const SLIDE_GAP = 12;
 const SNAP_INT  = SLIDE_W + SLIDE_GAP;
 
-const SlideCard = memo(function SlideCard({ item, onPress }) {
+const SlideCard = memo(function SlideCard({ item, onPress, displayCurrency = 'NGN' }) {
   const thumb = item.thumbnail ?? item.photos?.[0] ?? null;
-  const price = item.price_formatted
-    ?? `${item.currency ?? ''} ${Number(item.price ?? 0).toLocaleString()}`;
+  const itemCcy = item.currency ?? 'NGN';
+  const price = (itemCcy === 'NGN' || itemCcy === 'CNY')
+    ? convertAndFormat(item.price, itemCcy, displayCurrency)
+    : (item.price_formatted ?? `${itemCcy} ${Number(item.price ?? 0).toLocaleString()}`);
   const title = stripHtml(item.title);
   const inStock = item.in_stock !== false;
 
@@ -294,7 +361,7 @@ const SlideCard = memo(function SlideCard({ item, onPress }) {
   );
 });
 
-function TrendingStrip({ onProductPress }) {
+function TrendingStrip({ onProductPress, displayCurrency = 'NGN' }) {
   const { token }  = useAuth();
   const [items,    setItems]    = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -390,7 +457,7 @@ function TrendingStrip({ onProductPress }) {
           onScroll={onScroll}
           scrollEventThrottle={16}
           renderItem={({ item }) => (
-            <SlideCard item={item} onPress={() => onProductPress(item)} />
+            <SlideCard item={item} onPress={() => onProductPress(item)} displayCurrency={displayCurrency} />
           )}
           getItemLayout={(_, i) => ({ length: SNAP_INT, offset: SNAP_INT * i, index: i })}
         />
@@ -511,8 +578,10 @@ const t = StyleSheet.create({
 export default function MarketplaceScreen({ navigation }) {
   const { token }    = useAuth();
   const insets       = useSafeAreaInsets();
-  const cartCount    = useStore(s => s.cartCount);
-  const setCartCount = useStore(s => s.setCartCount);
+  const cartCount             = useStore(s => s.cartCount);
+  const setCartCount          = useStore(s => s.setCartCount);
+  const displayCurrency       = useStore(s => s.marketplaceCurrency);
+  const setDisplayCurrency    = useStore(s => s.setMarketplaceCurrency);
 
   const [products,    setProducts]    = useState([]);
   const [categories,  setCategories]  = useState([]);
@@ -549,7 +618,11 @@ export default function MarketplaceScreen({ navigation }) {
         token,
       );
       const list = data.products ?? [];
-      setProducts(prev => replace ? list : [...prev, ...list]);
+      setProducts(prev => {
+        if (replace) return list;
+        const seen = new Set(prev.map(p => String(p.post_id ?? p.id)));
+        return [...prev, ...list.filter(p => !seen.has(String(p.post_id ?? p.id)))];
+      });
       setHasMore(pg * PAGE_SIZE < (data.total ?? 0));
       setPage(pg);
       setError(null);
@@ -591,7 +664,7 @@ export default function MarketplaceScreen({ navigation }) {
   // ── List header ────────────────────────────────────────────────────────────
   const ListHeader = useCallback(() => (
     <>
-      <TrendingStrip onProductPress={openProduct} />
+      <TrendingStrip onProductPress={openProduct} displayCurrency={displayCurrency} />
       <CategoryRow categories={categories} activeCatId={activeCatId} onChange={handleCat} />
 
       {/* Section label + sell CTA */}
@@ -602,13 +675,10 @@ export default function MarketplaceScreen({ navigation }) {
             <Text style={m.sectionCount}>{products.length} item{products.length !== 1 ? 's' : ''}</Text>
           )}
         </View>
-        <TouchableOpacity style={m.sellBtn} activeOpacity={0.85} onPress={() => useStore.getState().showToast('Selling — coming soon!', '🛒')}>
-          <Ionicons name="time-outline" size={13} color={WHITE} />
-          <Text style={m.sellBtnTxt}>Coming Soon</Text>
-        </TouchableOpacity>
+
       </View>
     </>
-  ), [categories, activeCatId, handleCat, activeCatName, loading, error, products.length, openProduct]);
+  ), [categories, activeCatId, handleCat, activeCatName, loading, error, products.length, openProduct, displayCurrency]);
 
   const ListFooter = useCallback(() => (
     loadMore
@@ -634,8 +704,8 @@ export default function MarketplaceScreen({ navigation }) {
   }, [loading, error, onRefresh]);
 
   const renderItem = useCallback(({ item }) => (
-    <ProductCard item={item} onPress={() => openProduct(item)} />
-  ), [openProduct]);
+    <ProductCard item={item} onPress={() => openProduct(item)} displayCurrency={displayCurrency} />
+  ), [openProduct, displayCurrency]);
 
   return (
     <View style={m.root}>
@@ -664,7 +734,7 @@ export default function MarketplaceScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
+        {/* Search + currency toggle row */}
         <View style={m.searchRow}>
           <View style={m.searchBar}>
             <Ionicons name="search-outline" size={16} color={a(WHITE, 0.6)} />
@@ -682,6 +752,7 @@ export default function MarketplaceScreen({ navigation }) {
               </TouchableOpacity>
             )}
           </View>
+          <CurrencyToggle currency={displayCurrency} onChange={setDisplayCurrency} />
         </View>
 
         {/* Accent underline — matches AppHeader */}
@@ -691,7 +762,7 @@ export default function MarketplaceScreen({ navigation }) {
       {/* ── Product grid ───────────────────────────────────────────────── */}
       {loading && !refreshing ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}>
-          <TrendingStrip onProductPress={openProduct} />
+          <TrendingStrip onProductPress={openProduct} displayCurrency={displayCurrency} />
           <CategoryRow categories={categories} activeCatId={activeCatId} onChange={handleCat} />
           <View style={{ height: 16 }} />
           <GridSkeleton />
@@ -766,8 +837,12 @@ const m = StyleSheet.create({
   cartBadgeTxt: { color: WHITE, fontSize: 9, fontWeight: '900', fontFamily: FONT_B },
 
   // Search
-  searchRow: { paddingHorizontal: 14, paddingBottom: 12 },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingBottom: 12, gap: 10,
+  },
   searchBar: {
+    flex: 1,
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: a(WHITE, 0.12), borderRadius: 12,
     paddingHorizontal: 13, paddingVertical: 10,
