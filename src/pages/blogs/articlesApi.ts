@@ -17,7 +17,7 @@ export interface ArticleListItem {
   category?: number;
   /** Legacy alias — some detail endpoints may use this field name */
   category_id?: number;
-  tags?: string;
+  tags?: string | string[];
   views?: number;
   date?: string;
   link?: string;

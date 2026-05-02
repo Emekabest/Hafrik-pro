@@ -35,6 +35,14 @@ const TEXT_MUTED = Colors.mutedBlueGrayDeep;
 
 const ALL_CITIES = { country_id: 'all', name: 'All Cities' };
 
+const MEDIA_FILTERS = [
+  { label: 'All',      value: '',             icon: 'grid-outline'       },
+  { label: 'Photos',   value: 'photo,photos', icon: 'image-outline'      },
+  { label: 'Videos',   value: 'video',        icon: 'videocam-outline'   },
+  { label: 'Articles', value: 'article',      icon: 'newspaper-outline'  },
+  { label: 'Polls',    value: 'poll',         icon: 'stats-chart-outline'},
+];
+
 // ─── Normalise a country object to always use country_id ─────────────────────
 const normaliseCountry = (c) => ({
   country_id: c?.country_id ?? c?.id ?? 'all',
@@ -109,6 +117,7 @@ const FeedsHeader = ({ name, description, id }) => {
   const [countries,           setCountries]           = useState([]);
   const [selectedCountry,     setSelectedCountry]     = useState(ALL_CITIES);
   const [countryModalVisible, setCountryModalVisible] = useState(false);
+  const [mediaModalVisible,   setMediaModalVisible]   = useState(false);
   const [search,              setSearch]              = useState('');
   const [loading,             setLoading]             = useState(false);
 
@@ -116,6 +125,8 @@ const FeedsHeader = ({ name, description, id }) => {
   const addFeedsToList_store  = useStore((state) => state.addFeedsToList);
   const triggerRefresh        = useStore((state) => state.triggerRefresh);
   const setSelectedCountryId  = useStore((state) => state.setSelectedCountryId);
+  const feedContentFilter     = useStore((state) => state.feedContentFilter);
+  const setFeedContentFilter  = useStore((state) => state.setFeedContentFilter);
 
   // ── Load countries from API ──────────────────────────────────────────────
   useEffect(() => {
@@ -199,6 +210,9 @@ const FeedsHeader = ({ name, description, id }) => {
 
   const isActive = selectedCountry?.country_id !== 'all';
 
+  const activeMediaFilter = MEDIA_FILTERS.find(f => f.value === feedContentFilter) ?? MEDIA_FILTERS[0];
+  const isMediaActive = !!feedContentFilter;
+
   return (
     <View>
       {/* ── Header row ── */}
@@ -211,7 +225,22 @@ const FeedsHeader = ({ name, description, id }) => {
           )}
         </View>
 
-        {/* Filter pill */}
+        {/* Media filter dropdown */}
+        <TouchableOpacity
+          activeOpacity={0.75}
+          style={[styles.filterPill, isMediaActive && styles.filterPillActive]}
+          onPress={() => setMediaModalVisible(true)}
+        >
+          <Ionicons name={activeMediaFilter.icon} size={13} color={isMediaActive ? Colors.white : BRAND} />
+          <Text style={[styles.filterPillText, isMediaActive && styles.filterPillTextActive]} numberOfLines={1}>
+            {activeMediaFilter.label}
+          </Text>
+          <Ionicons name="chevron-down" size={12} color={isMediaActive ? Colors.white : BRAND} />
+        </TouchableOpacity>
+
+        <View style={{ width: 6 }} />
+
+        {/* City filter dropdown */}
         <TouchableOpacity
           activeOpacity={0.75}
           style={[styles.filterPill, isActive && styles.filterPillActive]}
@@ -222,27 +251,72 @@ const FeedsHeader = ({ name, description, id }) => {
             : <Ionicons name="earth-outline" size={14} color={isActive ? Colors.white : BRAND} />
           }
           <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]} numberOfLines={1}>
-            {isActive ? selectedCountry.name : 'All Cities'}
+            {isActive ? selectedCountry.name : 'Cities'}
           </Text>
           <Ionicons name="chevron-down" size={12} color={isActive ? Colors.white : BRAND} />
         </TouchableOpacity>
       </View>
 
-      {/* ── Active filter indicator ── */}
-      {isActive && (
+      {/* ── Active filter indicators ── */}
+      {(isActive || isMediaActive) && (
         <View style={styles.filterIndicator}>
           <Ionicons name="funnel" size={10} color={ACCENT} />
           <Text style={styles.filterIndicatorText}>
-            Posts from {selectedCountry.name}
+            {[isMediaActive && activeMediaFilter.label, isActive && selectedCountry.name].filter(Boolean).join(' · ')}
           </Text>
-          <TouchableOpacity onPress={() => handleSelectCountry(ALL_CITIES)} hitSlop={8}>
-            <Ionicons name="close-circle" size={14} color={TEXT_MUTED} />
-          </TouchableOpacity>
+          {isMediaActive && (
+            <TouchableOpacity onPress={() => setFeedContentFilter('')} hitSlop={8}>
+              <Ionicons name="close-circle" size={14} color={TEXT_MUTED} />
+            </TouchableOpacity>
+          )}
+          {isActive && (
+            <TouchableOpacity onPress={() => handleSelectCountry(ALL_CITIES)} hitSlop={8}>
+              <Ionicons name="close-circle" size={14} color={TEXT_MUTED} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
       {/* ── Compact inline ad ── */}
       <InlineAdSlot />
+
+      {/* ── Media Filter Modal ── */}
+      <Modal
+        visible={mediaModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMediaModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalDismiss} onPress={() => setMediaModalVisible(false)} />
+          <View style={[styles.modalContainer, { maxHeight: '50%' }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Filter by Type</Text>
+            <Text style={styles.modalSubtitle}>Show only a specific type of post in your feed.</Text>
+            {MEDIA_FILTERS.map((filter) => {
+              const isSelected = feedContentFilter === filter.value;
+              return (
+                <Pressable
+                  key={filter.value}
+                  onPress={() => { setFeedContentFilter(filter.value); setMediaModalVisible(false); triggerRefresh(); }}
+                  style={({ pressed }) => [
+                    styles.countryItem,
+                    isSelected && styles.countryItemSelected,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                >
+                  <Ionicons name={filter.icon} size={16} color={isSelected ? ACCENT : TEXT_MUTED} style={{ marginRight: 10 }} />
+                  <Text style={[styles.countryText, isSelected && styles.countryTextSelected]}>{filter.label}</Text>
+                  {isSelected && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
+                </Pressable>
+              );
+            })}
+            <TouchableOpacity activeOpacity={0.85} onPress={() => setMediaModalVisible(false)} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Country Picker Modal ── */}
       <Modal
@@ -362,14 +436,14 @@ const styles = StyleSheet.create({
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: 22,
     backgroundColor: Colors.surfaceCoolAlt,
     borderWidth: 1,
     borderColor: BORDER,
-    maxWidth: 170,
+    maxWidth: 110,
   },
   filterPillActive: {
     backgroundColor: ACCENT,

@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../AuthContext';
 import useStore from '../../repository/store';
 import { useTheme } from '../../theme/ThemeContext';
@@ -918,12 +919,30 @@ export default function ThreadScreen() {
   }, [myId, otherAv, myAv, handleLongPress, convSeen]);
 
   const hasText = text.trim().length > 0;
+  const sharedMedia = useMemo(() => messages
+    .map((m) => {
+      const uri = resolveUrl(m.image ?? m.image_url ?? (m.media_type === 'image' ? m.media_url : null));
+      if (!uri) return null;
+      return {
+        id: String(m.message_id ?? m.id ?? uri),
+        uri,
+        time: m.time ?? m.created_at,
+      };
+    })
+    .filter(Boolean), [messages]);
 
   return (
-    <View style={[s.root, { backgroundColor: tc.background ?? CREAM }]}>
+    <View style={[s.root, { backgroundColor: '#EEF7F7' }]}>
 
       {/* ── Header ── */}
-      <View style={[s.header, { paddingTop: top + 4 }]}>
+      <LinearGradient
+        colors={[BRAND, '#10545B', ACCENT]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[s.header, { paddingTop: top + 8 }]}
+      >
+        <View style={s.headerGlowOne} pointerEvents="none" />
+        <View style={s.headerGlowTwo} pointerEvents="none" />
         <TouchableOpacity style={s.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={22} color={WHITE} />
         </TouchableOpacity>
@@ -935,24 +954,27 @@ export default function ThreadScreen() {
             userId: otherUser.id ?? otherUser.user_id, username: otherName,
           })}
         >
-          <Image source={{ uri: otherAv }} style={s.headerAv} />
+          <View style={s.headerAvWrap}>
+            <Image source={{ uri: otherAv }} style={s.headerAv} />
+            <View style={[s.headerPresence, isOnline && s.headerPresenceOn]} />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={s.headerName} numberOfLines={1}>{otherName}</Text>
-            <Text style={s.headerSub}>
-              {otherTyping ? 'typing…' : isOnline ? '● Online' : 'Active recently'}
-            </Text>
+            <View style={s.headerStatusRow}>
+              <View style={[s.statusDot, otherTyping || isOnline ? s.statusDotOn : null]} />
+              <Text style={s.headerSub}>
+                {otherTyping ? 'typing…' : isOnline ? 'Online now' : 'Active recently'}
+              </Text>
+            </View>
           </View>
         </TouchableOpacity>
 
         <View style={s.headerRight}>
-          <TouchableOpacity style={s.headerBtn} activeOpacity={0.8}>
-            <Ionicons name="call-outline" size={20} color={WHITE} />
-          </TouchableOpacity>
           <TouchableOpacity style={s.headerBtn} activeOpacity={0.8} onPress={() => setShowGallery(true)}>
             <Ionicons name="images-outline" size={20} color={WHITE} />
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* ── Chat body ── */}
       <KeyboardAvoidingView
@@ -1060,27 +1082,52 @@ export default function ThreadScreen() {
 
       {/* Media gallery */}
       <Modal visible={showGallery} animationType="slide" onRequestClose={() => setShowGallery(false)}>
-        <View style={[gal.root, { paddingTop: top + 10 }]}>
-          <View style={gal.header}>
-            <Text style={gal.title}>Shared Media</Text>
-            <TouchableOpacity onPress={() => setShowGallery(false)} hitSlop={{ top:10,bottom:10,left:10,right:10 }}>
-              <Ionicons name="close" size={22} color={WHITE} />
+        <View style={gal.root}>
+          <LinearGradient
+            colors={[BRAND, '#10545B', ACCENT]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[gal.header, { paddingTop: top + 12 }]}
+          >
+            <View>
+              <Text style={gal.kicker}>CHAT GALLERY</Text>
+              <Text style={gal.title}>Shared Media</Text>
+              <Text style={gal.sub}>{sharedMedia.length} image{sharedMedia.length === 1 ? '' : 's'} shared with {otherName}</Text>
+            </View>
+            <TouchableOpacity style={gal.closeBtn} onPress={() => setShowGallery(false)} hitSlop={{ top:10,bottom:10,left:10,right:10 }}>
+              <Ionicons name="close" size={21} color={WHITE} />
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
           <FlatList
-            data={messages.filter((m) => !!(m.image ?? m.media_url))}
+            data={sharedMedia}
             numColumns={3}
-            keyExtractor={(m, i) => String(m.message_id ?? i)}
-            renderItem={({ item: m }) => {
-              const uri = m.image ?? m.media_url;
+            keyExtractor={(m, i) => `${m.id}-${i}`}
+            renderItem={({ item: m, index }) => {
               return (
-                <TouchableOpacity onPress={() => { setShowGallery(false); setFullscreenImg(uri); }} activeOpacity={0.8}>
-                  <Image source={{ uri }} style={gal.thumb} resizeMode="cover" />
+                <TouchableOpacity
+                  style={gal.tile}
+                  onPress={() => { setShowGallery(false); setFullscreenImg(m.uri); }}
+                  activeOpacity={0.86}
+                >
+                  <Image source={{ uri: m.uri }} style={gal.thumb} resizeMode="cover" />
+                  {index < 3 && (
+                    <LinearGradient colors={['transparent', '#00000066']} style={gal.tileScrim}>
+                      <Text style={gal.tileTxt}>Recent</Text>
+                    </LinearGradient>
+                  )}
                 </TouchableOpacity>
               );
             }}
-            contentContainerStyle={{ padding: 2 }}
-            ListEmptyComponent={<View style={gal.empty}><Text style={gal.emptyTxt}>No shared images yet</Text></View>}
+            contentContainerStyle={sharedMedia.length ? gal.grid : { flex: 1 }}
+            ListEmptyComponent={
+              <View style={gal.empty}>
+                <View style={gal.emptyIcon}>
+                  <Ionicons name="images-outline" size={40} color={ACCENT} />
+                </View>
+                <Text style={gal.emptyTitle}>No shared images yet</Text>
+                <Text style={gal.emptyTxt}>Images you send or receive in this chat will appear here.</Text>
+              </View>
+            }
           />
         </View>
       </Modal>
@@ -1094,27 +1141,69 @@ const s = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: BRAND,
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 6, paddingBottom: 10, gap: 2,
-    elevation: 4,
-    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 6,
+    paddingHorizontal: 10, paddingBottom: 14, gap: 4,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    elevation: 8,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.20, shadowRadius: 18,
+    overflow: 'hidden',
   },
-  headerBtn:   { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerInfo:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
-  headerAv:    { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: WHITE + '33' },
-  headerName:  { fontSize: 15, fontWeight: '700', color: WHITE },
-  headerSub:   { fontSize: 11, color: WHITE + '99', marginTop: 1 },
+  headerGlowOne: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: WHITE + '12',
+    top: -72,
+    right: -48,
+  },
+  headerGlowTwo: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: ACCENT + '28',
+    bottom: -46,
+    left: -34,
+  },
+  headerBtn: {
+    width: 40, height: 40, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: WHITE + '1F',
+    borderWidth: 1,
+    borderColor: WHITE + '22',
+  },
+  headerInfo:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 5 },
+  headerAvWrap: { position: 'relative' },
+  headerAv:    { width: 42, height: 42, borderRadius: 16, borderWidth: 2, borderColor: WHITE + '45' },
+  headerPresence: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    right: -1,
+    bottom: 1,
+    backgroundColor: '#94A3B8',
+    borderWidth: 2,
+    borderColor: BRAND,
+  },
+  headerPresenceOn: { backgroundColor: '#22C55E' },
+  headerName:  { fontSize: 16, fontWeight: '900', color: WHITE, letterSpacing: -0.2 },
+  headerStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE + '55' },
+  statusDotOn: { backgroundColor: '#22C55E' },
+  headerSub:   { fontSize: 11.5, color: WHITE + 'B8', fontWeight: '700' },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
 
   skeletonWrap: { flex: 1, padding: 20, gap: 16 },
-  listContent:  { paddingHorizontal: 6, paddingVertical: 10 },
+  listContent:  { paddingHorizontal: 8, paddingTop: 16, paddingBottom: 12 },
 
   // Day separator
-  daySep:  { flexDirection: 'row', alignItems: 'center', marginVertical: 12, paddingHorizontal: 8, gap: 8 },
-  dayLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: BRAND + '30' },
-  dayTxt:  { fontSize: 11, fontWeight: '600', color: MUTED, paddingHorizontal: 10, paddingVertical: 3, backgroundColor: CREAM, borderRadius: 10, overflow: 'hidden' },
+  daySep:  { flexDirection: 'row', alignItems: 'center', marginVertical: 14, paddingHorizontal: 8, gap: 10 },
+  dayLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: BRAND + '22' },
+  dayTxt:  { fontSize: 11, fontWeight: '900', color: BRAND, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: WHITE, borderRadius: 999, overflow: 'hidden', letterSpacing: 0.2 },
 
   // Bubble rows
   bubbleRow:        { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 2 },
@@ -1123,24 +1212,24 @@ const s = StyleSheet.create({
   bubbleRowFirst:   { marginTop: 10 },
   bubbleRowGrouped: { marginTop: 2 },
 
-  avSlot:       { width: 32, alignItems: 'center', justifyContent: 'flex-end', marginRight: 4 },
-  avSlotMe:     { width: 32, alignItems: 'center', justifyContent: 'flex-end', marginLeft: 4 },
-  bubbleAv:     { width: 28, height: 28, borderRadius: 14 },
-  avPlaceholder:{ width: 28, height: 28 },
+  avSlot:       { width: 34, alignItems: 'center', justifyContent: 'flex-end', marginRight: 4 },
+  avSlotMe:     { width: 34, alignItems: 'center', justifyContent: 'flex-end', marginLeft: 4 },
+  bubbleAv:     { width: 30, height: 30, borderRadius: 12 },
+  avPlaceholder:{ width: 30, height: 30 },
 
-  bubbleContent:    { maxWidth: '74%' },
-  bubble:           { borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8, overflow: 'hidden' },
-  bubbleMe:         { backgroundColor: BRAND, borderBottomRightRadius: 4 },
-  bubbleThem:       { backgroundColor: RECV_BG, borderBottomLeftRadius: 4, shadowColor: BLACK, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 1 },
-  bubbleMeGrouped:  { borderTopRightRadius: 4 },
-  bubbleThemGrouped:{ borderTopLeftRadius: 4 },
+  bubbleContent:    { maxWidth: '76%' },
+  bubble:           { borderRadius: 21, paddingHorizontal: 13, paddingVertical: 9, overflow: 'hidden' },
+  bubbleMe:         { backgroundColor: BRAND, borderBottomRightRadius: 6 },
+  bubbleThem:       { backgroundColor: WHITE, borderBottomLeftRadius: 6, shadowColor: BRAND, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.07, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: BRAND + '0D' },
+  bubbleMeGrouped:  { borderTopRightRadius: 8 },
+  bubbleThemGrouped:{ borderTopLeftRadius: 8 },
 
-  bubbleTxt:    { fontSize: 15, lineHeight: 21 },
+  bubbleTxt:    { fontSize: 15.2, lineHeight: 22 },
   bubbleTxtMe:  { color: WHITE },
   bubbleTxtThem:{ color: DARK },
 
-  metaRow:  { flexDirection: 'row', alignItems: 'center', marginTop: 3, paddingHorizontal: 2 },
-  metaTime: { fontSize: 10, color: MUTED },
+  metaRow:  { flexDirection: 'row', alignItems: 'center', marginTop: 4, paddingHorizontal: 4 },
+  metaTime: { fontSize: 10.5, color: MUTED, fontWeight: '700' },
 
   // Reply inside bubble
   replyBox:     { flexDirection: 'row', borderRadius: 10, marginBottom: 4, padding: 6, gap: 6, overflow: 'hidden' },
@@ -1161,7 +1250,7 @@ const s = StyleSheet.create({
   xlTextMe:     { color: WHITE + 'DD' },
   xlTextThem:   { color: DARK },
 
-  bubbleImg:     { width: 210, height: 165, borderRadius: 12, marginBottom: 2 },
+  bubbleImg:     { width: 218, height: 172, borderRadius: 16, marginBottom: 2 },
   uploadOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.28)', borderRadius: 12 },
   mediaPill:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   mediaLbl:      { fontSize: 13 },
@@ -1171,32 +1260,44 @@ const s = StyleSheet.create({
 
   // Scroll to bottom
   scrollBtn: {
-    position: 'absolute', right: 14, bottom: 10,
-    width: 38, height: 38, borderRadius: 19,
+    position: 'absolute', right: 16, bottom: 14,
+    width: 42, height: 42, borderRadius: 21,
     backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center',
-    shadowColor: BLACK, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.22, shadowRadius: 5, elevation: 4,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 6,
   },
 
   // Reply banner (above input)
-  replyBanner:    { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: WHITE, borderTopWidth: 1, borderTopColor: BRAND + '18', paddingHorizontal: 14, paddingVertical: 8 },
+  replyBanner:    { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: WHITE, borderTopWidth: 1, borderTopColor: BRAND + '12', paddingHorizontal: 14, paddingVertical: 10 },
   replyBannerBar: { width: 3, minHeight: 32, borderRadius: 2, backgroundColor: ACCENT },
   replyBannerName:{ fontSize: 12, fontWeight: '700', color: ACCENT },
   replyBannerMsg: { fontSize: 12, color: MUTED, marginTop: 1 },
 
   // Input
-  inputArea: { backgroundColor: WHITE, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: BRAND + '20', paddingTop: 8, paddingHorizontal: 8 },
-  inputRow:  { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
-  inputIconBtn: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', marginBottom: 1 },
+  inputArea: {
+    backgroundColor: WHITE,
+    borderTopWidth: 0,
+    paddingTop: 10,
+    paddingHorizontal: 10,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  inputRow:  { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  inputIconBtn: { width: 40, height: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 1, backgroundColor: ACCENT + '12' },
   input: {
-    flex: 1, backgroundColor: '#f0f2f5', borderRadius: 22,
+    flex: 1, backgroundColor: '#EEF7F7', borderRadius: 20,
     paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 10 : 8,
     paddingBottom: Platform.OS === 'ios' ? 10 : 8,
-    fontSize: 15, color: DARK, maxHeight: 110,
+    fontSize: 15, color: DARK, maxHeight: 112,
+    borderWidth: 1,
+    borderColor: BRAND + '0D',
   },
   sendBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: ACCENT,
+    width: 42, height: 42, borderRadius: 16, backgroundColor: ACCENT,
     alignItems: 'center', justifyContent: 'center', marginBottom: 1,
-    shadowColor: ACCENT, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3,
+    shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 10, elevation: 4,
   },
 });
 
@@ -1217,10 +1318,27 @@ const rec = StyleSheet.create({
 
 /* ─── Gallery styles ─────────────────────────────────────────────────────── */
 const gal = StyleSheet.create({
-  root:     { flex: 1, backgroundColor: BRAND },
-  header:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
-  title:    { fontSize: 17, fontWeight: '700', color: WHITE },
-  thumb:    { width: '33%', aspectRatio: 1, margin: 1, borderRadius: 4 },
-  empty:    { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
-  emptyTxt: { color: WHITE + '88', fontSize: 14 },
+  root:     { flex: 1, backgroundColor: '#EEF7F7' },
+  header:   {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  kicker:   { fontSize: 9, fontWeight: '900', color: WHITE + 'B8', letterSpacing: 2.2, marginBottom: 4 },
+  title:    { fontSize: 25, fontWeight: '900', color: WHITE, letterSpacing: -0.5 },
+  sub:      { fontSize: 12.5, color: WHITE + 'B8', fontWeight: '700', marginTop: 4, maxWidth: 260 },
+  closeBtn: { width: 40, height: 40, borderRadius: 16, backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: WHITE + '24' },
+  grid:     { padding: 10, paddingBottom: 34 },
+  tile:     { width: '33.333%', aspectRatio: 1, padding: 3 },
+  thumb:    { width: '100%', height: '100%', borderRadius: 16, backgroundColor: BRAND + '18' },
+  tileScrim:{ position: 'absolute', left: 3, right: 3, bottom: 3, height: 42, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, justifyContent: 'flex-end', padding: 7 },
+  tileTxt:  { fontSize: 10, fontWeight: '900', color: WHITE },
+  empty:    { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 34, gap: 12 },
+  emptyIcon:{ width: 96, height: 96, borderRadius: 32, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: ACCENT + '18' },
+  emptyTitle:{ fontSize: 18, fontWeight: '900', color: BRAND },
+  emptyTxt: { color: MUTED, fontSize: 13, textAlign: 'center', lineHeight: 20 },
 });

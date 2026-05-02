@@ -2,9 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Animated, Alert,
-  Modal, TextInput, KeyboardAvoidingView, Platform,
-  TouchableWithoutFeedback, Keyboard,
+  ActivityIndicator, RefreshControl, Animated, Alert, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,12 +15,11 @@ import { Colors } from '../../theme';
 import AppDetails from '../../helpers/appdetails';
 import {
   getWalletBalance, getWalletTransactions,
-  withdrawPoints, withdrawAffiliates,
 } from '../../api/walletApi';
+import AddFundsModal from '../../components/AddFundsModal';
 
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
-const BG     = Colors.background ?? '#F7F8FA';
 const CARD   = Colors.white;
 const BORDER = Colors.borderSoft ?? Colors.border;
 const TEXT_H = Colors.black;
@@ -31,13 +28,10 @@ const WHITE  = Colors.white;
 const GREEN  = Colors.success ?? '#22c55e';
 const RED    = Colors.destructive ?? '#d32f2f';
 const ORANGE = Colors.warm ?? '#f4a535';
-const GOLD   = Colors.star ?? '#ffd700';
 
 const FONT_B = AppDetails?.fontFamily?.redex?.bold    ?? 'System';
 const FONT_R = AppDetails?.fontFamily?.inter?.regular ?? 'System';
 const FONT_M = AppDetails?.fontFamily?.inter?.medium  ?? 'System';
-
-const AVA_FB = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
 
 const fmtMoney = (n) => `¥${Number(n ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDate  = (raw) => {
@@ -84,74 +78,12 @@ const TxRow = ({ tx }) => {
         </Text>
       </View>
       <View style={ws.txRight}>
-        <Text style={[ws.txAmount, isIn ? { color: GREEN } : { color: RED }]}>
+        <Text style={[ws.txAmount, isIn ? { color: GREEN } : { color: RED }]} numberOfLines={1}>
           {isIn ? '+' : '−'}{fmtMoney(tx.amount)}
         </Text>
-        <Text style={ws.txId}>#{tx.transaction_id}</Text>
+        <Text style={ws.txId} numberOfLines={1}>#{tx.transaction_id}</Text>
       </View>
     </View>
-  );
-};
-
-// ─── Amount modal (for convert/withdraw affiliates) ───────────────────────────
-const AmountModal = ({ visible, onClose, title, subtitle, icon, gradient, availableLabel, availableValue, onSubmit, submitting, error }) => {
-  const [amount, setAmount] = useState('');
-  const close = () => { setAmount(''); onClose(); };
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView style={ws.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <View style={ws.sheet}>
-              <View style={ws.handle} />
-              <View style={ws.sheetHeader}>
-                <LinearGradient colors={gradient} style={ws.sheetIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                  <Ionicons name={icon} size={20} color={WHITE} />
-                </LinearGradient>
-                <View style={{ flex: 1 }}>
-                  <Text style={ws.sheetTitle}>{title}</Text>
-                  {!!subtitle && <Text style={ws.sheetSub}>{subtitle}</Text>}
-                </View>
-                <TouchableOpacity onPress={close} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name="close" size={22} color={TEXT_M} />
-                </TouchableOpacity>
-              </View>
-              {availableLabel != null && (
-                <View style={ws.availRow}>
-                  <Text style={ws.availLabel}>{availableLabel}</Text>
-                  <Text style={ws.availVal}>{availableValue}</Text>
-                </View>
-              )}
-              <Text style={ws.inputLabel}>Amount</Text>
-              <TextInput
-                style={ws.input}
-                value={amount}
-                onChangeText={setAmount}
-                placeholder="0.00"
-                placeholderTextColor={TEXT_M}
-                keyboardType="decimal-pad"
-              />
-              {!!error && <Text style={ws.inputError}>{error}</Text>}
-              <View style={ws.sheetActions}>
-                <TouchableOpacity style={ws.cancelBtn} onPress={close} activeOpacity={0.75}>
-                  <Text style={ws.cancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[ws.submitBtn, { backgroundColor: gradient[0] }, submitting && { opacity: 0.6 }]}
-                  onPress={() => onSubmit({ amount: amount.trim() })}
-                  disabled={submitting}
-                  activeOpacity={0.85}
-                >
-                  {submitting
-                    ? <ActivityIndicator size="small" color={WHITE} />
-                    : <Text style={ws.submitText}>Confirm</Text>}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-    </Modal>
   );
 };
 
@@ -171,10 +103,7 @@ export default function WalletScreen() {
   const [activeTab,  setActiveTab]  = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
-  const [convertOpen,  setConvertOpen]  = useState(false);
-  const [affOpen,      setAffOpen]      = useState(false);
-  const [submitting,   setSubmitting]   = useState(false);
-  const [modalError,   setModalError]   = useState('');
+  const [addFundsOpen, setAddFundsOpen] = useState(false);
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
 
@@ -231,39 +160,11 @@ export default function WalletScreen() {
     setRefreshing(false);
   }, [refreshAll]);
 
-  const handleConvert = useCallback(async ({ amount }) => {
-    const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) { setModalError('Enter a valid amount.'); return; }
-    setSubmitting(true); setModalError('');
-    try {
-      const json = await withdrawPoints(token, num);
-      if (json?.status === 'success') {
-        setConvertOpen(false);
-        Alert.alert('Done!', json.message ?? 'Points converted to wallet.');
-        refreshAll();
-      } else { setModalError(json?.message ?? 'Conversion failed.'); }
-    } catch (e) { setModalError(e?.message ?? 'Network error.'); }
-    setSubmitting(false);
-  }, [token, refreshAll]);
-
-  const handleWithdrawAff = useCallback(async ({ amount }) => {
-    const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) { setModalError('Enter a valid amount.'); return; }
-    setSubmitting(true); setModalError('');
-    try {
-      const json = await withdrawAffiliates(token, num);
-      if (json?.status === 'success') {
-        setAffOpen(false);
-        Alert.alert('Done!', json.message ?? 'Affiliate earnings moved to wallet.');
-        refreshAll();
-      } else { setModalError(json?.message ?? 'Withdrawal failed.'); }
-    } catch (e) { setModalError(e?.message ?? 'Network error.'); }
-    setSubmitting(false);
-  }, [token, refreshAll]);
-
   const walletBal    = balance?.wallet_balance    ?? 0;
   const affiliateBal = balance?.affiliate_balance ?? 0;
   const pointsBal    = balance?.points            ?? 0;
+  const pointsValue  = Number(pointsBal) / 1000;
+  const totalValue   = Number(walletBal) + Number(affiliateBal) + pointsValue;
 
   const filteredTx = transactions.filter((tx) => {
     if (activeTab === 'in')  return tx.type === 'in';
@@ -275,50 +176,103 @@ export default function WalletScreen() {
     <>
       {/* Hero balance */}
       <Animated.View style={[ws.heroWrap, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-        <LinearGradient colors={[GREEN, '#16a34a', '#064e3b']} style={ws.heroGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <View style={ws.heroBubble1} />
-          <View style={ws.heroBubble2} />
-          <Text style={ws.heroLabel}>Available Balance</Text>
-          {balLoading
-            ? <ActivityIndicator color={WHITE} size="large" style={{ marginVertical: 14 }} />
-            : <Text style={ws.heroAmount}>{fmtMoney(walletBal)}</Text>
-          }
+        <LinearGradient colors={['#062D32', BRAND, '#0C6B70']} style={ws.heroGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <View style={ws.heroGlow} />
+          <View style={ws.heroRing} />
+          <View style={ws.heroTopRow}>
+            <View>
+              <Text style={ws.heroEyebrow}>Hafrik Wallet</Text>
+              <Text style={ws.heroLabel}>Available Balance</Text>
+            </View>
+            <View style={ws.currencyPill}>
+              <Ionicons name="cash-outline" size={14} color={WHITE} />
+              <Text style={ws.currencyPillTxt}>CNY</Text>
+            </View>
+          </View>
+          {balLoading ? (
+            <ActivityIndicator color={WHITE} size="large" style={{ marginVertical: 18 }} />
+          ) : (
+            <Text style={ws.heroAmount}>{fmtMoney(walletBal)}</Text>
+          )}
+          <Text style={ws.heroHint}>Fund your wallet, send money, and manage Hafrik earnings from one place.</Text>
+          <View style={ws.heroDivider} />
+          <View style={ws.heroStatsRow}>
+            <MiniStat label="Affiliate" value={fmtMoney(affiliateBal)} icon="git-network-outline" />
+            <MiniStat label="Points" value={`${Number(pointsBal).toLocaleString()} pts`} icon="star-outline" />
+            <MiniStat label="Total value" value={fmtMoney(totalValue)} icon="layers-outline" />
+          </View>
         </LinearGradient>
       </Animated.View>
 
       {/* Action buttons */}
-      <View style={ws.actionsRow}>
-        <ActionBtn
-          icon="send"
-          label="Send Money"
-          color={ACCENT}
-          onPress={() => navigation.navigate('SendMoneyScreen')}
-        />
-        <ActionBtn
-          icon="star"
-          label="Convert Pts"
-          color={ORANGE}
-          onPress={() => { setModalError(''); setConvertOpen(true); }}
-        />
-        <ActionBtn
-          icon="git-network"
-          label="Withdraw Aff"
-          color={Colors.purple ?? '#9c27b0'}
-          onPress={() => { setModalError(''); setAffOpen(true); }}
-        />
-        <ActionBtn
-          icon="card"
-          label="Withdraw"
-          color={BRAND}
+      <View style={ws.actionsPanel}>
+        <View style={ws.actionsHeader}>
+          <Text style={ws.sectionTitle}>Quick actions</Text>
+          <Text style={ws.sectionSub}>Move money faster</Text>
+        </View>
+        <View style={ws.actionsGrid}>
+          <ActionBtn
+            icon="add"
+            label="Add Funds"
+            color={GREEN}
+            onPress={() => setAddFundsOpen(true)}
+          />
+          <ActionBtn
+            icon="send"
+            label="Send"
+            color={ACCENT}
+            onPress={() => navigation.navigate('SendMoneyScreen')}
+          />
+          <ActionBtn
+            icon="star"
+            label="Points"
+            color={ORANGE}
+            onPress={() => navigation.navigate('PointsScreen', { points: pointsBal })}
+          />
+          <ActionBtn
+            icon="git-network"
+            label="Affiliates"
+            color={Colors.purple ?? '#9c27b0'}
+            onPress={() => navigation.navigate('AffiliatesScreen')}
+          />
+        </View>
+      </View>
+
+      <View style={ws.insightCard}>
+        <LinearGradient colors={[ACCENT + '18', GREEN + '12']} style={ws.insightIcon}>
+          <Ionicons name="shield-checkmark-outline" size={22} color={ACCENT} />
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <Text style={ws.insightTitle}>Wallet-ready checkout</Text>
+          <Text style={ws.insightText}>Use your RMB balance for marketplace orders and Hafrik services.</Text>
+        </View>
+        <TouchableOpacity style={ws.insightBtn} onPress={() => setAddFundsOpen(true)} activeOpacity={0.85}>
+          <Text style={ws.insightBtnTxt}>Top up</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Legacy actions kept available through compact controls */}
+      <View style={ws.secondaryActions}>
+        <TouchableOpacity
+          style={ws.withdrawPill}
           onPress={() => Alert.alert('Coming Soon', 'Bank withdrawal is coming soon.')}
-        />
+          activeOpacity={0.85}
+        >
+          <Ionicons name="card-outline" size={16} color={BRAND} />
+          <Text style={ws.withdrawPillTxt}>Withdraw to bank</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tx section header + tabs */}
       <View style={ws.txSection}>
         <View style={ws.txHeader}>
-          <Text style={ws.txHeaderTitle}>Transactions</Text>
-          <Text style={ws.txCount}>{txTotal} total</Text>
+          <View>
+            <Text style={ws.txHeaderTitle}>Recent activity</Text>
+            <Text style={ws.txHeaderSub}>Track every wallet movement</Text>
+          </View>
+          <View style={ws.txCountPill}>
+            <Text style={ws.txCount}>{txTotal} total</Text>
+          </View>
         </View>
         <View style={ws.tabRow}>
           {[{ key: 'all', label: 'All' }, { key: 'in', label: 'Income' }, { key: 'out', label: 'Spent' }].map((tab) => {
@@ -358,7 +312,7 @@ export default function WalletScreen() {
 
       <FlatList
         style={ws.list}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingTop: 18 }}
         showsVerticalScrollIndicator={false}
         data={filteredTx}
         keyExtractor={(item) => String(item.transaction_id)}
@@ -370,32 +324,12 @@ export default function WalletScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={WHITE} />}
       />
 
-      <AmountModal
-        visible={convertOpen}
-        onClose={() => setConvertOpen(false)}
-        title="Convert Points"
-        subtitle="Convert Hafrik Points to wallet balance"
-        icon="star"
-        gradient={[GOLD, ORANGE]}
-        availableLabel="Available Points"
-        availableValue={`${Number(pointsBal).toLocaleString()} pts`}
-        onSubmit={handleConvert}
-        submitting={submitting}
-        error={modalError}
-      />
-
-      <AmountModal
-        visible={affOpen}
-        onClose={() => setAffOpen(false)}
-        title="Withdraw Affiliate"
-        subtitle="Move affiliate earnings to your wallet"
-        icon="git-network"
-        gradient={[Colors.purple ?? '#9c27b0', VIOLET ?? '#6d28d9']}
-        availableLabel="Affiliate Balance"
-        availableValue={fmtMoney(affiliateBal)}
-        onSubmit={handleWithdrawAff}
-        submitting={submitting}
-        error={modalError}
+      <AddFundsModal
+        visible={addFundsOpen}
+        onClose={() => {
+          setAddFundsOpen(false);
+          refreshAll();
+        }}
       />
     </View>
   );
@@ -410,69 +344,94 @@ const ActionBtn = ({ icon, label, color, onPress }) => (
   </TouchableOpacity>
 );
 
-const VIOLET = '#6d28d9';
+const MiniStat = ({ icon, label, value }) => (
+  <View style={ws.miniStat}>
+    <Ionicons name={icon} size={14} color={WHITE + 'D8'} />
+    <Text style={ws.miniStatLabel}>{label}</Text>
+    <Text style={ws.miniStatValue} numberOfLines={1}>{value}</Text>
+  </View>
+);
 
 const ws = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BRAND },
+  root: { flex: 1, backgroundColor: '#062D32' },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
+    paddingHorizontal: 18, paddingTop: 8, paddingBottom: 14,
   },
-  backBtn: { width: 38, height: 38, borderRadius: 14, backgroundColor: WHITE + '1A', alignItems: 'center', justifyContent: 'center' },
-  topTitle: { fontSize: 17, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
-  list: { flex: 1, backgroundColor: BG, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
+  backBtn: { width: 40, height: 40, borderRadius: 16, backgroundColor: WHITE + '18', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: WHITE + '18' },
+  topTitle: { fontSize: 18, fontWeight: '900', color: WHITE, fontFamily: FONT_B, letterSpacing: 0.2 },
+  list: { flex: 1, backgroundColor: '#EEF4F2', borderTopLeftRadius: 30, borderTopRightRadius: 30 },
 
-  heroWrap: { marginHorizontal: 16, marginTop: 20 },
-  heroGrad: { borderRadius: 24, padding: 24, overflow: 'hidden' },
-  heroBubble1: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: WHITE + '08', top: -60, right: -40 },
-  heroBubble2: { position: 'absolute', width: 110, height: 110, borderRadius: 55, backgroundColor: WHITE + '08', bottom: -30, left: -20 },
-  heroLabel:  { fontSize: 12, color: WHITE + 'B0', fontWeight: '600', fontFamily: FONT_R, letterSpacing: 1, textTransform: 'uppercase' },
-  heroAmount: { fontSize: 40, fontWeight: '900', color: WHITE, fontFamily: FONT_B, marginTop: 4, marginBottom: 4, letterSpacing: -1.5 },
+  heroWrap: { marginHorizontal: 16 },
+  heroGrad: {
+    borderRadius: 30, padding: 22, overflow: 'hidden',
+    shadowColor: '#062D32', shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.22, shadowRadius: 24, elevation: 10,
+  },
+  heroGlow: { position: 'absolute', width: 210, height: 210, borderRadius: 105, backgroundColor: GREEN + '24', top: -70, right: -54 },
+  heroRing: { position: 'absolute', width: 150, height: 150, borderRadius: 75, borderWidth: 18, borderColor: WHITE + '08', bottom: -52, left: -36 },
+  heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  heroEyebrow:{ fontSize: 11, color: WHITE + 'B8', fontWeight: '800', fontFamily: FONT_M, letterSpacing: 1.1, textTransform: 'uppercase', marginBottom: 7 },
+  heroLabel:  { fontSize: 13, color: WHITE + 'D0', fontWeight: '700', fontFamily: FONT_R },
+  heroAmount: { fontSize: 43, fontWeight: '900', color: WHITE, fontFamily: FONT_B, marginTop: 10, marginBottom: 8, letterSpacing: -1.8 },
+  heroHint:   { fontSize: 12.5, color: WHITE + 'C8', fontFamily: FONT_R, lineHeight: 19, maxWidth: 285 },
+  currencyPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 999, backgroundColor: WHITE + '16', borderWidth: 1, borderColor: WHITE + '18' },
+  currencyPillTxt: { fontSize: 11, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
+  heroDivider: { height: 1, backgroundColor: WHITE + '16', marginVertical: 18 },
+  heroStatsRow: { flexDirection: 'row', gap: 8 },
+  miniStat: { flex: 1, minHeight: 74, borderRadius: 18, padding: 10, backgroundColor: WHITE + '12', borderWidth: 1, borderColor: WHITE + '12', justifyContent: 'space-between' },
+  miniStatLabel: { fontSize: 10.5, color: WHITE + 'B8', fontFamily: FONT_R, marginTop: 4 },
+  miniStatValue: { fontSize: 12.5, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
 
-  actionsRow: { flexDirection: 'row', paddingHorizontal: 16, marginTop: 20, gap: 8 },
-  actionItem: { flex: 1, alignItems: 'center', gap: 6 },
-  actionIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  actionLabel:{ fontSize: 10.5, fontWeight: '700', color: TEXT_H, textAlign: 'center', fontFamily: FONT_M },
+  actionsPanel: {
+    backgroundColor: CARD, borderRadius: 26, marginHorizontal: 16, marginTop: 16, padding: 16,
+    shadowColor: '#0B3337', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.08, shadowRadius: 18, elevation: 4,
+  },
+  actionsHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 },
+  sectionTitle: { fontSize: 16, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  sectionSub:   { fontSize: 11.5, color: TEXT_M, fontFamily: FONT_R },
+  actionsGrid:  { flexDirection: 'row', gap: 10 },
+  secondaryActions: { marginHorizontal: 16, marginTop: 10, alignItems: 'flex-start' },
+  withdrawPill: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: CARD, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#DDE9E6' },
+  withdrawPillTxt: { fontSize: 12, fontWeight: '900', color: BRAND, fontFamily: FONT_B },
+  actionItem: { flex: 1, minWidth: 72, alignItems: 'center', gap: 7 },
+  actionIcon: { width: 54, height: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  actionLabel:{ fontSize: 11, fontWeight: '800', color: TEXT_H, textAlign: 'center', fontFamily: FONT_M },
 
-  txSection: { backgroundColor: CARD, borderRadius: 22, marginHorizontal: 16, marginTop: 24, paddingTop: 18, paddingBottom: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2 },
-  txHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, marginBottom: 10 },
-  txHeaderTitle: { fontSize: 16, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
-  txCount:   { fontSize: 12, color: TEXT_M, fontFamily: FONT_R },
-  tabRow:    { flexDirection: 'row', gap: 6, paddingHorizontal: 18, marginBottom: 8 },
-  tab:       { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 100, backgroundColor: BG },
+  insightCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: CARD, borderRadius: 22, marginHorizontal: 16, marginTop: 12, padding: 14,
+    borderWidth: 1, borderColor: '#DDE9E6',
+  },
+  insightIcon: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  insightTitle: { fontSize: 14, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  insightText:  { fontSize: 11.5, color: TEXT_M, fontFamily: FONT_R, lineHeight: 16, marginTop: 2 },
+  insightBtn:   { backgroundColor: BRAND, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 8 },
+  insightBtnTxt:{ fontSize: 11.5, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
+
+  txSection: { backgroundColor: CARD, borderRadius: 26, marginHorizontal: 16, marginTop: 20, paddingTop: 18, paddingBottom: 12, shadowColor: '#0B3337', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 3 },
+  txHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, marginBottom: 14 },
+  txHeaderTitle: { fontSize: 17, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  txHeaderSub: { fontSize: 11.5, color: TEXT_M, fontFamily: FONT_R, marginTop: 2 },
+  txCountPill: { backgroundColor: '#EEF4F2', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 7 },
+  txCount:   { fontSize: 11.5, fontWeight: '800', color: BRAND, fontFamily: FONT_B },
+  tabRow:    { flexDirection: 'row', gap: 8, paddingHorizontal: 18, marginBottom: 8 },
+  tab:       { paddingHorizontal: 17, paddingVertical: 9, borderRadius: 100, backgroundColor: '#EEF4F2' },
   tabActive: { backgroundColor: BRAND },
-  tabText:   { fontSize: 12, fontWeight: '700', color: TEXT_M, fontFamily: FONT_M },
+  tabText:   { fontSize: 12, fontWeight: '800', color: TEXT_M, fontFamily: FONT_M },
   tabTextActive: { color: WHITE },
 
-  txRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: 1, borderBottomColor: BORDER + '55' },
+  txRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14, marginHorizontal: 16, marginTop: 10, borderRadius: 18, backgroundColor: CARD, borderWidth: 1, borderColor: '#DDE9E6' },
   txAvatar:  { width: 42, height: 42, borderRadius: 21 },
-  txIconWrap:{ width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  txIconWrap:{ width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   txMid:     { flex: 1 },
-  txTitle:   { fontSize: 13.5, fontWeight: '800', color: TEXT_H, fontFamily: FONT_B },
-  txDesc:    { fontSize: 11.5, color: TEXT_M, marginTop: 2, fontFamily: FONT_R },
-  txRight:   { alignItems: 'flex-end' },
+  txTitle:   { fontSize: 14, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  txDesc:    { fontSize: 11.5, color: TEXT_M, marginTop: 3, fontFamily: FONT_R },
+  txRight:   { alignItems: 'flex-end', maxWidth: 118 },
   txAmount:  { fontSize: 13.5, fontWeight: '900', fontFamily: FONT_B },
-  txId:      { fontSize: 10, color: TEXT_M, marginTop: 2, fontFamily: FONT_R },
+  txId:      { fontSize: 9.5, color: TEXT_M, marginTop: 2, fontFamily: FONT_R, maxWidth: 110 },
 
   emptyTx:   { alignItems: 'center', paddingVertical: 40, gap: 10 },
   emptyText: { fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
 
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet:   { backgroundColor: CARD, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 36 : 24, paddingTop: 12 },
-  handle:  { width: 40, height: 5, borderRadius: 3, backgroundColor: BORDER, alignSelf: 'center', marginBottom: 16 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
-  sheetIcon:   { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  sheetTitle:  { fontSize: 16, fontWeight: '800', color: TEXT_H, fontFamily: FONT_B },
-  sheetSub:    { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, marginTop: 2 },
-  availRow:    { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: ACCENT + '0E', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14 },
-  availLabel:  { fontSize: 12, color: TEXT_M, fontFamily: FONT_R },
-  availVal:    { fontSize: 13, fontWeight: '800', color: BRAND, fontFamily: FONT_B },
-  inputLabel:  { fontSize: 11, fontWeight: '700', color: TEXT_M, fontFamily: FONT_M, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 6 },
-  input:       { borderWidth: 1.5, borderColor: BORDER, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: TEXT_H, fontFamily: FONT_R, backgroundColor: BG, marginBottom: 4 },
-  inputError:  { fontSize: 12.5, color: RED, marginVertical: 8, fontFamily: FONT_R },
-  sheetActions:{ flexDirection: 'row', gap: 12, marginTop: 14 },
-  cancelBtn:   { flex: 1, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5, borderColor: BORDER, alignItems: 'center' },
-  cancelText:  { fontSize: 14, fontWeight: '600', color: TEXT_M, fontFamily: FONT_M },
-  submitBtn:   { flex: 1, paddingVertical: 13, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  submitText:  { fontSize: 14, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
 });

@@ -12,6 +12,7 @@ import {
   ScrollView,
   Alert,
   Linking,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image as ExpoImage } from "expo-image";
@@ -39,6 +40,18 @@ const FONT_R = AppDetails?.fontFamily?.inter?.regular ?? "System";
 const FONT_M = AppDetails?.fontFamily?.inter?.medium  ?? "System";
 
 const DRAWER_W = Math.min(SCREEN_W * 0.84, 340);
+
+const HAFRIK_PLAY_STORE_LINKS = {
+  ios: {
+    app: "itms-apps://itunes.apple.com/app/id6741359890",
+    web: "https://apps.apple.com/us/app/hafrikplay/id6741359890",
+  },
+  android: {
+    app: "market://details?id=com.hafrikplay.webapp",
+    web: "https://play.google.com/store/apps/details?id=com.hafrikplay.webapp",
+  },
+  web: "https://hafrikplay.com/myapp.php",
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const safeTitle = (s = "") => String(s || "").trim();
@@ -188,6 +201,26 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
     setTimeout(() => navigation.navigate("InAppBrowser", { title, url }), 200);
   }, [close, navigation]);
 
+  const openHafrikPlay = useCallback(() => {
+    const target = Platform.OS === "ios"
+      ? HAFRIK_PLAY_STORE_LINKS.ios
+      : Platform.OS === "android"
+        ? HAFRIK_PLAY_STORE_LINKS.android
+        : { app: HAFRIK_PLAY_STORE_LINKS.web, web: HAFRIK_PLAY_STORE_LINKS.web };
+
+    close();
+    setTimeout(async () => {
+      try {
+        const canOpenStore = await Linking.canOpenURL(target.app);
+        await Linking.openURL(canOpenStore ? target.app : target.web);
+      } catch {
+        Linking.openURL(target.web).catch(() => {
+          Alert.alert("Unable to open Hafrikplay", "Please try again later.");
+        });
+      }
+    }, 200);
+  }, [close]);
+
   const handleLogout = useCallback(() => {
     Alert.alert("Sign Out", "Are you sure you want to sign out of Hafrik?", [
       { text: "Cancel", style: "cancel" },
@@ -259,7 +292,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             </TouchableOpacity>
 
             {/* Wallet strip */}
-            <TouchableOpacity activeOpacity={0.85} onPress={() => go("Earnings")} style={s.walletStrip}>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => go("WalletScreen")} style={s.walletStrip}>
               <View style={s.walletItem}>
                 <View style={s.walletIconWrap}>
                   <Ionicons name="wallet" size={14} color="#fbbf24" />
@@ -314,9 +347,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             <View style={s.quickRow}>
               <QuickBtn icon="sparkles"      label="AI Chat"  gradient={[ACCENT, '#13c296']}                                    onPress={() => go("AIChat")} />
               <QuickBtn icon="tv"            label="HafrikTV" gradient={[ACCENT, BRAND]}                                        onPress={() => go("HafrikTV")} />
-              <QuickBtn icon="musical-notes" label="Play"     gradient={["#9c27b0", "#6d28d9"]}                                 onPress={() => openWeb("Play", "https://hafrikplay.com/myapp.php")} />
-              <QuickBtn icon="cloud"         label="Drive"    gradient={["#3b82f6", "#1d4ed8"]}                                 onPress={() => openWeb("Drive", "https://drive.hafrik.com")} />
-              <QuickBtn icon="restaurant"    label="Food"     gradient={["#f97316", "#ea580c"]}                                 onPress={() => openWeb("Food", "https://food.hafrik.com")} />
+              <QuickBtn icon="musical-notes" label="Play"     gradient={["#9c27b0", "#6d28d9"]}                                 onPress={openHafrikPlay} />
             </View>
 
             {/* Menu */}
@@ -351,7 +382,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             <View style={s.card}>
               <MenuItem
                 icon="bag-handle"
-                label="Marketplace"
+                label="Hafrik Shop"
                 sub="Browse, buy & sell products"
                 iconGrad={["#f97316", "#dc2626"]}
                 onPress={() => go("MarketplaceScreen")}
@@ -362,6 +393,13 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                 sub="China cities — jobs, rent, markets"
                 iconGrad={["#10b981", "#047857"]}
                 onPress={() => go("CityGuide")}
+              />
+              <MenuItem
+                icon="compass"
+                label="Explore City"
+                sub="Discover cities, places & services"
+                iconGrad={[ACCENT, BRAND]}
+                onPress={() => go("ExploreHome")}
               />
               <MenuItem
                 icon="language"

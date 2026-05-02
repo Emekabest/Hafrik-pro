@@ -26,7 +26,7 @@ const MUTED  = Colors.secondaryText;
 // ------------------------------------------------------------------
 // Single comment card (exported so CommentScreen can use it in its FlatList)
 // ------------------------------------------------------------------
-export const CommentItem = React.memo(({ comment, token, onReply }) => {
+export const CommentItem = React.memo(({ comment, token, onReply, highlighted = false }) => {
   const navigation = useNavigation();
   const [liked,     setLiked]     = useState(!!comment.is_liked);
   const [likeCount, setLikeCount] = useState(Number(comment.likes_count ?? comment.like_count ?? comment.likes ?? 0));
@@ -97,7 +97,7 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
 
   return (
     <TouchableOpacity
-      style={cs.card}
+      style={[cs.card, highlighted && cs.cardHighlighted]}
       activeOpacity={1}
       onLongPress={comment.is_mine ? handleDelete : undefined}
       delayLongPress={500}
@@ -203,7 +203,7 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
 // ------------------------------------------------------------------
 // List of comments
 // ------------------------------------------------------------------
-const CommentBonds = ({ postId, token, onReply }) => {
+const CommentBonds = ({ postId, token, onReply, newComment }) => {
   const [comments, setComments] = useState([]);
   const [loading,  setLoading]  = useState(true);
 
@@ -223,6 +223,12 @@ const CommentBonds = ({ postId, token, onReply }) => {
     load();
     return () => { mounted = false; };
   }, [postId, token]);
+
+  // Prepend optimistic comment immediately after user posts
+  useEffect(() => {
+    if (!newComment) return;
+    setComments(prev => [newComment, ...prev]);
+  }, [newComment]);
 
   if (loading) {
     return (
@@ -265,6 +271,11 @@ const cs = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
+  },
+  cardHighlighted: {
+    backgroundColor: withOpacity(ACCENT, 0.08),
+    borderWidth: 1.5,
+    borderColor: withOpacity(ACCENT, 0.36),
   },
   avatar: {
     width: 34, height: 34, borderRadius: 17,

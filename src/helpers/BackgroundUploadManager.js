@@ -53,6 +53,27 @@ export async function startBackgroundUpload({
     };
     startUpload(labelMap[activeTab] || 'Uploading…');
 
+    let fallbackProgressTimer = null;
+    const stopFallbackProgress = () => {
+        if (fallbackProgressTimer) {
+            clearInterval(fallbackProgressTimer);
+            fallbackProgressTimer = null;
+        }
+    };
+    const startFallbackProgress = (from = 2, to = 82, step = 3) => {
+        stopFallbackProgress();
+        let pct = from;
+        updateUploadProgress({ pct });
+        fallbackProgressTimer = setInterval(() => {
+            pct = Math.min(to, pct + step);
+            updateUploadProgress({ pct });
+            if (pct >= to && fallbackProgressTimer) {
+                clearInterval(fallbackProgressTimer);
+                fallbackProgressTimer = null;
+            }
+        }, 1200);
+    };
+
     try {
         // ── PHOTOS — upload all in parallel ────────────────────────────────
         if (activeTab === 'photos' && selectedImages.length > 0) {
@@ -100,13 +121,30 @@ export async function startBackgroundUpload({
             const total = selectedThumbnail ? 2 : 1;
             updateUploadProgress({ done: 0, total, pct: 0 });
 
+            console.log('[BackgroundUpload] media upload starting:', {
+                activeTab,
+                uploadType,
+                hasVideo: !!selectedVideo,
+                hasThumbnail: !!selectedThumbnail,
+                video: selectedVideo ? {
+                    fileName: selectedVideo.fileName,
+                    type: selectedVideo.type,
+                    fileType: selectedVideo.fileType,
+                    uri: selectedVideo.uri,
+                } : null,
+            });
+
             // 1. Upload video
             updateUploadProgress({ label: `Uploading ${activeTab}…` });
+            // Some RN uploads do not expose progressEvent.total, especially large
+            // .mov files. Keep the fallback moving so the banner never looks stuck.
+            startFallbackProgress(2, 97, 1);
             const vidRes = await UploadMediaController(
                 selectedVideo,
                 token,
                 (progressEvent) => {
                     if (progressEvent.total) {
+                        stopFallbackProgress();
                         const fileFraction = progressEvent.loaded / progressEvent.total;
                         const overallPct = (fileFraction / total) * 90;
                         updateUploadProgress({ pct: overallPct });
@@ -115,24 +153,35 @@ export async function startBackgroundUpload({
                 uploadType,
             );
 
+            console.log('[BackgroundUpload] video upload response:', vidRes);
+            stopFallbackProgress();
+
             if (vidRes.status !== 'success' || !vidRes.data?.url) {
-                throw new Error('Video upload failed. Please try again.');
+                const reason = vidRes.message || vidRes.errorData?.message || 'Video upload failed. Please try again.';
+                throw new Error(reason);
             }
 
             postBody.video_url = vidRes.data.url;
             // Use server-generated thumbnail as fallback
             const serverThumbUrl = vidRes.data.thumbnail_url || null;
 
-            updateUploadProgress({ done: 1, total, pct: (1 / total) * 90 });
+            updateUploadProgress({
+                done: 1,
+                total,
+                pct: selectedThumbnail ? 97 : 98,
+                label: selectedThumbnail ? 'Finalizing thumbnail…' : 'Finalizing upload…',
+            });
 
             // 2. Upload custom thumbnail (if user picked one)
             if (selectedThumbnail) {
                 updateUploadProgress({ label: 'Uploading thumbnail…' });
+                startFallbackProgress(97, 98, 1);
                 const tRes = await UploadMediaController(
                     selectedThumbnail,
                     token,
                     (progressEvent) => {
                         if (progressEvent.total) {
+                            stopFallbackProgress();
                             const fileFraction = progressEvent.loaded / progressEvent.total;
                             const overallPct = ((1 + fileFraction) / total) * 90;
                             updateUploadProgress({ pct: overallPct });
@@ -140,13 +189,15 @@ export async function startBackgroundUpload({
                     },
                     'thumbnail',
                 );
+                console.log('[BackgroundUpload] thumbnail upload response:', tRes);
+                stopFallbackProgress();
                 if (tRes.status === 'success' && tRes.data?.url) {
                     postBody.thumbnail = tRes.data.url;
                 } else {
                     // Fall back to server-generated thumbnail
                     if (serverThumbUrl) postBody.thumbnail = serverThumbUrl;
                 }
-                updateUploadProgress({ done: 2, total, pct: 90 });
+                updateUploadProgress({ done: 2, total, pct: 98 });
             } else if (serverThumbUrl) {
                 // No custom thumbnail — use server's auto-generated one
                 postBody.thumbnail = serverThumbUrl;
@@ -161,6 +212,12 @@ export async function startBackgroundUpload({
         updateUploadProgress({ phase: 'publishing', pct: 92, label: 'Publishing your post…' });
 
         const response = await PostFeedController(postBody, token);
+        console.log('[BackgroundUpload] publish response:', {
+            status: response?.status,
+            httpStatus: response?.httpStatus,
+            message: response?.message || response?.data?.message,
+            data: response?.data,
+        });
 
         if (response.status === 'success' || response.httpStatus === 200) {
             completeUpload();
@@ -188,9 +245,22 @@ export async function startBackgroundUpload({
                 useStore.getState().clearUpload();
             }, 2500);
         } else {
+            console.log('[BackgroundUpload] publish failed:', response);
             failUpload(response.data?.message || response.message || 'Post failed. Please try again.');
         }
     } catch (err) {
+        stopFallbackProgress();
+        try {
+            // Safety if an upload throws before the local timer is stopped.
+            const current = useStore.getState().activeUpload;
+            if (current?.phase === 'uploading') useStore.getState().updateUploadProgress({ pct: Math.max(current.pct ?? 0, 1) });
+        } catch {}
+        console.log('[BackgroundUpload] failed:', {
+            message: err?.message,
+            activeTab,
+            postType: postBody?.type,
+            stack: err?.stack,
+        });
         useStore.getState().failUpload(err?.message || 'Something went wrong. Please try again.');
     }
 }

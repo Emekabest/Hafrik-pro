@@ -58,7 +58,6 @@ export const AuthProvider = ({ children }) => {
         AsyncStorage.getItem('hafrik_onboarding_step'),
       ]);
 
-      console.log("TOKEN LOADED FROM STORAGE:", storedToken);
       if (storedToken && storedUser) {
         const userData = JSON.parse(storedUser);
         setToken(storedToken);
@@ -96,7 +95,6 @@ export const AuthProvider = ({ children }) => {
       // The backend expects: Authorization: Bearer <JWT>
       // Write to AsyncStorage FIRST — state updates after so no render
       // can observe token in state before it exists in storage.
-      console.log("TOKEN SAVED TO STORAGE:", authToken);
       await AsyncStorage.setItem('hafrik_token', authToken);
       await AsyncStorage.setItem('hafrik_user', JSON.stringify(userData ?? {}));
 

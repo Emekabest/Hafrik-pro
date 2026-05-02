@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState, useEffect } from 'react';
+import React, { memo, useCallback, useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,24 +28,38 @@ const ACCENT  = '#3b82f6';
 
 const { width: W } = Dimensions.get('window');
 
+const serviceMeta = (name = '') => {
+  const n = String(name).toLowerCase();
+  if (n.includes('visa')) return { icon: 'document-text-outline', color: '#06b6d4', label: 'Travel' };
+  if (n.includes('admission') || n.includes('school') || n.includes('student')) return { icon: 'school-outline', color: '#8b5cf6', label: 'Study' };
+  if (n.includes('tour') || n.includes('guide')) return { icon: 'map-outline', color: '#10b981', label: 'Guide' };
+  if (n.includes('business')) return { icon: 'briefcase-outline', color: '#f59e0b', label: 'Business' };
+  if (n.includes('document')) return { icon: 'folder-open-outline', color: '#3b82f6', label: 'Docs' };
+  return { icon: 'sparkles-outline', color: TEAL, label: 'Service' };
+};
+
 const ServiceCard = memo(({ service, onPress }) => {
+  const meta = serviceMeta(service.name);
   return (
     <TouchableOpacity 
       style={styles.serviceCard}
       onPress={() => onPress(service)}
       activeOpacity={0.85}
     >
-      {/* Icon */}
       <View style={styles.cardIconWrap}>
-        <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.cardIconGrad}>
-          <Ionicons name="checkmark-circle-outline" size={22} color={TEAL} />
+        <LinearGradient colors={[meta.color + '1F', '#ffffff']} style={styles.cardIconGrad}>
+          <Ionicons name={meta.icon} size={22} color={meta.color} />
         </LinearGradient>
       </View>
 
-      {/* Body */}
       <View style={styles.cardBody}>
-        <Text style={styles.serviceTitle}>{service.name}</Text>
-        <Text style={styles.serviceDesc}>{service.description}</Text>
+        <View style={styles.serviceTopRow}>
+          <Text style={styles.serviceTitle} numberOfLines={1}>{service.name}</Text>
+          <View style={[styles.serviceTypePill, { backgroundColor: meta.color + '14' }]}>
+            <Text style={[styles.serviceTypeText, { color: meta.color }]}>{meta.label}</Text>
+          </View>
+        </View>
+        <Text style={styles.serviceDesc} numberOfLines={2}>{service.description}</Text>
 
         <View style={styles.cardMetaRow}>
           {service.processing_time && (
@@ -63,8 +77,9 @@ const ServiceCard = memo(({ service, onPress }) => {
         </View>
       </View>
 
-      {/* Arrow indicator */}
-      <Ionicons name="chevron-forward" size={20} color={MUTED} />
+      <View style={styles.serviceArrow}>
+        <Ionicons name="arrow-forward" size={14} color={BRAND} />
+      </View>
     </TouchableOpacity>
   );
 });
@@ -75,6 +90,12 @@ export default function VisaServices() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const featuredServices = useMemo(() => services.slice(0, 2), [services]);
+  const serviceCountText = useMemo(() => {
+    const count = services.length;
+    return `${count} available service${count === 1 ? '' : 's'}`;
+  }, [services.length]);
 
   useEffect(() => {
     fetchServices();
@@ -105,6 +126,18 @@ export default function VisaServices() {
 
     if (name === 'Tour Guide') {
       navigation.navigate('TourGuideScreen');
+      return;
+    }
+
+    // School Admission gets its own dedicated screen
+    if (name.toLowerCase().includes('admission') || name.toLowerCase().includes('school')) {
+      navigation.navigate('SchoolAdmissionScreen', {
+        service_id:      service.id,
+        service_name:    service.name,
+        description:     service.description,
+        price:           service.price_label || service.price,
+        processing_time: service.processing_time,
+      });
       return;
     }
 
@@ -152,21 +185,94 @@ export default function VisaServices() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero banner */}
-          <LinearGradient colors={['#e8f5f5', '#ffffff']} style={styles.heroBanner}>
-            <Ionicons name="airplane" size={28} color={GOLD} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.heroTitle}>Plan Your China Trip</Text>
-              <Text style={styles.heroSubtitle}>
-                From visa to factory visits — we handle it all for you.
-              </Text>
+          <LinearGradient
+            colors={['#0c3f44', '#155f66', '#1f8e93']}
+            style={styles.heroBanner}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.heroOrb} />
+            <View style={styles.heroTop}>
+              <View style={styles.heroIcon}>
+                <Ionicons name="sparkles" size={22} color={GOLD_LT} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroKicker}>HAFRIK SERVICES</Text>
+                <Text style={styles.heroTitle}>Get help faster in China</Text>
+              </View>
+            </View>
+            <Text style={styles.heroSubtitle}>
+              Visa, admission, tour guide, documents and arrival support handled from one place.
+            </Text>
+            <View style={styles.heroStatsRow}>
+              <View style={styles.heroStat}>
+                <Ionicons name="flash-outline" size={13} color={GOLD_LT} />
+                <Text style={styles.heroStatText}>{serviceCountText}</Text>
+              </View>
+              <TouchableOpacity style={styles.heroTrackBtn} activeOpacity={0.85} onPress={() => navigation.navigate('MyApplications')}>
+                <Text style={styles.heroTrackText}>Track requests</Text>
+                <Ionicons name="arrow-forward" size={12} color={BRAND} />
+              </TouchableOpacity>
             </View>
           </LinearGradient>
 
+          <TouchableOpacity
+            style={styles.arrivalCard}
+            activeOpacity={0.88}
+            onPress={() => navigation.navigate('ArrivalConcierge')}
+          >
+            <LinearGradient
+              colors={['#0c3f44', '#1f8e93']}
+              style={styles.arrivalGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.arrivalOrb} />
+              <View style={styles.arrivalIconWrap}>
+                <Ionicons name="airplane" size={22} color={GOLD_LT} />
+              </View>
+              <View style={styles.arrivalBody}>
+                <Text style={styles.arrivalKicker}>ARRIVAL SUPPORT</Text>
+                <Text style={styles.arrivalTitle}>Book Arrival Concierge</Text>
+                <Text style={styles.arrivalSub}>Airport pickup, SIM card, hotel help and city guidance.</Text>
+              </View>
+              <View style={styles.arrivalArrow}>
+                <Ionicons name="arrow-forward" size={15} color={BRAND} />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {featuredServices.length > 0 && (
+            <View style={styles.featuredStrip}>
+              <Text style={styles.featuredLabel}>POPULAR SERVICES</Text>
+              <View style={styles.featuredRow}>
+                {featuredServices.map((service, idx) => {
+                  const meta = serviceMeta(service.name);
+                  return (
+                    <TouchableOpacity
+                      key={service.id ?? idx}
+                      style={styles.featuredMini}
+                      activeOpacity={0.85}
+                      onPress={() => handleServicePress(service)}
+                    >
+                      <View style={[styles.featuredMiniIcon, { backgroundColor: meta.color + '16' }]}>
+                        <Ionicons name={meta.icon} size={16} color={meta.color} />
+                      </View>
+                      <Text style={styles.featuredMiniTitle} numberOfLines={2}>{service.name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {/* Section label */}
           <View style={styles.sectionHeader}>
-            <View style={styles.sectionBar} />
-            <Text style={styles.sectionTitle}>Available Services</Text>
+            <View>
+              <Text style={styles.sectionEyebrow}>LIVE FROM ENDPOINT</Text>
+              <Text style={styles.sectionTitle}>Available Services</Text>
+            </View>
+            <Text style={styles.sectionCount}>{serviceCountText}</Text>
           </View>
 
           {/* Service cards */}
@@ -222,61 +328,251 @@ const styles = StyleSheet.create({
     paddingTop: 18,
   },
   heroBanner: {
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 14,
+    overflow: 'hidden',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  heroOrb: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: WHITE,
+    opacity: 0.06,
+    right: -60,
+    top: -70,
+  },
+  heroTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 22,
+    gap: 12,
+  },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  heroKicker: {
+    fontFamily: 'WorkSans_700Bold',
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.62)',
+    letterSpacing: 1.6,
   },
   heroTitle: {
-    fontFamily: 'WorkSans_700Bold',
-    fontSize: 15,
-    color: BRAND,
-    marginBottom: 4,
+    fontFamily: 'ReadexPro_600SemiBold',
+    fontSize: 22,
+    color: WHITE,
+    marginTop: 3,
   },
   heroSubtitle: {
     fontFamily: 'WorkSans_400Regular',
     fontSize: 13,
+    color: 'rgba(255,255,255,0.76)',
+    lineHeight: 19,
+    marginTop: 14,
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 16,
+  },
+  heroStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  heroStatText: {
+    fontFamily: 'WorkSans_600SemiBold',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.84)',
+  },
+  heroTrackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: GOLD_LT,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  heroTrackText: {
+    fontFamily: 'WorkSans_700Bold',
+    fontSize: 11,
+    color: BRAND,
+  },
+  arrivalCard: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginBottom: 14,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 7,
+  },
+  arrivalGradient: {
+    minHeight: 122,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    overflow: 'hidden',
+  },
+  arrivalOrb: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: WHITE,
+    opacity: 0.07,
+    right: -42,
+    top: -54,
+  },
+  arrivalIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrivalBody: {
+    flex: 1,
+  },
+  arrivalKicker: {
+    fontFamily: 'WorkSans_700Bold',
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.62)',
+    letterSpacing: 1.4,
+    marginBottom: 4,
+  },
+  arrivalTitle: {
+    fontFamily: 'ReadexPro_600SemiBold',
+    fontSize: 16,
+    color: WHITE,
+  },
+  arrivalSub: {
+    fontFamily: 'WorkSans_400Regular',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.72)',
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  arrivalArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: GOLD_LT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featuredStrip: {
+    backgroundColor: CARD,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 14,
+    marginBottom: 20,
+  },
+  featuredLabel: {
+    fontFamily: 'WorkSans_700Bold',
+    fontSize: 10,
     color: MUTED,
-    lineHeight: 18,
+    letterSpacing: 1.3,
+    marginBottom: 10,
+  },
+  featuredRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  featuredMini: {
+    flex: 1,
+    minHeight: 94,
+    borderRadius: 16,
+    backgroundColor: '#f3fbfb',
+    borderWidth: 1,
+    borderColor: TEAL + '1F',
+    padding: 12,
+  },
+  featuredMiniIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  featuredMiniTitle: {
+    fontFamily: 'WorkSans_700Bold',
+    fontSize: 12,
+    color: BRAND,
+    lineHeight: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     marginBottom: 14,
   },
-  sectionBar: {
-    width: 4,
-    height: 18,
-    borderRadius: 2,
-    backgroundColor: TEAL,
+  sectionEyebrow: {
+    fontFamily: 'WorkSans_700Bold',
+    fontSize: 9,
+    color: MUTED,
+    letterSpacing: 1.4,
+    marginBottom: 2,
   },
   sectionTitle: {
     fontFamily: 'ReadexPro_600SemiBold',
-    fontSize: 16,
+    fontSize: 18,
     color: BRAND,
+  },
+  sectionCount: {
+    fontFamily: 'WorkSans_600SemiBold',
+    fontSize: 11,
+    color: TEAL,
+    backgroundColor: TEAL + '12',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   serviceCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: CARD,
-    borderRadius: 14,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: BORDER,
-    padding: 14,
+    padding: 13,
     marginBottom: 12,
     gap: 12,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
   cardIconWrap: {
     borderRadius: 12,
     overflow: 'hidden',
   },
   cardIconGrad: {
-    width: 46,
-    height: 46,
+    width: 50,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -286,18 +582,42 @@ const styles = StyleSheet.create({
   cardBody: {
     flex: 1,
   },
+  serviceTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 3,
+  },
   serviceTitle: {
     fontFamily: 'WorkSans_600SemiBold',
-    fontSize: 13,
+    fontSize: 14,
     color: BRAND,
-    marginBottom: 3,
     lineHeight: 18,
+    flex: 1,
+  },
+  serviceTypePill: {
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  serviceTypeText: {
+    fontFamily: 'WorkSans_700Bold',
+    fontSize: 9,
   },
   serviceDesc: {
     fontFamily: 'WorkSans_400Regular',
     fontSize: 12,
     color: MUTED,
-    marginBottom: 8,
+    marginBottom: 10,
+    lineHeight: 17,
+  },
+  serviceArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: GOLD_LT,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardMetaRow: {
     flexDirection: 'row',

@@ -28,7 +28,7 @@ import ExchangeRateTicker from './ExchangeRateTicker.jsx';
 const BG = Colors.white;
 const AUTO_REFRESH_MS = 30_000;
 
-const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
+const UnifiedFeedScreen = ({ tabConfig, feedWidth }) => {
   const { token }    = useAuth();
   const navigation   = useNavigation();
   const feedsName    = tabConfig.listName;
@@ -40,6 +40,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const setFeedsMeta_store       = useStore(s => s.setFeedsMeta);
   const refreshSignal            = useStore(s => s.refreshSignal);
   const selectedCountryId        = useStore(s => s.selectedCountryId);
+  const contentFilter            = useStore(s => s.feedContentFilter);
   const ids                      = useStore(s => s.feeds.lists[feedsName] || []);
   const feedsById                = useStore(s => s.feeds.feedsById);
 

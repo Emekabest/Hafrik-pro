@@ -126,8 +126,8 @@ export default function MarketplacePaymentScreen({ navigation, route }) {
           </View>
           <Text style={p.errorTitle}>Payment link unavailable</Text>
           <Text style={p.errorSub}>
-            The payment URL was not returned by the store.{'\n'}
-            Please check your WooCommerce Paystack plugin settings.
+            We could not start secure checkout right now.{'\n'}
+            Please go back and try again, or contact Hafrik support.
           </Text>
           <TouchableOpacity style={p.backBtn} onPress={() => navigation.goBack()}>
             <Text style={p.backBtnTxt}>Go Back</Text>

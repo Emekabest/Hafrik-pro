@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
@@ -33,7 +33,7 @@ const DARK   = Colors.deepSlate ?? '#0F1923';
 const MUTED  = Colors.secondaryText ?? '#8A96A3';
 const BORDER = '#EAECF0';
 
-const CARD_W   = (SW - 2) / 2;    // two-column flush grid with 2px gap
+const CARD_W   = (SW - 2) / 2;
 const PAGE_SIZE = 12;
 
 const FONT_B = AppDetails?.fontFamily?.redex?.bold    ?? 'System';
@@ -110,7 +110,13 @@ const cy = StyleSheet.create({
 
 const stripHtml = (raw = '') =>
   (raw || '')
-    .replace(/&#039;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))
+    .replace(/&rsquo;|&lsquo;|&apos;/g, "'")
+    .replace(/&rdquo;|&ldquo;/g, '"')
+    .replace(/&ndash;|&mdash;/g, '-')
+    .replace(/&hellip;/g, '...')
+    .replace(/&#039;/g, "'").replace(/&amp;?/g, '&').replace(/&#038;/g, '&').replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ')
     .replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 
@@ -172,10 +178,17 @@ const CatPill = memo(function CatPill({ cat, isActive, onPress }) {
       onPress={() => onPress(cat.id)}
       activeOpacity={0.75}
     >
-      <Ionicons name={icon} size={13} color={isActive ? WHITE : color} />
+      <View style={[p.pillIcon, isActive && { backgroundColor: a(WHITE, 0.18) }]}>
+        <Ionicons name={icon} size={17} color={isActive ? WHITE : color} />
+      </View>
       <Text style={[p.pillTxt, isActive && { color: WHITE }]} numberOfLines={1}>
         {cat.name}
       </Text>
+      {cat.count != null && cat.id !== 0 && (
+        <Text style={[p.pillCount, isActive && { color: a(WHITE, 0.72) }]}>
+          {Number(cat.count).toLocaleString()}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 });
@@ -183,29 +196,43 @@ const CatPill = memo(function CatPill({ cat, isActive, onPress }) {
 function CategoryRow({ categories, activeCatId, onChange }) {
   const all = [{ id: 0, name: 'All' }, ...categories];
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={p.pillRow}
-      style={p.pillWrap}
-    >
-      {all.map(cat => (
-        <CatPill key={cat.id} cat={cat} isActive={activeCatId === cat.id} onPress={onChange} />
-      ))}
-    </ScrollView>
+    <View style={p.pillWrap}>
+      <View style={p.sectionTop}>
+        <View>
+          <Text style={p.kicker}>SHOP DEPARTMENTS</Text>
+          <Text style={p.title}>Browse by category</Text>
+        </View>
+        <Ionicons name="grid-outline" size={19} color={BRAND} />
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={p.pillRow}
+      >
+        {all.map((cat, idx) => (
+          <CatPill key={`shop-cat-${cat.id}-${idx}`} cat={cat} isActive={activeCatId === cat.id} onPress={onChange} />
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 const p = StyleSheet.create({
-  pillWrap: { backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER },
-  pillRow:  { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  pillWrap: { backgroundColor: BG, paddingTop: 20, paddingBottom: 12 },
+  sectionTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 12 },
+  kicker: { color: ACCENT, fontSize: 10, fontWeight: '900', letterSpacing: 1.4, fontFamily: FONT_B, marginBottom: 3 },
+  title: { color: DARK, fontSize: 20, fontWeight: '900', fontFamily: FONT_B, letterSpacing: -0.5 },
+  pillRow:  { paddingHorizontal: 16, paddingBottom: 4, gap: 10 },
   pill: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 13, paddingVertical: 7,
-    borderRadius: 100, borderWidth: 1.5, borderColor: BORDER,
+    minWidth: 106,
+    alignItems: 'flex-start', gap: 7,
+    paddingHorizontal: 13, paddingVertical: 12,
+    borderRadius: 18, borderWidth: 1.5, borderColor: BORDER,
     backgroundColor: WHITE,
   },
-  pillTxt: { fontSize: 12.5, fontWeight: '700', color: DARK, fontFamily: FONT_M },
+  pillIcon: { width: 32, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: a(BRAND, 0.07) },
+  pillTxt: { fontSize: 12.5, fontWeight: '900', color: DARK, fontFamily: FONT_B, maxWidth: 92 },
+  pillCount: { fontSize: 10.5, color: MUTED, fontWeight: '700', fontFamily: FONT_M },
 });
 
 // ─── Product Card ─────────────────────────────────────────────────────────────
@@ -246,7 +273,12 @@ const ProductCard = memo(function ProductCard({ item, onPress, displayCurrency =
       {/* Body */}
       <View style={c.body}>
         <Text style={c.title} numberOfLines={2}>{title || '—'}</Text>
-        <Text style={c.price}>{price}</Text>
+        <View style={c.priceRow}>
+          <Text style={c.price}>{price}</Text>
+          <View style={c.arrowBtn}>
+            <Ionicons name="arrow-forward" size={12} color={WHITE} />
+          </View>
+        </View>
 
         {/* Rating row (if available) */}
         {Number(item.review_count) > 0 && (
@@ -296,7 +328,9 @@ const c = StyleSheet.create({
   digitalTxt: { fontSize: 9, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
   body:       { padding: 12, gap: 4 },
   title:      { fontSize: 13, fontWeight: '700', color: DARK, lineHeight: 18, fontFamily: FONT_M },
-  price:      { fontSize: 16, fontWeight: '900', color: ACCENT, fontFamily: FONT_B, marginTop: 2 },
+  priceRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  price:      { flex: 1, fontSize: 16, fontWeight: '900', color: ACCENT, fontFamily: FONT_B, marginTop: 2 },
+  arrowBtn:   { display: 'none' },
   ratingRow:  { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   ratingTxt:  { fontSize: 11, color: DARK, fontWeight: '700' },
   ratingCount:{ color: MUTED, fontWeight: '500' },
@@ -429,11 +463,13 @@ function TrendingStrip({ onProductPress, displayCurrency = 'NGN' }) {
     <View style={t.section}>
       {/* Section heading */}
       <View style={t.topRow}>
-        <View style={t.flamePill}>
-          <Ionicons name="flame" size={11} color={WHITE} />
-          <Text style={t.flameTxt}>TRENDING</Text>
+        <View>
+          <View style={t.flamePill}>
+            <Ionicons name="flame" size={11} color={WHITE} />
+            <Text style={t.flameTxt}>LIVE PICKS</Text>
+          </View>
+          <Text style={t.heading}>Trending from China</Text>
         </View>
-        <Text style={t.heading}>Hot Right Now</Text>
         <Text style={t.count}>{items.length > 0 ? `${items.length} items` : ''}</Text>
       </View>
 
@@ -447,7 +483,7 @@ function TrendingStrip({ onProductPress, displayCurrency = 'NGN' }) {
         <FlatList
           ref={flatRef}
           data={items}
-          keyExtractor={item => `tr-${item.post_id ?? item.id}`}
+          keyExtractor={(item, index) => `tr-${item.post_id ?? item.id}-${index}`}
           horizontal
           showsHorizontalScrollIndicator={false}
           snapToInterval={SNAP_INT}
@@ -486,23 +522,22 @@ function TrendingStrip({ onProductPress, displayCurrency = 'NGN' }) {
 
 const t = StyleSheet.create({
   section: {
-    backgroundColor: WHITE,
-    paddingTop: 22,
+    backgroundColor: BG,
+    paddingTop: 20,
     paddingBottom: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
   },
   topRow: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
     paddingHorizontal: 16, marginBottom: 14, gap: 10,
   },
   flamePill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
+    alignSelf: 'flex-start',
     backgroundColor: '#ef4444', borderRadius: 100,
-    paddingHorizontal: 10, paddingVertical: 5,
+    paddingHorizontal: 10, paddingVertical: 5, marginBottom: 7,
   },
   flameTxt: { fontSize: 9.5, fontWeight: '900', color: WHITE, fontFamily: FONT_B, letterSpacing: 0.8 },
-  heading:  { fontSize: 19, fontWeight: '900', color: DARK, fontFamily: FONT_B, letterSpacing: -0.4, flex: 1 },
+  heading:  { fontSize: 21, fontWeight: '900', color: DARK, fontFamily: FONT_B, letterSpacing: -0.5 },
   count:    { fontSize: 12, color: MUTED, fontFamily: FONT_R },
 
   // List
@@ -511,8 +546,13 @@ const t = StyleSheet.create({
   // Individual slide card
   slide: {
     width: SLIDE_W, height: SLIDE_H,
-    borderRadius: 18, overflow: 'hidden',
+    borderRadius: 24, overflow: 'hidden',
     backgroundColor: '#1a1a2e',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    elevation: 7,
   },
   slideImg:   { width: '100%', height: '100%', position: 'absolute' },
   slideImgFb: { backgroundColor: '#2a2a3e', alignItems: 'center', justifyContent: 'center' },
@@ -577,8 +617,8 @@ const t = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function MarketplaceScreen({ navigation }) {
   const { token }    = useAuth();
+  const route        = useRoute();
   const insets       = useSafeAreaInsets();
-  const cartCount             = useStore(s => s.cartCount);
   const setCartCount          = useStore(s => s.setCartCount);
   const displayCurrency       = useStore(s => s.marketplaceCurrency);
   const setDisplayCurrency    = useStore(s => s.setMarketplaceCurrency);
@@ -606,6 +646,14 @@ export default function MarketplaceScreen({ navigation }) {
     if (!token) return;
     getCategories(token).then(setCategories).catch(() => {});
   }, [token]);
+
+  useEffect(() => {
+    if (!Object.prototype.hasOwnProperty.call(route.params ?? {}, 'categoryId')) return;
+    const nextCatId = Number(route.params?.categoryId ?? 0);
+    setActiveCatId(nextCatId);
+    if (typeof route.params?.categoryName === 'string') setSearch('');
+    navigation.setParams?.({ categoryId: undefined, categoryName: undefined });
+  }, [navigation, route.params?.categoryId, route.params?.categoryName]);
 
   const fetchPage = useCallback(async (pg, q, catId, replace) => {
     abortRef.current?.abort();
@@ -661,15 +709,113 @@ export default function MarketplaceScreen({ navigation }) {
     ? (search ? `"${search}"` : 'All Products')
     : (categories.find(c => c.id === activeCatId)?.name ?? 'Products');
 
+  const StickyHeader = useCallback(() => (
+    <LinearGradient
+      colors={[BRAND, '#144f55', '#1f8e93']}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={m.stickyHeader}
+    >
+      <View style={m.deco1} /><View style={m.deco2} />
+
+      <View style={[m.navRow, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity style={m.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+          <Ionicons name="arrow-back" size={19} color={WHITE} />
+        </TouchableOpacity>
+
+        <View style={m.brandRow}>
+          <Text style={m.headerTitle}>Hafrik Shop</Text>
+        </View>
+        <View style={m.headerSpacer} />
+      </View>
+    </LinearGradient>
+  ), [insets.top, navigation]);
+
+  const ShopHeader = useCallback(() => (
+    <LinearGradient
+      colors={[BRAND, '#144f55', '#1f8e93']}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={m.header}
+    >
+      <View style={m.deco1} /><View style={m.deco2} />
+
+      <View style={m.heroTop}>
+        <View style={m.heroCopy}>
+          <View style={m.heroBadge}>
+            <Ionicons name="shield-checkmark" size={11} color={WHITE} />
+            <Text style={m.heroBadgeTxt}>VERIFIED CHINA SOURCING</Text>
+          </View>
+          <Text style={m.heroTitle}>Shop China. Ship with confidence.</Text>
+          <Text style={m.heroSub}>Products, buying support, and logistics handled through Hafrik’s trusted partners.</Text>
+        </View>
+        <View style={m.heroOrb}>
+          <Ionicons name="cube-outline" size={31} color={WHITE} />
+        </View>
+      </View>
+
+      <View style={m.searchWrap}>
+        <View style={m.searchBar}>
+          <View style={m.searchIconWrap}>
+            <Ionicons name="search-outline" size={15} color={BRAND} />
+          </View>
+          <TextInput
+            style={m.searchInput}
+            placeholder="Search products, brands…"
+            placeholderTextColor={a(DARK, 0.35)}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close-circle" size={16} color={a(DARK, 0.3)} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <View style={m.partnerCard}>
+        <View style={m.partnerIcon}>
+          <Ionicons name="people-circle-outline" size={18} color={WHITE} />
+        </View>
+        <Text style={m.partnerText}>
+          Partnered with <Text style={m.partnerStrong}>Guangzhou Qintian Trading Co., Ltd.</Text> and <Text style={m.partnerStrong}>Fish Logistics</Text>.
+        </Text>
+      </View>
+
+      <View style={m.bottomRow}>
+        <CurrencyToggle currency={displayCurrency} onChange={setDisplayCurrency} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={m.ordersChip}
+            onPress={() => navigation.navigate('HafrikShopGuide')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="help-circle-outline" size={13} color={WHITE} />
+            <Text style={m.ordersChipTxt}>How to Order</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={m.ordersChip}
+            onPress={() => navigation.navigate('MktOrders')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="receipt-outline" size={13} color={WHITE} />
+            <Text style={m.ordersChipTxt}>My Orders</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </LinearGradient>
+  ), [displayCurrency, navigation, search, setDisplayCurrency]);
+
   // ── List header ────────────────────────────────────────────────────────────
   const ListHeader = useCallback(() => (
     <>
+      <ShopHeader />
       <TrendingStrip onProductPress={openProduct} displayCurrency={displayCurrency} />
-      <CategoryRow categories={categories} activeCatId={activeCatId} onChange={handleCat} />
 
       {/* Section label + sell CTA */}
       <View style={m.sectionRow}>
         <View>
+          <Text style={m.sectionEyebrow}>PRODUCT FEED</Text>
           <Text style={m.sectionLabel}>{activeCatName}</Text>
           {!loading && !error && (
             <Text style={m.sectionCount}>{products.length} item{products.length !== 1 ? 's' : ''}</Text>
@@ -678,7 +824,7 @@ export default function MarketplaceScreen({ navigation }) {
 
       </View>
     </>
-  ), [categories, activeCatId, handleCat, activeCatName, loading, error, products.length, openProduct, displayCurrency]);
+  ), [ShopHeader, activeCatName, loading, error, products.length, openProduct, displayCurrency]);
 
   const ListFooter = useCallback(() => (
     loadMore
@@ -709,62 +855,20 @@ export default function MarketplaceScreen({ navigation }) {
 
   return (
     <View style={m.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BRAND} translucent={false} />
-
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <View style={m.header}>
-        {/* Nav row */}
-        <View style={m.navRow}>
-          <TouchableOpacity style={m.iconBtn} onPress={() => navigation.goBack()} activeOpacity={0.85}>
-            <Ionicons name="arrow-back" size={20} color={WHITE} />
-          </TouchableOpacity>
-
-          <View style={m.brandRow}>
-            <Ionicons name="storefront" size={15} color={a(WHITE, 0.8)} />
-            <Text style={m.headerTitle}>Marketplace</Text>
-          </View>
-
-          <TouchableOpacity style={m.iconBtn} onPress={() => navigation.navigate('CartScreen')} activeOpacity={0.85}>
-            <Ionicons name="bag-outline" size={21} color={WHITE} />
-            {cartCount > 0 && (
-              <View style={m.cartBadge}>
-                <Text style={m.cartBadgeTxt}>{cartCount > 99 ? '99+' : cartCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Search + currency toggle row */}
-        <View style={m.searchRow}>
-          <View style={m.searchBar}>
-            <Ionicons name="search-outline" size={16} color={a(WHITE, 0.6)} />
-            <TextInput
-              style={m.searchInput}
-              placeholder="Search products..."
-              placeholderTextColor={a(WHITE, 0.4)}
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close-circle" size={16} color={a(WHITE, 0.55)} />
-              </TouchableOpacity>
-            )}
-          </View>
-          <CurrencyToggle currency={displayCurrency} onChange={setDisplayCurrency} />
-        </View>
-
-        {/* Accent underline — matches AppHeader */}
-        <View style={m.headerUnderline} />
-      </View>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StickyHeader />
 
       {/* ── Product grid ───────────────────────────────────────────────── */}
       {loading && !refreshing ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}>
+          <ShopHeader />
           <TrendingStrip onProductPress={openProduct} displayCurrency={displayCurrency} />
-          <CategoryRow categories={categories} activeCatId={activeCatId} onChange={handleCat} />
-          <View style={{ height: 16 }} />
+          <View style={m.sectionRow}>
+            <View>
+              <Text style={m.sectionEyebrow}>PRODUCT FEED</Text>
+              <Text style={m.sectionLabel}>Loading products</Text>
+            </View>
+          </View>
           <GridSkeleton />
           <GridSkeleton />
           <GridSkeleton />
@@ -772,7 +876,7 @@ export default function MarketplaceScreen({ navigation }) {
       ) : (
         <FlatList
           data={products}
-          keyExtractor={item => `p-${item.post_id ?? item.id}`}
+          keyExtractor={(item, index) => `p-${item.post_id ?? item.id}-${index}`}
           renderItem={renderItem}
           numColumns={2}
           columnWrapperStyle={m.row}
@@ -799,64 +903,149 @@ const m = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
 
   // ── Header ──
-  header: {
-    backgroundColor: BRAND,
-    paddingBottom: 0,
+  stickyHeader: {
+    overflow: 'hidden',
     shadowColor: BRAND,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  header: { overflow: 'hidden', paddingTop: 16, paddingBottom: 4 },
+  deco1: {
+    position: 'absolute', width: 240, height: 240, borderRadius: 120,
+    backgroundColor: a(WHITE, 0.05), top: -80, right: -60, pointerEvents: 'none',
+  },
+  deco2: {
+    position: 'absolute', width: 140, height: 140, borderRadius: 70,
+    backgroundColor: a(WHITE, 0.06), bottom: -50, left: -30, pointerEvents: 'none',
   },
   navRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingTop: 52, paddingBottom: 10,
-    gap: 10,
+    paddingHorizontal: 16, paddingBottom: 14,
+    gap: 12,
   },
   brandRow: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 17, fontWeight: '900',
-    color: WHITE, fontFamily: FONT_B, letterSpacing: 0.3,
+    fontSize: 18, fontWeight: '900',
+    color: WHITE, fontFamily: FONT_B, letterSpacing: -0.2,
   },
   iconBtn: {
-    width: 34, height: 34, borderRadius: 10,
-    backgroundColor: a(WHITE, 0.1),
-    borderWidth: 1, borderColor: a(WHITE, 0.14),
+    width: 36, height: 36, borderRadius: 12,
+    backgroundColor: a(WHITE, 0.13),
+    borderWidth: 1, borderColor: a(WHITE, 0.15),
     alignItems: 'center', justifyContent: 'center',
   },
-  cartBadge: {
-    position: 'absolute', top: -4, right: -4,
-    backgroundColor: ACCENT, borderRadius: 9,
-    minWidth: 16, height: 16,
-    alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 3, borderWidth: 1.5, borderColor: BRAND,
+  headerSpacer: { width: 36, height: 36 },
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    marginBottom: 14,
   },
-  cartBadgeTxt: { color: WHITE, fontSize: 9, fontWeight: '900', fontFamily: FONT_B },
+  heroCopy: { flex: 1 },
+  heroBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: a(WHITE, 0.13),
+    borderWidth: 1,
+    borderColor: a(WHITE, 0.18),
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    marginBottom: 10,
+  },
+  heroBadgeTxt: { color: WHITE, fontSize: 9, fontWeight: '900', letterSpacing: 1, fontFamily: FONT_B },
+  heroTitle: {
+    color: WHITE,
+    fontSize: 24,
+    lineHeight: 29,
+    fontWeight: '900',
+    fontFamily: FONT_B,
+    letterSpacing: -0.6,
+    marginBottom: 6,
+  },
+  heroSub: {
+    color: a(WHITE, 0.68),
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontFamily: FONT_R,
+  },
+  heroOrb: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: a(WHITE, 0.13),
+    borderWidth: 1,
+    borderColor: a(WHITE, 0.18),
+    transform: [{ rotate: '-8deg' }],
+  },
+  partnerCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: a(WHITE, 0.12),
+    borderWidth: 1, borderColor: a(WHITE, 0.18),
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+  },
+  partnerIcon: {
+    width: 30, height: 30, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: a(WHITE, 0.14),
+    borderWidth: 1, borderColor: a(WHITE, 0.18),
+  },
+  partnerText: {
+    flex: 1,
+    color: a(WHITE, 0.78),
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: FONT_R,
+  },
+  partnerStrong: { color: WHITE, fontWeight: '900', fontFamily: FONT_B },
 
   // Search
-  searchRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingBottom: 12, gap: 10,
-  },
+  searchWrap: { paddingHorizontal: 16, marginBottom: 12 },
   searchBar: {
-    flex: 1,
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: a(WHITE, 0.12), borderRadius: 12,
-    paddingHorizontal: 13, paddingVertical: 10,
-    borderWidth: 1, borderColor: a(WHITE, 0.1),
+    backgroundColor: WHITE, borderRadius: 14,
+    paddingRight: 12, overflow: 'hidden',
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1, shadowRadius: 6, elevation: 3,
   },
-  searchInput: { flex: 1, fontSize: 14, color: WHITE, fontFamily: FONT_R },
-  headerUnderline: { height: 1, backgroundColor: a(ACCENT, 0.2) },
+  searchIconWrap: {
+    width: 44, height: 44, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: a(BRAND, 0.07),
+  },
+  searchInput: { flex: 1, fontSize: 14, color: DARK, fontFamily: FONT_R, paddingVertical: 12 },
+
+  // Bottom row
+  bottomRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingBottom: 16,
+  },
+  ordersChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: a(WHITE, 0.14),
+    borderRadius: 100, paddingHorizontal: 12, paddingVertical: 7,
+    borderWidth: 1, borderColor: a(WHITE, 0.18),
+  },
+  ordersChipTxt: { fontSize: 12, fontWeight: '700', color: WHITE, fontFamily: FONT_M },
 
   // Section row
   sectionRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12,
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 18, paddingBottom: 12,
   },
-  sectionLabel: { fontSize: 18, fontWeight: '900', color: DARK, fontFamily: FONT_B, letterSpacing: -0.3 },
+  sectionEyebrow: { color: ACCENT, fontSize: 10, fontWeight: '900', letterSpacing: 1.3, fontFamily: FONT_B, marginBottom: 3 },
+  sectionLabel: { fontSize: 22, fontWeight: '900', color: DARK, fontFamily: FONT_B, letterSpacing: -0.6 },
   sectionCount: { fontSize: 12, color: MUTED, fontFamily: FONT_R, marginTop: 2 },
   sellBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -865,7 +1054,7 @@ const m = StyleSheet.create({
   },
   sellBtnTxt: { fontSize: 13, fontWeight: '800', color: WHITE, fontFamily: FONT_B },
 
-  // Grid — flush, square-card layout
+  // Grid
   grid: { paddingHorizontal: 0, backgroundColor: BG },
   row:  { gap: 2, marginBottom: 2 },
 

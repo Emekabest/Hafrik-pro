@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { StyleSheet, View, Text, TouchableOpacity, Alert, StatusBar } from "react-native";
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from "../../AuthContext";
 import useStore from "../../repository/store";
 import AppDetails from "../../helpers/appdetails";
@@ -193,7 +194,7 @@ const ProfileScreen = () => {
             {loading ? (
                 <BrandLoader />
             ) : (
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, backgroundColor: '#EEF7F7' }}>
                     {activeTab.value === 'timeline' && (
                         <Timeline 
                             header={profileHeader} 
@@ -290,7 +291,14 @@ const ProfileScreen = () => {
                 activeOpacity={0.88}
                 onPress={() => openComposer()}
             >
-                <Ionicons name="add" size={28} color={Colors.white} />
+                <LinearGradient
+                    colors={[ACCENT, BRAND]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.fabGradient}
+                >
+                    <Ionicons name="add" size={28} color={Colors.white} />
+                </LinearGradient>
             </TouchableOpacity>
 
             {isFocused && <PostComposerModal />}
@@ -304,24 +312,32 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.white,
+        backgroundColor: '#EEF7F7',
     },
     fab: {
         position: 'absolute',
         bottom: 24,
         right: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: BRAND,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: BRAND,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.32,
+        shadowRadius: 18,
         elevation: 10,
         zIndex: 100,
+    },
+    fabGradient: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: Colors.white,
     },
     header: {
         flexDirection: 'row',

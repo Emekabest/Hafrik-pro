@@ -119,6 +119,18 @@ export default function SettingsScreen() {
             onPress={() => navigation.navigate('Profile')}
           />
           <Row
+            icon="qr-code-outline"
+            iconColor={ACCENT}
+            label="My Profile QR Code"
+            onPress={() => navigation.navigate('ProfileQr')}
+          />
+          <Row
+            icon="scan-outline"
+            iconColor="#10b981"
+            label="Scan QR Code"
+            onPress={() => navigation.navigate('ProfileQrScanner')}
+          />
+          <Row
             icon="lock-closed-outline"
             label="Change Password"
             onPress={() => openWeb('Change Password', `https://hafrik.com/settings/security/password?token=${token}`)}

@@ -355,6 +355,10 @@ const useStore = create((set, get) => ({
     selectedCountryId: null, // null | 'all' | number/string country_id
     setSelectedCountryId: (id) => set({ selectedCountryId: id }),
 
+    // ── Media content filter (photos/videos/articles etc.) ───────────────────
+    feedContentFilter: '',
+    setFeedContentFilter: (v) => set({ feedContentFilter: v }),
+
     // ── Cart badge (global count across all marketplace screens) ─────────────
     cartCount: 0,
     setCartCount: (n) => set({ cartCount: Number(n ?? 0) }),

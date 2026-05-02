@@ -29,6 +29,17 @@ const STATUS_COLORS = {
 const statusColor = (status) =>
   STATUS_COLORS[(status ?? '').toLowerCase()] ?? MUTED;
 
+const statusIcon = (status) => {
+  const s = String(status ?? '').toLowerCase();
+  if (s === 'approved' || s === 'completed') return 'checkmark-circle';
+  if (s === 'rejected') return 'close-circle';
+  if (s === 'reviewing') return 'sync-circle';
+  return 'time';
+};
+
+const formatLabel = (key = '') =>
+  key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
 const InfoRow = ({ label, value }) => {
   if (!value && value !== 0) return null;
   return (
@@ -66,6 +77,7 @@ export default function ApplicationDetailScreen() {
   }, [id]);
 
   const color = statusColor(data?.status);
+  const payload = data?.payload && typeof data.payload === 'object' ? data.payload : {};
 
   return (
     <View style={styles.root}>
@@ -111,19 +123,52 @@ export default function ApplicationDetailScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* Status banner */}
-          <View style={[styles.statusBanner, { backgroundColor: color + '14', borderColor: color + '40' }]}>
-            <View style={[styles.statusDot, { backgroundColor: color }]} />
-            <Text style={[styles.statusTxt, { color }]}>
-              {data.status?.toUpperCase?.() ?? data.status}
-            </Text>
+          <LinearGradient
+            colors={[BRAND, TEAL]}
+            style={styles.heroCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.heroOrb} />
+            <View style={styles.heroTop}>
+              <View style={[styles.statusIconWrap, { backgroundColor: color + '22' }]}>
+                <Ionicons name={statusIcon(data.status)} size={26} color={color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroKicker}>APPLICATION STATUS</Text>
+                <Text style={styles.heroTitle}>{data.service_name}</Text>
+              </View>
+            </View>
+            <View style={[styles.statusBanner, { backgroundColor: color + '18', borderColor: color + '55' }]}>
+              <View style={[styles.statusDot, { backgroundColor: color }]} />
+              <Text style={[styles.statusTxt, { color }]}>
+                {data.status?.toUpperCase?.() ?? data.status ?? 'PENDING'}
+              </Text>
+            </View>
+            <Text style={styles.heroSub}>Submitted {data.created_at || 'recently'} • Request #{data.id ?? id}</Text>
+          </LinearGradient>
+
+          <View style={styles.timelineCard}>
+            {[
+              { label: 'Submitted', active: true, icon: 'paper-plane-outline' },
+              { label: 'Review', active: ['reviewing', 'approved', 'completed'].includes(String(data.status ?? '').toLowerCase()), icon: 'search-outline' },
+              { label: 'Decision', active: ['approved', 'completed', 'rejected'].includes(String(data.status ?? '').toLowerCase()), icon: 'flag-outline' },
+            ].map((step, index, arr) => (
+              <View key={step.label} style={styles.timelineItem}>
+                <View style={[styles.timelineDot, step.active && { backgroundColor: color, borderColor: color }]}>
+                  <Ionicons name={step.icon} size={13} color={step.active ? WHITE : MUTED} />
+                </View>
+                <Text style={[styles.timelineText, step.active && { color: BRAND }]}>{step.label}</Text>
+                {index < arr.length - 1 && <View style={styles.timelineLine} />}
+              </View>
+            ))}
           </View>
 
-          {/* Main details */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Service Details</Text>
             <InfoRow label="Service"      value={data.service_name} />
             <InfoRow label="Submitted"    value={data.created_at} />
+            <InfoRow label="Reference"    value={data.id ?? id} />
           </View>
 
           <View style={styles.section}>
@@ -134,13 +179,13 @@ export default function ApplicationDetailScreen() {
           </View>
 
           {/* Dynamic payload fields */}
-          {data.payload && typeof data.payload === 'object' && Object.keys(data.payload).length > 0 && (
+          {Object.keys(payload).length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Additional Information</Text>
-              {Object.entries(data.payload).map(([key, val]) => (
+              {Object.entries(payload).map(([key, val]) => (
                 <InfoRow
                   key={key}
-                  label={key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                  label={formatLabel(key)}
                   value={typeof val === 'object' ? JSON.stringify(val) : String(val)}
                 />
               ))}
@@ -157,6 +202,17 @@ export default function ApplicationDetailScreen() {
               <Text style={styles.adminNoteTxt}>{data.admin_note}</Text>
             </View>
           )}
+
+          <TouchableOpacity style={styles.helpCard} activeOpacity={0.85} onPress={() => navigation.navigate('HafrikXVisa')}>
+            <View style={styles.helpIcon}>
+              <Ionicons name="help-buoy-outline" size={18} color={TEAL} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.helpTitle}>Need another service?</Text>
+              <Text style={styles.helpSub}>Browse services or submit a new request.</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={16} color={BRAND} />
+          </TouchableOpacity>
 
           <View style={{ height: 50 }} />
         </ScrollView>
@@ -185,27 +241,102 @@ const styles = StyleSheet.create({
   headerTitle:  { color: WHITE, fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
   headerSub:    { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'WorkSans_400Regular', marginTop: 2 },
 
+  heroCard: {
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 14,
+    overflow: 'hidden',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  heroOrb: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: WHITE,
+    opacity: 0.06,
+    right: -52,
+    top: -72,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+  },
+  statusIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroKicker: { color: 'rgba(255,255,255,0.65)', fontSize: 9, fontFamily: 'WorkSans_700Bold', letterSpacing: 1.4 },
+  heroTitle: { color: WHITE, fontSize: 19, fontFamily: 'ReadexPro_600SemiBold', lineHeight: 25, marginTop: 2 },
+  heroSub: { color: 'rgba(255,255,255,0.72)', fontSize: 12, fontFamily: 'WorkSans_500Medium', marginTop: 10 },
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 10,
-    borderRadius: 12,
+    borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 20,
+    paddingVertical: 8,
   },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   statusTxt: { fontSize: 13, fontFamily: 'WorkSans_700Bold', letterSpacing: 0.5 },
 
+  timelineCard: {
+    flexDirection: 'row',
+    backgroundColor: CARD,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 14,
+    marginBottom: 14,
+  },
+  timelineItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  timelineDot: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  timelineText: { color: MUTED, fontSize: 11, fontFamily: 'WorkSans_700Bold', marginTop: 6 },
+  timelineLine: {
+    position: 'absolute',
+    top: 17,
+    left: '50%',
+    right: '-50%',
+    height: 1,
+    backgroundColor: BORDER,
+  },
   section: {
     backgroundColor: CARD,
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: BORDER,
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 8,
     marginBottom: 14,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
   sectionTitle: {
     color: TEAL,
@@ -248,6 +379,26 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 14,
   },
+  helpCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: CARD,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 14,
+  },
+  helpIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: TEAL + '14',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpTitle: { color: BRAND, fontSize: 14, fontFamily: 'WorkSans_700Bold' },
+  helpSub: { color: MUTED, fontSize: 12, fontFamily: 'WorkSans_400Regular', marginTop: 2 },
   adminNoteHeader: {
     flexDirection: 'row',
     alignItems: 'center',

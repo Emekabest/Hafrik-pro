@@ -1,12 +1,12 @@
 import React from "react";
 import {
-import { Colors } from '../../theme/colors';
   View,
   Text,
   StyleSheet,
   Image,
   TouchableOpacity,
 } from "react-native";
+import { Colors } from '../../theme/colors';
 
 export default function GroupCard({ group, onPress, onJoinToggle }) {
   const title =

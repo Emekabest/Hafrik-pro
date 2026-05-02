@@ -81,6 +81,7 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin, onMarkSeen }) => {
   const convId   = item.conversation_id ?? item.id;
   const timeStr  = timeAgo(item.time ?? item.last_time);
   const preview  = item.message || '';
+  const initial   = String(name || 'U').slice(0, 1).toUpperCase();
 
   const otherUser = {
     id: item.user_id, user_id: item.user_id,
@@ -124,9 +125,9 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin, onMarkSeen }) => {
           activeOpacity={0.7}
           onPress={handlePress}
         >
-          {/* Avatar */}
           <View style={s.avWrap}>
             <Image source={{ uri: avatar }} style={[s.av, unread && s.avUnread]} />
+            <View style={[s.presenceDot, unread && s.presenceDotUnread]} />
             {pinned && (
               <View style={s.pinBadge}>
                 <Ionicons name="pin" size={8} color={WHITE} />
@@ -137,21 +138,28 @@ const ConvCard = React.memo(({ item, index, onDelete, onPin, onMarkSeen }) => {
           {/* Body */}
           <View style={s.rowBody}>
             <View style={s.rowTop}>
-              <Text style={[s.rowName, unread && s.rowNameBold]} numberOfLines={1}>
-                {name}
-              </Text>
-              <Text style={[s.rowTime, unread && s.rowTimeUnread]}>{timeStr}</Text>
+              <View style={s.nameLine}>
+                <Text style={[s.rowName, unread && s.rowNameBold]} numberOfLines={1}>
+                  {name}
+                </Text>
+                {pinned && <Ionicons name="pin" size={11} color={ACCENT} />}
+              </View>
+              <View style={s.timePill}>
+                <Text style={[s.rowTime, unread && s.rowTimeUnread]}>{timeStr}</Text>
+              </View>
             </View>
             <View style={s.rowBottom}>
               <Text style={[s.rowPreview, unread && s.rowPreviewBold]} numberOfLines={1}>
                 {preview || 'Say hello 👋'}
               </Text>
-              {unread && <View style={s.unreadBadge}><View style={s.unreadDot} /></View>}
+              {unread ? (
+                <View style={s.unreadBadge}><Text style={s.unreadBadgeTxt}>New</Text></View>
+              ) : (
+                <Text style={s.initialGhost}>{initial}</Text>
+              )}
             </View>
           </View>
         </TouchableOpacity>
-        {/* Divider */}
-        <View style={s.divider} />
       </Swipeable>
     </Animated.View>
   );
@@ -246,20 +254,26 @@ const NewMessageModal = ({ visible, token, onClose, onSelect }) => {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[nm.root, { paddingTop: top }]}>
+      <View style={nm.root}>
 
         {/* ── Header ── */}
         <LinearGradient
           colors={[Colors.brandDeep ?? '#0a2e32', BRAND, ACCENT + 'DD']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={nm.header}
+          style={[nm.header, { paddingTop: top + 12 }]}
         >
+          <View style={nm.headerOrbOne} pointerEvents="none" />
+          <View style={nm.headerOrbTwo} pointerEvents="none" />
           <TouchableOpacity onPress={onClose} style={nm.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="chevron-down" size={22} color={WHITE} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
+            <Text style={nm.headerKicker}>START A CHAT</Text>
             <Text style={nm.headerTitle}>New Message</Text>
             <Text style={nm.headerSub}>{contacts.length > 0 ? `${contacts.length} contacts` : 'Select someone to chat'}</Text>
+          </View>
+          <View style={nm.headerIcon}>
+            <Ionicons name="chatbubbles" size={21} color={WHITE} />
           </View>
         </LinearGradient>
 
@@ -294,7 +308,10 @@ const NewMessageModal = ({ visible, token, onClose, onSelect }) => {
         ) : (
           <>
             {!search && filtered.length > 0 && (
-              <Text style={nm.sectionTitle}>Suggested</Text>
+              <View style={nm.sectionHead}>
+                <Text style={nm.sectionTitle}>Suggested contacts</Text>
+                <Text style={nm.sectionCount}>{filtered.length}</Text>
+              </View>
             )}
             <FlatList
               data={filtered}
@@ -312,18 +329,18 @@ const NewMessageModal = ({ visible, token, onClose, onSelect }) => {
                     onPress={() => handleSelect(c)}
                     disabled={!!opening}
                   >
-                    {/* Avatar */}
                     <View style={nm.avWrap}>
                       <Image source={{ uri: av }} style={nm.av} />
+                      <View style={nm.avDot} />
                     </View>
 
-                    {/* Info */}
                     <View style={nm.info}>
                       <Text style={nm.name} numberOfLines={1}>{fullName}</Text>
-                      {!!handle && <Text style={nm.handle} numberOfLines={1}>@{handle}</Text>}
+                      <Text style={nm.handle} numberOfLines={1}>
+                        {handle ? `@${handle}` : 'Hafrik member'}
+                      </Text>
                     </View>
 
-                    {/* Action */}
                     {isOpening ? (
                       <ActivityIndicator size="small" color={ACCENT} />
                     ) : (
@@ -479,6 +496,7 @@ export default function InboxScreen() {
   /* ── Derived ──────────────────────────────────────────────────────────────── */
   const isUnread     = (c) => c.seen === '0' || c.seen === 0 || c.seen === false;
   const totalUnread  = items.filter(isUnread).length;
+  const totalChats   = items.length;
 
   const flatData = useMemo(() => {
     const source   = filter === 'Unread' ? unreadItems : items;
@@ -517,13 +535,13 @@ export default function InboxScreen() {
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={[s.header, { paddingTop: top + 8 }]}
       >
-        {/* Title row */}
         <View style={s.titleRow}>
           <View style={{ flex: 1 }}>
+            <Text style={s.headerEyebrow}>HAFRIK CHAT</Text>
             <Text style={s.headerTitle}>Messages</Text>
-            {totalUnread > 0 && (
-              <Text style={s.headerSub}>{totalUnread} unread</Text>
-            )}
+            <Text style={s.headerSub}>
+              {totalUnread > 0 ? `${totalUnread} unread conversation${totalUnread > 1 ? 's' : ''}` : 'You are all caught up'}
+            </Text>
           </View>
           <TouchableOpacity style={s.composeBtn} onPress={() => setShowCompose(true)} activeOpacity={0.85}>
             <Ionicons name="create-outline" size={20} color={WHITE} />
@@ -570,6 +588,23 @@ export default function InboxScreen() {
             );
           })}
         </View>
+
+        <View style={s.summaryCard}>
+          <View style={s.summaryItem}>
+            <Text style={s.summaryValue}>{totalChats}</Text>
+            <Text style={s.summaryLabel}>Chats</Text>
+          </View>
+          <View style={s.summaryDivider} />
+          <View style={s.summaryItem}>
+            <Text style={s.summaryValue}>{totalUnread}</Text>
+            <Text style={s.summaryLabel}>Unread</Text>
+          </View>
+          <View style={s.summaryDivider} />
+          <View style={s.summaryItemWide}>
+            <Ionicons name="shield-checkmark-outline" size={16} color={ACCENT} />
+            <Text style={s.summarySafe}>Private conversations</Text>
+          </View>
+        </View>
       </LinearGradient>
 
       {/* ── New message toast ── */}
@@ -586,11 +621,11 @@ export default function InboxScreen() {
       {/* ── Conversation list ── */}
       <FlatList
         data={flatData}
-        keyExtractor={(row, i) => `conv-${row.item?.conversation_id ?? i}`}
+        keyExtractor={(row, i) => `conv-${row.item?.conversation_id ?? row.item?.id ?? row.item?.user_id ?? i}-${i}`}
         renderItem={renderRow}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} />}
         ListEmptyComponent={<EmptyState filtered={isSearching || filter === 'Unread'} />}
-        contentContainerStyle={listIsEmpty ? { flex: 1 } : { paddingBottom: 40 }}
+        contentContainerStyle={listIsEmpty ? { flex: 1 } : { paddingTop: 14, paddingBottom: 96 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews
         style={s.list}
@@ -618,15 +653,26 @@ export default function InboxScreen() {
 
 /* ─── Styles ──────────────────────────────────────────────────────────────── */
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f7f9fb' },
+  root: { flex: 1, backgroundColor: '#EEF7F7' },
 
   /* Header */
-  header: { paddingHorizontal: 20, paddingBottom: 16 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  headerTitle: { fontSize: 26, fontWeight: '900', color: WHITE, letterSpacing: 0.3 },
-  headerSub:   { fontSize: 12, color: WHITE + '99', marginTop: 2, fontWeight: '600' },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  headerEyebrow: { fontSize: 10, fontWeight: '900', color: WHITE + 'B8', letterSpacing: 2.2, marginBottom: 3 },
+  headerTitle: { fontSize: 29, fontWeight: '900', color: WHITE, letterSpacing: -0.7 },
+  headerSub:   { fontSize: 12.5, color: WHITE + 'B8', marginTop: 3, fontWeight: '700' },
   composeBtn:  {
-    width: 40, height: 40, borderRadius: 20,
+    width: 44, height: 44, borderRadius: 17,
     backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: WHITE + '30',
   },
@@ -634,8 +680,8 @@ const s = StyleSheet.create({
   /* Search */
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: WHITE, borderRadius: 14,
-    paddingHorizontal: 14, height: 44,
+    backgroundColor: WHITE, borderRadius: 18,
+    paddingHorizontal: 14, height: 48,
     borderWidth: 1.5, borderColor: 'transparent',
     marginBottom: 12,
   },
@@ -655,6 +701,23 @@ const s = StyleSheet.create({
   chipTxtActive: { color: BRAND },
   chipBadge:     { backgroundColor: DANGER, borderRadius: 100, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   chipBadgeTxt:  { fontSize: 10, fontWeight: '900', color: WHITE },
+  summaryCard: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: WHITE + 'F2',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: WHITE + '55',
+  },
+  summaryItem: { width: 62 },
+  summaryItemWide: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'flex-end' },
+  summaryValue: { fontSize: 18, fontWeight: '900', color: BRAND, letterSpacing: -0.3 },
+  summaryLabel: { fontSize: 10, fontWeight: '800', color: MUTED, textTransform: 'uppercase', letterSpacing: 0.7, marginTop: 1 },
+  summaryDivider: { width: 1, height: 30, backgroundColor: BRAND + '16', marginRight: 14 },
+  summarySafe: { fontSize: 11.5, fontWeight: '800', color: BRAND },
 
   /* Toast */
   toast: {
@@ -673,28 +736,62 @@ const s = StyleSheet.create({
   /* Conversation row */
   row: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: WHITE, paddingHorizontal: 20, paddingVertical: 14,
+    backgroundColor: WHITE,
+    marginHorizontal: 14,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: BRAND + '0D',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 3,
   },
   rowUnread: { backgroundColor: ACCENT + '08' },
 
   avWrap:  { position: 'relative', marginRight: 14 },
-  av:      { width: 54, height: 54, borderRadius: 27, backgroundColor: BRAND + '22' },
+  av:      { width: 56, height: 56, borderRadius: 20, backgroundColor: BRAND + '22' },
   avUnread:{ borderWidth: 2.5, borderColor: ACCENT },
+  presenceDot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#94A3B8',
+    right: -1,
+    bottom: 2,
+    borderWidth: 2,
+    borderColor: WHITE,
+  },
+  presenceDotUnread: { backgroundColor: '#22C55E' },
   pinBadge:{ position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: WHITE },
 
   rowBody:   { flex: 1 },
-  rowTop:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 },
+  rowTop:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 },
   rowBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  nameLine: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5, marginRight: 8 },
 
-  rowName:        { fontSize: 15, fontWeight: '600', color: DARK, flex: 1, marginRight: 8 },
+  rowName:        { fontSize: 15.5, fontWeight: '700', color: DARK, flex: 1 },
   rowNameBold:    { fontWeight: '800', color: '#111' },
-  rowTime:        { fontSize: 12, color: MUTED, fontWeight: '500' },
+  timePill:       { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: '#F4F8F8' },
+  rowTime:        { fontSize: 11, color: MUTED, fontWeight: '800' },
   rowTimeUnread:  { color: ACCENT, fontWeight: '700' },
-  rowPreview:     { fontSize: 13, color: MUTED, flex: 1, marginRight: 8 },
+  rowPreview:     { fontSize: 13.5, color: MUTED, flex: 1, marginRight: 8 },
   rowPreviewBold: { color: '#444', fontWeight: '600' },
 
-  unreadBadge: { alignItems: 'center', justifyContent: 'center' },
-  unreadDot:   { width: 10, height: 10, borderRadius: 5, backgroundColor: UNREAD_CLR },
+  unreadBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: UNREAD_CLR,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  unreadBadgeTxt: { color: WHITE, fontSize: 10, fontWeight: '900' },
+  initialGhost: { fontSize: 11, fontWeight: '900', color: BRAND + '28' },
 
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#e8edf0', marginLeft: 88 },
 
@@ -706,43 +803,90 @@ const s = StyleSheet.create({
   /* FAB */
   fab: {
     position: 'absolute', bottom: 28, right: 20,
-    borderRadius: 28,
+    borderRadius: 30,
     shadowColor: BRAND, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
   },
-  fabGrad: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  fabGrad: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: WHITE },
 
   /* Empty */
-  empty:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyIcon:  { width: 88, height: 88, borderRadius: 44, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  empty:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 34 },
+  emptyIcon:  { width: 96, height: 96, borderRadius: 32, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center', marginBottom: 4, borderWidth: 1, borderColor: ACCENT + '18' },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: DARK },
   emptySub:   { fontSize: 13, color: MUTED, textAlign: 'center', maxWidth: 240, lineHeight: 20 },
 });
 
 /* ─── New Message modal styles ────────────────────────────────────────────── */
 const nm = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f7f9fb' },
+  root: { flex: 1, backgroundColor: '#EEF7F7' },
 
   // Header
-  header:      { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 18 },
-  backBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '900', color: WHITE },
-  headerSub:   { fontSize: 12, color: WHITE + '88', marginTop: 2 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+  },
+  headerOrbOne: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: WHITE + '10',
+    top: -70,
+    right: -44,
+  },
+  headerOrbTwo: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: ACCENT + '25',
+    bottom: -44,
+    left: -36,
+  },
+  backBtn:     { width: 40, height: 40, borderRadius: 16, backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: WHITE + '24' },
+  headerIcon:  { width: 42, height: 42, borderRadius: 16, backgroundColor: WHITE + '18', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: WHITE + '22' },
+  headerKicker:{ fontSize: 9, fontWeight: '900', color: WHITE + 'B8', letterSpacing: 2.1, marginBottom: 3 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: WHITE, letterSpacing: -0.5 },
+  headerSub:   { fontSize: 12.5, color: WHITE + 'B8', marginTop: 2, fontWeight: '700' },
 
   // Search / To: row
   searchSection: {
+    marginHorizontal: 14,
+    marginTop: 14,
     backgroundColor: WHITE,
-    borderBottomWidth: 1, borderBottomColor: '#e8edf0',
-    paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: BRAND + '0D',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 3,
   },
   toRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  toLabel: { fontSize: 15, fontWeight: '700', color: ACCENT, minWidth: 28 },
+  toLabel: { fontSize: 15, fontWeight: '900', color: ACCENT, minWidth: 28 },
   toInput: { flex: 1, fontSize: 15, color: DARK, paddingVertical: 6 },
 
-  sectionTitle: {
-    fontSize: 12, fontWeight: '800', color: MUTED,
-    textTransform: 'uppercase', letterSpacing: 1.2,
-    paddingHorizontal: 18, paddingTop: 20, paddingBottom: 8,
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
+  sectionTitle: {
+    fontSize: 12, fontWeight: '900', color: BRAND,
+    textTransform: 'uppercase', letterSpacing: 1.1,
+  },
+  sectionCount: { fontSize: 12, fontWeight: '900', color: ACCENT },
 
   loader:     { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 60 },
   loadingTxt: { fontSize: 14, color: MUTED },
@@ -750,22 +894,35 @@ const nm = StyleSheet.create({
   // Contact row
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: WHITE, paddingHorizontal: 18, paddingVertical: 13,
+    backgroundColor: WHITE,
+    marginHorizontal: 14,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: BRAND + '0D',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   avWrap: { position: 'relative' },
-  av:     { width: 50, height: 50, borderRadius: 25, backgroundColor: BRAND + '22' },
+  av:     { width: 52, height: 52, borderRadius: 19, backgroundColor: BRAND + '22' },
+  avDot:  { position: 'absolute', right: -1, bottom: 2, width: 12, height: 12, borderRadius: 6, backgroundColor: '#22C55E', borderWidth: 2, borderColor: WHITE },
   info:   { flex: 1 },
   name:   { fontSize: 15, fontWeight: '700', color: DARK },
   handle: { fontSize: 12, color: MUTED, marginTop: 2 },
 
   msgBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: ACCENT, borderRadius: 100,
-    paddingHorizontal: 12, paddingVertical: 7,
+    backgroundColor: ACCENT, borderRadius: 999,
+    paddingHorizontal: 12, paddingVertical: 8,
   },
   msgBtnTxt: { fontSize: 12, fontWeight: '800', color: WHITE },
 
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#e8edf0', marginLeft: 82 },
+  divider: { height: 0 },
 
   // Empty
   empty:     { alignItems: 'center', paddingTop: 72, gap: 12, paddingHorizontal: 40 },

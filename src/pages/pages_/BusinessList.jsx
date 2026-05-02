@@ -145,21 +145,20 @@ const CategoryChip = React.memo(({ cat, isActive, onPress, index }) => {
   return (
     <Animated.View style={{ opacity, transform: [{ scale }] }}>
       <TouchableOpacity
-        style={[
-          cqs.chip,
-          isActive
-            ? { backgroundColor: color, borderColor: color,
-                shadowColor: color, shadowOpacity: 0.35, shadowRadius: 8, elevation: 5 }
-            : { borderColor: hex2(color, 0.35) },
-        ]}
+        style={cqs.item}
         onPress={() => onPress(cat.id)}
         onPressIn={onIn}
         onPressOut={onOut}
         activeOpacity={1}
       >
-        <View style={[cqs.iconBox, { backgroundColor: isActive ? 'rgba(255,255,255,0.22)' : hex2(color, 0.13) }]}>
-          <Ionicons name={icon} size={15} color={isActive ? WHITE : color} />
-        </View>
+        <LinearGradient
+          colors={isActive ? [color, BRAND] : [hex2(color, 0.16), WHITE]}
+          style={[cqs.iconBox, isActive && { shadowColor: color, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <Ionicons name={icon} size={21} color={isActive ? WHITE : color} />
+        </LinearGradient>
         <Text style={[cqs.label, isActive && cqs.labelOn]} numberOfLines={1}>
           {label}
         </Text>
@@ -169,37 +168,30 @@ const CategoryChip = React.memo(({ cat, isActive, onPress, index }) => {
 });
 
 function CategoryQuickLinks({ categories, activeCat, onSelect }) {
-  const all = categories;
-
-  // Split into two rows: even indices → row 0, odd indices → row 1
-  const row0 = all.filter((_, i) => i % 2 === 0);
-  const row1 = all.filter((_, i) => i % 2 === 1);
-
-  const renderRow = (items, rowOffset) => items.map((cat, col) => (
-    <CategoryChip
-      key={cat.id === null ? 'all' : String(cat.id)}
-      cat={cat}
-      index={rowOffset + col * 2}
-      isActive={activeCat === cat.id}
-      onPress={onSelect}
-    />
-  ));
+  const all = useMemo(() => [{ id: null, name: 'All' }, ...categories], [categories]);
 
   return (
     <View style={cqs.wrap}>
       <View style={cqs.header}>
-        <View style={cqs.headerAccent} />
-        <Text style={cqs.headerTxt}>Browse by Category</Text>
+        <View>
+          <Text style={cqs.headerTxt}>Browse Categories</Text>
+          <Text style={cqs.headerSub}>Find restaurants, schools, logistics, shops and more</Text>
+        </View>
       </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={cqs.scroll}
       >
-        <View style={cqs.grid}>
-          <View style={cqs.gridRow}>{renderRow(row0, 0)}</View>
-          <View style={cqs.gridRow}>{renderRow(row1, 1)}</View>
-        </View>
+        {all.map((cat, index) => (
+          <CategoryChip
+            key={cat.id === null ? 'all' : String(cat.id ?? cat.category_id)}
+            cat={cat}
+            index={index}
+            isActive={activeCat === cat.id}
+            onPress={onSelect}
+          />
+        ))}
       </ScrollView>
     </View>
   );
@@ -208,40 +200,31 @@ function CategoryQuickLinks({ categories, activeCat, onSelect }) {
 const cqs = StyleSheet.create({
   wrap: {
     backgroundColor: CARD,
-    borderBottomWidth: 1, borderBottomColor: hex2(BRAND, 0.07),
+    borderBottomWidth: 1,
+    borderBottomColor: hex2(BRAND, 0.07),
+    paddingTop: 14,
     paddingBottom: 16,
   },
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
   },
-  headerAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: ACCENT },
-  headerTxt:    { fontSize: 12, fontWeight: '800', color: MUTED, letterSpacing: 1.2, textTransform: 'uppercase' },
-  scroll:       { paddingHorizontal: 14 },
-  grid:         { flexDirection: 'column', gap: 8 },
-  gridRow:      { flexDirection: 'row', gap: 8 },
-  chip: {
-    flexDirection: 'row',
+  headerTxt:    { fontSize: 17, fontWeight: '900', color: DARK },
+  headerSub:    { fontSize: 12, color: MUTED, marginTop: 3 },
+  scroll:       { paddingHorizontal: 14, gap: 14 },
+  item: {
+    width: 72,
     alignItems: 'center',
     gap: 7,
-    paddingLeft: 6,
-    paddingRight: 13,
-    paddingVertical: 6,
-    borderRadius: 50,
-    backgroundColor: CARD,
-    borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
   },
   iconBox: {
-    width: 30, height: 30, borderRadius: 50,
+    width: 54, height: 54, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: hex2(BRAND, 0.06),
   },
-  label:   { fontSize: 12, color: DARK, fontWeight: '700' },
-  labelOn: { color: WHITE, fontWeight: '800' },
+  label:   { fontSize: 10.8, color: DARK, fontWeight: '800', textAlign: 'center', maxWidth: 72 },
+  labelOn: { color: ACCENT, fontWeight: '900' },
 });
 
 // ─── Verified mini-card (horizontal scroll) ───────────────────────────────────
@@ -383,6 +366,26 @@ function VerifiedSection({ businesses, loading, onPress, onSeeAll }) {
   );
 }
 
+function DirectoryPulse({ totalCount, activeCatName, activeFilter }) {
+  const scope = activeCatName || (activeFilter === 'following' ? 'Following' : 'All');
+  return (
+    <View style={pulse.wrap}>
+      <LinearGradient colors={[BRAND, '#155f66']} style={pulse.card} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <View style={pulse.orb} />
+        <View style={pulse.item}>
+          <Text style={pulse.value}>{fmtCount(totalCount || 0)}</Text>
+          <Text style={pulse.label}>Businesses</Text>
+        </View>
+        <View style={pulse.divider} />
+        <View style={pulse.item}>
+          <Text style={pulse.value}>{scope}</Text>
+          <Text style={pulse.label}>Current view</Text>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+}
+
 const vs = StyleSheet.create({
   wrap: {
     backgroundColor: CARD,
@@ -400,6 +403,35 @@ const vs = StyleSheet.create({
   seeAllTxt:  { fontSize: 12, fontWeight: '700', color: ACCENT },
   scroll:     { paddingHorizontal: 14, gap: 10 },
   skeletonRow:{ paddingHorizontal: 14, gap: 10 },
+});
+
+const pulse = StyleSheet.create({
+  wrap: {
+    backgroundColor: CREAM,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+  },
+  card: {
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  orb: {
+    position: 'absolute',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: WHITE,
+    opacity: 0.06,
+    right: -34,
+    top: -54,
+  },
+  item: { flex: 1 },
+  value: { color: WHITE, fontSize: 18, fontWeight: '900' },
+  label: { color: WHITE + '99', fontSize: 11, fontWeight: '700', marginTop: 2 },
+  divider: { width: 1, height: 34, backgroundColor: WHITE + '22', marginHorizontal: 14 },
 });
 
 // ─── Category Dropdown Modal ───────────────────────────────────────────────────
@@ -838,11 +870,17 @@ export default function BusinessList() {
         </View>
       </View>
 
-      {/* ── Category Quick Links ── */}
-      <CategoryQuickLinks
-        categories={categories}
-        activeCat={activeCat}
-        onSelect={handleSelectCat}
+      <DirectoryPulse
+        totalCount={totalCount}
+        activeCatName={activeCatName}
+        activeFilter={activeFilter}
+      />
+
+      <VerifiedSection
+        businesses={verifiedPages}
+        loading={loadingVerified}
+        onPress={openBusiness}
+        onSeeAll={handleSeeAllVerified}
       />
 
       {/* ── Filter bar ── */}
@@ -968,12 +1006,6 @@ export default function BusinessList() {
         ListFooterComponent={
           <View>
             {loadingMore && <ActivityIndicator color={ACCENT} style={{ marginVertical: 20 }} />}
-            <VerifiedSection
-              businesses={verifiedPages}
-              loading={loadingVerified}
-              onPress={openBusiness}
-              onSeeAll={handleSeeAllVerified}
-            />
           </View>
         }
       />
@@ -1035,9 +1067,9 @@ const bs = StyleSheet.create({
   searchInput:  { flex: 1, color: WHITE, fontSize: 14, paddingVertical: 0 },
 
   // ── Filter bar ──
-  filterBar:      { flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, paddingLeft: 14, paddingRight: 10, paddingVertical: 10, gap: 8, borderBottomWidth: 1, borderBottomColor: hex2(BRAND, 0.07) },
+  filterBar:      { flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, marginHorizontal: 14, marginTop: 14, paddingLeft: 12, paddingRight: 10, paddingVertical: 10, gap: 8, borderRadius: 22, borderWidth: 1, borderColor: hex2(BRAND, 0.08), shadowColor: BRAND, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
   filterScroll:   { gap: 8, alignItems: 'center' },
-  filterChip:     { height: 34, paddingHorizontal: 16, borderRadius: 100, backgroundColor: CREAM, borderWidth: 1.5, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
+  filterChip:     { height: 34, paddingHorizontal: 16, borderRadius: 100, backgroundColor: CREAM, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
   filterChipOn:   { backgroundColor: BRAND, borderColor: BRAND },
   filterTxt:      { fontSize: 12, fontWeight: '700', color: MUTED },
   filterTxtOn:    { color: WHITE },
@@ -1047,29 +1079,29 @@ const bs = StyleSheet.create({
   activeCatDot:   { width: 7, height: 7, borderRadius: 4 },
   activeCatTxt:   { fontSize: 12, fontWeight: '700', color: ACCENT, maxWidth: 100 },
 
-  catDropBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: CREAM, borderWidth: 1.5, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
+  catDropBtn:     { width: 36, height: 36, borderRadius: 18, backgroundColor: CREAM, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
   catDropBtnOn:   { backgroundColor: hex2(ACCENT, 0.12), borderColor: ACCENT },
 
   // ── Section bar ──
-  sectionBar:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8, backgroundColor: CREAM },
-  sectionAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: ACCENT },
-  sectionBarText:{ fontSize: 11, fontWeight: '800', color: MUTED, letterSpacing: 1.5, flex: 1 },
-  sectionCount:  { fontSize: 11, color: MUTED, fontWeight: '600' },
+  sectionBar:    { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, paddingTop: 18, paddingBottom: 4, gap: 8, backgroundColor: CREAM },
+  sectionAccent: { width: 4, height: 18, borderRadius: 3, backgroundColor: ACCENT },
+  sectionBarText:{ fontSize: 13, fontWeight: '900', color: DARK, letterSpacing: 0.6, flex: 1 },
+  sectionCount:  { fontSize: 11, color: ACCENT, fontWeight: '800', backgroundColor: ACCENT + '14', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
 
   listContent: { paddingBottom: 100, gap: 14 },
 
   // ── Business card (redesigned) ──
   card: {
-    backgroundColor: CARD, borderRadius: 20, overflow: 'hidden',
+    backgroundColor: CARD, borderRadius: 24, overflow: 'hidden',
     marginHorizontal: 14,
     borderWidth: 1, borderColor: hex2(BRAND, 0.08),
-    shadowColor: BRAND, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 14, elevation: 4,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.09, shadowRadius: 16, elevation: 5,
   },
 
   // Cover
   coverWrap:       { position: 'relative' },
-  cover:           { width: '100%', height: 130, alignItems: 'center', justifyContent: 'center' },
+  cover:           { width: '100%', height: 118, alignItems: 'center', justifyContent: 'center' },
   coverGradient:   { position: 'absolute', bottom: 0, left: 0, right: 0, height: 60 },
   coverCatPill:    { position: 'absolute', bottom: 10, left: 12, flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 100, paddingHorizontal: 9, paddingVertical: 4 },
   coverCatTxt:     { fontSize: 10, fontWeight: '800', color: WHITE, letterSpacing: 0.3 },

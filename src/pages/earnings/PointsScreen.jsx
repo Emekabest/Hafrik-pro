@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, RefreshControl, Animated,
-  Modal, ScrollView, Dimensions, Platform,
+  Modal, ScrollView, Dimensions, Platform, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,7 @@ import {
   getRemainingPoints,
   getPointsTransactions,
 } from '../../api/pointsApi';
+import { withdrawPoints } from '../../api/walletApi';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -254,6 +255,7 @@ export default function PointsScreen() {
   const [remaining,  setRemaining]  = useState(null);
   const [balLoading, setBalLoading] = useState(true);
   const [infoOpen,   setInfoOpen]   = useState(false);
+  const [converting, setConverting] = useState(false);
 
   const [transactions, setTransactions] = useState([]);
   const [txPage,       setTxPage]       = useState(1);
@@ -325,6 +327,38 @@ export default function PointsScreen() {
   const usedToday    = remaining !== null ? Math.max(0, DAILY_LIMIT - Number(remaining)) : 0;
   const progressPct  = Math.min(usedToday / DAILY_LIMIT, 1);
   const moneyEquiv   = (Number(points ?? 0) / 1000).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const canConvert   = Number(points ?? 0) > 0;
+
+  const handleConvertPoints = useCallback(() => {
+    const pointAmount = Math.floor(Number(points ?? 0));
+    if (pointAmount <= 0 || converting) return;
+    Alert.alert(
+      'Convert points?',
+      `Convert ${fmtNum(pointAmount)} points to your Hafrik Wallet?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Convert',
+          onPress: async () => {
+            setConverting(true);
+            try {
+              const json = await withdrawPoints(token, pointAmount);
+              if (json?.status === 'success') {
+                Alert.alert('Done', json.message ?? 'Points converted to wallet.');
+                await fetchBalance();
+                fetchTransactions();
+              } else {
+                Alert.alert('Could not convert', json?.message ?? 'Please try again.');
+              }
+            } catch (e) {
+              Alert.alert('Network error', e?.message ?? 'Please try again.');
+            }
+            setConverting(false);
+          },
+        },
+      ]
+    );
+  }, [points, converting, token, fetchBalance, fetchTransactions]);
 
   const ListHeader = () => (
     <>
@@ -400,20 +434,26 @@ export default function PointsScreen() {
         </View>
       )}
 
-      {/* ── Balance boxes ── */}
       {!balLoading && (
-        <View style={ps.balanceRow}>
-          <View style={[ps.balBox, { backgroundColor: GOLD + '14' }]}>
-            <Ionicons name="star" size={16} color={ORANGE} />
-            <Text style={[ps.balValue, { color: ORANGE }]}>{fmtPoints(points)}</Text>
-            <Text style={ps.balLabel}>Points Balance</Text>
+        <TouchableOpacity
+          style={[ps.convertCard, !canConvert && { opacity: 0.55 }]}
+          onPress={handleConvertPoints}
+          activeOpacity={0.86}
+          disabled={!canConvert || converting}
+        >
+          <View style={ps.convertIcon}>
+            <Ionicons name="swap-horizontal" size={20} color={GREEN} />
           </View>
-          <View style={[ps.balBox, { backgroundColor: GREEN + '12' }]}>
-            <Ionicons name="cash" size={16} color={GREEN} />
-            <Text style={[ps.balValue, { color: GREEN }]}>¥{moneyEquiv}</Text>
-            <Text style={ps.balLabel}>Money Equivalent</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={ps.convertTitle}>Convert points to wallet</Text>
+            <Text style={ps.convertSub}>Move your points value into your RMB wallet balance.</Text>
           </View>
-        </View>
+          {converting ? (
+            <ActivityIndicator size="small" color={GREEN} />
+          ) : (
+            <Ionicons name="chevron-forward" size={18} color={TEXT_M} />
+          )}
+        </TouchableOpacity>
       )}
 
       {/* ── How You Earn Points ── */}
@@ -423,7 +463,10 @@ export default function PointsScreen() {
             <View style={ps.earnIconWrap}>
               <Ionicons name="flash" size={14} color={ORANGE} />
             </View>
-            <Text style={ps.earnCardTitle}>How You Earn Points</Text>
+            <View>
+              <Text style={ps.earnCardTitle}>Quick earning guide</Text>
+              <Text style={ps.earnCardSub}>Valid activity adds points automatically.</Text>
+            </View>
           </View>
         </View>
         <View style={ps.earnGrid}>
@@ -532,7 +575,7 @@ export default function PointsScreen() {
 }
 
 const ps = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BRAND },
+  root: { flex: 1, backgroundColor: '#5F3B00' },
 
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -547,11 +590,11 @@ const ps = StyleSheet.create({
     backgroundColor: WHITE + '1A', alignItems: 'center', justifyContent: 'center',
   },
   topTitle: { fontSize: 17, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
-  list: { flex: 1, backgroundColor: BG, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
+  list: { flex: 1, backgroundColor: '#FFF7E8', borderTopLeftRadius: 30, borderTopRightRadius: 30 },
 
   // Hero
-  heroWrap: { marginHorizontal: 16, marginTop: 20 },
-  heroGrad: { borderRadius: 24, padding: 22, alignItems: 'center', overflow: 'hidden' },
+  heroWrap: { marginHorizontal: 16, marginTop: 18 },
+  heroGrad: { borderRadius: 30, padding: 22, alignItems: 'center', overflow: 'hidden', shadowColor: '#5F3B00', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 8 },
   heroCircle1: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: WHITE + '08', top: -60, right: -40 },
   heroCircle2: { position: 'absolute', width: 110, height: 110, borderRadius: 55, backgroundColor: WHITE + '08', bottom: -30, left: -20 },
   heroLabel:  { fontSize: 11, color: WHITE + 'AA', fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', fontFamily: FONT_R },
@@ -566,7 +609,7 @@ const ps = StyleSheet.create({
   // Daily progress
   progressCard: {
     marginHorizontal: 16, marginTop: 14,
-    backgroundColor: CARD, borderRadius: 18, padding: 16,
+    backgroundColor: CARD, borderRadius: 22, padding: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -581,18 +624,20 @@ const ps = StyleSheet.create({
   },
   progressSub: { fontSize: 11.5, color: TEXT_M, fontFamily: FONT_R },
 
-  // Balance boxes
-  balanceRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 12 },
-  balBox: {
-    flex: 1, borderRadius: 16, padding: 14, alignItems: 'center', gap: 4,
+  convertCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 16, marginTop: 12,
+    backgroundColor: CARD, borderRadius: 22, padding: 16,
+    borderWidth: 1, borderColor: '#F2DEB4',
   },
-  balValue: { fontSize: 18, fontWeight: '900', fontFamily: FONT_B },
-  balLabel: { fontSize: 10.5, color: TEXT_M, fontFamily: FONT_R, textAlign: 'center' },
+  convertIcon: { width: 46, height: 46, borderRadius: 16, backgroundColor: GREEN + '12', alignItems: 'center', justifyContent: 'center' },
+  convertTitle: { fontSize: 14.5, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  convertSub: { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, lineHeight: 17, marginTop: 2 },
 
   // How you earn
   earnCard: {
     marginHorizontal: 16, marginTop: 12,
-    backgroundColor: CARD, borderRadius: 18,
+    backgroundColor: CARD, borderRadius: 22,
     paddingTop: 16, paddingBottom: 12, paddingHorizontal: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
@@ -600,6 +645,7 @@ const ps = StyleSheet.create({
   earnHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   earnIconWrap:   { width: 26, height: 26, borderRadius: 8, backgroundColor: GOLD + '22', alignItems: 'center', justifyContent: 'center' },
   earnCardTitle:  { fontSize: 14, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  earnCardSub:    { fontSize: 11.5, color: TEXT_M, fontFamily: FONT_R, marginTop: 2 },
   earnGrid:       { gap: 8 },
   earnItem:       { flexDirection: 'row', alignItems: 'center', gap: 10 },
   earnItemIcon:   { width: 32, height: 32, borderRadius: 10, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
@@ -618,8 +664,9 @@ const ps = StyleSheet.create({
   // Transaction rows
   txRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: CARD, paddingVertical: 14, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: BORDER + '55',
+    backgroundColor: CARD, paddingVertical: 14, paddingHorizontal: 14,
+    marginHorizontal: 16, marginTop: 10, borderRadius: 18,
+    borderWidth: 1, borderColor: '#F2DEB4',
   },
   txIconWrap: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   txMid:  { flex: 1 },
@@ -638,7 +685,7 @@ const ps = StyleSheet.create({
   trustRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
     marginHorizontal: 16, marginTop: 12, marginBottom: 4,
-    backgroundColor: GREEN + '0E', borderRadius: 12,
+    backgroundColor: GREEN + '0E', borderRadius: 16,
     paddingHorizontal: 14, paddingVertical: 10,
   },
   trustTxt: { flex: 1, fontSize: 11.5, color: TEXT_M, lineHeight: 17, fontFamily: FONT_R },

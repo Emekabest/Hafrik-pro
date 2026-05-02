@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, Animated, Share,
+  RefreshControl, Animated, Share, Alert, ActivityIndicator,
   Clipboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
 import AppDetails from '../../helpers/appdetails';
+import { withdrawAffiliates } from '../../api/walletApi';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BRAND  = Colors.primaryDark;
@@ -138,6 +139,7 @@ export default function AffiliatesScreen() {
   const [refLoading, setRefLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [copied,     setCopied]     = useState(false);
+  const [moving,     setMoving]     = useState(false);
 
   const heroAnim  = useRef(new Animated.Value(0)).current;
   const bodyAnim  = useRef(new Animated.Value(0)).current;
@@ -197,6 +199,36 @@ export default function AffiliatesScreen() {
       });
     } catch { /* silent */ }
   }, [referralLink]);
+
+  const handleMoveToWallet = useCallback(() => {
+    const amount = Number(data?.balance ?? 0);
+    if (amount <= 0 || moving) return;
+    Alert.alert(
+      'Move to wallet?',
+      `Move ${fmtMoney(amount)} affiliate balance to your Hafrik Wallet?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Move',
+          onPress: async () => {
+            setMoving(true);
+            try {
+              const json = await withdrawAffiliates(token, amount);
+              if (json?.status === 'success') {
+                Alert.alert('Done', json.message ?? 'Affiliate balance moved to wallet.');
+                await fetchData();
+              } else {
+                Alert.alert('Could not move balance', json?.message ?? 'Please try again.');
+              }
+            } catch (e) {
+              Alert.alert('Network error', e?.message ?? 'Please try again.');
+            }
+            setMoving(false);
+          },
+        },
+      ]
+    );
+  }, [data?.balance, moving, token, fetchData]);
 
   // ── Data ───────────────────────────────────────────────────────────────────
   const balance       = data?.balance        ?? 0;
@@ -355,9 +387,10 @@ export default function AffiliatesScreen() {
 
           {/* ── Move to Wallet ── */}
           <TouchableOpacity
-            style={as.moveBtn}
+            style={[as.moveBtn, Number(balance) <= 0 && { opacity: 0.55 }]}
             activeOpacity={0.85}
-            onPress={() => navigation.navigate('WalletScreen')}
+            onPress={handleMoveToWallet}
+            disabled={Number(balance) <= 0 || moving}
           >
             <LinearGradient
               colors={[GREEN, '#16a34a']}
@@ -367,6 +400,7 @@ export default function AffiliatesScreen() {
             >
               <Ionicons name="wallet-outline" size={17} color={WHITE} />
               <Text style={as.moveBtnTxt}>Move Balance to Wallet</Text>
+              {moving && <ActivityIndicator size="small" color={WHITE} />}
             </LinearGradient>
           </TouchableOpacity>
 

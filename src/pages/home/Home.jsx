@@ -15,7 +15,7 @@ import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useIsFocused } from '@react-navigation/native';
 import DrawerNavigation from './drawernavigation.jsx';
 import AppHeader from '../../pages/AppHeader.jsx';
-import FeedTabBar, { ContentFilterBar, FEED_TABS } from './FeedTabBar.jsx';
+import FeedTabBar, { FEED_TABS } from './FeedTabBar.jsx';
 import UnifiedFeedScreen from './UnifiedFeedScreen.jsx';
 import { HafrikTVContent } from '../tv/HafrikTVScreen.jsx';
 import SearchModal from '../search/searchmodal.jsx';
@@ -56,16 +56,12 @@ const HomePage = ({ route, navigation }) => {
 
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [activeTab,       setActiveTab]       = useState(0); // 0 = For You
-  const [contentFilter,   setContentFilter]   = useState('');
 
   useEffect(() => {
     const tabKey = route?.params?.initialTabKey;
     if (!tabKey) return;
     const idx = FEED_TABS.findIndex((tab) => tab.key === tabKey);
-    if (idx >= 0) {
-      setActiveTab(idx);
-      setContentFilter('');
-    }
+    if (idx >= 0) setActiveTab(idx);
     navigation?.setParams?.({ initialTabKey: undefined });
   }, [route?.params?.initialTabKey, navigation]);
 
@@ -92,10 +88,8 @@ const HomePage = ({ route, navigation }) => {
   const openDrawer  = useCallback(() => setIsDrawerVisible(true),  []);
   const closeDrawer = useCallback(() => setIsDrawerVisible(false), []);
 
-  // Reset content filter when switching primary tabs
   const handleTabChange = useCallback((index) => {
     setActiveTab(index);
-    setContentFilter('');
   }, []);
 
   // ── Swipe-to-switch tabs ───────────────────────────────────────────────────
@@ -134,7 +128,6 @@ const HomePage = ({ route, navigation }) => {
   }, [setFeedWidth]);
 
   const currentTabConfig = FEED_TABS[activeTab];
-  const showContentFilter = true;
 
   const homeItem = () => (
     <>
@@ -147,14 +140,6 @@ const HomePage = ({ route, navigation }) => {
             activeIndex={activeTab}
             onTabChange={handleTabChange}
           />
-
-          {/* ── Secondary Content Filter Pills (hidden on TV tab) ── */}
-          {showContentFilter && !currentTabConfig.isTV && (
-            <ContentFilterBar
-              activeFilter={contentFilter}
-              onFilterChange={setContentFilter}
-            />
-          )}
 
           {/* ── Feed Content ── */}
           {currentTabConfig.isTV ? (
@@ -177,7 +162,6 @@ const HomePage = ({ route, navigation }) => {
                 <UnifiedFeedScreen
                   key={currentTabConfig.key}
                   tabConfig={currentTabConfig}
-                  contentFilter={contentFilter}
                   feedWidth={feedWidthRef.current}
                 />
               </Animated.View>
@@ -192,7 +176,7 @@ const HomePage = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader onOpenDrawer={openDrawer} />
+      <AppHeader onOpenDrawer={openDrawer} hideSearch />
 
       {tabletMode ? (
         <View style={[styles.homeContainer, { height: homeViewHeight, flexDirection: 'row' }]}>

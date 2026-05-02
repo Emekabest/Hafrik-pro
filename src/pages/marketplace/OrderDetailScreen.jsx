@@ -47,6 +47,26 @@ const fmtDate = (raw) => {
   });
 };
 
+const cleanText = (raw = '') =>
+  String(raw ?? '')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))
+    .replace(/&rsquo;|&lsquo;|&apos;/g, "'")
+    .replace(/&rdquo;|&ldquo;/g, '"')
+    .replace(/&ndash;|&mdash;/g, '-')
+    .replace(/&hellip;/g, '...')
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;?/g, '&')
+    .replace(/&#038;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 // ─── Status meta ──────────────────────────────────────────────────────────────
 const STATUS_META = {
   placed:     { color: GOLD,   icon: 'time-outline',                  label: 'Placed',      desc: 'Order received, awaiting confirmation' },
@@ -250,15 +270,15 @@ export default function OrderDetailScreen({ navigation, route }) {
 
                   <View style={{ flex: 1, gap: 4 }}>
                     {/* Title */}
-                    <Text style={od.itemTitle}>Product #{item.product_id}</Text>
+                    <Text style={od.itemTitle}>{cleanText(item.title ?? item.product_name) || `Product #${item.product_id}`}</Text>
 
                     {/* Variations */}
                     {vars.length > 0 && (
                       <View style={od.varRow}>
                         {vars.map((v, vi) => {
                           const label = v.variation_name
-                            ? `${v.variation_name}: ${v.option_value}`
-                            : String(v.option_value ?? v);
+                            ? `${cleanText(v.variation_name)}: ${cleanText(v.option_value)}`
+                            : cleanText(String(v.option_value ?? v));
                           return (
                             <View key={vi} style={od.varChip}>
                               <Text style={od.varTxt}>{label}</Text>

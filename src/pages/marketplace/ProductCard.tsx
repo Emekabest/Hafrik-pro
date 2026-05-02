@@ -20,8 +20,15 @@ const withOpacity = (hex, opacity) => {
 const stripHtml = (raw = '') => {
   if (!raw) return '';
   return raw
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))
+    .replace(/&rsquo;|&lsquo;|&apos;/g, "'")
+    .replace(/&rdquo;|&ldquo;/g, '"')
+    .replace(/&ndash;|&mdash;/g, '-')
+    .replace(/&hellip;/g, '...')
     .replace(/&#039;/g, "'")
-    .replace(/&amp;/g, '&')
+    .replace(/&amp;?/g, '&')
+    .replace(/&#038;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')

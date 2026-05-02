@@ -76,12 +76,13 @@ import PostDetailScreen from './src/pages/home/feeds/PostDetailScreen';
 import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen             from './src/pages/settings/SettingsScreen';
 import AboutUsScreen              from './src/pages/settings/AboutUsScreen';
+import ProfileQrScreen            from './src/pages/profile/ProfileQrScreen';
+import ProfileQrScannerScreen     from './src/pages/profile/ProfileQrScannerScreen';
 import VerificationIntroScreen   from './src/pages/verification/VerificationIntroScreen';
 import VerificationUploadScreen  from './src/pages/verification/VerificationUploadScreen';
 import VerificationPendingScreen from './src/pages/verification/VerificationPendingScreen';
 import SearchScreen   from './src/pages/search/searchscreen';
 import HashtagScreen  from './src/pages/hashtag/HashtagScreen';
-import EarningsScreen        from './src/pages/earnings/EarningsScreen';
 import PointsScreen          from './src/pages/earnings/PointsScreen';
 import WalletScreen          from './src/pages/earnings/WalletScreen';
 import AffiliatesScreen      from './src/pages/earnings/AffiliatesScreen';
@@ -97,6 +98,11 @@ import SavedPostsScreen      from './src/pages/saved/SavedPostsScreen';
 // ── City Guide ──
 import CityGuideHomeScreen   from './src/pages/cityguide/CityGuideHomeScreen';
 import CityDetailScreen      from './src/pages/cityguide/CityDetailScreen';
+// ── Explore ──
+import ExploreHome           from './src/pages/explore/ExploreHome';
+import ExploreCityDetail     from './src/pages/explore/CityDetailScreen';
+import ExplorePlaceDetail    from './src/pages/explore/PlaceDetailScreen';
+import ExploreServiceDetail  from './src/pages/explore/ServiceDetailScreen';
 // ── HafrikX Module ──
 import HafrikXHome           from './src/pages/hafrikx/HafrikXHome';
 // ── Arrival Concierge ──
@@ -121,6 +127,9 @@ import MyApplicationsScreen     from './src/pages/hafrikx/MyApplicationsScreen';
 import ApplicationDetailScreen  from './src/pages/hafrikx/ApplicationDetailScreen';
 import TourGuideScreen          from './src/pages/hafrikx/TourGuideScreen';
 import TranslatorScreen        from './src/pages/translator/TranslatorScreen';
+import HafrikShopGuide         from './src/pages/marketplace/HafrikShopGuide';
+import SchoolAdmissionScreen   from './src/pages/hafrikx/SchoolAdmissionScreen';
+import AdmissionInfoScreen     from './src/pages/hafrikx/AdmissionInfoScreen';
 import ExchangePayment        from './src/pages/hafrikx/ExchangePayment';
 import ExchangeUploadReceipt  from './src/pages/hafrikx/ExchangeUploadReceipt';
 import ExchangeUploadQR       from './src/pages/hafrikx/ExchangeUploadQR';
@@ -435,7 +444,7 @@ function AppNavigator() {
               <Stack.Screen name="EventsScreen" component={EventsScreen} />
               <Stack.Screen name="GuideScreen" component={GuideScreen} />
               <Stack.Screen name="JobsScreen" component={JobsScreen} />
-              <Stack.Screen name="MarketplaceScreen" component={MarketplaceTabNavigator} options={{ gestureEnabled: false }} />
+              <Stack.Screen name="MarketplaceScreen" component={MarketplaceTabNavigator} options={{ gestureEnabled: true, gestureDirection: 'horizontal' }} />
               <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
               <Stack.Screen name="CreateListing" component={CreateListingScreen} />
               <Stack.Screen name="MarketplaceWebview" component={UniversalWebView} options={{ headerShown: false }} />
@@ -477,6 +486,8 @@ function AppNavigator() {
               <Stack.Screen name="Thread" component={ThreadScreen} />
               <Stack.Screen name="InAppBrowser" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="Settings"            component={SettingsScreen} />
+              <Stack.Screen name="ProfileQr"           component={ProfileQrScreen}        options={{ headerShown: false, gestureEnabled: true }} />
+              <Stack.Screen name="ProfileQrScanner"    component={ProfileQrScannerScreen} options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="AboutUs"             component={AboutUsScreen}  options={{ headerShown: false }} />
               <Stack.Screen name="VerificationIntro"  component={VerificationIntroScreen}  options={{ headerShown: false }} />
               <Stack.Screen name="VerificationUpload" component={VerificationUploadScreen} options={{ headerShown: false }} />
@@ -489,7 +500,7 @@ function AppNavigator() {
               <Stack.Screen name="JoinedCommunities" component={JoinedCommunitiesScreen}  options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="LikedBusinesses"   component={LikedBusinessesScreen}    options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="SavedPosts"        component={SavedPostsScreen}          options={{ headerShown: false, gestureEnabled: true }} />
-              <Stack.Screen name="Earnings"          component={EarningsScreen}   options={{ headerShown: false }} />
+              <Stack.Screen name="Earnings"          component={WalletScreen}     options={{ headerShown: false }} />
               <Stack.Screen name="PointsScreen"      component={PointsScreen}     options={{ headerShown: false }} />
               <Stack.Screen name="WalletScreen"      component={WalletScreen}     options={{ headerShown: false }} />
               <Stack.Screen name="AffiliatesScreen"  component={AffiliatesScreen} options={{ headerShown: false }} />
@@ -502,6 +513,12 @@ function AppNavigator() {
               {/* ── City Guide ── */}
               <Stack.Screen name="CityGuide"  component={CityGuideHomeScreen} options={{ headerShown: false }} />
               <Stack.Screen name="CityDetail" component={CityDetailScreen}    options={{ headerShown: false }} />
+
+              {/* ── Explore ── */}
+              <Stack.Screen name="ExploreHome"         component={ExploreHome}          options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ExploreCityDetail"   component={ExploreCityDetail}    options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ExplorePlaceDetail"  component={ExplorePlaceDetail}   options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ExploreServiceDetail" component={ExploreServiceDetail} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
 
               {/* ── HafrikX Module ── */}
               <Stack.Screen
@@ -556,6 +573,9 @@ function AppNavigator() {
               <Stack.Screen name="MyApplications"         component={MyApplicationsScreen}    options={{ headerShown: false }} />
               <Stack.Screen name="ApplicationDetail"      component={ApplicationDetailScreen} options={{ headerShown: false }} />
               <Stack.Screen name="TranslatorScreen"       component={TranslatorScreen}        options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikShopGuide"       component={HafrikShopGuide}          options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="SchoolAdmissionScreen" component={SchoolAdmissionScreen}    options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="AdmissionInfoScreen"   component={AdmissionInfoScreen}      options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
               <Stack.Screen name="ExchangePayment"       component={ExchangePayment}       options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeUploadReceipt" component={ExchangeUploadReceipt} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeUploadQR"      component={ExchangeUploadQR}      options={{ headerShown: false }} />

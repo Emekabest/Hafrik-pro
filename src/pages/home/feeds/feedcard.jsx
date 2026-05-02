@@ -109,6 +109,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   const [editError,        setEditError]        = useState('');
   const [xlText,           setXlText]           = useState('');
   const [xling,            setXling]            = useState(false);
+  const [textExpanded,     setTextExpanded]     = useState(false);
 
   // ── Double-tap heart animation ─────────────────────────────────────────────
   const heartScaleAnim   = useRef(new Animated.Value(0)).current;
@@ -225,42 +226,38 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id, feed?.user]);
 
   // ── Text + hashtag extraction ──────────────────────────────────────────────
-  const { displayText, showSeeMore, allTags, extractedUrl } = useMemo(() => {
+  const { displayText, fullText, showSeeMore, allTags, extractedUrl } = useMemo(() => {
     const apiTags = feed?.hashtags || [];
     let extractedUrl = null;
 
     if (!feed?.text) {
-      // For link-type posts with no text body, still grab the URL
       const fallbackUrl = feed?.url || feed?.link_url || feed?.payload?.url || null;
-      return { displayText: "", showSeeMore: false, allTags: apiTags, extractedUrl: fallbackUrl };
+      return { displayText: "", fullText: "", showSeeMore: false, allTags: apiTags, extractedUrl: fallbackUrl };
     }
 
-    // Always parse and strip URL from text so the LinkPreview card replaces it
     const parsed = parseLinkFromText(feed.text);
     let text = parsed.text;
     extractedUrl = parsed.url;
 
-    // For link-type posts fall back to feed.url if text had no URL
     if (!extractedUrl) {
       extractedUrl = feed?.url || feed?.link_url || feed?.payload?.url || null;
     }
 
-    // Keep hashtags inline in the text — just clean and truncate
     const cleaned = CleanText(text.trim());
 
-    // Pills row: only API hashtags NOT already visible inline in text
     const inlineSet = new Set((text.match(/#\w+/g) || []).map(t => t.slice(1).toLowerCase()));
     const allTags = apiTags.filter(tag => !inlineSet.has((tag || '').toLowerCase()));
 
     if (cleaned.length > MAX_FEED_TEXT_LENGTH) {
       return {
         displayText: `${cleaned.substring(0, MAX_FEED_TEXT_LENGTH)}...`,
+        fullText: cleaned,
         showSeeMore: true,
         allTags,
         extractedUrl,
       };
     }
-    return { displayText: cleaned, showSeeMore: false, allTags, extractedUrl };
+    return { displayText: cleaned, fullText: cleaned, showSeeMore: false, allTags, extractedUrl };
   }, [feed?.text, feed?.type, feed?.hashtags]);
 
   // ── Has media? ────────────────────────────────────────────────────────────
@@ -342,7 +339,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   );
 
   const handleMoveToCommentScreen = useCallback(() => {
-    // Reels ALWAYS open the full-screen Reels2 viewer, regardless of onPostPress
+    // Reels ALWAYS open the full-screen Reels2 viewer
     if (isReel) {
       navigation.navigate('Reels2', {
         initialReels: [feed],
@@ -359,7 +356,6 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       navigation.navigate('ArticleDetails', { postId: feed?.id, title: feed?.payload?.title });
       return;
     }
-    // Shared article → open the original article in ArticleDetails
     if (feed?.type === 'shared' && feed?.shared_post?.type === 'article') {
       const orig = feed.shared_post;
       navigation.navigate('ArticleDetails', { postId: orig.id, title: orig.payload?.title ?? orig.title });
@@ -367,6 +363,19 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
     }
     navigation.navigate('PostDetail', { postId: feed?.id });
   }, [feed?.id, feed?.type, feed?.payload?.title, feed?.shared_post, navigation, onPostPress, isReel, feed]);
+
+  // ── Inline comment (opens bottom-sheet modal without leaving the feed) ─────
+  const handleOpenComments = useCallback(() => {
+    if (isReel) {
+      navigation.navigate('Reels2', {
+        initialReels: [feed],
+        startIndex: 0,
+        initialReelId: feed?.id,
+      });
+      return;
+    }
+    useStore.getState().openCommentModal(feed?.id);
+  }, [isReel, feed, navigation]);
 
   const handleOwnerPress = useCallback(() => {
     const route = getOwnerRoute(user);
@@ -615,14 +624,10 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
             ) : (
               <>
                 {/* ── Caption ── */}
-                {displayText ? (
-                  <TouchableOpacity
-                    onPress={handleMoveToCommentScreen}
-                    activeOpacity={0.85}
-                    style={styles.textSection}
-                  >
+                {(textExpanded ? fullText : displayText) ? (
+                  <View style={styles.textSection}>
                     <Text style={[styles.postText, isTextOnly && styles.postTextLarge]}>
-                      {displayText.split(/(#\w+)/g).map((part, i) =>
+                      {(textExpanded ? fullText : displayText).split(/(#\w+)/g).map((part, i) =>
                         /^#\w+$/.test(part) ? (
                           <Text
                             key={i}
@@ -635,9 +640,11 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
                           <Text key={i}>{part}</Text>
                         )
                       )}
-                      {showSeeMore ? <Text style={styles.seeMore}> see more</Text> : null}
+                      {showSeeMore && !textExpanded ? (
+                        <Text style={styles.seeMore} onPress={() => setTextExpanded(true)}> see more</Text>
+                      ) : null}
                     </Text>
-                  </TouchableOpacity>
+                  </View>
                 ) : null}
 
                 {/* ── Translate button + result ── */}
@@ -734,7 +741,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           commentsDisabled={commentsDisabled}
           viewsCount={feed?.views ?? 0}
           onOpenShare={() => setShareModalVisible(true)}
-          onCommentPress={commentsDisabled ? undefined : handleMoveToCommentScreen}
+          onCommentPress={commentsDisabled ? undefined : handleOpenComments}
           onReactionsPress={() => setReactionsModalVisible(true)}
           onRepost={() => setRepostModalVisible(true)}
           onCollectionSave={() => setSaveCollectionsModalVisible(true)}

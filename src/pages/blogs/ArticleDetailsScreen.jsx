@@ -24,7 +24,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 
 import { fetchArticleDetail, normalizeTags } from './articlesApi';
-import { GetCommentsController, AddCommentController, AddReplyController, LikeCommentController } from '../../controllers/commentscontroller';
+import { GetCommentsController, AddCommentController, AddReplyController } from '../../controllers/commentscontroller';
+import ToggleFeedController from '../../controllers/tooglefeedcontroller';
 
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
@@ -277,8 +278,26 @@ export default function ArticleDetailsScreen({ navigation, route }) {
     setIsLiked(!prevLiked);
     setLikesCount((c) => prevLiked ? Math.max(0, c - 1) : c + 1);
     try {
-      const res = await LikeCommentController(postId, token);
+      const res = await ToggleFeedController(postId, token, 'like');
       if (res.status !== 200) throw new Error('failed');
+
+      const raw = res.data;
+      const d = raw?.data && raw.data.is_reacted !== undefined ? raw.data : raw;
+      const serverLiked = !!(d?.is_reacted || d?.my_reaction || d?.user_reaction);
+      let serverCount = prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1;
+
+      if (typeof d?.likes_count === 'number') {
+        serverCount = d.likes_count;
+      } else if (d?.reactions && typeof d.reactions === 'object') {
+        const total = Object.entries(d.reactions)
+          .filter(([key]) => key !== 'total')
+          .reduce((sum, [, value]) => sum + Number(value || 0), 0);
+        if (total > 0) serverCount = total;
+        else if (typeof d.reactions.total === 'number') serverCount = d.reactions.total;
+      }
+
+      setIsLiked(serverLiked);
+      setLikesCount(serverCount);
     } catch {
       setIsLiked(prevLiked);
       setLikesCount(prevCount);

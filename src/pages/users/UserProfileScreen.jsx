@@ -5,10 +5,11 @@ import React, {
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
   FlatList, Modal, ActivityIndicator, RefreshControl,
-  StatusBar, Dimensions, Animated, Alert,
+  StatusBar, Dimensions, Animated, Alert, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../AuthContext';
 import FeedCard from '../home/feeds/feedcard.jsx';
 import { Colors } from '../../theme/colors';
@@ -19,15 +20,18 @@ const withOpacity = (hex, opacity) => {
   return `#${normalized}${alpha}`;
 };
 
-
 const { width: SCREEN_W } = Dimensions.get('window');
 const BASE_URL  = 'https://hafrik.com';
 const CELL_SIZE = Math.floor((SCREEN_W - 6) / 3);
+const COVER_H   = 210;
+const AVATAR_S  = 90;
+const AVATAR_OVERLAP = 44;
+
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
-const CREAM  = Colors.surfaceTint;
 const DARK   = Colors.deepSlate;
 const MUTED  = Colors.secondaryText;
+const BG     = '#eef6f7';
 const BORDER = withOpacity(Colors.primaryDark, 0.09);
 const TABS   = ['posts', 'reels', 'media', 'followers', 'communities'];
 
@@ -49,17 +53,14 @@ const hasRealImg = url =>
   !String(url).includes('blank_profile') &&
   !String(url).includes('/default.');
 
-// ── Derive display image from new media[] structure ───────────────────────────
 const getMediaThumb = (post) => {
   const first = post?.media?.[0] ?? null;
   if (!first) return { uri: null, isVideo: false };
-  if (first.type === 'photo')              return { uri: first.url,                             isVideo: false };
+  if (first.type === 'photo')              return { uri: first.url,                           isVideo: false };
   if (first.type === 'video' || first.type === 'reel')
-                                            return { uri: first.thumbnail ?? first.video_url,   isVideo: true  };
+                                            return { uri: first.thumbnail ?? first.video_url, isVideo: true  };
   return { uri: null, isVideo: false };
 };
-
-// ── Post card — uses shared FeedCard ─────────────────────────────────────────
 
 // ── Media cell ────────────────────────────────────────────────────────────────
 const MediaCell = memo(({ item, onPress }) => {
@@ -89,26 +90,36 @@ const CommunityCard = memo(({ item, onPress }) => {
   const avatar  = item?.avatar ?? item?.image ?? null;
   return (
     <TouchableOpacity style={ss.groupCard} activeOpacity={0.88} onPress={onPress}>
-      {hasRealImg(banner)
-        ? <Image source={{ uri: banner }} style={ss.groupBanner} resizeMode="cover" />
-        : <View style={[ss.groupBanner, { backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' }]}>
-            <Ionicons name="people" size={22} color={ACCENT} />
-          </View>
-      }
+      <View style={ss.groupBannerWrap}>
+        {hasRealImg(banner)
+          ? <Image source={{ uri: banner }} style={ss.groupBanner} resizeMode="cover" />
+          : <LinearGradient colors={[BRAND, ACCENT]} style={ss.groupBanner}>
+              <Ionicons name="people" size={28} color={withOpacity(Colors.white, 0.4)} />
+            </LinearGradient>
+        }
+        <LinearGradient
+          colors={['transparent', withOpacity(Colors.black, 0.5)]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      </View>
       <View style={ss.groupBody}>
         <View style={ss.groupAvatarWrap}>
           {hasRealImg(avatar)
             ? <Image source={{ uri: avatar }} style={ss.groupAvatar} />
-            : <View style={[ss.groupAvatar, { backgroundColor: ACCENT + '22', alignItems: 'center', justifyContent: 'center' }]}>
-                <Ionicons name="people-outline" size={16} color={ACCENT} />
+            : <View style={[ss.groupAvatar, ss.groupAvatarFallback]}>
+                <Ionicons name="people-outline" size={18} color={ACCENT} />
               </View>
           }
         </View>
         <View style={{ flex: 1 }}>
           <Text numberOfLines={1} style={ss.groupName}>{name}</Text>
-          <Text style={ss.groupSub}>{members} members</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <Ionicons name="people-outline" size={11} color={MUTED} />
+            <Text style={ss.groupSub}>{members} members</Text>
+          </View>
         </View>
-        <View style={ss.joinBtn}><Text style={ss.joinBtnTxt}>View</Text></View>
+        <View style={ss.viewChip}><Text style={ss.viewChipTxt}>View</Text></View>
       </View>
     </TouchableOpacity>
   );
@@ -124,8 +135,8 @@ const PageCard = memo(({ item, onPress }) => {
     <TouchableOpacity style={ss.pageCard} activeOpacity={0.88} onPress={onPress}>
       {hasRealImg(avatar)
         ? <Image source={{ uri: avatar }} style={ss.pageAvatar} resizeMode="cover" />
-        : <View style={[ss.pageAvatar, { backgroundColor: ACCENT + '22', alignItems: 'center', justifyContent: 'center' }]}>
-            <Ionicons name="business-outline" size={20} color={ACCENT} />
+        : <View style={[ss.pageAvatar, ss.pageAvatarFallback]}>
+            <Ionicons name="business-outline" size={22} color={ACCENT} />
           </View>
       }
       <View style={{ flex: 1 }}>
@@ -134,25 +145,28 @@ const PageCard = memo(({ item, onPress }) => {
           {!!item?.verified && <Ionicons name="checkmark-circle" size={14} color={ACCENT} />}
         </View>
         {!!cat && <Text style={ss.pageCat}>{cat}</Text>}
-        <Text style={ss.pageSub}>{followers} followers</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+          <Ionicons name="people-outline" size={11} color={MUTED} />
+          <Text style={ss.pageSub}>{followers} followers</Text>
+        </View>
       </View>
-      <View style={ss.viewBtn}><Text style={ss.viewBtnTxt}>Visit</Text></View>
+      <View style={ss.viewChip}><Text style={ss.viewChipTxt}>Visit</Text></View>
     </TouchableOpacity>
   );
 });
 
 // ── Person row ────────────────────────────────────────────────────────────────
-const PeopleRow = memo(({ item, onPress, onFollow, isOwnProfile }) => {
+const PeopleRow = memo(({ item, onPress, onFollow }) => {
   const name   = decodeHtml(item?.full_name ?? item?.username ?? 'User');
   const handle = item?.username ?? '';
   const avatar = item?.avatar ?? null;
-  const isFollowing = item?._isFollowing;
+  const isFollowing    = item?._isFollowing;
   const isLoadingFollow = item?._followLoading;
   return (
     <TouchableOpacity style={ss.peopleRow} activeOpacity={0.88} onPress={onPress}>
       {hasRealImg(avatar)
         ? <Image source={{ uri: avatar }} style={ss.peopleAvatar} />
-        : <View style={[ss.peopleAvatar, { backgroundColor: ACCENT + '22', alignItems: 'center', justifyContent: 'center' }]}>
+        : <View style={[ss.peopleAvatar, ss.peopleAvatarFallback]}>
             <Ionicons name="person-outline" size={18} color={ACCENT} />
           </View>
       }
@@ -190,7 +204,7 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState(title === 'Following' ? 'following' : 'followers');
-  const mountedRef             = useRef(true);
+  const mountedRef = useRef(true);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
@@ -233,13 +247,11 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
   const handleFollow = useCallback(async (targetUser) => {
     const targetId = targetUser.id || targetUser.user_id;
     if (!targetId) return;
-
     const wasFollowing = targetUser._isFollowing;
     setItems(prev => prev.map(it => {
       if ((it.id || it.user_id) === targetId) return { ...it, _isFollowing: !it._isFollowing, _followLoading: true };
       return it;
     }));
-
     try {
       const res = await fetch(BASE_URL + '/api/v1/users/follow.php', {
         method: 'POST',
@@ -278,12 +290,10 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
           <View style={ss.modalHandle} />
           <View style={ss.modalHeader}>
             <Text style={ss.modalTitle}>{activeSubTab === 'following' ? 'Following' : 'Followers'}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={22} color={DARK} />
+            <TouchableOpacity onPress={onClose} style={ss.modalClose}>
+              <Ionicons name="close" size={18} color={DARK} />
             </TouchableOpacity>
           </View>
-
-          {/* Sub-tabs */}
           <View style={ss.modalSubTabs}>
             {['followers', 'following'].map(tab => {
               const isActive = activeSubTab === tab;
@@ -294,11 +304,6 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
                   onPress={() => setActiveSubTab(tab)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons
-                    name={tab === 'followers' ? 'people-outline' : 'person-add-outline'}
-                    size={15}
-                    color={isActive ? Colors.white : MUTED}
-                  />
                   <Text style={[ss.modalSubTabTxt, isActive && ss.modalSubTabTxtActive]}>
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </Text>
@@ -306,7 +311,6 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
               );
             })}
           </View>
-
           <FlatList
             data={items}
             keyExtractor={(it, i) => String(it?.id ?? it?.user_id ?? i)}
@@ -319,9 +323,7 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
             )}
             onEndReached={() => hasMore && !loading && fetchPage(page + 1, currentEndpoint)}
             onEndReachedThreshold={0.4}
-            ListFooterComponent={loading
-              ? <ActivityIndicator size="small" color={BRAND} style={{ padding: 16 }} />
-              : null}
+            ListFooterComponent={loading ? <ActivityIndicator size="small" color={BRAND} style={{ padding: 16 }} /> : null}
             ListEmptyComponent={!loading ? (
               <View style={ss.emptyWrap}>
                 <Ionicons name={activeSubTab === 'followers' ? 'people-outline' : 'person-add-outline'} size={40} color={MUTED} />
@@ -341,18 +343,25 @@ const PeopleModal = ({ visible, title, userId, endpoint, token, navigation, onCl
 // ── Tab state factory ─────────────────────────────────────────────────────────
 const makeTabState = () => ({ data: [], page: 1, loading: false, hasMore: true, totalPages: null });
 
+const TAB_CONFIG = [
+  { key: 'posts',       label: 'Posts',       icon: 'grid-outline',    activeIcon: 'grid'            },
+  { key: 'reels',       label: 'Reels',       icon: 'play-circle-outline', activeIcon: 'play-circle' },
+  { key: 'media',       label: 'Photos',      icon: 'image-outline',   activeIcon: 'image'           },
+  { key: 'followers',   label: 'People',      icon: 'people-outline',  activeIcon: 'people'          },
+  { key: 'communities', label: 'Communities', icon: 'globe-outline',   activeIcon: 'globe'           },
+];
+
 // ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 export default function UserProfileScreen({ navigation, route }) {
   const { token, user: authUser } = useAuth();
-  const insets    = useSafeAreaInsets();
-  const userId    = route?.params?.userId;
+  const insets = useSafeAreaInsets();
+  const userId = route?.params?.userId;
 
   const [profile,     setProfile]     = useState(null);
   const [profileLoad, setProfileLoad] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoad,  setFollowLoad]  = useState(false);
 
-  // Per-tab state held in a ref to avoid render churn
   const tabState = useRef(
     Object.fromEntries(TABS.filter(t => t !== 'followers').map(t => [t, makeTabState()]))
   );
@@ -362,17 +371,16 @@ export default function UserProfileScreen({ navigation, route }) {
 
   const [peopleModal, setPeopleModal] = useState(null);
 
-  // Followers tab state
   const [followersSubTab, setFollowersSubTab] = useState('followers');
-  const [followersList, setFollowersList] = useState([]);
+  const [followersList,   setFollowersList]   = useState([]);
   const [followersLoading, setFollowersLoading] = useState(false);
 
-  // Ref-backed follow handler — always reads latest state, no stale closure
   const followStateRef = useRef({ isFollowing: false, followLoad: false });
   followStateRef.current = { isFollowing, followLoad };
 
   const scrollY       = useRef(new Animated.Value(0)).current;
-  const headerOpacity = scrollY.interpolate({ inputRange: [0, 130], outputRange: [0, 1], extrapolate: 'clamp' });
+  const headerOpacity = scrollY.interpolate({ inputRange: [COVER_H - 60, COVER_H], outputRange: [0, 1], extrapolate: 'clamp' });
+  const coverScale    = scrollY.interpolate({ inputRange: [-80, 0], outputRange: [1.3, 1], extrapolate: 'clamp' });
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -384,23 +392,13 @@ export default function UserProfileScreen({ navigation, route }) {
         BASE_URL + '/api/v1/users/profile.php?user_id=' + userId,
         { headers: { Authorization: 'Bearer ' + token } },
       );
-
-      // Unauthorized → redirect to login
-      if (res.status === 401) {
-        navigation.replace('Login');
-        return;
-      }
-
-      const json = await res.json();
-
-      // Normalize: handle { data: { user, counts, viewer } } and { user, counts, viewer }
-      const payload  = json?.data ?? json;
-      const user     = payload?.user ?? payload ?? null;
-      const counts   = payload?.counts ?? {};
-      const viewer   = payload?.viewer ?? {};
-
-      // Merge everything into one flat object so existing field references still work
-      const merged = {
+      if (res.status === 401) { navigation.replace('Login'); return; }
+      const json    = await res.json();
+      const payload = json?.data ?? json;
+      const user    = payload?.user ?? payload ?? null;
+      const counts  = payload?.counts ?? {};
+      const viewer  = payload?.viewer ?? {};
+      const merged  = {
         ...user,
         posts_count:     counts?.posts     ?? user?.posts_count     ?? 0,
         followers_count: counts?.followers ?? user?.followers_count ?? 0,
@@ -409,7 +407,6 @@ export default function UserProfileScreen({ navigation, route }) {
         is_owner:        viewer?.is_owner     ?? false,
         is_mutual:       viewer?.is_mutual    ?? false,
       };
-
       setProfile(merged);
       setIsFollowing(!!merged.is_following);
     } catch (e) { console.warn('fetchProfile', e); }
@@ -454,7 +451,7 @@ export default function UserProfileScreen({ navigation, route }) {
         headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),
       });
-      const json = await res.json();
+      const json  = await res.json();
       const convId =
         json?.data?.conversation_id ??
         json?.data?.id              ??
@@ -463,13 +460,13 @@ export default function UserProfileScreen({ navigation, route }) {
 
       if (convId) {
         const chatUser = {
-          id:         profile?.id ?? userId,
-          user_id:    profile?.id ?? userId,
-          full_name:  profile?.full_name  ?? null,
-          username:   profile?.username   ?? null,
-          user_name:  profile?.username   ?? null,
-          avatar:     profile?.avatar     ?? null,
-          user_picture: profile?.avatar   ?? null,
+          id:           profile?.id ?? userId,
+          user_id:      profile?.id ?? userId,
+          full_name:    profile?.full_name  ?? null,
+          username:     profile?.username   ?? null,
+          user_name:    profile?.username   ?? null,
+          avatar:       profile?.avatar     ?? null,
+          user_picture: profile?.avatar     ?? null,
         };
         setChatLoading(false);
         navigation.navigate('Thread', { conversationId: convId, otherUser: chatUser });
@@ -483,12 +480,12 @@ export default function UserProfileScreen({ navigation, route }) {
     }
   }, [userId, token, profile, chatLoading, navigation]);
 
-  // ── Fetch followers/following for inline tab ───────────────────────────────
+  // ── Fetch followers tab ────────────────────────────────────────────────────
   const fetchFollowersTab = useCallback(async (subTab) => {
     if (!userId) return;
     setFollowersLoading(true);
     try {
-      const ep = subTab === 'following' ? 'user_following.php' : 'user_followers.php';
+      const ep  = subTab === 'following' ? 'user_following.php' : 'user_followers.php';
       const url = BASE_URL + '/api/v1/users/' + ep + '?user_id=' + userId + '&limit=50';
       const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
       const json = await res.json();
@@ -550,9 +547,9 @@ export default function UserProfileScreen({ navigation, route }) {
     pages:       '/api/v1/users/user_pages.php?user_id='       + userId + '&limit=10',
   }), [userId]);
 
-  // ── Fetch tab — uses total_pages from API ──────────────────────────────────
+  // ── Fetch tab ──────────────────────────────────────────────────────────────
   const fetchTab = useCallback(async (tab, pg = 1) => {
-    if (tab === 'followers') return; // handled separately
+    if (tab === 'followers') return;
     const s = tabState.current[tab];
     if (!s || s.loading) return;
     if (pg > 1 && !s.hasMore) return;
@@ -561,19 +558,11 @@ export default function UserProfileScreen({ navigation, route }) {
     try {
       const url  = BASE_URL + ENDPOINTS[tab] + '&page=' + pg;
       const res  = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-
-      // Guard against HTML error pages (404/500) — parse as text first
       const text = await res.text();
       if (!res.ok || text.trimStart().startsWith('<')) {
-        console.warn('fetchTab(' + tab + ') non-JSON response, status=' + res.status);
-        s.hasMore = false;
-        s.loading = false;
-        bump();
-        return;
+        s.hasMore = false; s.loading = false; bump(); return;
       }
-      const json = JSON.parse(text);
-
-      // Support both paginated wrapper and flat array responses
+      const json    = JSON.parse(text);
       const wrapper = json?.data;
       let list      = Array.isArray(wrapper?.data)   ? wrapper.data
                     : Array.isArray(wrapper?.feeds)  ? wrapper.feeds
@@ -581,7 +570,6 @@ export default function UserProfileScreen({ navigation, route }) {
                     : Array.isArray(wrapper)         ? wrapper
                     : [];
 
-      // Reels tab: keep only reel/video items from the media endpoint
       if (tab === 'reels') {
         list = list.filter(item => {
           const t = (item?.type ?? '').toLowerCase();
@@ -589,15 +577,13 @@ export default function UserProfileScreen({ navigation, route }) {
         });
       }
 
-      const totalPages  = wrapper?.total_pages != null ? Number(wrapper.total_pages) : null;
-
+      const totalPages = wrapper?.total_pages != null ? Number(wrapper.total_pages) : null;
       if (list.length === 0) {
         s.hasMore = false;
       } else {
         s.data       = pg === 1 ? list : [...s.data, ...list];
         s.page       = pg;
         s.totalPages = totalPages;
-        // hasMore: prefer API total_pages, fall back to "got a full page"
         s.hasMore    = totalPages != null ? pg < totalPages : list.length >= 5;
       }
     } catch (e) { console.warn('fetchTab(' + tab + ')', e); s.hasMore = false; }
@@ -606,7 +592,7 @@ export default function UserProfileScreen({ navigation, route }) {
   }, [ENDPOINTS, token, bump]);
 
   useEffect(() => {
-    if (activeTab === 'followers') return; // handled separately
+    if (activeTab === 'followers') return;
     const s = tabState.current[activeTab];
     if (s && s.data.length === 0 && s.hasMore) fetchTab(activeTab, 1);
   }, [activeTab, fetchTab]);
@@ -628,17 +614,23 @@ export default function UserProfileScreen({ navigation, route }) {
   const bio         = decodeHtml(profile?.bio ?? '');
   const avatar      = profile?.avatar ?? null;
   const cover       = profile?.cover ?? null;
+  const _locRaw  = profile?.location;
+  const location = typeof _locRaw === 'string'
+    ? _locRaw
+    : (_locRaw && typeof _locRaw === 'object')
+      ? (_locRaw.current_city ?? _locRaw.hometown ?? '')
+      : (profile?.city ?? '');
   const postsCount  = fmtCount(profile?.posts_count ?? 0);
   const follCount   = fmtCount(profile?.followers_count ?? 0);
   const followCount = fmtCount(profile?.following_count ?? 0);
   const isVerified  = !!(profile?.verified ?? profile?.is_verified);
-  // Ownership: prefer viewer.is_owner from API, fall back to ID comparison
   const isOwn       = !!(profile?.is_owner ?? (authUser?.id && profile?.id && String(authUser.id) === String(profile.id)));
 
   const ts      = activeTab !== 'followers' && tabState.current[activeTab] ? tabState.current[activeTab] : { data: [], loading: false, hasMore: false, page: 1 };
   const tabData = activeTab === 'followers' ? followersList : ts.data;
   const isGrid  = activeTab === 'media' || activeTab === 'reels';
   const isFollowersTab = activeTab === 'followers';
+
   const [visiblePostId, setVisiblePostId] = useState(null);
   const activeTabRef = useRef(activeTab);
 
@@ -648,19 +640,12 @@ export default function UserProfileScreen({ navigation, route }) {
   }, [activeTab]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    if (activeTabRef.current !== 'posts') {
-      setVisiblePostId(null);
-      return;
-    }
-
-    const nextVisibleId = viewableItems.find((entry) => entry?.isViewable && entry?.item?.id)?.item?.id ?? null;
+    if (activeTabRef.current !== 'posts') { setVisiblePostId(null); return; }
+    const nextVisibleId = viewableItems.find((e) => e?.isViewable && e?.item?.id)?.item?.id ?? null;
     setVisiblePostId((prev) => (prev === nextVisibleId ? prev : nextVisibleId));
   });
 
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 70,
-    waitForInteraction: false,
-  });
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 70, waitForInteraction: false });
 
   // ── Renderers ──────────────────────────────────────────────────────────────
   const renderPost = useCallback(({ item }) => (
@@ -675,11 +660,7 @@ export default function UserProfileScreen({ navigation, route }) {
         item={item}
         onPress={() => {
           if (isReel) {
-            navigation.navigate('Reels2', {
-              initialReels: [item],
-              startIndex: 0,
-              initialReelId: item.id,
-            });
+            navigation.navigate('Reels2', { initialReels: [item], startIndex: 0, initialReelId: item.id });
           } else {
             navigation.navigate('PostDetail', { postId: item.id });
           }
@@ -702,9 +683,7 @@ export default function UserProfileScreen({ navigation, route }) {
       onFollow={String(item.id || item.user_id) !== String(authUser?.id) ? handleFollowInList : undefined}
       onPress={() => {
         const uid = item.id || item.user_id;
-        if (uid) {
-          navigation.push('UserProfile', { userId: uid });
-        }
+        if (uid) navigation.push('UserProfile', { userId: uid });
       }}
     />
   ), [navigation, authUser, handleFollowInList]);
@@ -716,63 +695,110 @@ export default function UserProfileScreen({ navigation, route }) {
                    : activeTab === 'communities'  ? renderCommunity
                    : renderPage;
 
-  // ── List header — useCallback so FlatList treats it as a component (fresh renders) ──
+  // ── List header ────────────────────────────────────────────────────────────
   const ListHeader = useCallback(() => (
     <View>
-      <View style={[ss.hero, { paddingTop: insets.top + 10 }]}>
-        <View style={ss.blob1} /><View style={ss.blob2} />
-
-        {hasRealImg(cover) && (
-          <Image
-            source={{ uri: cover }}
-            style={[StyleSheet.absoluteFill, { opacity: 0.22 }]}
-            resizeMode="cover"
-          />
-        )}
-
-        <TouchableOpacity style={ss.backBtn} onPress={() => navigation.goBack()}>
+      {/* ── Cover photo area ── */}
+      <View style={[ss.coverArea, { paddingTop: insets.top + 10 }]}>
+        <View style={ss.coverBlobOne} pointerEvents="none" />
+        <View style={ss.coverBlobTwo} pointerEvents="none" />
+        <Animated.View style={[ss.coverImgWrap, { transform: [{ scale: coverScale }] }]}>
+          {hasRealImg(cover)
+            ? <Image source={{ uri: cover }} style={ss.coverImg} resizeMode="cover" />
+            : <LinearGradient
+                colors={[BRAND, withOpacity(BRAND, 0.7), ACCENT]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={ss.coverImg}
+              />
+          }
+        </Animated.View>
+        {/* Gradient overlay for legibility */}
+        <LinearGradient
+          colors={[withOpacity(BRAND, 0.15), withOpacity(BRAND, 0.46), withOpacity(Colors.black, 0.72)]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        {/* Back button */}
+        <TouchableOpacity style={[ss.backBtn, { marginTop: insets.top > 0 ? 8 : 12 }]} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={20} color={Colors.white} />
         </TouchableOpacity>
+        <View style={[ss.coverBadge, { marginTop: insets.top > 0 ? 8 : 12 }]}>
+          <Ionicons name="person-circle-outline" size={13} color={Colors.white} />
+          <Text style={ss.coverBadgeTxt}>Hafrik Profile</Text>
+        </View>
+      </View>
 
-        <View style={ss.avatarWrap}>
-          {profileLoad
-            ? <View style={[ss.avatar, ss.avatarFallback]} />
-            : hasRealImg(avatar)
-              ? <Image source={{ uri: avatar }} style={ss.avatar} />
-              : <View style={[ss.avatar, ss.avatarFallback]}>
-                  <Ionicons name="person" size={34} color={ACCENT} />
-                </View>
-          }
+      {/* ── Floating profile card ── */}
+      <View style={ss.infoCard}>
+        {/* Avatar — overlaps cover */}
+        <View style={ss.avatarArea}>
+          <View style={ss.avatarRing}>
+            {profileLoad
+              ? <View style={[ss.avatar, { backgroundColor: Colors.neutral175 }]} />
+              : hasRealImg(avatar)
+                ? <Image source={{ uri: avatar }} style={ss.avatar} />
+                : <View style={[ss.avatar, ss.avatarFallback]}>
+                    <Ionicons name="person" size={36} color={ACCENT} />
+                  </View>
+            }
+          </View>
+          {/* Verified badge floating on avatar */}
+          {isVerified && (
+            <View style={ss.verifiedBadge}>
+              <Ionicons name="checkmark-circle" size={20} color={ACCENT} />
+            </View>
+          )}
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
-          <Text style={ss.displayName}>{displayName}</Text>
-          {isVerified && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
+        {/* Name + handle */}
+        <View style={ss.nameRow}>
+          <Text style={ss.displayName}>{profileLoad ? '—' : displayName}</Text>
         </View>
         {!!handle && <Text style={ss.handleTxt}>@{handle}</Text>}
-        {!!bio    && <Text style={ss.bio}>{bio}</Text>}
 
+        <View style={ss.profilePillRow}>
+          {isVerified && (
+            <View style={ss.profilePill}>
+              <Ionicons name="checkmark-circle" size={13} color={ACCENT} />
+              <Text style={ss.profilePillTxt}>Verified</Text>
+            </View>
+          )}
+          {isFollowing && !isOwn && (
+            <View style={ss.profilePill}>
+              <Ionicons name="people-circle-outline" size={13} color={ACCENT} />
+              <Text style={ss.profilePillTxt}>Following</Text>
+            </View>
+          )}
+          {!!location && (
+            <View style={ss.profilePill}>
+              <Ionicons name="location-outline" size={13} color={ACCENT} />
+              <Text style={ss.profilePillTxt} numberOfLines={1}>{location}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Bio */}
+        {!!bio && <Text style={ss.bio}>{bio}</Text>}
+
+        {/* Stats */}
         <View style={ss.statsRow}>
-          <View style={ss.statItem}>
+          <TouchableOpacity style={ss.statBox} onPress={() => {}}>
             <Text style={ss.statValue}>{postsCount}</Text>
             <Text style={ss.statLabel}>Posts</Text>
-          </View>
-          <TouchableOpacity
-            style={ss.statItem}
-            onPress={() => setActiveTab('followers')}
-          >
+          </TouchableOpacity>
+          <View style={ss.statDivider} />
+          <TouchableOpacity style={ss.statBox} onPress={() => setActiveTab('followers')}>
             <Text style={ss.statValue}>{follCount}</Text>
             <Text style={ss.statLabel}>Followers</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={ss.statItem}
-            onPress={() => { setFollowersSubTab('following'); setActiveTab('followers'); }}
-          >
+          <View style={ss.statDivider} />
+          <TouchableOpacity style={ss.statBox} onPress={() => { setFollowersSubTab('following'); setActiveTab('followers'); }}>
             <Text style={ss.statValue}>{followCount}</Text>
             <Text style={ss.statLabel}>Following</Text>
           </TouchableOpacity>
         </View>
 
+        {/* CTA buttons */}
         {!isOwn && !profileLoad && (
           <View style={ss.actionRow}>
             <TouchableOpacity
@@ -781,45 +807,59 @@ export default function UserProfileScreen({ navigation, route }) {
               onPress={toggleFollow}
               disabled={followLoad}
             >
-              {followLoad
-                ? <ActivityIndicator size="small" color={isFollowing ? BRAND : Colors.white} />
-                : <Text style={[ss.followBtnTxt, isFollowing && ss.followingBtnTxt]}>
-                    {isFollowing ? '✓  Following' : '+ Follow'}
+              {followLoad ? (
+                <ActivityIndicator size="small" color={isFollowing ? BRAND : Colors.white} />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons
+                    name={isFollowing ? 'checkmark' : 'person-add-outline'}
+                    size={16}
+                    color={isFollowing ? BRAND : Colors.white}
+                  />
+                  <Text style={[ss.followBtnTxt, isFollowing && ss.followingBtnTxt]}>
+                    {isFollowing ? 'Following' : 'Follow'}
                   </Text>
-              }
+                </View>
+              )}
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={ss.chatBtn}
+              style={ss.msgBtn}
               activeOpacity={0.85}
               onPress={startChat}
               disabled={chatLoading}
             >
               {chatLoading
-                ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Ionicons name="chatbubble-ellipses" size={18} color={Colors.white} />
+                ? <ActivityIndicator size="small" color={BRAND} />
+                : <>
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={BRAND} />
+                    <Text style={ss.msgBtnTxt}>Message</Text>
+                  </>
               }
             </TouchableOpacity>
           </View>
         )}
       </View>
 
+      {/* ── Tab bar ── */}
       <View style={ss.tabsBar}>
-        {TABS.map(tab => {
-          const active = activeTab === tab;
-          const iconMap = { posts: 'home-outline', reels: 'film-outline', followers: 'people-outline', media: 'images-outline', communities: 'globe-outline', pages: 'flag-outline' };
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[ss.tabBtn, active && ss.tabBtnActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Ionicons name={iconMap[tab] || 'ellipse-outline'} size={15} color={active ? Colors.white : MUTED} />
-              <Text style={[ss.tabTxt, active && ss.tabTxtActive]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={ss.tabsScroll}>
+          {TAB_CONFIG.map(({ key, label, icon, activeIcon }) => {
+            const active = activeTab === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[ss.tabBtn, active && ss.tabBtnActive]}
+                onPress={() => setActiveTab(key)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name={active ? activeIcon : icon} size={16} color={active ? Colors.white : MUTED} />
+                <Text style={[ss.tabTxt, active && ss.tabTxtActive]}>{label}</Text>
+                {active && <View style={ss.tabUnderline} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Followers sub-tabs */}
@@ -834,10 +874,6 @@ export default function UserProfileScreen({ navigation, route }) {
                 onPress={() => setFollowersSubTab(st)}
                 activeOpacity={0.7}
               >
-                <Ionicons
-                  name={st === 'followers' ? 'people-outline' : 'person-add-outline'}
-                  size={15} color={isActive ? Colors.white : MUTED}
-                />
                 <Text style={[ss.followersSubTabTxt, isActive && ss.followersSubTabTxtActive]}>
                   {st.charAt(0).toUpperCase() + st.slice(1)}
                 </Text>
@@ -847,17 +883,22 @@ export default function UserProfileScreen({ navigation, route }) {
         </View>
       )}
     </View>
-  ), [profile, profileLoad, activeTab, isFollowing, followLoad, isOwn, insets.top, toggleFollow, startChat, chatLoading, navigation, cover, avatar, displayName, handle, bio, postsCount, follCount, followCount, isVerified, followersSubTab]); // eslint-disable-line
+  ), [
+    profile, profileLoad, activeTab, isFollowing, followLoad, isOwn,
+    insets.top, toggleFollow, startChat, chatLoading, navigation, coverScale,
+    cover, avatar, displayName, handle, bio, location, postsCount, follCount,
+    followCount, isVerified, followersSubTab,
+  ]); // eslint-disable-line
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={ss.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Sticky compact header fades in on scroll */}
-      <Animated.View style={[ss.stickyHeader, { paddingTop: insets.top + 6, opacity: headerOpacity }]}>
+      {/* Sticky compact header — fades in as user scrolls past cover */}
+      <Animated.View style={[ss.stickyHeader, { paddingTop: insets.top + 8, opacity: headerOpacity }]}>
         <TouchableOpacity style={ss.stickyBack} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={18} color={DARK} />
+          <Ionicons name="arrow-back" size={18} color={Colors.white} />
         </TouchableOpacity>
         <Text style={ss.stickyName} numberOfLines={1}>{displayName}</Text>
         <View style={{ width: 38 }} />
@@ -876,12 +917,15 @@ export default function UserProfileScreen({ navigation, route }) {
                 ? <ActivityIndicator size="small" color={BRAND} style={{ marginTop: 36 }} />
                 : (
                   <View style={ss.emptyWrap}>
-                    <Ionicons name={isFollowersTab ? "people-outline" : activeTab === 'reels' ? "film-outline" : "file-tray-outline"} size={40} color={MUTED} />
-                    <Text style={ss.emptyTxt}>
+                    <View style={ss.emptyIcon}>
+                      <Ionicons name={isFollowersTab ? "people-outline" : activeTab === 'reels' ? "play-circle-outline" : "file-tray-outline"} size={34} color={MUTED} />
+                    </View>
+                    <Text style={ss.emptyTitle}>
                       {isFollowersTab
                         ? (followersSubTab === 'followers' ? 'No followers yet' : 'Not following anyone')
                         : 'Nothing here yet'}
                     </Text>
+                    <Text style={ss.emptySubtitle}>Content will appear here when available</Text>
                   </View>
                 ))
             : null
@@ -928,97 +972,361 @@ export default function UserProfileScreen({ navigation, route }) {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const ss = StyleSheet.create({
-  root: { flex: 1, backgroundColor: CREAM },
+  root: { flex: 1, backgroundColor: BG },
 
+  // ── Sticky header ──────────────────────────────────────────────────────────
   stickyHeader: {
-    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white,
+    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: withOpacity(BRAND, 0.96),
     paddingHorizontal: 14, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: BORDER,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22, shadowRadius: 12, elevation: 8,
   },
-  stickyBack: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.surfaceBase, alignItems: 'center', justifyContent: 'center' },
-  stickyName: { flex: 1, fontSize: 16, fontWeight: '800', color: DARK, textAlign: 'center' },
+  stickyBack: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: withOpacity(Colors.white, 0.16),
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stickyName: { flex: 1, fontSize: 16, fontWeight: '900', color: Colors.white, textAlign: 'center', marginHorizontal: 8 },
 
-  hero:        { backgroundColor: BRAND, paddingHorizontal: 20, paddingBottom: 24, alignItems: 'center', overflow: 'hidden' },
-  blob1:       { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: withOpacity(Colors.tealAccent, 0.12), top: -20, right: -40 },
-  blob2:       { position: 'absolute', width: 140, height: 140, borderRadius: 70,  backgroundColor: withOpacity(Colors.white, 0.05), bottom: -30, left: -20 },
-  backBtn:     { alignSelf: 'flex-start', width: 38, height: 38, borderRadius: 19, backgroundColor: withOpacity(Colors.white, 0.15), alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  avatarWrap:  { marginTop: 8 },
-  avatar:      { width: 92, height: 92, borderRadius: 46, borderWidth: 3, borderColor: ACCENT },
-  avatarFallback: { backgroundColor: withOpacity(Colors.tealAccent, 0.1333), alignItems: 'center', justifyContent: 'center' },
+  // ── Cover ──────────────────────────────────────────────────────────────────
+  coverArea: {
+    height: COVER_H + 34,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: BRAND,
+  },
+  coverBlobOne: {
+    position: 'absolute', right: -64, top: -42,
+    width: 210, height: 210, borderRadius: 105,
+    backgroundColor: withOpacity(Colors.white, 0.08),
+    zIndex: 1,
+  },
+  coverBlobTwo: {
+    position: 'absolute', left: -58, bottom: 8,
+    width: 160, height: 160, borderRadius: 80,
+    backgroundColor: withOpacity(ACCENT, 0.22),
+    zIndex: 1,
+  },
+  coverImgWrap: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  coverImg: {
+    width: '100%',
+    height: '100%',
+  },
+  backBtn: {
+    position: 'absolute',
+    top: 12, left: 16,
+    width: 42, height: 42,
+    borderRadius: 16,
+    backgroundColor: withOpacity(Colors.white, 0.18),
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: withOpacity(Colors.white, 0.22),
+    zIndex: 3,
+  },
+  coverBadge: {
+    position: 'absolute',
+    top: 12, right: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: withOpacity(Colors.white, 0.16),
+    borderWidth: 1,
+    borderColor: withOpacity(Colors.white, 0.22),
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    zIndex: 3,
+  },
+  coverBadgeTxt: { color: Colors.white, fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
 
-  displayName: { fontSize: 22, fontWeight: '900', color: Colors.white },
-  handleTxt:   { fontSize: 13, color: withOpacity(Colors.white, 0.6), marginTop: 3 },
-  bio:         { marginTop: 10, fontSize: 13, color: withOpacity(Colors.white, 0.75), textAlign: 'center', lineHeight: 19 },
+  // ── Info card ──────────────────────────────────────────────────────────────
+  infoCard: {
+    backgroundColor: Colors.white,
+    marginHorizontal: 14,
+    marginTop: -42,
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: withOpacity(BRAND, 0.08),
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
+  },
 
-  statsRow:  { flexDirection: 'row', gap: 28, marginTop: 20 },
-  statItem:  { alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: '900', color: Colors.white },
-  statLabel: { fontSize: 11, color: withOpacity(Colors.white, 0.6) },
+  // ── Avatar ─────────────────────────────────────────────────────────────────
+  avatarArea: {
+    marginTop: -(AVATAR_OVERLAP),
+    alignSelf: 'flex-start',
+    marginBottom: 14,
+  },
+  avatarRing: {
+    width:  AVATAR_S + 10,
+    height: AVATAR_S + 10,
+    borderRadius: (AVATAR_S + 10) / 2,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: Colors.white,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  avatar: {
+    width: AVATAR_S, height: AVATAR_S,
+    borderRadius: AVATAR_S / 2,
+  },
+  avatarFallback: {
+    backgroundColor: withOpacity(ACCENT, 0.1),
+    alignItems: 'center', justifyContent: 'center',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 2, right: -4,
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    padding: 2,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 3,
+  },
 
-  actionRow:       { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
-  followBtn:       { flex: 1, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' },
-  followingBtn:    { backgroundColor: withOpacity(Colors.white, 0.15), borderWidth: 1, borderColor: withOpacity(Colors.white, 0.4) },
-  followBtnTxt:    { fontSize: 14, fontWeight: '800', color: Colors.white },
-  followingBtnTxt: { color: Colors.white },
-  chatBtn:         { width: 44, height: 44, borderRadius: 999, backgroundColor: Colors.tealAccent, alignItems: 'center', justifyContent: 'center' },
+  // ── Name / handle / bio ────────────────────────────────────────────────────
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  displayName: { fontSize: 24, fontWeight: '900', color: DARK, letterSpacing: -0.6 },
+  handleTxt:   { fontSize: 13.5, color: ACCENT, marginBottom: 10, fontWeight: '800' },
+  profilePillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  profilePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    maxWidth: '100%',
+    backgroundColor: withOpacity(ACCENT, 0.1),
+    borderWidth: 1,
+    borderColor: withOpacity(ACCENT, 0.18),
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  profilePillTxt: { color: BRAND, fontSize: 11.5, fontWeight: '800' },
+  bio: {
+    fontSize: 14.5, color: withOpacity(DARK, 0.84), lineHeight: 22,
+    marginBottom: 10,
+  },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
+  locationTxt: { fontSize: 12.5, color: MUTED },
 
-  tabsBar:      { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 12, backgroundColor: CREAM, gap: 6, flexWrap: 'wrap' },
-  tabBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: Colors.white, borderWidth: 1, borderColor: BORDER },
-  tabBtnActive: { backgroundColor: BRAND, borderColor: BRAND },
-  tabTxt:       { fontSize: 11, fontWeight: '800', color: MUTED },
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BRAND,
+    borderRadius: 22,
+    paddingVertical: 15,
+    marginVertical: 14,
+    borderWidth: 1,
+    borderColor: withOpacity(Colors.white, 0.1),
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  statBox:    { flex: 1, alignItems: 'center' },
+  statDivider: { width: 1, height: 30, backgroundColor: withOpacity(Colors.white, 0.16) },
+  statValue:  { fontSize: 20, fontWeight: '900', color: Colors.white, letterSpacing: -0.5 },
+  statLabel:  { fontSize: 11.5, color: withOpacity(Colors.white, 0.68), marginTop: 2, fontWeight: '700' },
+
+  // ── Action buttons ─────────────────────────────────────────────────────────
+  actionRow: { flexDirection: 'row', gap: 10, marginBottom: 2 },
+  followBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 13, borderRadius: 16,
+    backgroundColor: BRAND, gap: 6,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.24, shadowRadius: 14, elevation: 5,
+  },
+  followingBtn: {
+    backgroundColor: withOpacity(BRAND, 0.07),
+    shadowOpacity: 0, elevation: 0,
+    borderWidth: 1.5, borderColor: withOpacity(BRAND, 0.2),
+  },
+  followBtnTxt:    { fontSize: 14.5, fontWeight: '800', color: Colors.white },
+  followingBtnTxt: { color: BRAND },
+  msgBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 13, borderRadius: 16, gap: 6,
+    backgroundColor: withOpacity(BRAND, 0.06),
+    borderWidth: 1.5, borderColor: withOpacity(BRAND, 0.16),
+  },
+  msgBtnTxt: { fontSize: 14.5, fontWeight: '700', color: BRAND },
+
+  // ── Tab bar ────────────────────────────────────────────────────────────────
+  tabsBar: {
+    backgroundColor: BG,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  tabsScroll: { paddingHorizontal: 14, gap: 8 },
+  tabBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingHorizontal: 14, paddingVertical: 10,
+    position: 'relative',
+    backgroundColor: Colors.white,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: withOpacity(BRAND, 0.08),
+  },
+  tabBtnActive: {
+    backgroundColor: BRAND,
+    borderColor: BRAND,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  tabTxt:       { fontSize: 13, fontWeight: '700', color: MUTED },
   tabTxtActive: { color: Colors.white },
+  tabUnderline: {
+    position: 'absolute', bottom: -6, left: '30%', right: '30%', height: 3,
+    backgroundColor: ACCENT, borderRadius: 99,
+  },
 
-  followersSubTabs: { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8, gap: 10, backgroundColor: Colors.white, borderBottomWidth: 1, borderBottomColor: BORDER },
-  followersSubTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 999, backgroundColor: withOpacity(Colors.primaryDark, 0.04), borderWidth: 1, borderColor: withOpacity(Colors.primaryDark, 0.08) },
+  // ── Followers sub-tabs ─────────────────────────────────────────────────────
+  followersSubTabs: {
+    flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 10, gap: 10,
+    backgroundColor: BG,
+  },
+  followersSubTab: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 9, borderRadius: 10,
+    backgroundColor: Colors.white,
+    borderWidth: 1, borderColor: withOpacity(BRAND, 0.08),
+  },
   followersSubTabActive: { backgroundColor: BRAND, borderColor: BRAND },
-  followersSubTabTxt: { fontSize: 12.5, fontWeight: '700', color: MUTED },
+  followersSubTabTxt: { fontSize: 13, fontWeight: '700', color: MUTED },
   followersSubTabTxtActive: { color: Colors.white },
 
-  mediaCell:         { width: CELL_SIZE, height: CELL_SIZE, margin: 1 },
+  // ── Media grid ─────────────────────────────────────────────────────────────
+  mediaCell: { width: CELL_SIZE, height: CELL_SIZE, margin: 1 },
   mediaCellImg:      { width: '100%', height: '100%' },
-  mediaCellFallback: { flex: 1, backgroundColor: Colors.neutral180, alignItems: 'center', justifyContent: 'center' },
-  mediaCellPlay:     { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: withOpacity(Colors.black, 0.22) },
+  mediaCellFallback: { flex: 1, backgroundColor: Colors.neutral175, alignItems: 'center', justifyContent: 'center' },
+  mediaCellPlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: withOpacity(Colors.black, 0.18),
+  },
 
-  groupCard:       { backgroundColor: Colors.white, borderRadius: 14, marginHorizontal: 14, marginTop: 10, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', shadowColor: Colors.black, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  groupBanner:     { width: '100%', height: 80 },
-  groupBody:       { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
-  groupAvatarWrap: { marginTop: -28 },
-  groupAvatar:     { width: 46, height: 46, borderRadius: 12, borderWidth: 2, borderColor: Colors.white },
-  groupName:       { fontSize: 14, fontWeight: '800', color: DARK },
-  groupSub:        { fontSize: 11, color: MUTED, marginTop: 2 },
-  joinBtn:         { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: BRAND, borderRadius: 999 },
-  joinBtnTxt:      { fontSize: 12, fontWeight: '800', color: Colors.white },
+  // ── Community card ─────────────────────────────────────────────────────────
+  groupCard: {
+    backgroundColor: Colors.white, borderRadius: 16,
+    marginHorizontal: 14, marginTop: 12,
+    borderWidth: 1, borderColor: BORDER,
+    overflow: 'hidden',
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  groupBannerWrap: { width: '100%', height: 90, overflow: 'hidden' },
+  groupBanner:     { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  groupBody: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  groupAvatarWrap: { marginTop: -30 },
+  groupAvatar: {
+    width: 48, height: 48, borderRadius: 14,
+    borderWidth: 2.5, borderColor: Colors.white,
+  },
+  groupAvatarFallback: { backgroundColor: withOpacity(ACCENT, 0.12), alignItems: 'center', justifyContent: 'center' },
+  groupName: { fontSize: 14.5, fontWeight: '800', color: DARK },
+  groupSub:  { fontSize: 12, color: MUTED },
 
-  pageCard:   { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.white, borderRadius: 14, marginHorizontal: 14, marginTop: 10, padding: 14, borderWidth: 1, borderColor: BORDER, shadowColor: Colors.black, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  pageAvatar: { width: 52, height: 52, borderRadius: 14 },
-  pageName:   { fontSize: 14, fontWeight: '800', color: DARK, flex: 1 },
-  pageCat:    { fontSize: 11, color: ACCENT, marginTop: 2 },
-  pageSub:    { fontSize: 11, color: MUTED, marginTop: 2 },
-  viewBtn:    { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: withOpacity(Colors.primaryDark, 0.06), borderRadius: 999 },
-  viewBtnTxt: { fontSize: 12, fontWeight: '700', color: BRAND },
+  // ── Page card ──────────────────────────────────────────────────────────────
+  pageCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.white, borderRadius: 16,
+    marginHorizontal: 14, marginTop: 12,
+    padding: 14, borderWidth: 1, borderColor: BORDER,
+    shadowColor: BRAND, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 2,
+  },
+  pageAvatar: { width: 54, height: 54, borderRadius: 14 },
+  pageAvatarFallback: { backgroundColor: withOpacity(ACCENT, 0.12), alignItems: 'center', justifyContent: 'center' },
+  pageName: { fontSize: 14.5, fontWeight: '800', color: DARK, flex: 1 },
+  pageCat:  { fontSize: 11.5, color: ACCENT, marginTop: 2, fontWeight: '600' },
+  pageSub:  { fontSize: 12, color: MUTED },
 
-  emptyWrap: { alignItems: 'center', paddingTop: 48, gap: 10 },
-  emptyTxt:  { fontSize: 14, color: MUTED },
+  // ── Shared chip ───────────────────────────────────────────────────────────
+  viewChip: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    backgroundColor: withOpacity(BRAND, 0.07),
+    borderRadius: 999, borderWidth: 1, borderColor: withOpacity(BRAND, 0.12),
+  },
+  viewChipTxt: { fontSize: 12, fontWeight: '700', color: BRAND },
 
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: withOpacity(Colors.black, 0.4) },
-  modalSheet:   { backgroundColor: Colors.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%' },
-  modalHandle:  { width: 36, height: 4, borderRadius: 2, backgroundColor: BORDER, alignSelf: 'center', marginTop: 10 },
-  modalHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: BORDER },
-  modalTitle:   { fontSize: 17, fontWeight: '900', color: DARK },
-
-  peopleRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER },
-  peopleAvatar: { width: 44, height: 44, borderRadius: 22 },
-  peopleName:   { fontSize: 14, fontWeight: '700', color: DARK },
-  peopleHandle: { fontSize: 12, color: MUTED, marginTop: 2 },
-  peopleFollowBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: ACCENT, minWidth: 80, alignItems: 'center' },
+  // ── People row ─────────────────────────────────────────────────────────────
+  peopleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 14,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: withOpacity(BRAND, 0.08),
+    backgroundColor: Colors.white,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 1,
+  },
+  peopleAvatar: { width: 46, height: 46, borderRadius: 23 },
+  peopleAvatarFallback: { backgroundColor: withOpacity(ACCENT, 0.1), alignItems: 'center', justifyContent: 'center' },
+  peopleName:   { fontSize: 14.5, fontWeight: '700', color: DARK },
+  peopleHandle: { fontSize: 12.5, color: MUTED, marginTop: 2 },
+  peopleFollowBtn: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999,
+    backgroundColor: BRAND, minWidth: 84, alignItems: 'center',
+  },
   peopleFollowingBtn: { backgroundColor: withOpacity(ACCENT, 0.1), borderWidth: 1, borderColor: withOpacity(ACCENT, 0.3) },
-  peopleFollowTxt: { fontSize: 12, fontWeight: '700', color: Colors.white },
+  peopleFollowTxt:    { fontSize: 12.5, fontWeight: '700', color: Colors.white },
   peopleFollowingTxt: { color: ACCENT },
 
-  modalSubTabs: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: BORDER },
-  modalSubTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 8, borderRadius: 999, backgroundColor: withOpacity(Colors.primaryDark, 0.04), borderWidth: 1, borderColor: withOpacity(Colors.primaryDark, 0.08) },
+  // ── Empty states ───────────────────────────────────────────────────────────
+  emptyWrap:     { alignItems: 'center', paddingTop: 52, paddingHorizontal: 32, gap: 10 },
+  emptyIcon:     { width: 72, height: 72, borderRadius: 36, backgroundColor: withOpacity(ACCENT, 0.1), alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle:    { fontSize: 15.5, fontWeight: '800', color: DARK },
+  emptySubtitle: { fontSize: 13, color: MUTED, textAlign: 'center', lineHeight: 19 },
+  emptyTxt:      { fontSize: 14, color: MUTED },
+
+  // ── Followers/following modal ──────────────────────────────────────────────
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: withOpacity(Colors.black, 0.4) },
+  modalSheet:   { backgroundColor: Colors.white, borderTopLeftRadius: 26, borderTopRightRadius: 26, maxHeight: '75%' },
+  modalHandle:  { width: 36, height: 4, borderRadius: 2, backgroundColor: BORDER, alignSelf: 'center', marginTop: 10 },
+  modalHeader:  {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER,
+  },
+  modalTitle:   { fontSize: 17, fontWeight: '900', color: DARK },
+  modalClose:   { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.neutral150, alignItems: 'center', justifyContent: 'center' },
+  modalSubTabs: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
+  modalSubTab: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 10, borderRadius: 10,
+    backgroundColor: Colors.neutral150, borderWidth: 1, borderColor: withOpacity(BRAND, 0.08),
+  },
   modalSubTabActive: { backgroundColor: BRAND, borderColor: BRAND },
-  modalSubTabTxt: { fontSize: 12, fontWeight: '700', color: MUTED },
+  modalSubTabTxt: { fontSize: 13, fontWeight: '700', color: MUTED },
   modalSubTabTxtActive: { color: Colors.white },
 });

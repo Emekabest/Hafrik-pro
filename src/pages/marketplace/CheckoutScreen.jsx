@@ -302,10 +302,12 @@ export default function CheckoutScreen({ navigation, route }) {
     !!email.trim()     && !!street.trim()   &&
     !!city.trim()      && !!country         && !!phone.trim();
 
-  // Convert NGN → CNY using fixed rate (1 CNY = 215 NGN)
-  const grandTotalInCny = grandTotal * NGN_TO_CNY;
+  // grandTotal comes from WooCommerce which is priced in CNY — no conversion needed.
+  // NGN equivalent is used only when reporting to the backend.
+  const grandTotalInCny = grandTotal;
+  const grandTotalInNgn = grandTotal * 215;
 
-  // Balance is sufficient if wallet covers the CNY equivalent
+  // Balance is sufficient if wallet covers the CNY order total
   const walletSufficient = walletBalance !== null && walletBalance >= grandTotalInCny;
 
   const canSubmit = isFormValid && !placing && walletBalance !== null && walletBalance > 0;
@@ -331,7 +333,7 @@ export default function CheckoutScreen({ navigation, route }) {
         countryName: country.name,
         phone:       phone.trim(),
         note:        note.trim(),
-        amount_ngn:  grandTotal,
+        amount_ngn:  grandTotalInNgn,
         amount_cny:  grandTotalInCny,
         ...(state.trim()    ? { state:    state.trim()    } : {}),
         ...(postcode.trim() ? { postcode: postcode.trim() } : {}),

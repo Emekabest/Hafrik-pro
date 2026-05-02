@@ -22,31 +22,12 @@ const WHITE  = Colors.white;
 export const FEED_TABS = [
   {
     key:       'home',
-    label:     'Home',
-    feedTitle: 'Latest Posts',
+    label:     'For You',
+    feedTitle: 'For You',
     icon:      'home-outline',
     activeIcon:'home',
     get:       'discover',
     listName:  'discoverFeeds',
-  },
-  {
-    key:       'tv',
-    label:     'TV',
-    feedTitle: 'HafrikTV',
-    icon:      'tv-outline',
-    activeIcon:'tv',
-    get:       null,
-    listName:  null,
-    isTV:      true,
-  },
-  {
-    key:       'for_you',
-    label:     'For You',
-    feedTitle: 'Picked for You',
-    icon:      'sparkles-outline',
-    activeIcon:'sparkles',
-    get:       'newsfeed',
-    listName:  'forYouFeeds',
   },
   {
     key:       'following',
@@ -65,6 +46,16 @@ export const FEED_TABS = [
     activeIcon:'trending-up',
     get:       'popular',
     listName:  'popularFeeds',
+  },
+  {
+    key:       'tv',
+    label:     'HafrikTV',
+    feedTitle: 'HafrikTV',
+    icon:      'tv-outline',
+    activeIcon:'tv',
+    get:       null,
+    listName:  null,
+    isTV:      true,
   },
 ];
 

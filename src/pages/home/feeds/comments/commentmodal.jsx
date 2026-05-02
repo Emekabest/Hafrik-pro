@@ -43,6 +43,7 @@ const CommentModal = () => {
     const [commentText, setCommentText] = useState('');
     const [posting, setPosting] = useState(false);
     const [replyingTo, setReplyingTo] = useState(null);
+    const [latestComment, setLatestComment] = useState(null);
     const inputRef = useRef(null);
 
     const commentModal    = useStore(state => state.commentModal);
@@ -80,6 +81,7 @@ const CommentModal = () => {
                 setLoading(true);
                 setCommentText('');
                 setReplyingTo(null);
+                setLatestComment(null);
                 loadedFeedIdRef.current = null;
             }, 300);
             return () => clearTimeout(timer);
@@ -104,6 +106,22 @@ const CommentModal = () => {
                 await AddReplyController(feedId, replyingTo.commentId, text, token);
             } else {
                 await AddCommentController(feedId, text, token);
+                // Show the new comment immediately (optimistic)
+                setLatestComment({
+                    id: `temp-${Date.now()}`,
+                    text,
+                    user: {
+                        id:        user?.id,
+                        full_name: user?.full_name ?? user?.name ?? '',
+                        username:  user?.username ?? '',
+                        avatar:    user?.avatar ?? '',
+                    },
+                    created:      new Date().toISOString(),
+                    likes_count:  0,
+                    is_liked:     false,
+                    is_mine:      true,
+                    reply_count:  0,
+                });
             }
             // Sync comment count to store
             const { feeds, updateFeedById } = useStore.getState();
@@ -117,7 +135,7 @@ const CommentModal = () => {
             setReplyingTo(null);
         } catch {}
         setPosting(false);
-    }, [commentText, posting, feedId, token, replyingTo]);
+    }, [commentText, posting, feedId, token, replyingTo, user]);
 
     const handleReply = useCallback((commentId, username) => {
         setReplyingTo({ commentId, username });
@@ -181,7 +199,7 @@ const CommentModal = () => {
                             >
                                 {headerElement}
                                 {feedId && (
-                                    <CommentBonds postId={feedId} token={token} onReply={handleReply} />
+                                    <CommentBonds postId={feedId} token={token} onReply={handleReply} newComment={latestComment} />
                                 )}
                             </ScrollView>
                         )}

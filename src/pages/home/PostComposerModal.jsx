@@ -437,7 +437,16 @@ const PostComposerModal = () => {
         });
         if (result.canceled) return;
         const a = result.assets[0];
-        setSelectedVideo({ id: `${Date.now()}`, uri: a.uri, fileName: a.fileName || 'video.mp4', type: 'video', fileType: 'video' });
+        setSelectedVideo({
+            id: `${Date.now()}`,
+            uri: a.uri,
+            fileName: a.fileName || 'video.mp4',
+            type: a.mimeType || 'video/mp4',
+            mimeType: a.mimeType || 'video/mp4',
+            fileType: 'video',
+            fileSize: a.fileSize,
+            duration: a.duration,
+        });
         setSelectedThumbnail(null);
         try {
             const { uri } = await VideoThumbnails.getThumbnailAsync(a.uri, { time: 1000 });
@@ -547,14 +556,22 @@ const PostComposerModal = () => {
             transparent={false}
             onRequestClose={handleClose}
         >
-            <View style={[styles.fullScreen, { paddingTop: top }]}>
+            <View style={styles.fullScreen}>
 
                 {/* ── Header ── */}
-                <View style={styles.header}>
+                <LinearGradient
+                    colors={[BRAND, '#10545B', ACCENT]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.header, { paddingTop: top, height: top + 78 }]}
+                >
                     <TouchableOpacity style={styles.closeBtn} onPress={handleClose} activeOpacity={0.7}>
-                        <Ionicons name="close" size={22} color={BRAND} />
+                        <Ionicons name="close" size={22} color={WHITE} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Create Post</Text>
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerEyebrow}>HAFRIK</Text>
+                        <Text style={styles.headerTitle}>Create Post</Text>
+                    </View>
                     <TouchableOpacity
                         style={[styles.postBtn, !canPost && styles.postBtnOff]}
                         onPress={handlePost}
@@ -563,7 +580,7 @@ const PostComposerModal = () => {
                     >
                         <Text style={styles.postBtnText}>Post</Text>
                     </TouchableOpacity>
-                </View>
+                </LinearGradient>
 
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
@@ -576,7 +593,7 @@ const PostComposerModal = () => {
                         style={{ flex: 1 }}
                         keyboardShouldPersistTaps="handled"
                         showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 16 }}
+                        contentContainerStyle={{ paddingTop: 14, paddingBottom: 16 }}
                     >
 
                         {/* Post-to compact selector */}
@@ -845,44 +862,73 @@ const styles = StyleSheet.create({
 
     fullScreen: {
         flex: 1,
-        backgroundColor: WHITE,
+        backgroundColor: '#EEF7F7',
     },
 
     // ── Header ────────────────────────────────────────────────────────────────
     header: {
-        height: 54,
+        height: 78,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: BORDER,
-        backgroundColor: WHITE,
+        paddingHorizontal: 14,
+        paddingBottom: 10,
+        borderBottomLeftRadius: 26,
+        borderBottomRightRadius: 26,
+        shadowColor: BRAND,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.18,
+        shadowRadius: 18,
+        elevation: 8,
     },
     closeBtn: {
-        width: 38, height: 38,
-        borderRadius: 19,
-        backgroundColor: BG,
+        width: 40, height: 40,
+        borderRadius: 16,
+        backgroundColor: WHITE + '22',
         alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: WHITE + '24',
+    },
+    headerCenter: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginHorizontal: 10,
+    },
+    headerEyebrow: {
+        fontSize: 9,
+        fontWeight: '900',
+        letterSpacing: 2.2,
+        color: WHITE + 'B8',
+        marginBottom: 2,
     },
     headerTitle: {
-        fontSize: 16, fontWeight: '800', color: BRAND, letterSpacing: -0.3,
+        fontSize: 18, fontWeight: '900', color: WHITE, letterSpacing: -0.3,
     },
     postBtn: {
-        backgroundColor: ACCENT,
-        paddingHorizontal: 22, paddingVertical: 9,
-        borderRadius: 22,
+        backgroundColor: WHITE,
+        paddingHorizontal: 20, paddingVertical: 10,
+        borderRadius: 999,
         alignItems: 'center', justifyContent: 'center',
     },
-    postBtnOff: { backgroundColor: ACCENT + '55' },
-    postBtnText: { color: WHITE, fontWeight: '800', fontSize: 14 },
+    postBtnOff: { backgroundColor: WHITE + '55' },
+    postBtnText: { color: ACCENT, fontWeight: '900', fontSize: 14 },
 
     // ── Target bar ────────────────────────────────────────────────────────────
     targetBar: {
         flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 16, paddingVertical: 10,
-        borderBottomWidth: 1, borderBottomColor: BORDER,
-        gap: 8, backgroundColor: BG,
+        marginHorizontal: 14,
+        marginBottom: 8,
+        paddingHorizontal: 14, paddingVertical: 12,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: BRAND + '12',
+        gap: 8, backgroundColor: WHITE,
+        shadowColor: BRAND,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 14,
+        elevation: 3,
     },
     targetBarLabel: {
         fontSize: 11, fontWeight: '700', color: MUTED,
@@ -908,11 +954,17 @@ const styles = StyleSheet.create({
     // ── Compose row ───────────────────────────────────────────────────────────
     composeRow: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
+        marginHorizontal: 14,
+        marginBottom: 10,
+        paddingHorizontal: 14,
         paddingTop: 14,
-        paddingBottom: 8,
+        paddingBottom: 10,
         gap: 12,
         alignItems: 'flex-start',
+        backgroundColor: WHITE,
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: BRAND + '10',
     },
     avatar: {
         width: 44, height: 44, borderRadius: 22,
@@ -923,7 +975,7 @@ const styles = StyleSheet.create({
     },
     textInput: {
         fontSize: 16, color: BRAND, lineHeight: 24,
-        minHeight: 100, textAlignVertical: 'top',
+        minHeight: 112, textAlignVertical: 'top',
     },
 
     // ── Media section ─────────────────────────────────────────────────────────
@@ -933,7 +985,7 @@ const styles = StyleSheet.create({
     },
     mediaPicker: {
         alignItems: 'center', justifyContent: 'center',
-        backgroundColor: BG, borderRadius: 16,
+        backgroundColor: WHITE, borderRadius: 22,
         paddingVertical: 44,
         borderWidth: 1.5, borderColor: ACCENT + '44', borderStyle: 'dashed',
         gap: 6,
@@ -1091,10 +1143,15 @@ const styles = StyleSheet.create({
     // ── Bottom toolbar ────────────────────────────────────────────────────────
     toolbar: {
         flexDirection: 'row',
-        borderTopWidth: 1,
-        borderTopColor: BORDER,
+        borderTopWidth: 0,
         backgroundColor: WHITE,
         paddingTop: 8,
+        paddingHorizontal: 8,
+        shadowColor: BRAND,
+        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 18,
+        elevation: 10,
     },
     toolbarBtn: {
         flex: 1, alignItems: 'center', justifyContent: 'center',

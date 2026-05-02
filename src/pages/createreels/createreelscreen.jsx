@@ -11,8 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../AuthContext';
-import CreateReelsController from '../../controllers/createreelscontroller';
 import UploadMediaController from '../../controllers/uploadmediacontroller';
+import { startBackgroundUpload } from '../../helpers/BackgroundUploadManager';
 import { useIsFocused } from '@react-navigation/native';
 import AppDetails from '../../helpers/appdetails';
 import Gallery from './gallery';
@@ -121,6 +121,11 @@ const CreateReels = ({ navigation, route }) => {
         const localVideo = {
             uri: asset.uri,
             duration: asset.duration,
+            fileName: asset.fileName || asset.uri?.split('/').pop() || 'reel.mp4',
+            type: asset.mimeType || ((asset.fileName || asset.uri || '').toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4'),
+            mimeType: asset.mimeType || ((asset.fileName || asset.uri || '').toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4'),
+            fileType: 'video',
+            fileSize: asset.fileSize,
             uploading: false,
             serverUrl: null,
             thumbnailUrl: null
@@ -162,7 +167,9 @@ const CreateReels = ({ navigation, route }) => {
                 fileName: selectedVideo.uri.split('/').pop() || 'reel.mp4',
                 fileType: 'video'
             };
+            console.log('[CreateReels] video upload starting:', videoFile);
             const videoResponse = await UploadMediaController(videoFile, token);
+            console.log('[CreateReels] video upload response:', videoResponse);
             if (uploadIdRef.current !== currentId) return;
 
             // 4. Upload Thumbnail
@@ -178,7 +185,9 @@ const CreateReels = ({ navigation, route }) => {
                 fileName: 'thumbnail.jpg',
                 fileType: 'photo'
             };
+            console.log('[CreateReels] thumbnail upload starting:', thumbFile);
             const thumbResponse = await UploadMediaController(thumbFile, token);
+            console.log('[CreateReels] thumbnail upload response:', thumbResponse);
             if (uploadIdRef.current !== currentId) return;
 
             clearInterval(progressInterval);
@@ -194,15 +203,27 @@ const CreateReels = ({ navigation, route }) => {
                 }));
                 setUploading(false);
             } else {
-                console.log("Upload failed. Video:", videoResponse, "Thumb:", thumbResponse);
-                Alert.alert("Upload Failed", "Could not upload media.");
+                console.log("[CreateReels] upload failed details:", { videoResponse, thumbResponse });
+                const uploadReason =
+                    videoResponse?.message ||
+                    thumbResponse?.message ||
+                    videoResponse?.errorData?.message ||
+                    thumbResponse?.errorData?.message ||
+                    "Could not upload media.";
+                Alert.alert("Upload Failed", uploadReason);
                 setUploading(false);
             }
 
         } catch (error) {
             if (uploadIdRef.current !== currentId) return;
-            console.error(error);
-            Alert.alert("Error", "An error occurred during upload.");
+            console.error('[CreateReels] upload exception:', {
+                message: error?.message,
+                code: error?.code,
+                httpStatus: error?.response?.status,
+                response: error?.response?.data,
+                stack: error?.stack,
+            });
+            Alert.alert("Error", error?.message || "An error occurred during upload.");
             setUploading(false);
         } finally {
             // setUploading(false) is handled in success/error blocks or kept true if we want to show loading state
@@ -211,8 +232,8 @@ const CreateReels = ({ navigation, route }) => {
     };
 
     const handlePost = async () => {
-        if (!selectedVideo || !selectedVideo.serverUrl) {
-            Alert.alert("Wait", "Please wait for video to finish uploading.");
+        if (!selectedVideo?.uri) {
+            Alert.alert("Wait", "Please select a reel first.");
             return;
         }
 
@@ -225,33 +246,45 @@ const CreateReels = ({ navigation, route }) => {
 
         if (selectedVideo != null) {
             postData.type = "reel";
-            postData.video_url = selectedVideo.serverUrl;
-            if (selectedVideo.thumbnailUrl) {
-                postData.thumbnail = selectedVideo.thumbnailUrl;
+        }
+
+        const videoFile = {
+            uri: selectedVideo.uri,
+            type: selectedVideo.type || selectedVideo.mimeType || 'video/mp4',
+            mimeType: selectedVideo.mimeType || selectedVideo.type || 'video/mp4',
+            fileName: selectedVideo.fileName || selectedVideo.uri.split('/').pop() || 'reel.mp4',
+            fileType: 'video',
+            fileSize: selectedVideo.fileSize,
+        };
+        const thumbnailFile = selectedVideo.localThumbnailUri
+            ? {
+                uri: selectedVideo.localThumbnailUri,
+                type: 'image/jpeg',
+                fileName: 'thumbnail.jpg',
+                fileType: 'photo',
             }
-        }
+            : null;
 
-        const response = await CreateReelsController(postData, token);
+        console.log('[CreateReels] handing reel to background composer uploader:', {
+            postData,
+            videoFile,
+            hasThumbnail: !!thumbnailFile,
+        });
+        startBackgroundUpload({
+            postBody: postData,
+            activeTab: 'reel',
+            selectedVideo: videoFile,
+            selectedThumbnail: thumbnailFile,
+            token,
+        });
         setPosting(false);
-
-        if (response.status === 200 || response.status === 201) {
-            Alert.alert("Success", "Reel uploaded Succesfully", [
-                { 
-                    text: "OK", 
-                    onPress: () => {
-                        setCaption('');
-                        setLocation('');
-                        setSelectedVideo(null);
-                        setStep('gallery');
-                        setUploadProgress(0);
-                        uploadIdRef.current = 0;
-                        navigation.navigate('Home');
-                    } 
-                }
-            ]);
-        } else {
-            Alert.alert("Error", "Unable to upload reel please try again");
-        }
+        setCaption('');
+        setLocation('');
+        setSelectedVideo(null);
+        setStep('gallery');
+        setUploadProgress(0);
+        uploadIdRef.current = 0;
+        navigation.navigate('Home');
     };
 
     const handleChangeThumbnail = async () => {
@@ -308,7 +341,6 @@ const CreateReels = ({ navigation, route }) => {
                     setSelectedVideo(null);
                 }}
                 onNext={() => {
-                    startUpload();
                     setStep('details');
                 }}
                 isFocused={isFocused}
@@ -326,7 +358,7 @@ const CreateReels = ({ navigation, route }) => {
 
 
 
-    const canPost = !!selectedVideo?.serverUrl && !posting && !uploading;
+    const canPost = !!selectedVideo?.uri && !posting && !uploading;
 
     return (
         <KeyboardAvoidingView

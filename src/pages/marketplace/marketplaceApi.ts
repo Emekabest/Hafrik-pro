@@ -1,9 +1,9 @@
 // src/pages/marketplace/marketplaceApi.ts
-// Powered by WooCommerce Store API — https://shop.itstrendymart.com/wp-json/wc/store/v1
+// Powered by WooCommerce Store API — https://shop.hafrik.com/wp-json/wc/store/v1
 
 import apiClient from '../../api/apiClient';
 
-const WC_BASE = 'https://shop.itstrendymart.com/wp-json/wc/store/v1';
+const WC_BASE = 'https://shop.hafrik.com/wp-json/wc/store/v1';
 
 // ─── Exchange Rate ────────────────────────────────────────────────────────────
 // Fetches live rate from open.er-api.com (free, no key required).
@@ -59,6 +59,211 @@ const cartHeaders = (): Record<string, string> => ({
 const parsePrice = (str: string | undefined, minorUnit: number): number =>
   parseInt(str ?? '0', 10) / Math.pow(10, minorUnit);
 
+const decodeHtml = (raw: string): string =>
+  String(raw ?? '')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))
+    .replace(/&apos;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&rdquo;/g, '"')
+    .replace(/&ldquo;/g, '"')
+    .replace(/&ndash;/g, '-')
+    .replace(/&mdash;/g, '-')
+    .replace(/&hellip;/g, '...')
+    .replace(/&amp;?/g, '&')
+    .replace(/&#038;/g, '&')
+    .replace(/&#039;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+
+const stripAndDecode = (raw: string): string =>
+  decodeHtml(String(raw ?? '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' '));
+
+const slugifyAttribute = (raw: string): string =>
+  stripAndDecode(raw)
+    .toLowerCase()
+    .replace(/^pa[_-]/, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+// WordPress generates term slugs with hyphens (e.g. "White purple 22031" → "white-purple-22031").
+// slugifyAttribute uses underscores, so we need a second slugifier for term values.
+const slugifyWPTermValue = (raw: string): string =>
+  stripAndDecode(raw)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const uniqueStrings = (items: Array<string | undefined | null>): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  items.forEach(item => {
+    const value = stripAndDecode(String(item ?? '')).trim();
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    out.push(value);
+  });
+  return out;
+};
+
+function getAttributeCartKey(attr: any): string {
+  const rawTaxonomy = String(attr.taxonomy ?? attr.attribute ?? attr.slug ?? '');
+  const rawName = String(attr.name ?? '');
+  if (rawTaxonomy.startsWith('pa_')) return rawTaxonomy;
+  if (attr.taxonomy === true || attr.has_terms === true || attr.terms?.some?.((term: any) => term.slug)) {
+    const slug = slugifyAttribute(rawTaxonomy || rawName);
+    return slug ? `pa_${slug}` : stripAndDecode(rawName);
+  }
+  return stripAndDecode(rawName || rawTaxonomy);
+}
+
+function normalizeSelectedVariations(
+  selectedVariations: Record<string, string> | SelectedCartVariation[],
+): SelectedCartVariation[] {
+  return Array.isArray(selectedVariations)
+    ? selectedVariations
+    : Object.entries(selectedVariations).map(([attr, val]) => ({
+      attribute: attr,
+      value: val,
+      attribute_candidates: [attr],
+      value_candidates: [val],
+    }));
+}
+
+function buildVariationPayloads(selectedVariations: SelectedCartVariation[]): Array<Array<{ attribute: string; value: string }>> {
+  const base = selectedVariations.map(v => ({ attribute: v.attribute, value: v.value }));
+  const candidateSets = selectedVariations.map(v => {
+    const attrSlug = slugifyAttribute(v.attribute);
+    const attrs = uniqueStrings([
+      v.attribute,
+      ...(v.attribute_candidates ?? []),
+      attrSlug,
+      attrSlug ? `pa_${attrSlug}` : '',
+    ]);
+    const values = uniqueStrings([
+      v.value,
+      ...(v.value_candidates ?? []),
+      slugifyAttribute(v.value),   // underscore slug  e.g. white_purple_22031
+      slugifyWPTermValue(v.value), // hyphen slug      e.g. white-purple-22031 (WP standard)
+    ]);
+    return { attrs, values };
+  });
+
+  const payloads: Array<Array<{ attribute: string; value: string }>> = [base];
+  const maxRounds = Math.max(
+    0,
+    ...candidateSets.map(set => Math.max(set.attrs.length, set.values.length)),
+  );
+
+  for (let i = 0; i < maxRounds; i += 1) {
+    payloads.push(candidateSets.map(set => ({
+      attribute: set.attrs[i] ?? set.attrs[0],
+      value: set.values[i] ?? set.values[0],
+    })));
+  }
+
+  const seen = new Set<string>();
+  return payloads.filter(payload => {
+    const key = JSON.stringify(payload);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function normalizeComparable(raw: string | undefined | null): string {
+  return slugifyAttribute(String(raw ?? ''));
+}
+
+function extractVariationPairs(rawVariation: any): Array<{ attribute: string; value: string }> {
+  const rawAttrs = rawVariation?.attributes ?? rawVariation?.variation ?? rawVariation?.options ?? [];
+
+  if (Array.isArray(rawAttrs)) {
+    return rawAttrs.map((attr: any) => ({
+      attribute: stripAndDecode(String(attr.attribute ?? attr.name ?? attr.slug ?? attr.key ?? '')),
+      value: stripAndDecode(String(attr.value ?? attr.option ?? attr.name ?? attr.slug ?? '')),
+    })).filter(pair => pair.attribute || pair.value);
+  }
+
+  if (rawAttrs && typeof rawAttrs === 'object') {
+    return Object.entries(rawAttrs).map(([attribute, value]) => ({
+      attribute: stripAndDecode(attribute),
+      value: stripAndDecode(String(value ?? '')),
+    })).filter(pair => pair.attribute || pair.value);
+  }
+
+  return [];
+}
+
+function selectedMatchesVariation(
+  selected: SelectedCartVariation[],
+  pairs: Array<{ attribute: string; value: string }>,
+): boolean {
+  if (!selected.length || !pairs.length) return false;
+
+  return selected.every(sel => {
+    const attrCandidates = uniqueStrings([
+      sel.attribute,
+      ...(sel.attribute_candidates ?? []),
+      slugifyAttribute(sel.attribute),
+      `pa_${slugifyAttribute(sel.attribute)}`,
+    ]).map(normalizeComparable);
+
+    const valueCandidates = uniqueStrings([
+      sel.value,
+      ...(sel.value_candidates ?? []),
+      slugifyAttribute(sel.value),
+    ]).map(normalizeComparable);
+
+    return pairs.some(pair => {
+      const pairAttr = normalizeComparable(pair.attribute);
+      const pairValue = normalizeComparable(pair.value);
+      return attrCandidates.includes(pairAttr) && valueCandidates.includes(pairValue);
+    });
+  });
+}
+
+async function resolveMatchingVariationId(
+  productId: number,
+  selected: SelectedCartVariation[],
+): Promise<number | null> {
+  if (!selected.length) return null;
+
+  const res = await fetch(`${WC_BASE}/products/${productId}/variations?per_page=100`, {
+    headers: { Accept: 'application/json', ...cartHeaders() },
+  });
+  if (!res.ok) return null;
+
+  const variations = await res.json().catch(() => []);
+  if (!Array.isArray(variations)) return null;
+
+  const match = variations.find(variation => {
+    const variationId = Number(variation?.id ?? variation?.variation_id ?? 0);
+    if (!variationId) return false;
+    return selectedMatchesVariation(selected, extractVariationPairs(variation));
+  });
+
+  return match ? Number(match.id ?? match.variation_id) : null;
+}
+
+async function postCartAddItem(body: any): Promise<{ ok: boolean; message?: string }> {
+  const res = await fetch(`${WC_BASE}/cart/add-item`, {
+    method: 'POST',
+    headers: cartHeaders(),
+    body: JSON.stringify(body),
+  });
+  captureCartToken(res);
+  const json = await res.json().catch(() => ({}));
+  return {
+    ok: res.ok,
+    message: json.message,
+  };
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Seller = {
@@ -103,11 +308,16 @@ export type MarketplaceQuery = {
   category_id?: number;
   min_price?: number;
   max_price?: number;
+  orderby?: 'date' | 'price' | 'popularity' | 'rating';
+  order?: 'asc' | 'desc';
+  stock_status?: 'instock' | 'outofstock' | 'onbackorder';
+  min_rating?: number;
 };
 
 export type Category = {
   id: number;
   name: string;
+  parent_id?: number;
   image?: string | null;
   icon?: string | null;
   count?: number;
@@ -122,16 +332,27 @@ export type Country = {
 export type ProductVariationOption = {
   id: number;
   value: string;
+  slug?: string;
+  add_to_cart_value?: string;
 };
 
 export type ProductVariation = {
   id: number;
   name: string;
+  slug?: string;
+  add_to_cart_key?: string;
   options: ProductVariationOption[];
 };
 
 export type ProductDetail = MarketplaceProduct & {
   variations: ProductVariation[];
+};
+
+export type SelectedCartVariation = {
+  attribute: string;
+  value: string;
+  attribute_candidates?: string[];
+  value_candidates?: string[];
 };
 
 export type CartVariation = {
@@ -226,8 +447,8 @@ function normalizeProduct(wc: any): MarketplaceProduct {
   return {
     id:           Number(wc.id),
     post_id:      Number(wc.id),
-    title:        wc.name ?? '',
-    description:  wc.description ?? wc.summary ?? '',
+    title:        stripAndDecode(wc.name ?? ''),
+    description:  stripAndDecode(wc.description ?? wc.summary ?? ''),
     price,
     currency:     wc.prices?.currency_code ?? 'USD',
     location:     null,
@@ -263,14 +484,14 @@ function normalizeCartItem(item: any): CartItem {
   const total      = parsePrice(item.totals?.line_total, tMinorUnit);
   const thumb      = item.images?.[0]?.thumbnail ?? item.images?.[0]?.src ?? null;
   const variations = (item.variation ?? []).map((v: any) => ({
-    variation_name: String(v.attribute ?? '').replace(/^pa_/, ''),
-    option_value:   String(v.value ?? ''),
+    variation_name: stripAndDecode(String(v.attribute ?? '').replace(/^pa_/, '')),
+    option_value:   stripAndDecode(String(v.value ?? '')),
   }));
 
   return {
     cart_id:    String(item.key ?? item.id),
     post_id:    Number(item.id),
-    title:      item.name ?? '',
+    title:      stripAndDecode(item.name ?? ''),
     thumbnail:  thumb,
     price,
     currency:   item.prices?.currency_code ?? 'USD',
@@ -295,6 +516,10 @@ export async function fetchMarketplaceProducts(
   if (query.category_id)       params.set('category', String(query.category_id));
   if (query.min_price != null) params.set('min_price', String(Math.round(query.min_price * 100)));
   if (query.max_price != null) params.set('max_price', String(Math.round(query.max_price * 100)));
+  if (query.orderby)           params.set('orderby', query.orderby);
+  if (query.order)             params.set('order', query.order);
+  if (query.stock_status)      params.set('stock_status', query.stock_status);
+  if (query.min_rating != null) params.set('rating', String(query.min_rating));
 
   const res = await fetch(`${WC_BASE}/products?${params}`, {
     headers: { Accept: 'application/json' },
@@ -318,16 +543,28 @@ export async function fetchMarketplaceProducts(
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 
-export async function getCategories(_token?: string | null): Promise<Category[]> {
+export async function getCategories(
+  _token?: string | null,
+  options: { parent?: number | null } = { parent: 0 },
+): Promise<Category[]> {
+  const params = new URLSearchParams({
+    per_page: '50',
+    hide_empty: 'true',
+    orderby: 'count',
+    order: 'desc',
+  });
+  if (options.parent !== null) params.set('parent', String(options.parent ?? 0));
+
   const res = await fetch(
-    `${WC_BASE}/products/categories?per_page=50&hide_empty=true&parent=0&orderby=count&order=desc`,
+    `${WC_BASE}/products/categories?${params}`,
     { headers: { Accept: 'application/json' } },
   );
   if (!res.ok) return [];
   const list: any[] = await res.json().catch(() => []);
   return list.map(c => ({
     id:    Number(c.id),
-    name:  String(c.name ?? ''),
+    name:  decodeHtml(String(c.name ?? '')),
+    parent_id: Number(c.parent ?? 0),
     image: c.image?.src ?? null,
     icon:  null,
     count: Number(c.count ?? 0),
@@ -416,10 +653,14 @@ export async function getProductDetail(
     .filter((a: any) => a.variation === true || a.has_variations === true)
     .map((a: any, i: number) => ({
       id:   Number(a.id ?? i + 1),
-      name: String(a.name ?? ''),
+      name: stripAndDecode(String(a.name ?? '')),
+      slug: stripAndDecode(String(a.slug ?? a.attribute ?? '')),
+      add_to_cart_key: getAttributeCartKey(a),
       options: (a.terms ?? a.options ?? []).map((opt: any, j: number) => ({
         id:    j + 1,
-        value: String(opt.name ?? opt.slug ?? opt ?? ''),
+        value: stripAndDecode(String(opt.name ?? opt.slug ?? opt ?? '')),
+        slug: stripAndDecode(String(opt.slug ?? opt.name ?? opt ?? '')),
+        add_to_cart_value: stripAndDecode(String(opt.slug ?? opt.name ?? opt ?? '')),
       })),
     }));
 
@@ -444,24 +685,41 @@ export async function getCart(_token?: string | null): Promise<Cart> {
 export async function addToCart(
   _token: string,
   productId: number,
-  selectedVariations: Record<string, string>,
+  selectedVariations: Record<string, string> | SelectedCartVariation[],
   quantity?: number,
 ): Promise<{ message: string }> {
-  // Map { "Color": "Black" } → WC variation array format
-  const variation = Object.entries(selectedVariations).map(([attr, val]) => ({
-    attribute: `pa_${attr.toLowerCase().replace(/\s+/g, '_')}`,
-    value: val,
-  }));
+  const selected = normalizeSelectedVariations(selectedVariations);
+  const variationPayloads = buildVariationPayloads(selected);
+  let lastMessage = 'Could not add item to cart.';
 
-  const res = await fetch(`${WC_BASE}/cart/add-item`, {
-    method:  'POST',
-    headers: cartHeaders(),
-    body:    JSON.stringify({ id: productId, quantity: quantity ?? 1, variation }),
-  });
-  captureCartToken(res);
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.message ?? 'Could not add item to cart.');
-  return { message: 'Added to cart' };
+  await ensureCartToken();
+
+  // ── Step 1: resolve matching variation ID via /variations endpoint ──────────
+  const matchedVariationId = await resolveMatchingVariationId(productId, selected).catch(() => null);
+
+  if (matchedVariationId) {
+    const directVariation = await postCartAddItem({ id: matchedVariationId, quantity: quantity ?? 1 });
+    if (directVariation.ok) return { message: 'Added to cart' };
+    lastMessage = directVariation.message ?? lastMessage;
+
+    for (const variation of variationPayloads) {
+      const variationWithAttrs = await postCartAddItem({ id: matchedVariationId, quantity: quantity ?? 1, variation });
+      if (variationWithAttrs.ok) return { message: 'Added to cart' };
+      lastMessage = variationWithAttrs.message ?? lastMessage;
+    }
+  }
+
+  // ── Step 2: fallback — parent product ID + each attribute payload ────────────
+  for (const variation of variationPayloads) {
+    const result = await postCartAddItem({ id: productId, quantity: quantity ?? 1, variation });
+    if (result.ok) return { message: 'Added to cart' };
+
+    lastMessage = result.message ?? lastMessage;
+    const retryable = /missing attribute|invalid value|variation/i.test(lastMessage);
+    if (!retryable) break;
+  }
+
+  throw new Error(lastMessage);
 }
 
 export async function updateCartItem(
@@ -650,10 +908,13 @@ export async function getOrderDetail(_token: string, orderId: string | number): 
       items:          (d.items ?? []).map((i: any) => ({
         id:         Number(i.item_id    ?? 0),
         product_id: Number(i.product_id ?? 0),
-        title:      String(i.title      ?? ''),
+        title:      stripAndDecode(String(i.title ?? '')),
         price:      Number(i.price      ?? 0),
         quantity:   Number(i.quantity   ?? 1),
-        variations: i.variations ?? [],
+        variations: (i.variations ?? []).map((v: any) => ({
+          variation_name: stripAndDecode(String(v.variation_name ?? v.attribute ?? '')),
+          option_value: stripAndDecode(String(v.option_value ?? v.value ?? v ?? '')),
+        })),
         thumbnail:  i.thumbnail  ?? null,
       })),
     };

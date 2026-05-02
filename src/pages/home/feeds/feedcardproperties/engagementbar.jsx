@@ -169,7 +169,7 @@ const EngagementBar = ({
         <TouchableOpacity style={styles.actionItem} onPress={handleLike} activeOpacity={0.7}>
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
-            size={22}
+            size={18}
             color={likeColor}
           />
           <Text style={[styles.actionLabel, isLiked && { color: likeColor }]}>
@@ -180,7 +180,7 @@ const EngagementBar = ({
         {/* Comment */}
         {!commentsDisabled && (
           <TouchableOpacity style={styles.actionItem} onPress={onCommentPress} activeOpacity={0.7}>
-            <SvgIcon name="comment" width={20} height={20} color={Colors.neutral700} />
+            <SvgIcon name="comment" width={17} height={17} color={Colors.neutral700} />
             <Text style={styles.actionLabel}>
               {Number(commentsCount) > 0 ? Number(commentsCount).toLocaleString() : 'Comment'}
             </Text>
@@ -189,7 +189,7 @@ const EngagementBar = ({
 
         {/* Repost */}
         <TouchableOpacity style={styles.actionItem} onPress={onRepost} activeOpacity={0.7}>
-          <Ionicons name="repeat-outline" size={22} color={Colors.neutral700} />
+          <Ionicons name="repeat-outline" size={18} color={Colors.neutral700} />
           <Text style={styles.actionLabel}>Repost</Text>
         </TouchableOpacity>
 
@@ -201,8 +201,8 @@ const EngagementBar = ({
         >
           <SvgIcon
             name="favourite"
-            width={20}
-            height={20}
+            width={17}
+            height={17}
             color={saved ? Colors.primary : Colors.neutral700}
           />
           <Text style={[styles.actionLabel, saved && { color: Colors.primary }]}>Save</Text>
@@ -210,7 +210,7 @@ const EngagementBar = ({
 
         {/* Share */}
         <TouchableOpacity style={styles.actionItem} onPress={onOpenShare} activeOpacity={0.7}>
-          <SvgIcon name="share" width={20} height={20} color={Colors.neutral700} />
+          <SvgIcon name="share" width={17} height={17} color={Colors.neutral700} />
           <Text style={styles.actionLabel}>Share</Text>
         </TouchableOpacity>
 

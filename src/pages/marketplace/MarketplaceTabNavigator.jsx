@@ -2,9 +2,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MarketplaceScreen       from './index';
+import MarketplaceCategoriesScreen from './MarketplaceCategoriesScreen';
+import MarketplaceCategoryProductsScreen from './MarketplaceCategoryProductsScreen';
 import CartScreen              from './CartScreen';
 import MarketplaceOrdersScreen from './MarketplaceOrdersScreen';
 
@@ -13,14 +16,16 @@ import { Colors }    from '../../theme/colors';
 import AppDetails    from '../../helpers/appdetails';
 
 const Tab   = createBottomTabNavigator();
+const CategoryStack = createStackNavigator();
 const BRAND = Colors.primaryDark;
 const MUTED = Colors.secondaryText;
 
 // ─── Tab definitions ─────────────────────────────────────────────────────────
 const TAB_CONFIG = [
-  { name: 'MktShop',   label: 'Shop',   icon: 'storefront', iconOutline: 'storefront-outline' },
-  { name: 'MktCart',   label: 'Cart',   icon: 'bag',        iconOutline: 'bag-outline',        badge: true },
-  { name: 'MktOrders', label: 'Orders', icon: 'receipt',    iconOutline: 'receipt-outline'    },
+  { name: 'MktShop',       label: 'Shop',       icon: 'storefront', iconOutline: 'storefront-outline' },
+  { name: 'MktCategories', label: 'Categories', icon: 'grid',       iconOutline: 'grid-outline'       },
+  { name: 'MktCart',       label: 'Cart',       icon: 'bag',        iconOutline: 'bag-outline',        badge: true },
+  { name: 'MktOrders',     label: 'Orders',     icon: 'receipt',    iconOutline: 'receipt-outline'    },
 ];
 
 // ─── Custom Tab Bar ──────────────────────────────────────────────────────────
@@ -77,6 +82,13 @@ const MarketplaceTabBar = ({ state, navigation }) => {
   );
 };
 
+const MarketplaceCategoryStack = () => (
+  <CategoryStack.Navigator screenOptions={{ headerShown: false }}>
+    <CategoryStack.Screen name="MarketplaceCategoriesList" component={MarketplaceCategoriesScreen} />
+    <CategoryStack.Screen name="MarketplaceCategoryProducts" component={MarketplaceCategoryProductsScreen} />
+  </CategoryStack.Navigator>
+);
+
 // ─── Navigator ───────────────────────────────────────────────────────────────
 const MarketplaceTabNavigator = () => (
   <Tab.Navigator
@@ -84,9 +96,10 @@ const MarketplaceTabNavigator = () => (
     tabBar={(props) => <MarketplaceTabBar {...props} />}
     screenOptions={{ headerShown: false }}
   >
-    <Tab.Screen name="MktShop"   component={MarketplaceScreen} />
-    <Tab.Screen name="MktCart"   component={CartScreen} />
-    <Tab.Screen name="MktOrders" component={MarketplaceOrdersScreen} />
+    <Tab.Screen name="MktShop"       component={MarketplaceScreen} />
+    <Tab.Screen name="MktCategories" component={MarketplaceCategoryStack} />
+    <Tab.Screen name="MktCart"       component={CartScreen} />
+    <Tab.Screen name="MktOrders"     component={MarketplaceOrdersScreen} />
   </Tab.Navigator>
 );
 

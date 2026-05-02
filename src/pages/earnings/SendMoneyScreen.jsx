@@ -3,7 +3,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ActivityIndicator, FlatList, Alert, KeyboardAvoidingView,
-  Platform, ScrollView, Animated,
+  Platform, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +19,6 @@ import { transferMoney, getWalletBalance } from '../../api/walletApi';
 
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
-const BG     = Colors.background ?? '#F7F8FA';
 const CARD   = Colors.white;
 const BORDER = Colors.borderSoft ?? Colors.border;
 const TEXT_H = Colors.black;
@@ -80,7 +79,6 @@ export default function SendMoneyScreen() {
   const [searching,  setSearching]  = useState(false);
   const [recipient,  setRecipient]  = useState(null);
   const [amount,     setAmount]     = useState('');
-  const [note,       setNote]       = useState('');
   const [balance,    setBalance]    = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState('');
@@ -179,7 +177,10 @@ export default function SendMoneyScreen() {
     if (step === STEPS.SEARCH) {
       return (
         <View style={sm.stepContent}>
-          <Text style={sm.stepLabel}>Who are you sending to?</Text>
+          <View style={sm.screenIntro}>
+            <Text style={sm.stepLabel}>Send RMB to a Hafrik user</Text>
+            <Text style={sm.stepSub}>Search for the person first, then enter the amount you want to send.</Text>
+          </View>
           <View style={sm.searchBox}>
             <Ionicons name="search" size={18} color={TEXT_M} style={{ marginLeft: 12 }} />
             <TextInput
@@ -261,18 +262,6 @@ export default function SendMoneyScreen() {
               />
             </View>
 
-            <Text style={sm.fieldLabel}>Note (optional)</Text>
-            <TextInput
-              style={sm.noteInput}
-              value={note}
-              onChangeText={setNote}
-              placeholder="Add a message…"
-              placeholderTextColor={TEXT_M}
-              multiline
-              numberOfLines={3}
-              returnKeyType="done"
-            />
-
             {!!error && <Text style={sm.errorText}>{error}</Text>}
 
             <TouchableOpacity
@@ -307,7 +296,10 @@ export default function SendMoneyScreen() {
             <Text style={sm.confirmName}>{recipient?.name ?? recipient?.username}</Text>
             <Text style={sm.confirmHandle}>@{recipient?.username}</Text>
             <Text style={sm.confirmAmount}>{fmtMoney(parseFloat(amount))}</Text>
-            {!!note && <Text style={sm.confirmNote}>"{note}"</Text>}
+            <View style={sm.confirmInfoBox}>
+              <Ionicons name="shield-checkmark-outline" size={15} color={GREEN} />
+              <Text style={sm.confirmInfoText}>Please confirm the recipient and amount. Wallet transfers cannot be reversed after they are sent.</Text>
+            </View>
           </View>
 
           {!!error && <Text style={sm.errorText}>{error}</Text>}
@@ -383,19 +375,20 @@ export default function SendMoneyScreen() {
 }
 
 const sm = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: BRAND },
+  root:   { flex: 1, backgroundColor: '#062D32' },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
+    paddingHorizontal: 18, paddingTop: 8, paddingBottom: 14,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 14,
-    backgroundColor: WHITE + '1A', alignItems: 'center', justifyContent: 'center',
+    width: 40, height: 40, borderRadius: 16,
+    backgroundColor: WHITE + '18', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: WHITE + '18',
   },
-  topTitle: { fontSize: 17, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
+  topTitle: { fontSize: 18, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
 
   // Steps
-  stepsBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 60, marginTop: 8, marginBottom: 4 },
+  stepsBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 60, marginTop: 4, marginBottom: 4 },
   stepWrap:      { alignItems: 'center' },
   stepDot:       { width: 26, height: 26, borderRadius: 13, backgroundColor: WHITE + '30', alignItems: 'center', justifyContent: 'center' },
   stepDotActive: { backgroundColor: WHITE },
@@ -406,14 +399,16 @@ const sm = StyleSheet.create({
   stepsLabelText:{ fontSize: 10, color: WHITE + 'AA', fontFamily: FONT_R },
 
   // Body
-  body:        { flex: 1, backgroundColor: BG, borderTopLeftRadius: 26, borderTopRightRadius: 26 },
+  body:        { flex: 1, backgroundColor: '#EEF4F2', borderTopLeftRadius: 30, borderTopRightRadius: 30 },
   stepContent: { paddingHorizontal: 16, paddingTop: 20 },
-  stepLabel:   { fontSize: 18, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, marginBottom: 14 },
+  screenIntro: { backgroundColor: CARD, borderRadius: 22, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#DDE9E6' },
+  stepLabel:   { fontSize: 19, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, marginBottom: 6 },
+  stepSub:     { fontSize: 12.5, color: TEXT_M, fontFamily: FONT_R, lineHeight: 18 },
 
   // Search
   searchBox: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: CARD, borderRadius: 16, borderWidth: 1.5, borderColor: BORDER,
+    backgroundColor: CARD, borderRadius: 18, borderWidth: 1.5, borderColor: '#DDE9E6',
     marginBottom: 12,
   },
   searchInput: { flex: 1, paddingHorizontal: 10, paddingVertical: 13, fontSize: 14.5, color: TEXT_H, fontFamily: FONT_R },
@@ -421,7 +416,7 @@ const sm = StyleSheet.create({
   // User row
   userRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: CARD, borderRadius: 16, padding: 12,
+    backgroundColor: CARD, borderRadius: 18, padding: 12,
     marginBottom: 8,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
@@ -440,7 +435,7 @@ const sm = StyleSheet.create({
   // Recipient card
   recipientCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: CARD, borderRadius: 16, padding: 14,
+    backgroundColor: CARD, borderRadius: 20, padding: 14,
     marginBottom: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
@@ -467,18 +462,13 @@ const sm = StyleSheet.create({
   },
   amountBox: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 16,
+    borderWidth: 1.5, borderColor: '#DDE9E6', borderRadius: 20,
     backgroundColor: CARD, marginBottom: 14,
   },
   currencySymbol: { fontSize: 20, fontWeight: '900', color: TEXT_M, paddingLeft: 16, fontFamily: FONT_B },
   amountInput: {
     flex: 1, paddingHorizontal: 8, paddingVertical: 14,
     fontSize: 22, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B,
-  },
-  noteInput: {
-    borderWidth: 1.5, borderColor: BORDER, borderRadius: 16, backgroundColor: CARD,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: TEXT_H, fontFamily: FONT_R,
-    textAlignVertical: 'top', marginBottom: 14, minHeight: 80,
   },
   errorText:  { fontSize: 12.5, color: RED, marginBottom: 12, fontFamily: FONT_R },
 
@@ -501,7 +491,8 @@ const sm = StyleSheet.create({
   confirmName:   { fontSize: 18, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
   confirmHandle: { fontSize: 13, color: TEXT_M, fontFamily: FONT_R, marginTop: 2 },
   confirmAmount: { fontSize: 40, fontWeight: '900', color: BRAND, fontFamily: FONT_B, marginTop: 18, letterSpacing: -1.5 },
-  confirmNote:   { fontSize: 13, color: TEXT_M, fontFamily: FONT_R, marginTop: 10, fontStyle: 'italic', textAlign: 'center' },
+  confirmInfoBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: GREEN + '10', borderRadius: 14, padding: 12, marginTop: 18 },
+  confirmInfoText:{ flex: 1, fontSize: 12, color: TEXT_M, fontFamily: FONT_R, lineHeight: 17, textAlign: 'left' },
 
   // Confirm actions
   confirmActions: { flexDirection: 'row', gap: 12 },

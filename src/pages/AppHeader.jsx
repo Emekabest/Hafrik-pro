@@ -84,6 +84,14 @@ const AppHeader = ({ onOpenDrawer, title, hideSearch = false }) => {
           <TouchableOpacity
             style={styles.iconBtn}
             activeOpacity={0.85}
+            onPress={() => navigation.navigate('ProfileQr')}
+          >
+            <Ionicons name="qr-code-outline" size={20} color={Colors.white} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.iconBtn}
+            activeOpacity={0.85}
             onPress={() => navigation.navigate('Notifications')}
           >
             <Animated.View style={{ transform: [{ scale: bellPulse }] }}>

@@ -71,7 +71,8 @@ const CommentScreen = ({ route }) => {
   const { top }     = useSafeAreaInsets();
   const { user, token } = useAuth();
 
-  const { feedId, initialPost } = route.params;
+  const { feedId, initialPost, commentId, highlightCommentId } = route.params;
+  const targetCommentId = highlightCommentId ?? commentId ?? null;
 
   const [post,             setPost]             = useState(null);
   const [loading,          setLoading]          = useState(true);
@@ -83,8 +84,10 @@ const CommentScreen = ({ route }) => {
   const [hasMoreComments,  setHasMoreComments]  = useState(true);
 
   const addCommentRef     = useRef(null);
+  const listRef           = useRef(null);
   const isNavBackRef      = useRef(false);
   const headerAnim        = useRef(new Animated.Value(0)).current;
+  const didScrollToTargetRef = useRef(false);
 
   const normalizePostPayload = useCallback((payload) => {
     if (!payload) return null;
@@ -174,6 +177,16 @@ const CommentScreen = ({ route }) => {
     loadComments(commentsPage + 1);
   }, [commentsLoading, hasMoreComments, commentsPage]);
 
+  useEffect(() => {
+    if (!targetCommentId || didScrollToTargetRef.current || commentsLoading || comments.length === 0) return;
+    const idx = comments.findIndex((c) => String(c?.id ?? c?.comment_id) === String(targetCommentId));
+    if (idx < 0) return;
+    didScrollToTargetRef.current = true;
+    setTimeout(() => {
+      listRef.current?.scrollToIndex?.({ index: idx, viewPosition: 0.38, animated: true });
+    }, 450);
+  }, [targetCommentId, comments, commentsLoading]);
+
   const viewCount    = Number(post?.views_count   ?? post?.view_count   ?? post?.views ?? 0);
   const commentCount = Number(post?.comments_count ?? post?.comment_count ?? 0);
   const likeCount    = Number(post?.likes_count    ?? post?.like_count    ?? 0);
@@ -196,10 +209,15 @@ const CommentScreen = ({ route }) => {
   ), [post, isLeaving, loading, commentsLoading, commentCount]);
 
   const renderCommentItem = useCallback(({ item }) => (
-    <CommentItem comment={item} token={token} onReply={handleReply} />
-  ), [token, handleReply]);
+    <CommentItem
+      comment={item}
+      token={token}
+      onReply={handleReply}
+      highlighted={!!targetCommentId && String(item?.id ?? item?.comment_id) === String(targetCommentId)}
+    />
+  ), [token, handleReply, targetCommentId]);
 
-  const keyExtractor = useCallback((item, i) => String(item.id ?? i), []);
+  const keyExtractor = useCallback((item, i) => String(item.id ?? item.comment_id ?? i), []);
 
   return (
     // Root view with safe-area top padding — header background extends into notch area
@@ -233,6 +251,7 @@ const CommentScreen = ({ route }) => {
           </View>
         ) : (
           <FlatList
+            ref={listRef}
             data={comments}
             keyExtractor={keyExtractor}
             renderItem={renderCommentItem}
@@ -253,6 +272,11 @@ const CommentScreen = ({ route }) => {
             }
             onEndReached={handleLoadMoreComments}
             onEndReachedThreshold={0.3}
+            onScrollToIndexFailed={({ index }) => {
+              setTimeout(() => {
+                listRef.current?.scrollToIndex?.({ index, viewPosition: 0.38, animated: true });
+              }, 500);
+            }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={cs.listContent}
             keyboardShouldPersistTaps="handled"

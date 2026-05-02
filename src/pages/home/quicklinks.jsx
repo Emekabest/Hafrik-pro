@@ -29,15 +29,15 @@ const BORDER = Colors.borderSoft;
 
 const items = [
   {
-    label: "Arrival",
-    icon: (active) => <Ionicons name="airplane" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "ArrivalConcierge",
-    colors: ['#c9a84c', '#8a6820'],
+    label: "Shop",
+    icon: (active) => <Ionicons name="bag-handle" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "MarketplaceScreen",
+    colors: ['#f97316', '#c2410c'],
   },
   {
-    label: "City Guide",
-    icon: (active) => <Ionicons name="map" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "CityGuide",
+    label: "Translator",
+    icon: (active) => <Ionicons name="language" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "TranslatorScreen",
     colors: [Colors.teal, Colors.tealDark],
   },
   {

@@ -16,7 +16,7 @@ const MyOrders = () => {
   return (
     <View style={[styles.root, { paddingTop: top }]}>
       <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
-      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
+      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: top + 14 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.back}>
           <Ionicons name="arrow-back" size={21} color={WHITE} />
         </TouchableOpacity>

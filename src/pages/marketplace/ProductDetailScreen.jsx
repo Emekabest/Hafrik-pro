@@ -58,7 +58,13 @@ const a = (hex, op) => {
 const stripHtml = (raw = '') => {
   if (!raw) return '';
   return raw
-    .replace(/&#039;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))
+    .replace(/&rsquo;|&lsquo;|&apos;/g, "'")
+    .replace(/&rdquo;|&ldquo;/g, '"')
+    .replace(/&ndash;|&mdash;/g, '-')
+    .replace(/&hellip;/g, '...')
+    .replace(/&#039;/g, "'").replace(/&amp;?/g, '&').replace(/&#038;/g, '&').replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ')
     .replace(/&apos;/g, "'").replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
     .replace(/\n{3,}/g, '\n\n').trim();
@@ -179,10 +185,26 @@ export default function ProductDetailScreen({ navigation, route }) {
   }, []);
 
   const buildSelectedVariations = useCallback(() => {
-    const out = {};
+    const out = [];
     variations.forEach(v => {
       const opt = v.options.find(o => o.id === selected[v.id]);
-      if (opt) out[v.name] = opt.value;
+      if (opt) {
+        out.push({
+          attribute: v.add_to_cart_key || v.slug || v.name,
+          value: opt.add_to_cart_value || opt.slug || opt.value,
+          attribute_candidates: [
+            v.add_to_cart_key,
+            v.name,
+            v.slug,
+            v.slug ? `pa_${v.slug}` : '',
+          ],
+          value_candidates: [
+            opt.add_to_cart_value,
+            opt.value,
+            opt.slug,
+          ],
+        });
+      }
     });
     return out;
   }, [variations, selected]);
@@ -456,7 +478,7 @@ export default function ProductDetailScreen({ navigation, route }) {
               variations.map((v, vi) => {
                 const colorMode = isColorVar(v.name);
                 return (
-                  <View key={v.id} style={[s.varGroup, vi > 0 && { marginTop: 20 }]}>
+                  <View key={`variation-${v.id}-${vi}`} style={[s.varGroup, vi > 0 && { marginTop: 20 }]}>
                     <View style={s.varLabelRow}>
                       <Text style={s.varLabel}>{v.name}</Text>
                       {!!selected[v.id] && (
@@ -466,13 +488,13 @@ export default function ProductDetailScreen({ navigation, route }) {
                       )}
                     </View>
                     <View style={s.chipsWrap}>
-                      {v.options.map(opt => {
+                      {v.options.map((opt, oi) => {
                         const isChosen = selected[v.id] === opt.id;
                         const colorHex = colorMode ? getColorHex(opt.value) : null;
                         if (colorMode && colorHex) {
                           return (
                             <TouchableOpacity
-                              key={opt.id}
+                              key={`color-option-${v.id}-${opt.id}-${oi}`}
                               onPress={() => handleSelectOption(v.id, opt.id)}
                               style={[s.colorChip, isChosen && s.colorChipActive]}
                               activeOpacity={0.75}
@@ -489,7 +511,7 @@ export default function ProductDetailScreen({ navigation, route }) {
                         }
                         return (
                           <TouchableOpacity
-                            key={opt.id}
+                            key={`option-${v.id}-${opt.id}-${oi}`}
                             onPress={() => handleSelectOption(v.id, opt.id)}
                             style={[s.sizeChip, isChosen && s.sizeChipActive]}
                             activeOpacity={0.75}
@@ -522,11 +544,11 @@ export default function ProductDetailScreen({ navigation, route }) {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={s.relatedScroll}
             >
-              {related.map(item => {
+              {related.map((item, index) => {
                 const thumb  = item.thumbnail ?? item.photos?.[0] ?? null;
                 const rTitle = stripHtml(item.title ?? '');
                 return (
-                  <View key={String(item.post_id ?? item.id)} style={s.relCard}>
+                  <View key={`related-${item.post_id ?? item.id}-${index}`} style={s.relCard}>
                     <TouchableOpacity
                       onPress={() => navigation.push('ProductDetail', { product: item })}
                       activeOpacity={0.86}

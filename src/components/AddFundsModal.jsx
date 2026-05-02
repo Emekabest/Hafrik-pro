@@ -1,6 +1,6 @@
 // src/components/AddFundsModal.jsx — Shared wallet top-up modal
 // Used by EarningsScreen and CheckoutScreen
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   ScrollView, Modal, TextInput, KeyboardAvoidingView,
@@ -32,6 +32,48 @@ const FONT_M = AppDetails?.fontFamily?.inter?.medium  ?? 'System';
 const fmtMoney = (n) =>
   `¥${Number(n ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const CNY_TO_NGN = 215;
+
+const fmtNaira = (n) =>
+  `₦${Math.round(Number(n ?? 0)).toLocaleString('en-NG')}`;
+
+const isNairaBankMethod = (method) => {
+  const haystack = [
+    method?.id,
+    method?.name,
+    method?.type,
+    method?.currency,
+    method?.description,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return (
+    method?.currency === 'NGN' ||
+    haystack.includes('naira') ||
+    haystack.includes('bank transfer') ||
+    haystack.includes('bank_transfer') ||
+    haystack.includes('bank')
+  );
+};
+
+const getProcessingTime = (method) =>
+  method?.processing_time || method?.details?.processing_time || 'Within minutes after confirmation';
+
+const getMethodIcon = (method) => {
+  const text = [method?.id, method?.name, method?.type, method?.currency].filter(Boolean).join(' ').toLowerCase();
+  if (text.includes('bank') || text.includes('naira')) return 'business-outline';
+  if (text.includes('wechat') || text.includes('alipay') || text.includes('qr')) return 'qr-code-outline';
+  if (text.includes('paypal')) return 'logo-paypal';
+  if (text.includes('card')) return 'card-outline';
+  if (text.includes('crypto')) return 'logo-bitcoin';
+  return 'wallet-outline';
+};
+
+const splitInstructions = (note) =>
+  String(note || '')
+    .split(/\n|\. /)
+    .map(line => line.trim().replace(/\.$/, ''))
+    .filter(Boolean);
+
 const STEPS = { AMOUNT: 0, INSTRUCTIONS: 1, RECEIPT: 2, SUCCESS: 3 };
 const STEP_LABELS = ['Amount', 'Instructions', 'Proof'];
 
@@ -56,6 +98,7 @@ export default function AddFundsModal({ visible, onClose }) {
   const [methods,        setMethods]        = useState([]);
   const [loadingMethods, setLoadingMethods] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState(null);
+  const [userNote,       setUserNote]       = useState('');
 
   const reset = () => {
     setStep(STEPS.AMOUNT);
@@ -70,6 +113,7 @@ export default function AddFundsModal({ visible, onClose }) {
     setMethods([]);
     setSelectedMethod(null);
     setLoadingMethods(false);
+    setUserNote('');
   };
   const handleClose = () => { reset(); onClose(); };
 
@@ -78,6 +122,39 @@ export default function AddFundsModal({ visible, onClose }) {
     if (step === STEPS.INSTRUCTIONS)  { setStep(STEPS.AMOUNT); setError(''); return; }
     if (step === STEPS.RECEIPT)       { setProof(null); setProofUrl(''); setStep(STEPS.INSTRUCTIONS); setError(''); return; }
   };
+
+  // ── Fetch payment gateways ──────────────────────────────────────────────────
+  const fetchMethods = async () => {
+    setLoadingMethods(true);
+    try {
+      const formData = new FormData();
+      formData.append('get_gateways', '1');
+      const res  = await fetch(PAYMENT_API, {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body:    formData,
+      });
+      const json = await res.json().catch(() => ({}));
+      const rawList = Array.isArray(json?.data?.methods)
+        ? json.data.methods
+        : Array.isArray(json?.methods)
+          ? json.methods
+          : [];
+      const list = rawList.filter(method => method?.enabled !== false && method?.is_enabled !== false);
+      setMethods(list);
+      if (list.length === 1) setSelectedMethod(list[0]);
+      if (list.length > 1 && selectedMethod && !list.some(m => m.id === selectedMethod.id)) {
+        setSelectedMethod(null);
+      }
+    } catch {
+      setMethods([]);
+    }
+    setLoadingMethods(false);
+  };
+
+  useEffect(() => {
+    if (visible) fetchMethods();
+  }, [visible]);
 
   // ── STEP 0 → 1: Create payment request ─────────────────────────────────────
   const handleCreate = async () => {
@@ -98,8 +175,8 @@ export default function AddFundsModal({ visible, onClose }) {
       if (json?.status === 'success' || json?.data?.reference) {
         setReference(json.data?.reference ?? '');
         if (json.data?.amount) setAmount(String(json.data.amount));
+        if (!methods.length) fetchMethods();
         setStep(STEPS.INSTRUCTIONS);
-        fetchMethods();
       } else {
         setError(json?.message ?? json?.error ?? 'Could not create payment request. Please try again.');
       }
@@ -109,34 +186,15 @@ export default function AddFundsModal({ visible, onClose }) {
     setCreating(false);
   };
 
-  // ── Fetch payment gateways ──────────────────────────────────────────────────
-  const fetchMethods = async () => {
-    setLoadingMethods(true);
+  // ── Copy payment values ─────────────────────────────────────────────────────
+  const copyText = async (label, value) => {
+    const text = String(value || '');
+    if (!text) return;
     try {
-      const formData = new FormData();
-      formData.append('get_gateways', '1');
-      const res  = await fetch(PAYMENT_API, {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body:    formData,
-      });
-      const json = await res.json().catch(() => ({}));
-      const list = Array.isArray(json?.data?.methods) ? json.data.methods : [];
-      setMethods(list);
-      if (list.length === 1) setSelectedMethod(list[0]);
+      await Clipboard.setStringAsync(text);
+      Alert.alert('Copied!', `${label} copied to clipboard.`);
     } catch {
-      setMethods([]);
-    }
-    setLoadingMethods(false);
-  };
-
-  // ── Copy reference ──────────────────────────────────────────────────────────
-  const copyReference = async () => {
-    try {
-      await Clipboard.setStringAsync(reference);
-      Alert.alert('Copied!', `Reference code "${reference}" copied to clipboard.`);
-    } catch {
-      Alert.alert('Reference Code', reference);
+      Alert.alert(label, text);
     }
   };
 
@@ -192,10 +250,25 @@ export default function AddFundsModal({ visible, onClose }) {
     setUploading(false);
     setSubmitting(true);
     try {
+      const activeMethod = methods.length === 1 ? methods[0] : selectedMethod;
+      const nairaAmount = isNairaBankMethod(activeMethod) ? Math.round(Number(amount) * CNY_TO_NGN) : undefined;
+      const body = {
+        amount: Number(amount),
+        wallet_amount_rmb: Number(amount),
+        wallet_currency: 'CNY',
+        payment_method_id: activeMethod?.id,
+        payment_method: activeMethod?.id,
+        proof: uploadedUrl,
+        reference,
+        user_note: userNote.trim(),
+        note: userNote.trim(),
+      };
+      if (nairaAmount) body.naira_amount = nairaAmount;
+
       const res  = await fetch(SUBMIT_API, {
         method:  'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ amount: Number(amount), proof: uploadedUrl, reference }),
+        body:    JSON.stringify(body),
       });
       const json = await res.json().catch(() => ({}));
       if (json?.status === 'success' || res.ok) {
@@ -210,6 +283,21 @@ export default function AddFundsModal({ visible, onClose }) {
   };
 
   const amtNum = Number(amount) || 0;
+  const activeMethod = methods.length === 1 ? methods[0] : selectedMethod;
+  const activeIsNairaBank = isNairaBankMethod(activeMethod);
+  const nairaAmount = Math.round(amtNum * CNY_TO_NGN);
+  const bankDetails = activeMethod?.details || {};
+  const rawBankName = bankDetails.bank_name || activeMethod?.bank_name || bankDetails.bankName || bankDetails.bank;
+  const rawAccountName = bankDetails.account_name || activeMethod?.account_name || bankDetails.accountName;
+  const bankName = rawAccountName;
+  const accountNumber = bankDetails.account_number || activeMethod?.account_number || bankDetails.accountNumber;
+  const accountName = rawBankName;
+  const methodNote = bankDetails.note || activeMethod?.note || bankDetails.instructions || activeMethod?.instructions;
+  const paymentOptionsPreview = [
+    'Naira Bank Transfer',
+    'WeChat/Alipay',
+    methods.length > 0 ? 'Other available methods from the API' : 'Other available methods',
+  ];
   const isBusy = creating || uploading || submitting;
 
   return (
@@ -223,9 +311,13 @@ export default function AddFundsModal({ visible, onClose }) {
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={af.header}
           >
-            <TouchableOpacity style={af.headerBtn} onPress={handleBack} activeOpacity={0.8} disabled={isBusy}>
-              <Ionicons name={step === STEPS.AMOUNT ? 'close' : 'arrow-back'} size={20} color={WHITE} />
-            </TouchableOpacity>
+            {step === STEPS.AMOUNT ? (
+              <View style={af.headerBtnSpacer} />
+            ) : (
+              <TouchableOpacity style={af.headerBtn} onPress={handleBack} activeOpacity={0.8} disabled={isBusy}>
+                <Ionicons name="arrow-back" size={20} color={WHITE} />
+              </TouchableOpacity>
+            )}
             <View style={{ alignItems: 'center' }}>
               <Text style={af.headerTitle}>
                 {step === STEPS.SUCCESS ? 'Payment Submitted' : 'Add Funds'}
@@ -258,7 +350,7 @@ export default function AddFundsModal({ visible, onClose }) {
             {step === STEPS.AMOUNT && (
               <View style={af.stepWrap}>
                 <Text style={af.stepTitle}>How much to add?</Text>
-                <Text style={af.stepSub}>Enter the amount you want to top up your wallet with.</Text>
+                <Text style={af.stepSub}>Your Hafrik wallet balance is held in RMB/CNY.</Text>
                 <View style={af.amountBox}>
                   <Text style={af.amountPrefix}>¥</Text>
                   <TextInput
@@ -271,6 +363,16 @@ export default function AddFundsModal({ visible, onClose }) {
                     autoFocus
                     editable={!isBusy}
                   />
+                </View>
+                <Text style={af.helperText}>
+                  Enter the amount you want to add to your Hafrik wallet. You can pay with Naira bank transfer, WeChat, Alipay, or other available payment methods on the next step.
+                </Text>
+                <View style={af.amountEquivalentCard}>
+                  <View>
+                    <Text style={af.equivalentLabel}>Naira Bank Transfer equivalent</Text>
+                    <Text style={af.equivalentSub}>If you choose bank transfer on the next step</Text>
+                  </View>
+                  <Text style={af.equivalentValue}>{amtNum > 0 ? fmtNaira(nairaAmount) : '₦0'}</Text>
                 </View>
                 <Text style={af.amountHint}>Minimum top-up: ¥10.00</Text>
                 <Text style={af.quickLabel}>Quick amounts</Text>
@@ -286,6 +388,18 @@ export default function AddFundsModal({ visible, onClose }) {
                     </TouchableOpacity>
                   ))}
                 </View>
+                <View style={af.optionsPreviewCard}>
+                  <View style={af.optionsPreviewHeader}>
+                    <Ionicons name="shield-checkmark-outline" size={18} color={ACCENT} />
+                    <Text style={af.optionsPreviewTitle}>Available payment options</Text>
+                  </View>
+                  {paymentOptionsPreview.map(option => (
+                    <View key={option} style={af.optionPreviewRow}>
+                      <Ionicons name="checkmark-circle" size={15} color={GREEN} />
+                      <Text style={af.optionPreviewText}>{option}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             )}
 
@@ -294,9 +408,35 @@ export default function AddFundsModal({ visible, onClose }) {
               <View style={af.stepWrap}>
                 <View style={af.amountPill}>
                   <Ionicons name="wallet-outline" size={18} color={ACCENT} />
-                  <Text style={af.amountPillLabel}>You are paying</Text>
+                  <Text style={af.amountPillLabel}>You are funding</Text>
                   <Text style={af.amountPillVal}>{fmtMoney(amtNum)}</Text>
                 </View>
+                {activeIsNairaBank && (
+                  <View style={af.transferAmountCard}>
+                    <Text style={af.transferLabel}>Amount you are sending</Text>
+                    <View style={af.transferValueRow}>
+                      <Text style={af.transferValue}>{fmtNaira(nairaAmount)}</Text>
+                      <TouchableOpacity
+                        style={af.copyPill}
+                        onPress={() => copyText('Amount to transfer', fmtNaira(nairaAmount))}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="copy-outline" size={14} color={ACCENT} />
+                        <Text style={af.copyPillTxt}>Copy</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={af.bankTransferBreakdown}>
+                      <View style={af.bankTransferLine}>
+                        <Text style={af.bankTransferKey}>You are funding</Text>
+                        <Text style={af.bankTransferVal}>{fmtMoney(amtNum)}</Text>
+                      </View>
+                      <View style={af.bankTransferLine}>
+                        <Text style={af.bankTransferKey}>Amount to pay</Text>
+                        <Text style={af.bankTransferVal}>{fmtNaira(nairaAmount)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
                 {loadingMethods && (
                   <View style={af.methodsLoadingRow}>
                     <ActivityIndicator size="large" color={ACCENT} />
@@ -311,29 +451,115 @@ export default function AddFundsModal({ visible, onClose }) {
                     </Text>
                   </View>
                 )}
-                {!loadingMethods && methods.map(method => {
-                  const isMulti    = methods.length > 1;
-                  const isSelected = isMulti && selectedMethod?.id === method.id;
-                  const qrUrl      = method.qr_code_url ?? method.details?.qr_code ?? null;
-                  const hasAccount = !!method.details?.account_number;
-                  const hasName    = !!method.details?.account_name;
-                  return (
-                    <View key={method.id} style={[af.methodCard, isSelected && af.methodCardActive]}>
-                      {isMulti && (
-                        <TouchableOpacity style={af.methodTitleRow} onPress={() => setSelectedMethod(method)} activeOpacity={0.8}>
-                          <View style={[af.methodRadio, isSelected && af.methodRadioActive]}>
-                            {isSelected && <View style={af.methodRadioDot} />}
+                {!loadingMethods && methods.length > 0 && (
+                  <View style={af.methodsList}>
+                    <Text style={af.sectionLabel}>Choose payment method</Text>
+                    {methods.map(method => {
+                      const isSelected = activeMethod?.id === method.id;
+                      return (
+                        <TouchableOpacity
+                          key={method.id || method.name}
+                          style={[af.methodOption, isSelected && af.methodOptionActive]}
+                          onPress={() => setSelectedMethod(method)}
+                          activeOpacity={0.86}
+                        >
+                          <View style={[af.methodIconCircle, isSelected && { backgroundColor: ACCENT }]}>
+                            <Ionicons name={getMethodIcon(method)} size={20} color={isSelected ? WHITE : ACCENT} />
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={af.methodTitle}>{method.name}</Text>
                             {!!method.description && <Text style={af.methodSub}>{method.description}</Text>}
+                            {isNairaBankMethod(method) && amtNum > 0 && (
+                              <Text style={af.methodEquivalent}>Amount to transfer: {fmtNaira(nairaAmount)}</Text>
+                            )}
                           </View>
+                          <Ionicons
+                            name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                            size={22}
+                            color={isSelected ? ACCENT : '#C8CED3'}
+                          />
                         </TouchableOpacity>
-                      )}
+                      );
+                    })}
+                  </View>
+                )}
+                {!!activeMethod && (
+                  <View style={af.summaryCard}>
+                    <View style={af.summaryRow}>
+                      <Text style={af.summaryKey}>Wallet top-up</Text>
+                      <Text style={af.summaryVal}>{fmtMoney(amtNum)}</Text>
+                    </View>
+                    <View style={af.summaryDivider} />
+                    <View style={af.summaryRow}>
+                      <Text style={af.summaryKey}>Payment method</Text>
+                      <Text style={af.summaryVal}>{activeMethod.name}</Text>
+                    </View>
+                    {activeIsNairaBank && (
+                      <>
+                        <View style={af.summaryDivider} />
+                        <View style={af.summaryRow}>
+                          <Text style={af.summaryKey}>Amount to pay</Text>
+                          <View style={af.summaryValueWithCopy}>
+                            <Text style={af.summaryVal}>{fmtNaira(nairaAmount)}</Text>
+                            <TouchableOpacity onPress={() => copyText('Amount to transfer', fmtNaira(nairaAmount))} activeOpacity={0.8}>
+                              <Ionicons name="copy-outline" size={16} color={ACCENT} />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </>
+                    )}
+                    <View style={af.summaryDivider} />
+                    <View style={af.summaryRow}>
+                      <Text style={af.summaryKey}>Processing time</Text>
+                      <Text style={af.summaryVal}>{getProcessingTime(activeMethod)}</Text>
+                    </View>
+                  </View>
+                )}
+                {!!activeMethod && activeIsNairaBank && (
+                  <View style={af.bankCard}>
+                    <Text style={af.sectionLabel}>Bank Details</Text>
+                    {!!bankName && (
+                      <View style={af.bankRow}>
+                        <Text style={af.bankKey}>Bank name</Text>
+                        <Text style={af.bankVal}>{bankName}</Text>
+                      </View>
+                    )}
+                    {!!accountNumber && (
+                      <View style={af.bankRow}>
+                        <Text style={af.bankKey}>Account number</Text>
+                        <View style={af.bankCopyValue}>
+                          <Text style={af.bankVal}>{accountNumber}</Text>
+                          <TouchableOpacity onPress={() => copyText('Account number', accountNumber)} activeOpacity={0.8}>
+                            <Ionicons name="copy-outline" size={16} color={ACCENT} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                    {!!accountName && (
+                      <View style={af.bankRow}>
+                        <Text style={af.bankKey}>Account name</Text>
+                        <View style={af.bankCopyValue}>
+                          <Text style={af.bankVal}>{accountName}</Text>
+                          <TouchableOpacity onPress={() => copyText('Account name', accountName)} activeOpacity={0.8}>
+                            <Ionicons name="copy-outline" size={16} color={ACCENT} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+                {!!activeMethod && !activeIsNairaBank && (() => {
+                  const isMulti    = methods.length > 1;
+                  const method     = activeMethod;
+                  const qrUrl      = method.qr_code_url ?? method.details?.qr_code ?? null;
+                  const hasAccount = !!method.details?.account_number;
+                  const hasName    = !!method.details?.account_name;
+                  return (
+                    <View style={af.methodCard}>
                       {!isMulti && (
                         <View style={af.methodTitleRow}>
                           <View style={af.methodIconCircle}>
-                            <Ionicons name="qr-code-outline" size={20} color={ACCENT} />
+                            <Ionicons name={getMethodIcon(method)} size={20} color={ACCENT} />
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={af.methodTitle}>{method.name}</Text>
@@ -372,17 +598,38 @@ export default function AddFundsModal({ visible, onClose }) {
                       {!!method.details?.note && (
                         <View style={af.noteBox}>
                           <Text style={af.noteTitle}>Instructions</Text>
-                          {method.details.note.split('\n').filter(l => l.trim()).map((line, i) => (
+                          {splitInstructions(method.details.note).map((line, i) => (
                             <View key={i} style={af.noteLine}>
                               <Text style={af.noteBullet}>•</Text>
-                              <Text style={af.noteText}>{line.trim()}</Text>
+                              <Text style={af.noteText}>{line}</Text>
                             </View>
                           ))}
                         </View>
                       )}
                     </View>
                   );
-                })}
+                })()}
+                {!!activeMethod && activeIsNairaBank && (
+                  <View style={af.noteBox}>
+                    <Text style={af.noteTitle}>Instructions</Text>
+                    {splitInstructions(methodNote).map((line, i) => (
+                      <View key={`api-${i}`} style={af.noteLine}>
+                        <Text style={af.noteBullet}>•</Text>
+                        <Text style={af.noteText}>{line}</Text>
+                      </View>
+                    ))}
+                    <View style={af.noteLine}>
+                      <Text style={af.noteBullet}>•</Text>
+                      <Text style={af.noteText}>
+                        Transfer the exact Naira amount shown above to the bank account provided. Use your Hafrik registered name as the transfer reference/remark. After payment, upload your receipt or screenshot. Your wallet/order will be funded within minutes after confirmation.
+                      </Text>
+                    </View>
+                    <View style={af.warningBox}>
+                      <Text style={af.warningText}>Payments without matching reference name may be delayed.</Text>
+                      <Text style={af.warningText}>If no receipt is uploaded within 24 hours, the order may be cancelled.</Text>
+                    </View>
+                  </View>
+                )}
               </View>
             )}
 
@@ -393,9 +640,15 @@ export default function AddFundsModal({ visible, onClose }) {
                 <Text style={af.stepSub}>Take a screenshot of your payment and upload it so we can verify.</Text>
                 <View style={af.amountPill}>
                   <Ionicons name="wallet-outline" size={18} color={ACCENT} />
-                  <Text style={af.amountPillLabel}>Amount paid</Text>
+                  <Text style={af.amountPillLabel}>{activeMethod?.name || 'Payment amount'}</Text>
                   <Text style={af.amountPillVal}>{fmtMoney(amtNum)}</Text>
                 </View>
+                {activeIsNairaBank && (
+                  <View style={af.transferAmountCard}>
+                    <Text style={af.transferLabel}>Amount transferred</Text>
+                    <Text style={af.transferValue}>{fmtNaira(nairaAmount)}</Text>
+                  </View>
+                )}
                 <TouchableOpacity style={af.receiptTapArea} onPress={handlePickProof} activeOpacity={0.85} disabled={isBusy}>
                   {proof ? (
                     <Image source={{ uri: proof.uri }} style={af.receiptImg} resizeMode="cover" />
@@ -415,6 +668,18 @@ export default function AddFundsModal({ visible, onClose }) {
                     <Text style={af.changeImgTxt}>Change Image</Text>
                   </TouchableOpacity>
                 )}
+                <View style={af.noteInputCard}>
+                  <Text style={af.noteInputLabel}>Transfer reference or note (optional)</Text>
+                  <TextInput
+                    style={af.noteInput}
+                    value={userNote}
+                    onChangeText={setUserNote}
+                    placeholder="Example: your registered Hafrik name or bank remark"
+                    placeholderTextColor={TEXT_M + '88'}
+                    editable={!isBusy}
+                    multiline
+                  />
+                </View>
                 {uploading && (
                   <View style={af.uploadingRow}>
                     <ActivityIndicator size="small" color={ACCENT} />
@@ -521,6 +786,7 @@ const af = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 20, paddingBottom: 16,
   },
   headerBtn:       { width: 36, height: 36, borderRadius: 18, backgroundColor: WHITE + '22', alignItems: 'center', justifyContent: 'center' },
+  headerBtnSpacer: { width: 36, height: 36 },
   headerTitle:     { fontSize: 17, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
   headerStepLabel: { fontSize: 11, color: WHITE + 'AA', fontFamily: FONT_R, marginTop: 2 },
 
@@ -541,12 +807,26 @@ const af = StyleSheet.create({
   },
   amountPrefix: { fontSize: 30, fontWeight: '900', color: BRAND, fontFamily: FONT_B, marginRight: 8 },
   amountInput:  { flex: 1, fontSize: 42, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B, padding: 0 },
+  helperText:    { fontSize: 13, color: TEXT_M, fontFamily: FONT_R, lineHeight: 20, marginTop: -4 },
+  amountEquivalentCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14,
+    backgroundColor: BRAND, borderRadius: 18, padding: 16,
+  },
+  equivalentLabel: { fontSize: 13, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
+  equivalentSub:   { fontSize: 11.5, color: WHITE + 'B8', fontFamily: FONT_R, marginTop: 3 },
+  equivalentValue: { fontSize: 22, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
   amountHint:   { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, marginTop: -8 },
   quickLabel:   { fontSize: 12, fontWeight: '700', color: TEXT_M, fontFamily: FONT_M, textTransform: 'uppercase', letterSpacing: 0.8 },
   quickAmounts: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   qAmt:         { paddingHorizontal: 22, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, borderColor: '#E0E0E0', backgroundColor: WHITE },
   qAmtActive:   { borderColor: ACCENT, backgroundColor: ACCENT },
   qAmtTxt:      { fontSize: 15, fontWeight: '700', color: TEXT_M, fontFamily: FONT_M },
+
+  optionsPreviewCard:   { backgroundColor: WHITE, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: ACCENT + '20', gap: 10 },
+  optionsPreviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  optionsPreviewTitle:  { fontSize: 14, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
+  optionPreviewRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  optionPreviewText:    { fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
 
   amountPill: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -557,11 +837,23 @@ const af = StyleSheet.create({
   amountPillLabel: { flex: 1, fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
   amountPillVal:   { fontSize: 22, fontWeight: '900', color: BRAND, fontFamily: FONT_B },
 
+  transferAmountCard: { backgroundColor: BRAND, borderRadius: 20, padding: 18, gap: 8 },
+  transferLabel:      { fontSize: 12, color: WHITE + 'BB', fontFamily: FONT_M, textTransform: 'uppercase', letterSpacing: 0.7 },
+  transferValueRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  transferValue:      { fontSize: 30, fontWeight: '900', color: WHITE, fontFamily: FONT_B },
+  copyPill:           { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: WHITE, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  copyPillTxt:        { fontSize: 12, fontWeight: '800', color: ACCENT, fontFamily: FONT_B },
+  bankTransferBreakdown: { backgroundColor: WHITE + '12', borderRadius: 14, padding: 12, gap: 10, marginTop: 4 },
+  bankTransferLine:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 },
+  bankTransferKey:       { fontSize: 12, color: WHITE + 'B8', fontFamily: FONT_R },
+  bankTransferVal:       { flex: 1, fontSize: 13.5, fontWeight: '900', color: WHITE, fontFamily: FONT_B, textAlign: 'right' },
+
   summaryCard:    { backgroundColor: WHITE, borderRadius: 18, overflow: 'hidden' },
   summaryRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16 },
   summaryDivider: { height: 1, backgroundColor: '#EBEBEB' },
   summaryKey:     { fontSize: 14, color: TEXT_M, fontFamily: FONT_R },
-  summaryVal:     { fontSize: 16, fontWeight: '800', color: TEXT_H, fontFamily: FONT_B },
+  summaryVal:     { fontSize: 16, fontWeight: '800', color: TEXT_H, fontFamily: FONT_B, textAlign: 'right', maxWidth: 190 },
+  summaryValueWithCopy: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 220 },
 
   infoBox: {
     flexDirection: 'row', gap: 10, alignItems: 'flex-start',
@@ -573,6 +865,15 @@ const af = StyleSheet.create({
   methodsLoadingRow: { alignItems: 'center', gap: 12, padding: 40, justifyContent: 'center' },
   methodsLoadingTxt: { fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
 
+  sectionLabel: { fontSize: 12, fontWeight: '900', color: TEXT_M, fontFamily: FONT_B, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
+  methodsList:  { gap: 10 },
+  methodOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: WHITE, borderRadius: 18, padding: 14,
+    borderWidth: 1.5, borderColor: '#E8E8E8',
+  },
+  methodOptionActive: { borderColor: ACCENT, backgroundColor: ACCENT + '08' },
+
   methodCard: {
     backgroundColor: WHITE, borderRadius: 20, padding: 20,
     borderWidth: 1.5, borderColor: '#E8E8E8',
@@ -583,6 +884,7 @@ const af = StyleSheet.create({
   methodIconCircle:  { width: 44, height: 44, borderRadius: 22, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center' },
   methodTitle:       { fontSize: 17, fontWeight: '900', color: TEXT_H, fontFamily: FONT_B },
   methodSub:         { fontSize: 12, color: TEXT_M, fontFamily: FONT_R, marginTop: 2 },
+  methodEquivalent:  { fontSize: 12.5, fontWeight: '800', color: ACCENT, fontFamily: FONT_B, marginTop: 6 },
   methodRadio:       { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#DDD', alignItems: 'center', justifyContent: 'center' },
   methodRadioActive: { borderColor: ACCENT },
   methodRadioDot:    { width: 12, height: 12, borderRadius: 6, backgroundColor: ACCENT },
@@ -605,6 +907,15 @@ const af = StyleSheet.create({
   detailKey:      { fontSize: 12, color: TEXT_M, fontFamily: FONT_R },
   detailVal:      { fontSize: 13, fontWeight: '700', color: TEXT_H, fontFamily: FONT_B, maxWidth: '60%', textAlign: 'right' },
 
+  bankCard:      { backgroundColor: WHITE, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#EBEBEB' },
+  bankRow:       { paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#F0F2F4', gap: 6 },
+  bankKey:       { fontSize: 12, color: TEXT_M, fontFamily: FONT_R },
+  bankVal:       { flex: 1, fontSize: 14, fontWeight: '800', color: TEXT_H, fontFamily: FONT_B },
+  bankCopyValue: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+  warningBox:   { backgroundColor: ORANGE + '14', borderRadius: 14, borderWidth: 1, borderColor: ORANGE + '28', padding: 12, marginTop: 10, gap: 6 },
+  warningText:  { fontSize: 12.5, color: '#8A5A00', fontFamily: FONT_R, lineHeight: 18 },
+
   receiptTapArea: {
     borderRadius: 20, borderWidth: 2, borderColor: ACCENT + '40',
     borderStyle: 'dashed', overflow: 'hidden',
@@ -617,6 +928,9 @@ const af = StyleSheet.create({
   receiptSub:         { fontSize: 12, color: TEXT_M, fontFamily: FONT_R },
   changeImgBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', paddingVertical: 10 },
   changeImgTxt:       { fontSize: 13, fontWeight: '700', color: ACCENT, fontFamily: FONT_M },
+  noteInputCard:      { backgroundColor: WHITE, borderRadius: 18, padding: 14, borderWidth: 1, borderColor: '#EBEBEB', gap: 8 },
+  noteInputLabel:     { fontSize: 13, fontWeight: '800', color: TEXT_H, fontFamily: FONT_B },
+  noteInput:          { minHeight: 74, textAlignVertical: 'top', fontSize: 13.5, color: TEXT_H, fontFamily: FONT_R, lineHeight: 20, padding: 0 },
   uploadingRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center' },
   uploadingTxt:       { fontSize: 13, color: TEXT_M, fontFamily: FONT_R },
 
