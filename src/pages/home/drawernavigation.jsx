@@ -274,7 +274,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             </TouchableOpacity>
 
             {/* Wallet strip */}
-            <TouchableOpacity activeOpacity={0.85} onPress={() => go("Earnings")} style={s.walletStrip}>
+            {/* <TouchableOpacity activeOpacity={0.85} onPress={() => go("Earnings")} style={s.walletStrip}>
               <View style={s.walletItem}>
                 <View style={s.walletIconWrap}>
                   <Ionicons name="wallet" size={14} color="#fbbf24" />
@@ -297,7 +297,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
               <LinearGradient colors={[ACCENT, "#0d5560"]} style={s.walletArrow}>
                 <Ionicons name="arrow-forward" size={13} color={WHITE} />
               </LinearGradient>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </LinearGradient>
 
           {/* ══ BODY ══ */}
