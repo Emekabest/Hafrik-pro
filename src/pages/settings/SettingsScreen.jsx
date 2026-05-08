@@ -119,18 +119,6 @@ export default function SettingsScreen() {
             onPress={() => navigation.navigate('Profile')}
           />
           <Row
-            icon="qr-code-outline"
-            iconColor={ACCENT}
-            label="My Profile QR Code"
-            onPress={() => navigation.navigate('ProfileQr')}
-          />
-          <Row
-            icon="scan-outline"
-            iconColor="#10b981"
-            label="Scan QR Code"
-            onPress={() => navigation.navigate('ProfileQrScanner')}
-          />
-          <Row
             icon="lock-closed-outline"
             label="Change Password"
             onPress={() => openWeb('Change Password', `https://hafrik.com/settings/security/password?token=${token}`)}
@@ -162,21 +150,16 @@ export default function SettingsScreen() {
             onPress={() => openWeb('Notifications', `https://hafrik.com/settings/privacy?token=${token}`)}
           />
           <Row
+            icon="ban-outline"
+            iconColor="#ef4444"
+            label="Blocked Users"
+            onPress={() => navigation.navigate('BlockedUsers')}
+          />
+          <Row
             icon="trash-outline"
             iconColor="#ef4444"
             label="Delete Account"
             onPress={() => openWeb('Delete Account', `https://hafrik.com/settings/delete?token=${token}`)}
-            last
-          />
-        </Section>
-
-        {/* Grow */}
-        <Section title="Grow">
-          <Row
-            icon="megaphone-outline"
-            iconColor="#f59e0b"
-            label="Ads Manager"
-            onPress={() => Alert.alert('Coming Soon', 'Ads Manager is coming soon!')}
             last
           />
         </Section>

@@ -1,112 +1,147 @@
 // src/pages/blogs/ArticleDetailsScreen.jsx
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  SafeAreaView,
-  StatusBar,
   ActivityIndicator,
-  Dimensions,
-  Share,
   Animated,
-  Pressable,
-  TextInput,
+  Dimensions,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  RefreshControl,
+  Share,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { WebView } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 
 import { fetchArticleDetail, normalizeTags } from './articlesApi';
-import { GetCommentsController, AddCommentController, AddReplyController } from '../../controllers/commentscontroller';
-import ToggleFeedController from '../../controllers/tooglefeedcontroller';
-
 import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
-import { useTheme } from '../../theme/ThemeContext';
-import ShareModal from '../home/feeds/share';
+import { GetCommentsController, AddCommentController, AddReplyController } from '../../controllers/commentscontroller';
+import ToggleFeedController from '../../controllers/tooglefeedcontroller';
 import ToggleSaveController from '../../controllers/tooglesavecontroller';
+import ShareModal from '../home/feeds/share';
 
 const { width, height } = Dimensions.get('window');
 
-const BRAND  = Colors.primaryDark;
+const BRAND = Colors.primaryDark;
 const ACCENT = Colors.primary;
-const MUTED  = Colors.secondaryText;
-const DARK   = Colors.black;
-const CREAM  = Colors.background;
-const BORDER = BRAND + '17';
-const WHITE  = Colors.white;
-
+const BG = '#F4F8F8';
+const CARD = Colors.white;
+const WHITE = Colors.white;
+const TEXT = Colors.deepSlate ?? Colors.black;
+const MUTED = Colors.secondaryText;
+const BORDER = Colors.borderSoft ?? Colors.borderLight ?? '#E5EEEE';
+const GOLD = '#F2A900';
+const DANGER = Colors.destructive ?? '#E5484D';
 const BOOKMARKS_KEY = 'hafrik_article_bookmarks_v1';
 
-// Trending logic (adjust to taste)
-const TRENDING_VIEWS_THRESHOLD = 7000;
-
-// HTML template wrapping article.content_html
-const buildHtml = (body) => `<!DOCTYPE html>
-<html><head>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-<style>
-*{box-sizing:border-box}
-html,body{background:transparent;margin:0;padding:0}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  font-size:15px; line-height:1.8; color:${DARK};
-  padding:0 6px;
-}
-img{max-width:100%!important;height:auto;border-radius:12px;margin:14px 0;display:block}
-p{margin:0 0 14px}
-h1,h2,h3,h4{color:${DARK};font-weight:900;margin:18px 0 10px;line-height:1.25}
-h2{font-size:18px} h3{font-size:16px}
-a{color:${ACCENT};text-decoration:none}
-blockquote{
-  border-left:3px solid ${BRAND};
-  padding:10px 12px;
-  color:${MUTED};
-  margin:14px 0;
-  background:${Colors.surfaceTint};
-  border-radius:0 12px 12px 0;
-}
-pre,code{background:${Colors.surfaceTint};padding:3px 7px;border-radius:8px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-ul,ol{margin:0 0 14px 22px}
-li{margin-bottom:6px}
-hr{border:none;border-top:1px solid ${Colors.border};margin:16px 0}
-table{width:100%;border-collapse:collapse;margin:12px 0 14px}
-th,td{padding:8px;border:1px solid ${Colors.border};font-size:13px}
-th{background:${Colors.surfaceTint};font-weight:800}
-</style>
-</head><body>
-${body}
-<div style="height:18px"></div>
-<script>
-setTimeout(function(){
-  window.ReactNativeWebView.postMessage(String(document.body.scrollHeight));
-},300);
-</script>
-</body></html>`;
-
-const formatNumber = (n) => {
-  const num = Number(n || 0);
-  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
-  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}k`;
-  return String(num);
+const alpha = (hex, opacity) => {
+  const normalized = String(hex || '').replace('#', '');
+  if (normalized.length !== 6) return hex || 'transparent';
+  return `#${normalized}${Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0')}`;
 };
 
-const safeText = (t) => String(t ?? '').trim();
+const decodeHtml = (text = '') =>
+  String(text)
+    .replace(/&#039;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&ldquo;/g, '"')
+    .replace(/&rdquo;/g, '"')
+    .replace(/&amp;amp;/g, '&')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '-')
+    .replace(/&ndash;/g, '-')
+    .replace(/&hellip;/g, '...')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+
+const cleanText = (text = '') => decodeHtml(text).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+
+const fmtCount = (n) => {
+  const v = Number(n ?? 0);
+  if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
+  return String(v);
+};
+
+const isRealImage = (url) =>
+  typeof url === 'string' &&
+  /^https?:\/\//i.test(url.trim()) &&
+  !url.includes('default-article') &&
+  !url.includes('blank_profile') &&
+  !url.includes('/default.');
+
+const buildHtml = (body) => `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:transparent}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      color:${TEXT};
+      font-size:16px;
+      line-height:1.82;
+      padding:0;
+    }
+    p{margin:0 0 16px}
+    h1,h2,h3,h4{color:${TEXT};font-weight:900;line-height:1.25;margin:24px 0 12px}
+    h2{font-size:22px} h3{font-size:19px}
+    a{color:${ACCENT};font-weight:700;text-decoration:none}
+    img{display:block;max-width:100%!important;height:auto!important;border-radius:18px;margin:18px 0}
+    blockquote{
+      margin:18px 0;
+      padding:14px 16px;
+      border-left:4px solid ${ACCENT};
+      background:${alpha(BRAND, 0.06)};
+      border-radius:0 16px 16px 0;
+      color:${MUTED};
+      font-weight:600;
+    }
+    ul,ol{padding-left:22px;margin:0 0 16px}
+    li{margin-bottom:8px}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th,td{border:1px solid ${BORDER};padding:10px;font-size:13px}
+    th{background:${alpha(BRAND, 0.06)};font-weight:900}
+    pre,code{background:${alpha(BRAND, 0.07)};border-radius:9px;padding:3px 7px;font-size:13px}
+  </style>
+</head>
+<body>
+  ${body || ''}
+  <div style="height:24px"></div>
+  <script>
+    function sendHeight(){
+      window.ReactNativeWebView.postMessage(String(document.body.scrollHeight));
+    }
+    setTimeout(sendHeight, 120);
+    setTimeout(sendHeight, 600);
+    setTimeout(sendHeight, 1200);
+  </script>
+</body>
+</html>`;
 
 async function loadBookmarksSet() {
   try {
     const raw = await AsyncStorage.getItem(BOOKMARKS_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return new Set();
-    return new Set(arr.map(String));
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
   } catch {
     return new Set();
   }
@@ -114,115 +149,86 @@ async function loadBookmarksSet() {
 
 async function saveBookmarksSet(set) {
   try {
-    const arr = Array.from(set);
-    await AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(arr));
+    await AsyncStorage.setItem(BOOKMARKS_KEY, JSON.stringify(Array.from(set)));
   } catch {}
 }
 
-
-function CommentRow({ item }) {
-  const name = item.user?.full_name || item.user?.name || item.user?.username || item.username || 'User';
-  const avatar = item.user?.avatar || item.avatar || null;
-  const text = item.comment || item.body || item.text || '';
+const CommentRow = ({ item }) => {
+  const name = cleanText(item?.user?.full_name || item?.user?.name || item?.user?.username || item?.username || 'Hafrik user');
+  const avatar = item?.user?.avatar || item?.avatar || null;
+  const text = cleanText(item?.comment || item?.body || item?.text || '');
   return (
-    <View style={styles.commentItem}>
-      {avatar ? (
+    <View style={styles.commentRow}>
+      {isRealImage(avatar) ? (
         <Image source={{ uri: avatar }} style={styles.commentAvatar} />
       ) : (
-        <View style={[styles.commentAvatar, styles.avatarFallback]}>
-          <Text style={{ fontSize: 11 }}>👤</Text>
-        </View>
+        <LinearGradient colors={[BRAND, ACCENT]} style={[styles.commentAvatar, styles.avatarFallback]}>
+          <Ionicons name="person" size={15} color={WHITE} />
+        </LinearGradient>
       )}
-      <View style={styles.commentBody}>
-        <Text style={styles.commentAuthorName}>{name}</Text>
+      <View style={styles.commentBubble}>
+        <Text style={styles.commentName}>{name}</Text>
         <Text style={styles.commentText}>{text}</Text>
       </View>
     </View>
   );
-}
+};
 
 export default function ArticleDetailsScreen({ navigation, route }) {
-  const { postId, title: navTitle } = route.params || {};
+  const routeId = route?.params?.postId ?? route?.params?.articleId ?? route?.params?.id;
+  const navTitle = route?.params?.title;
   const { top, bottom } = useSafeAreaInsets();
   const { token, user } = useAuth();
-  const { colors: tc } = useTheme();
 
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const [webHeight, setWebHeight] = useState(450);
+  const [refreshing, setRefreshing] = useState(false);
+  const [webHeight, setWebHeight] = useState(520);
   const [webReady, setWebReady] = useState(false);
-
-  // Bookmark
   const [bookmarked, setBookmarked] = useState(false);
-
-  // Likes
   const [likesCount, setLikesCount] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
-
-  // Comments
   const [comments, setComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [replyingTo, setReplyingTo] = useState(null); // comment id
-
-  // Share to Timeline modal
+  const [replyingTo, setReplyingTo] = useState(null);
   const [shareToTimelineVisible, setShareToTimelineVisible] = useState(false);
+  const [progressPct, setProgressPct] = useState(0);
 
-  // Sticky author bar visibility
-  const stickyAnim = useRef(new Animated.Value(0)).current;
-
-  // Reading progress
   const scrollY = useRef(new Animated.Value(0)).current;
   const contentHeightRef = useRef(1);
   const viewHeightRef = useRef(1);
+  const stickyAnim = useRef(new Animated.Value(0)).current;
 
-  const progress = scrollY.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0], // placeholder, updated via setNativeProps-like calc below
-  });
+  const postId = routeId;
 
-  // We’ll compute progress width manually using onScroll event and state
-  const [progressPct, setProgressPct] = useState(0);
-
-  const isTrending = useMemo(() => {
-    const views = Number(article?.views || 0);
-    return views >= TRENDING_VIEWS_THRESHOLD;
-  }, [article?.views]);
-
-  // Fetch
-  useEffect(() => {
+  const loadArticle = useCallback(async (silent = false) => {
     if (!postId) {
       setLoading(false);
       return;
     }
-
-    let mounted = true;
-
-    (async () => {
-      try {
-        const data = await fetchArticleDetail(postId);
-        if (!mounted) return;
-
-        setArticle(data);
-
-        // Likes
-        setLikesCount(Number(data?.likes_count || data?.likes || 0));
-        setIsLiked(!!data?.user_liked);
-      } catch {
-        if (!mounted) return;
-        setArticle(null);
-      } finally {
-        if (!mounted) return;
-        setLoading(false);
-      }
-    })();
-
-    return () => { mounted = false; };
+    try {
+      if (!silent) setLoading(true);
+      const data = await fetchArticleDetail(postId);
+      setArticle(data);
+      setLikesCount(Number(data?.likes_count ?? data?.likes ?? 0));
+      setIsLiked(!!data?.user_liked);
+      setWebReady(false);
+      setWebHeight(520);
+    } catch (err) {
+      console.log('[ArticleDetails] load error:', err?.message || err);
+      setArticle(null);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [postId]);
 
-  // Load bookmark state
+  useEffect(() => {
+    loadArticle(false);
+  }, [loadArticle]);
+
   useEffect(() => {
     if (!postId) return;
     (async () => {
@@ -235,24 +241,111 @@ export default function ArticleDetailsScreen({ navigation, route }) {
     if (!postId || !token) return;
     setCommentsLoading(true);
     try {
-      const res = await GetCommentsController(postId, token, 1, 10);
+      const res = await GetCommentsController(postId, token, 1, 12);
       setComments(Array.isArray(res?.data) ? res.data : []);
-    } catch {}
-    finally { setCommentsLoading(false); }
+    } catch (err) {
+      console.log('[ArticleDetails] comments error:', err?.message || err);
+    } finally {
+      setCommentsLoading(false);
+    }
   }, [postId, token]);
 
-  useEffect(() => { loadComments(); }, [loadComments]);
+  useEffect(() => {
+    loadComments();
+  }, [loadComments]);
+
+  const displayTitle = cleanText(article?.title || navTitle || 'Article');
+  const snippet = cleanText(article?.snippet || '');
+  const category = cleanText(article?.category_name || '');
+  const tags = normalizeTags(article?.tags).map(cleanText).filter(Boolean);
+  const image = isRealImage(article?.image) ? article.image : null;
+  const authorName = cleanText(article?.author?.full_name || article?.author?.name || article?.author?.username || 'Hafrik');
+  const authorAvatar = article?.author?.avatar;
+  const authorVerified = !!article?.author?.verified;
+  const readTime = Number(article?.reading_time_minutes || 0) || 1;
+  const viewsText = fmtCount(article?.views || 0);
+  const dateText = cleanText(article?.date || '');
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadArticle(true);
+    loadComments();
+  }, [loadArticle, loadComments]);
+
+  const onScroll = useCallback((e) => {
+    const y = e?.nativeEvent?.contentOffset?.y ?? 0;
+    const viewH = e?.nativeEvent?.layoutMeasurement?.height ?? viewHeightRef.current;
+    const contentH = e?.nativeEvent?.contentSize?.height ?? contentHeightRef.current;
+    viewHeightRef.current = viewH || 1;
+    contentHeightRef.current = contentH || 1;
+    const maxScroll = Math.max(1, contentH - viewH);
+    const pct = Math.max(0, Math.min(1, y / maxScroll));
+    setProgressPct(pct);
+    Animated.timing(stickyAnim, {
+      toValue: y > height * 0.18 ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [stickyAnim]);
+
+  const toggleBookmark = useCallback(async () => {
+    if (!postId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const set = await loadBookmarksSet();
+    const id = String(postId);
+    const next = !set.has(id);
+    if (next) set.add(id);
+    else set.delete(id);
+    setBookmarked(next);
+    await saveBookmarksSet(set);
+    ToggleSaveController(postId, token);
+  }, [postId, token]);
+
+  const handleLike = useCallback(async () => {
+    if (!postId || !token) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const prevLiked = isLiked;
+    const prevCount = likesCount;
+    setIsLiked(!prevLiked);
+    setLikesCount((count) => (prevLiked ? Math.max(0, count - 1) : count + 1));
+    try {
+      const res = await ToggleFeedController(postId, token, 'like');
+      if (res.status !== 200) throw new Error('Like failed');
+      const raw = res.data;
+      const data = raw?.data && raw.data.is_reacted !== undefined ? raw.data : raw;
+      const serverLiked = !!(data?.is_reacted || data?.my_reaction || data?.user_reaction);
+      const serverCount = Number(data?.likes_count ?? data?.reactions?.total ?? (prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1));
+      setIsLiked(serverLiked);
+      setLikesCount(serverCount);
+    } catch (err) {
+      console.log('[ArticleDetails] like error:', err?.message || err);
+      setIsLiked(prevLiked);
+      setLikesCount(prevCount);
+    }
+  }, [isLiked, likesCount, postId, token]);
+
+  const handleShare = useCallback(async () => {
+    try {
+      await Share.share({
+        message: `${displayTitle}\n${article?.link || route?.params?.link || ''}`,
+        url: article?.link || route?.params?.link,
+      });
+    } catch {}
+  }, [article?.link, displayTitle, route?.params?.link]);
 
   const submitComment = useCallback(async () => {
     const text = newComment.trim();
     if (!text || !postId || !token || submittingComment) return;
     setSubmittingComment(true);
     const optimistic = {
-      id: `opt_${Date.now()}`,
+      id: `opt-${Date.now()}`,
       comment: text,
-      user: { name: user?.username || user?.name || 'You', avatar: user?.avatar },
+      user: {
+        name: user?.full_name || user?.username || 'You',
+        avatar: user?.avatar,
+      },
     };
-    setComments((c) => [optimistic, ...c]);
+    setComments((prev) => [optimistic, ...prev]);
     setNewComment('');
     try {
       if (replyingTo) {
@@ -262,167 +355,61 @@ export default function ArticleDetailsScreen({ navigation, route }) {
         await AddCommentController(postId, text, token);
       }
       loadComments();
-    } catch {
-      setComments((c) => c.filter((x) => x.id !== optimistic.id));
+    } catch (err) {
+      console.log('[ArticleDetails] submit comment error:', err?.message || err);
+      setComments((prev) => prev.filter((item) => item.id !== optimistic.id));
       setNewComment(text);
     } finally {
       setSubmittingComment(false);
     }
-  }, [newComment, postId, token, submittingComment, user, loadComments, replyingTo]);
+  }, [loadComments, newComment, postId, replyingTo, submittingComment, token, user]);
 
-  const handleLike = useCallback(async () => {
-    if (!postId || !token) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const prevLiked = isLiked;
-    const prevCount = likesCount;
-    setIsLiked(!prevLiked);
-    setLikesCount((c) => prevLiked ? Math.max(0, c - 1) : c + 1);
-    try {
-      const res = await ToggleFeedController(postId, token, 'like');
-      if (res.status !== 200) throw new Error('failed');
-
-      const raw = res.data;
-      const d = raw?.data && raw.data.is_reacted !== undefined ? raw.data : raw;
-      const serverLiked = !!(d?.is_reacted || d?.my_reaction || d?.user_reaction);
-      let serverCount = prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1;
-
-      if (typeof d?.likes_count === 'number') {
-        serverCount = d.likes_count;
-      } else if (d?.reactions && typeof d.reactions === 'object') {
-        const total = Object.entries(d.reactions)
-          .filter(([key]) => key !== 'total')
-          .reduce((sum, [, value]) => sum + Number(value || 0), 0);
-        if (total > 0) serverCount = total;
-        else if (typeof d.reactions.total === 'number') serverCount = d.reactions.total;
-      }
-
-      setIsLiked(serverLiked);
-      setLikesCount(serverCount);
-    } catch {
-      setIsLiked(prevLiked);
-      setLikesCount(prevCount);
-    }
-  }, [postId, token, isLiked, likesCount]);
-
-  const toggleBookmark = useCallback(async () => {
-    if (!postId) return;
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    const set = await loadBookmarksSet();
-    const id = String(postId);
-    const wasSaved = set.has(id);
-
-    // Optimistic update
-    if (wasSaved) {
-      set.delete(id);
-      setBookmarked(false);
-    } else {
-      set.add(id);
-      setBookmarked(true);
-    }
-    await saveBookmarksSet(set);
-
-    // Sync to server (toggle — server handles saved/unsaved state)
-    ToggleSaveController(postId, token);
-  }, [postId, token]);
-
-  const handleShare = useCallback(async () => {
-    try {
-      await Share.share({
-        message: `${article?.title ?? navTitle}\n${article?.link ?? ''}`,
-        url: article?.link,
-      });
-    } catch {}
-  }, [article, navTitle]);
-
-  const openRelated = useCallback((rel) => {
-    if (!rel?.post_id) return;
-    navigation.push('ArticleDetails', { postId: rel.post_id, title: rel.title });
+  const openRelated = useCallback((item) => {
+    const id = item?.post_id ?? item?.id;
+    if (!id) return;
+    navigation.push('ArticleDetails', { postId: id, title: cleanText(item?.title) });
   }, [navigation]);
 
-  const displayTitle = safeText(article?.title) || safeText(navTitle) || 'Article';
-  const tags = normalizeTags(article?.tags);
+  const stickyOpacity = stickyAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const stickyTranslateY = stickyAnim.interpolate({ inputRange: [0, 1], outputRange: [-18, 0] });
 
-  const authorName = article?.author?.full_name || article?.author?.name || article?.author?.username || 'Hafrik';
-  const authorAvatar = article?.author?.avatar;
-  const authorVerified = !!article?.author?.verified;
+  const related = useMemo(() => (
+    Array.isArray(article?.related_articles) ? article.related_articles : []
+  ), [article?.related_articles]);
 
-  const viewsText = formatNumber(article?.views || 0);
-  const readTime = Number(article?.reading_time_minutes || 0) || 1;
-  const dateText = safeText(article?.date);
-
-  // Progress + sticky bar: driven by onScroll
-  const onScroll = useCallback((e) => {
-    const y = e?.nativeEvent?.contentOffset?.y ?? 0;
-    const viewH = e?.nativeEvent?.layoutMeasurement?.height ?? viewHeightRef.current;
-    const contentH = e?.nativeEvent?.contentSize?.height ?? contentHeightRef.current;
-
-    viewHeightRef.current = viewH || 1;
-    contentHeightRef.current = contentH || 1;
-
-    const maxScroll = Math.max(1, contentH - viewH);
-    const pct = Math.max(0, Math.min(1, y / maxScroll));
-    setProgressPct(pct);
-
-    // Sticky author bar appears after you move down a bit
-    const showAt = height * 0.18;
-    const target = y > showAt ? 1 : 0;
-
-    Animated.timing(stickyAnim, {
-      toValue: target,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
-  }, [stickyAnim]);
-
-  // States
   if (loading) {
     return (
-      <SafeAreaView style={styles.centered}>
+      <View style={styles.centered}>
+        <StatusBar barStyle="light-content" backgroundColor={BRAND} />
         <ActivityIndicator size="large" color={BRAND} />
-      </SafeAreaView>
+        <Text style={styles.centeredText}>Opening article...</Text>
+      </View>
     );
   }
 
   if (!article) {
     return (
-      <SafeAreaView style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={46} color={MUTED} />
-        <Text style={styles.errorTxt}>Could not load this article.</Text>
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.primaryBtnTxt}>Go Back</Text>
+      <View style={styles.centered}>
+        <Ionicons name="alert-circle-outline" size={46} color={DANGER} />
+        <Text style={styles.errorTitle}>Could not load this article</Text>
+        <Text style={styles.errorSub}>Please go back and try again.</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => navigation.goBack()} activeOpacity={0.86}>
+          <Text style={styles.primaryButtonText}>Go back</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
-  // Sticky author bar animation values
-  const stickyTranslateY = stickyAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-18, 0],
-  });
-  const stickyOpacity = stickyAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
-
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: tc.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
-    >
-      <StatusBar barStyle={tc.statusBar} />
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} />
 
-      {/* Reading progress bar */}
       <View style={[styles.progressWrap, { paddingTop: top }]}>
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${Math.round(progressPct * 100)}%` }]} />
         </View>
       </View>
 
-      {/* Sticky author bar */}
       <Animated.View
         style={[
           styles.stickyBar,
@@ -434,279 +421,209 @@ export default function ArticleDetailsScreen({ navigation, route }) {
         ]}
         pointerEvents={progressPct > 0.08 ? 'auto' : 'none'}
       >
-        <TouchableOpacity style={styles.stickyIconBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.stickyIcon} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={18} color={BRAND} />
         </TouchableOpacity>
-
-        <View style={styles.stickyAuthor}>
-          {!!authorAvatar ? (
-            <Image source={{ uri: authorAvatar }} style={styles.stickyAvatar} />
-          ) : (
-            <View style={[styles.stickyAvatar, styles.avatarFallback]}>
-              <Text style={{ fontSize: 14 }}>✍️</Text>
-            </View>
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.stickyTitle} numberOfLines={1}>{displayTitle}</Text>
-            <Text style={styles.stickyMeta} numberOfLines={1}>
-              {authorName}{authorVerified ? ' ✓' : ''} • {readTime} min • {viewsText} views
-            </Text>
-          </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.stickyTitle} numberOfLines={1}>{displayTitle}</Text>
+          <Text style={styles.stickySub} numberOfLines={1}>{readTime} min read · {viewsText} views</Text>
         </View>
-
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity style={styles.stickyIconBtn} onPress={toggleBookmark}>
-            <Ionicons
-              name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-              size={18}
-              color={bookmarked ? WARM : BRAND}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.stickyIconBtn} onPress={handleShare}>
-            <Ionicons name="share-outline" size={18} color={BRAND} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.stickyIcon} onPress={toggleBookmark}>
+          <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={18} color={bookmarked ? GOLD : BRAND} />
+        </TouchableOpacity>
       </Animated.View>
 
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          {
-            useNativeDriver: false,
-            listener: onScroll,
-          }
-        )}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND} />}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: false,
+          listener: onScroll,
+        })}
       >
-        {/* Cover */}
-        {!!article.image ? (
-          <View style={styles.coverWrap}>
-            <Image source={{ uri: article.image }} style={styles.cover} resizeMode="cover" />
+        <View style={styles.hero}>
+          {image ? (
+            <Image source={{ uri: image }} style={styles.heroImage} resizeMode="cover" />
+          ) : (
+            <LinearGradient colors={[BRAND, '#0D5056', ACCENT]} style={styles.heroImage}>
+              <Ionicons name="newspaper-outline" size={64} color={WHITE + '55'} />
+            </LinearGradient>
+          )}
+          <LinearGradient colors={['rgba(5,31,35,0.22)', 'rgba(5,31,35,0.95)']} style={StyleSheet.absoluteFill} />
 
-            <View style={[styles.coverBtns, { paddingTop: top + 10 }]}>
-              <TouchableOpacity style={styles.circleBtn} onPress={() => navigation.goBack()}>
-                <Ionicons name="arrow-back" size={20} color={BRAND} />
-              </TouchableOpacity>
-
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity style={styles.circleBtn} onPress={toggleBookmark}>
-                  <Ionicons
-                    name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-                    size={20}
-                    color={bookmarked ? WARM : BRAND}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.circleBtn} onPress={handleShare}>
-                  <Ionicons name="share-outline" size={20} color={BRAND} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Trending badge */}
-            {isTrending && (
-              <View style={styles.trendingBadge}>
-                <Ionicons name="flame" size={14} color={WHITE} />
-                <Text style={styles.trendingTxt}>Trending</Text>
-              </View>
-            )}
-          </View>
-        ) : (
-          <View style={[styles.plainTop, { paddingTop: top + 10 }]}>
-            <TouchableOpacity style={styles.circleBtn} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={20} color={BRAND} />
+          <View style={[styles.heroTop, { paddingTop: top + 10 }]}>
+            <TouchableOpacity style={styles.heroIcon} onPress={() => navigation.goBack()} activeOpacity={0.86}>
+              <Ionicons name="arrow-back" size={20} color={WHITE} />
             </TouchableOpacity>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={styles.circleBtn} onPress={toggleBookmark}>
-                <Ionicons
-                  name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-                  size={20}
-                  color={bookmarked ? WARM : BRAND}
-                />
+            <View style={styles.heroActions}>
+              <TouchableOpacity style={styles.heroIcon} onPress={toggleBookmark} activeOpacity={0.86}>
+                <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={20} color={bookmarked ? GOLD : WHITE} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.circleBtn} onPress={handleShare}>
-                <Ionicons name="share-outline" size={20} color={BRAND} />
+              <TouchableOpacity style={styles.heroIcon} onPress={handleShare} activeOpacity={0.86}>
+                <Ionicons name="share-outline" size={20} color={WHITE} />
               </TouchableOpacity>
             </View>
           </View>
-        )}
 
-        {/* Content Card */}
-        <View style={[styles.contentCard, !article.image && { marginTop: 10 }]}>
-
-          {/* Category + tags */}
-          <View style={styles.metaRow}>
-            {!!article.category_name && (
-              <View style={styles.catPill}>
-                <Text style={styles.catPillTxt}>{article.category_name}</Text>
+          <View style={styles.heroBottom}>
+            {!!category && (
+              <View style={styles.categoryPill}>
+                <Text style={styles.categoryPillText}>{category}</Text>
               </View>
             )}
-
-            {tags.slice(0, 3).map((tag) => (
-              <View key={tag} style={styles.tagPill}>
-                <Text style={styles.tagPillTxt}>#{tag}</Text>
-              </View>
-            ))}
+            <Text style={styles.title}>{displayTitle}</Text>
+            <View style={styles.heroMeta}>
+              <Text style={styles.heroMetaText}>{readTime} min read</Text>
+              <View style={styles.metaDot} />
+              <Text style={styles.heroMetaText}>{viewsText} views</Text>
+              {!!dateText && <View style={styles.metaDot} />}
+              {!!dateText && (
+                <>
+                  <Text style={styles.heroMetaText} numberOfLines={1}>{dateText}</Text>
+                </>
+              )}
+            </View>
           </View>
+        </View>
 
-          {/* Title */}
-          <Text style={styles.title}>{displayTitle}</Text>
-
-          {/* Author row */}
-          <View style={styles.authorRow}>
-            {!!authorAvatar ? (
+        <View style={styles.contentShell}>
+          <View style={styles.authorCard}>
+            {isRealImage(authorAvatar) ? (
               <Image source={{ uri: authorAvatar }} style={styles.authorAvatar} />
             ) : (
-              <View style={[styles.authorAvatar, styles.avatarFallback]}>
-                <Text style={{ fontSize: 16 }}>✍️</Text>
-              </View>
+              <LinearGradient colors={[BRAND, ACCENT]} style={[styles.authorAvatar, styles.avatarFallback]}>
+                <Ionicons name="create" size={17} color={WHITE} />
+              </LinearGradient>
             )}
-
             <View style={{ flex: 1 }}>
               <Text style={styles.authorName}>
-                {authorName}{authorVerified ? ' ✓' : ''}
+                {authorName}{authorVerified ? '  ✓' : ''}
               </Text>
-              <Text style={styles.authorMeta}>
-                {dateText ? dateText : ' '} • {readTime} min read • {viewsText} views
-              </Text>
+              <Text style={styles.authorMeta}>Published on Hafrik</Text>
             </View>
           </View>
 
-          {/* Social row (bookmark + clap) */}
-          <View style={styles.socialRow}>
-            <Pressable style={[styles.actionBtn, bookmarked && styles.actionBtnActive]} onPress={toggleBookmark}>
-              <Ionicons
-                name={bookmarked ? 'bookmark' : 'bookmark-outline'}
-                size={18}
-                color={bookmarked ? WHITE : BRAND}
-              />
-              <Text style={[styles.actionTxt, bookmarked && styles.actionTxtActive]}>
-                {bookmarked ? 'Saved' : 'Save'}
-              </Text>
-            </Pressable>
-
+          <View style={styles.actionCard}>
             <Pressable style={[styles.actionBtn, isLiked && styles.actionBtnActive]} onPress={handleLike}>
               <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={18} color={isLiked ? WHITE : BRAND} />
-              <Text style={[styles.actionTxt, isLiked && styles.actionTxtActive]}>
-                {likesCount > 0 ? formatNumber(likesCount) : 'Like'}
-              </Text>
+              <Text style={[styles.actionText, isLiked && styles.actionTextActive]}>{likesCount > 0 ? fmtCount(likesCount) : 'Like'}</Text>
             </Pressable>
-
-            <Pressable style={styles.actionBtn} onPress={handleShare}>
-              <Ionicons name="share-outline" size={18} color={BRAND} />
-              <Text style={styles.actionTxt}>Share</Text>
+            <Pressable style={[styles.actionBtn, bookmarked && styles.actionBtnGold]} onPress={toggleBookmark}>
+              <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={18} color={bookmarked ? WHITE : BRAND} />
+              <Text style={[styles.actionText, bookmarked && styles.actionTextActive]}>{bookmarked ? 'Saved' : 'Save'}</Text>
+            </Pressable>
+            <Pressable style={styles.actionBtn} onPress={() => setShareToTimelineVisible(true)}>
+              <Ionicons name="share-social-outline" size={18} color={BRAND} />
+              <Text style={styles.actionText}>Share</Text>
             </Pressable>
           </View>
 
-          {/* Snippet (full) */}
-          {!!safeText(article.snippet) && (
+          {!!snippet && (
             <View style={styles.snippetBox}>
-              <Text style={styles.snippetTxt}>{safeText(article.snippet)}</Text>
+              <Ionicons name="sparkles-outline" size={18} color={ACCENT} />
+              <Text style={styles.snippetText}>{snippet}</Text>
             </View>
           )}
 
-          <View style={styles.divider} />
-
-          {/* Body */}
-          {article.content_html ? (
-            <View style={[styles.webviewWrap, { height: webHeight }]}>
-              {!webReady && (
-                <View style={styles.webLoading}>
-                  <ActivityIndicator size="small" color={BRAND} />
+          {tags.length > 0 && (
+            <View style={styles.tagWrap}>
+              {tags.slice(0, 6).map((tag) => (
+                <View key={`tag-${tag}`} style={styles.tagPill}>
+                  <Text style={styles.tagText}>#{tag}</Text>
                 </View>
-              )}
-
-              <WebView
-                originWhitelist={['*']}
-                source={{ html: buildHtml(article.content_html) }}
-                style={styles.webview}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                javaScriptEnabled
-                onLoadEnd={() => setWebReady(true)}
-                onMessage={(e) => {
-                  const h = Number(e.nativeEvent.data);
-                  if (h > 0) setWebHeight(h + 34);
-                }}
-              />
-            </View>
-          ) : !!safeText(article.content_plain) ? (
-            <Text style={styles.plainContent}>{safeText(article.content_plain)}</Text>
-          ) : null}
-
-          {/* Related */}
-          {!!article.related_articles?.length && (
-            <View style={styles.relatedWrap}>
-              <View style={styles.relatedHeader}>
-                <Text style={styles.relatedTitle}>Related Articles</Text>
-                <Text style={styles.relatedSub}>Continue reading</Text>
-              </View>
-
-              {article.related_articles.map((rel) => (
-                <TouchableOpacity
-                  key={`${rel.post_id}-${rel.id}`}
-                  style={styles.relatedCard}
-                  activeOpacity={0.86}
-                  onPress={() => openRelated(rel)}
-                >
-                  {!!rel.image ? (
-                    <Image source={{ uri: rel.image }} style={styles.relatedImage} />
-                  ) : (
-                    <View style={[styles.relatedImage, styles.relatedFallback]}>
-                      <Text style={{ fontSize: 16 }}>📰</Text>
-                    </View>
-                  )}
-
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.relatedCardTitle} numberOfLines={2}>
-                      {safeText(rel.title)}
-                    </Text>
-                    <Text style={styles.relatedSnippet} numberOfLines={2}>
-                      {safeText(rel.snippet)}
-                    </Text>
-                  </View>
-
-                  <Ionicons name="chevron-forward" size={18} color={ACCENT} />
-                </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {/* Comments Section */}
-          <View style={styles.commentsWrap}>
-            <View style={styles.commentsHeader}>
-              <Text style={styles.commentsSectionTitle}>Comments</Text>
-              {comments.length > 0 && (
-                <View style={styles.commentsBadge}>
-                  <Text style={styles.commentsBadgeTxt}>{comments.length}</Text>
-                </View>
-              )}
+          <View style={styles.readerCard}>
+            {article.content_html ? (
+              <View style={[styles.webWrap, { height: webHeight }]}>
+                {!webReady && (
+                  <View style={styles.webLoading}>
+                    <ActivityIndicator size="small" color={BRAND} />
+                    <Text style={styles.webLoadingText}>Preparing article...</Text>
+                  </View>
+                )}
+                <WebView
+                  originWhitelist={['*']}
+                  source={{ html: buildHtml(article.content_html) }}
+                  style={styles.webview}
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                  javaScriptEnabled
+                  onLoadEnd={() => setWebReady(true)}
+                  onMessage={(event) => {
+                    const nextHeight = Number(event.nativeEvent.data);
+                    if (nextHeight > 0) setWebHeight(nextHeight + 28);
+                  }}
+                />
+              </View>
+            ) : (
+              <Text style={styles.plainContent}>{cleanText(article.content_plain || '')}</Text>
+            )}
+          </View>
+
+          {related.length > 0 && (
+            <View style={styles.relatedSection}>
+              <View style={styles.sectionHead}>
+                <Text style={styles.sectionTitle}>Continue reading</Text>
+                <Text style={styles.sectionSub}>Related articles</Text>
+              </View>
+              {related.map((item, index) => {
+                const relatedImage = isRealImage(item?.image) ? item.image : null;
+                return (
+                  <TouchableOpacity
+                    key={`related-${item?.post_id ?? item?.id ?? index}-${index}`}
+                    style={styles.relatedCard}
+                    onPress={() => openRelated(item)}
+                    activeOpacity={0.86}
+                  >
+                    {relatedImage ? (
+                      <Image source={{ uri: relatedImage }} style={styles.relatedImage} />
+                    ) : (
+                      <LinearGradient colors={[alpha(BRAND, 0.12), alpha(ACCENT, 0.16)]} style={styles.relatedImage}>
+                        <Ionicons name="newspaper-outline" size={21} color={BRAND} />
+                      </LinearGradient>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.relatedTitle} numberOfLines={2}>{cleanText(item?.title)}</Text>
+                      {!!item?.snippet && <Text style={styles.relatedSnippet} numberOfLines={2}>{cleanText(item.snippet)}</Text>}
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={ACCENT} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          <View style={styles.commentsCard}>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Comments</Text>
+              <Text style={styles.sectionSub}>{comments.length ? `${comments.length} comments` : 'Join the conversation'}</Text>
             </View>
 
-            {/* Input */}
             <View style={styles.commentInputRow}>
-              {user?.avatar ? (
-                <Image source={{ uri: user.avatar }} style={styles.commentInputAvatar} />
+              {isRealImage(user?.avatar) ? (
+                <Image source={{ uri: user.avatar }} style={styles.inputAvatar} />
               ) : (
-                <View style={[styles.commentInputAvatar, styles.avatarFallback]}>
-                  <Text style={{ fontSize: 13 }}>👤</Text>
-                </View>
+                <LinearGradient colors={[BRAND, ACCENT]} style={[styles.inputAvatar, styles.avatarFallback]}>
+                  <Ionicons name="person" size={15} color={WHITE} />
+                </LinearGradient>
               )}
               <TextInput
                 style={styles.commentInput}
-                placeholder="Write a comment…"
+                placeholder="Write a thoughtful comment..."
                 placeholderTextColor={MUTED}
                 value={newComment}
                 onChangeText={setNewComment}
                 multiline
-                returnKeyType="send"
-                blurOnSubmit
-                onSubmitEditing={submitComment}
               />
               <TouchableOpacity
-                style={[styles.commentSendBtn, (!newComment.trim() || submittingComment) && { opacity: 0.4 }]}
-                onPress={submitComment}
+                style={[styles.sendBtn, (!newComment.trim() || submittingComment) && styles.sendBtnDisabled]}
                 disabled={!newComment.trim() || submittingComment}
+                onPress={submitComment}
+                activeOpacity={0.84}
               >
                 {submittingComment ? (
                   <ActivityIndicator size="small" color={WHITE} />
@@ -717,51 +634,38 @@ export default function ArticleDetailsScreen({ navigation, route }) {
             </View>
 
             {commentsLoading ? (
-              <ActivityIndicator size="small" color={BRAND} style={{ marginVertical: 16 }} />
+              <ActivityIndicator size="small" color={BRAND} style={{ marginVertical: 18 }} />
             ) : comments.length === 0 ? (
-              <Text style={styles.noCommentsTxt}>No comments yet. Be the first!</Text>
+              <View style={styles.noComments}>
+                <Ionicons name="chatbubble-ellipses-outline" size={26} color={MUTED} />
+                <Text style={styles.noCommentsText}>No comments yet. Be the first to respond.</Text>
+              </View>
             ) : (
-              comments.map((item) => (
-                <CommentRow key={String(item.id || item.comment_id || item.created_at)} item={item} />
+              comments.map((item, index) => (
+                <CommentRow key={`comment-${item?.id ?? item?.comment_id ?? item?.created_at ?? index}-${index}`} item={item} />
               ))
             )}
           </View>
 
-          <View style={{ height: 110 }} />
+          <View style={{ height: Math.max(104, bottom + 86) }} />
         </View>
       </Animated.ScrollView>
 
-      {/* Floating action row: Like + Save + Share */}
-      <View style={[styles.fabRow, { paddingBottom: Math.max(18, bottom + 10) }]}>
-        <TouchableOpacity
-          style={[styles.fab, isLiked && styles.fabSaved]}
-          onPress={handleLike}
-          activeOpacity={0.9}
-        >
-          <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={20} color={WHITE} />
-          <Text style={styles.fabTxt}>{likesCount > 0 ? formatNumber(likesCount) : 'Like'}</Text>
+      <View style={[styles.bottomDock, { paddingBottom: Math.max(14, bottom + 8) }]}>
+        <TouchableOpacity style={[styles.dockBtn, isLiked && styles.dockBtnActive]} onPress={handleLike} activeOpacity={0.9}>
+          <Ionicons name={isLiked ? 'heart' : 'heart-outline'} size={19} color={isLiked ? WHITE : BRAND} />
+          <Text style={[styles.dockText, isLiked && styles.dockTextActive]}>{likesCount > 0 ? fmtCount(likesCount) : 'Like'}</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.fab, bookmarked && styles.fabSaved]}
-          onPress={toggleBookmark}
-          activeOpacity={0.9}
-        >
-          <Ionicons name={bookmarked ? 'bookmark' : 'bookmark-outline'} size={20} color={WHITE} />
-          <Text style={styles.fabTxt}>{bookmarked ? 'Saved' : 'Save'}</Text>
+        <TouchableOpacity style={styles.dockBtn} onPress={handleShare} activeOpacity={0.9}>
+          <Ionicons name="paper-plane-outline" size={19} color={BRAND} />
+          <Text style={styles.dockText}>Send</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => setShareToTimelineVisible(true)}
-          activeOpacity={0.9}
-        >
-          <Ionicons name={'share-social-outline'} size={20} color={WHITE} />
-          <Text style={styles.fabTxt}>Share</Text>
+        <TouchableOpacity style={styles.dockPrimary} onPress={() => setShareToTimelineVisible(true)} activeOpacity={0.9}>
+          <Ionicons name="share-social-outline" size={18} color={WHITE} />
+          <Text style={styles.dockPrimaryText}>Share</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Share to Timeline modal */}
       <ShareModal
         visible={shareToTimelineVisible}
         onClose={() => setShareToTimelineVisible(false)}
@@ -771,319 +675,165 @@ export default function ArticleDetailsScreen({ navigation, route }) {
   );
 }
 
-const WARM = Colors.warning;
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: CREAM },
-
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: CREAM,
-    gap: 12,
-    padding: 24,
-  },
-  errorTxt: { fontSize: 14, color: MUTED, textAlign: 'center' },
-  primaryBtn: { backgroundColor: BRAND, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  primaryBtnTxt: { color: WHITE, fontWeight: '700', fontSize: 14 },
-
-  // Progress
-  progressWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 50,
-    backgroundColor: CREAM + 'EB',
-  },
-  progressTrack: {
-    height: 3,
-    backgroundColor: BRAND + '1F',
-  },
-  progressFill: {
-    height: 3,
-    backgroundColor: ACCENT,
-    borderRadius: 10,
-  },
-
-  // Sticky bar
+  root: { flex: 1, backgroundColor: BG },
+  centered: { flex: 1, backgroundColor: BG, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 12 },
+  centeredText: { color: MUTED, fontSize: 13, fontWeight: '700' },
+  errorTitle: { color: TEXT, fontSize: 18, fontWeight: '900', textAlign: 'center' },
+  errorSub: { color: MUTED, fontSize: 13, textAlign: 'center' },
+  primaryButton: { marginTop: 8, backgroundColor: BRAND, borderRadius: 999, paddingHorizontal: 22, paddingVertical: 12 },
+  primaryButtonText: { color: WHITE, fontSize: 13, fontWeight: '900' },
+  progressWrap: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 90, backgroundColor: 'transparent' },
+  progressTrack: { height: 3, backgroundColor: WHITE + '30' },
+  progressFill: { height: 3, backgroundColor: ACCENT, borderRadius: 99 },
   stickyBar: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 60,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: WHITE,
+    zIndex: 80,
+    backgroundColor: CARD,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
-    shadowColor: DARK,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: BRAND,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 8,
   },
-  stickyIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.surfaceTint,
+  stickyIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: alpha(BRAND, 0.07), alignItems: 'center', justifyContent: 'center' },
+  stickyTitle: { color: TEXT, fontSize: 12.5, fontWeight: '900' },
+  stickySub: { color: MUTED, fontSize: 10.5, marginTop: 1, fontWeight: '700' },
+  hero: { height: Math.max(420, height * 0.52), backgroundColor: BRAND },
+  heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  heroTop: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroActions: { flexDirection: 'row', gap: 10 },
+  heroIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  stickyAuthor: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stickyAvatar: { width: 34, height: 34, borderRadius: 17 },
-  stickyTitle: { fontSize: 12.5, fontWeight: '800', color: DARK },
-  stickyMeta: { fontSize: 10.5, color: MUTED, marginTop: 1 },
-
-  // Cover
-  coverWrap: { position: 'relative' },
-  cover: { width, height: height * 0.38 },
-  coverBtns: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  circleBtn: {
-    width: 40, height: 40,
-    borderRadius: 20,
-    backgroundColor: WHITE + 'F0',
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: DARK, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12, shadowRadius: 8, elevation: 6,
-  },
-  trendingBadge: {
-    position: 'absolute',
-    bottom: 14,
-    left: 14,
-    backgroundColor: Colors.destructive + 'F2',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  trendingTxt: { color: WHITE, fontWeight: '900', fontSize: 11, letterSpacing: 0.3 },
-
-  plainTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-
-  // Content
-  contentCard: {
-    marginTop: -18,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 18,
-    paddingHorizontal: 18,
-    backgroundColor: CREAM,
-  },
-
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  catPill: { backgroundColor: BRAND + '1A', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  catPillTxt: { fontSize: 10.5, fontWeight: '900', color: BRAND },
-  tagPill: { backgroundColor: ACCENT + '24', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  tagPillTxt: { fontSize: 10.5, fontWeight: '800', color: ACCENT },
-
-  title: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: DARK,
-    lineHeight: 32,
-    marginBottom: 12,
-  },
-
-  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  authorAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: WHITE },
-  avatarFallback: { justifyContent: 'center', alignItems: 'center', backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER },
-  authorName: { fontSize: 13.5, fontWeight: '900', color: DARK },
-  authorMeta: { fontSize: 11.5, color: MUTED, marginTop: 2 },
-
-  // Social row
-  socialRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  actionBtn: {
-    backgroundColor: WHITE,
+  heroBottom: { position: 'absolute', left: 20, right: 20, bottom: 28 },
+  categoryPill: { alignSelf: 'flex-start', backgroundColor: ACCENT, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 10 },
+  categoryPillText: { color: WHITE, fontSize: 10.5, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 },
+  title: { color: WHITE, fontSize: 31, lineHeight: 38, fontWeight: '900', fontFamily: 'ReadexPro-Bold' },
+  heroMeta: { marginTop: 12, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  heroMetaText: { color: WHITE + 'C7', fontSize: 12, fontWeight: '800' },
+  metaDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: WHITE + '82' },
+  contentShell: { marginTop: -18, borderTopLeftRadius: 28, borderTopRightRadius: 28, backgroundColor: BG, paddingTop: 14, paddingHorizontal: 14 },
+  authorCard: {
+    backgroundColor: CARD,
+    borderRadius: 22,
+    padding: 13,
     borderWidth: 1,
     borderColor: BORDER,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    position: 'relative',
-  },
-  actionBtnActive: {
-    backgroundColor: BRAND,
-    borderColor: BRAND,
-  },
-  actionTxt: { fontSize: 12.5, fontWeight: '900', color: BRAND },
-  actionTxtActive: { color: WHITE },
-
-  snippetBox: {
-    backgroundColor: WHITE,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 6,
-  },
-  snippetTxt: { fontSize: 13.5, color: DARK, lineHeight: 21 },
-
-  divider: { height: 1, backgroundColor: BORDER, marginVertical: 16 },
-
-  // WebView
-  webviewWrap: { width: '100%', overflow: 'hidden' },
-  webview: { flex: 1, backgroundColor: 'transparent' },
-  webLoading: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: CREAM,
-    zIndex: 1,
-  },
-
-  plainContent: { fontSize: 15, color: DARK, lineHeight: 26 },
-
-  // Related
-  relatedWrap: { marginTop: 10 },
-  relatedHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
-  relatedTitle: { fontSize: 16, fontWeight: '900', color: DARK },
-  relatedSub: { fontSize: 12, color: MUTED },
-
-  relatedCard: {
-    backgroundColor: WHITE,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 16,
-    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 10,
-  },
-  relatedImage: { width: 64, height: 64, borderRadius: 12, backgroundColor: Colors.surfaceTint },
-  relatedFallback: { justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: BORDER, backgroundColor: WHITE },
-  relatedCardTitle: { fontSize: 13.5, fontWeight: '900', color: DARK, lineHeight: 18, marginBottom: 4 },
-  relatedSnippet: { fontSize: 11.5, color: MUTED, lineHeight: 16 },
-
-  // FAB row
-  fabRow: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 0,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  fab: {
-    flex: 1,
-    backgroundColor: BRAND,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
     shadowColor: BRAND,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  authorAvatar: { width: 46, height: 46, borderRadius: 23 },
+  avatarFallback: { alignItems: 'center', justifyContent: 'center' },
+  authorName: { color: TEXT, fontSize: 14, fontWeight: '900' },
+  authorMeta: { color: MUTED, fontSize: 12, marginTop: 2, fontWeight: '700' },
+  actionCard: {
+    marginTop: 12,
+    backgroundColor: CARD,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: BORDER,
+    padding: 8,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtn: { flex: 1, height: 42, borderRadius: 999, backgroundColor: alpha(BRAND, 0.06), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
+  actionBtnActive: { backgroundColor: DANGER },
+  actionBtnGold: { backgroundColor: GOLD },
+  actionText: { color: BRAND, fontSize: 12.5, fontWeight: '900' },
+  actionTextActive: { color: WHITE },
+  snippetBox: {
+    marginTop: 12,
+    backgroundColor: alpha(ACCENT, 0.1),
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: alpha(ACCENT, 0.16),
+    flexDirection: 'row',
+    gap: 10,
+  },
+  snippetText: { flex: 1, color: TEXT, fontSize: 14, lineHeight: 21, fontWeight: '700' },
+  tagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  tagPill: { backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 7 },
+  tagText: { color: ACCENT, fontSize: 11.5, fontWeight: '900' },
+  readerCard: {
+    marginTop: 14,
+    backgroundColor: CARD,
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    overflow: 'hidden',
+  },
+  webWrap: { width: '100%', backgroundColor: CARD },
+  webview: { flex: 1, backgroundColor: 'transparent' },
+  webLoading: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: CARD, zIndex: 2 },
+  webLoadingText: { color: MUTED, fontSize: 12, fontWeight: '700' },
+  plainContent: { color: TEXT, fontSize: 16, lineHeight: 29 },
+  relatedSection: { marginTop: 14, backgroundColor: CARD, borderRadius: 24, padding: 14, borderWidth: 1, borderColor: BORDER },
+  sectionHead: { marginBottom: 12 },
+  sectionTitle: { color: TEXT, fontSize: 17, fontWeight: '900', fontFamily: 'ReadexPro-Bold' },
+  sectionSub: { color: MUTED, fontSize: 12, marginTop: 2, fontWeight: '700' },
+  relatedCard: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  relatedImage: { width: 74, height: 74, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  relatedTitle: { color: TEXT, fontSize: 13.5, lineHeight: 18, fontWeight: '900' },
+  relatedSnippet: { color: MUTED, fontSize: 11.5, lineHeight: 16, marginTop: 4 },
+  commentsCard: { marginTop: 14, backgroundColor: CARD, borderRadius: 24, padding: 14, borderWidth: 1, borderColor: BORDER },
+  commentInputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 9, backgroundColor: alpha(BRAND, 0.05), borderRadius: 20, padding: 8 },
+  inputAvatar: { width: 34, height: 34, borderRadius: 17 },
+  commentInput: { flex: 1, maxHeight: 96, minHeight: 38, color: TEXT, fontSize: 13, paddingVertical: 9 },
+  sendBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' },
+  sendBtnDisabled: { opacity: 0.45 },
+  noComments: { alignItems: 'center', gap: 8, paddingVertical: 22 },
+  noCommentsText: { color: MUTED, fontSize: 13, textAlign: 'center' },
+  commentRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  commentAvatar: { width: 36, height: 36, borderRadius: 18 },
+  commentBubble: { flex: 1, backgroundColor: alpha(BRAND, 0.05), borderRadius: 17, paddingHorizontal: 12, paddingVertical: 10 },
+  commentName: { color: TEXT, fontSize: 12.5, fontWeight: '900' },
+  commentText: { color: TEXT, fontSize: 13, lineHeight: 19, marginTop: 3 },
+  bottomDock: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 0,
+    backgroundColor: CARD,
+    borderRadius: 26,
+    paddingTop: 10,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: BRAND,
+    shadowOpacity: 0.13,
+    shadowRadius: 20,
     elevation: 10,
   },
-  fabSaved: { backgroundColor: Colors.primary },
-  fabTxt: { color: WHITE, fontWeight: '900', fontSize: 13 },
-
-  // Comments
-  commentsWrap: {
-    marginTop: 18,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-    paddingTop: 16,
-  },
-  commentsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
-  },
-  commentsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: DARK,
-  },
-  commentsBadge: {
-    backgroundColor: ACCENT,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    minWidth: 22,
-    alignItems: 'center',
-  },
-  commentsBadgeTxt: { color: WHITE, fontWeight: '900', fontSize: 11 },
-
-  commentInputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    marginBottom: 16,
-    backgroundColor: WHITE,
-    borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 16,
-    padding: 10,
-  },
-  commentInputAvatar: { width: 32, height: 32, borderRadius: 16 },
-  commentInput: {
-    flex: 1,
-    fontSize: 13.5,
-    color: DARK,
-    maxHeight: 90,
-    paddingTop: 0,
-    paddingBottom: 0,
-  },
-  commentSendBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: BRAND,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  noCommentsTxt: {
-    fontSize: 13,
-    color: MUTED,
-    textAlign: 'center',
-    paddingVertical: 18,
-  },
-
-  commentItem: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-    alignItems: 'flex-start',
-  },
-  commentAvatar: { width: 34, height: 34, borderRadius: 17 },
-  commentBody: {
-    flex: 1,
-    backgroundColor: WHITE,
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  commentAuthorName: { fontSize: 12, fontWeight: '900', color: DARK, marginBottom: 3 },
-  commentText: { fontSize: 13, color: DARK, lineHeight: 19 },
+  dockBtn: { flex: 1, height: 44, borderRadius: 22, backgroundColor: alpha(BRAND, 0.06), flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  dockBtnActive: { backgroundColor: DANGER },
+  dockText: { color: BRAND, fontSize: 12.5, fontWeight: '900' },
+  dockTextActive: { color: WHITE },
+  dockPrimary: { flex: 1.12, height: 44, borderRadius: 22, backgroundColor: BRAND, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  dockPrimaryText: { color: WHITE, fontSize: 12.5, fontWeight: '900' },
 });

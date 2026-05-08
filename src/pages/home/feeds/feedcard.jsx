@@ -69,7 +69,6 @@ const PRIVACY_ICONS = {
   custom:   'lock-closed-outline',
 };
 
-
 /**
  * ✅ NEW RULE:
  * Use feed.user.entity from API ("user" | "page" | "group")
@@ -94,7 +93,7 @@ const getOwnerRoute = (feedUser) => {
 };
 
 // ─── FeedCard ─────────────────────────────────────────────────────────────────
-const FeedCard = ({ feed, isVisible, onPostPress }) => {
+const FeedCard = ({ feed, isVisible, onPostPress, hideCommunityContext = false }) => {
   const navigation       = useNavigation();
   const { token, user: authUser } = useAuth();
   const [shareModalVisible,          setShareModalVisible]          = useState(false);
@@ -218,12 +217,31 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           id: groupId,
           title: groupTitle,
           avatar: group?.avatar || group?.image || group?.photo || null,
+          members: group?.members ?? group?.members_count ?? group?.total_members ?? null,
+          privacy: group?.privacy ?? group?.type ?? null,
+        };
+      }
+    }
+
+    const legacyContext = feed?.context;
+    if ((legacyContext?.type || '').toLowerCase() === 'group') {
+      const groupId = Number(legacyContext?.id ?? feed?.group_id ?? 0);
+      const groupTitle = legacyContext?.title || legacyContext?.name || feed?.group_name || null;
+      if (groupId > 0 && groupTitle) {
+        return {
+          type: 'group',
+          label: 'Posted in',
+          id: groupId,
+          title: groupTitle,
+          avatar: legacyContext?.avatar || legacyContext?.image || legacyContext?.cover || null,
+          members: legacyContext?.members ?? legacyContext?.members_count ?? null,
+          privacy: legacyContext?.privacy ?? null,
         };
       }
     }
 
     return null;
-  }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id, feed?.user]);
+  }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id, feed?.user, feed?.context, feed?.group_name]);
 
   // ── Text + hashtag extraction ──────────────────────────────────────────────
   const { displayText, fullText, showSeeMore, allTags, extractedUrl } = useMemo(() => {
@@ -331,21 +349,22 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   }, [feed?.id, token]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const isReel = feed?.type === 'reel' || (
-    feed?.media?.length === 1 &&
-    feed.media[0]?.video_url &&
-    !feed.media[0]?.url &&
-    feed?.type === 'video'
-  );
+  const isReel  = feed?.type === 'reel';
+  const isVideo = feed?.type === 'video' && !!feed?.media?.[0]?.video_url;
 
   const handleMoveToCommentScreen = useCallback(() => {
-    // Reels ALWAYS open the full-screen Reels2 viewer
+    // Reels open the full-screen vertical Reels2 viewer
     if (isReel) {
       navigation.navigate('Reels2', {
         initialReels: [feed],
         startIndex: 0,
         initialReelId: feed?.id,
       });
+      return;
+    }
+    // Videos open the 16:9 VideoPlayerScreen
+    if (isVideo) {
+      navigation.navigate('VideoPlayer', { feed });
       return;
     }
     if (onPostPress) {
@@ -362,7 +381,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       return;
     }
     navigation.navigate('PostDetail', { postId: feed?.id });
-  }, [feed?.id, feed?.type, feed?.payload?.title, feed?.shared_post, navigation, onPostPress, isReel, feed]);
+  }, [feed?.id, feed?.type, feed?.payload?.title, feed?.shared_post, navigation, onPostPress, isReel, isVideo, feed]);
 
   // ── Inline comment (opens bottom-sheet modal without leaving the feed) ─────
   const handleOpenComments = useCallback(() => {
@@ -374,8 +393,12 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       });
       return;
     }
+    if (isVideo) {
+      navigation.navigate('VideoPlayer', { feed });
+      return;
+    }
     useStore.getState().openCommentModal(feed?.id);
-  }, [isReel, feed, navigation]);
+  }, [isReel, isVideo, feed, navigation]);
 
   const handleOwnerPress = useCallback(() => {
     const route = getOwnerRoute(user);
@@ -393,6 +416,31 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       navigation.navigate('GroupDetails', { groupId: postContext.id });
     }
   }, [navigation, postContext]);
+
+  const handleAskAI = useCallback(() => {
+    navigation.navigate('AIChat', {
+      mode: 'Post Assistant',
+      contextType: 'post',
+      contextId: feed?.id,
+      contextData: {
+        post_id: feed?.id,
+        type: feed?.type,
+        text: feed?.text,
+        author: feed?.user?.full_name ?? feed?.user?.username,
+        username: feed?.user?.username,
+        likes_count: totalLikes(feed?.reactions, feed?.likes_count),
+        comments_count: feed?.comments_count ?? 0,
+        shares_count: feed?.shares_count ?? 0,
+        views: feed?.views ?? 0,
+        context: postContext ? {
+          type: postContext.type,
+          id: postContext.id,
+          title: postContext.title,
+        } : feed?.context ?? null,
+        payload: feed?.payload ?? null,
+      },
+    });
+  }, [feed, navigation, postContext]);
 
   // ── Double-tap like ───────────────────────────────────────────────────────
   const triggerHeartAnimation = useCallback(() => {
@@ -556,6 +604,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           onOwnerPress={isAnonymous ? undefined : (isPagePost ? handlePostContextPress : handleOwnerPress)}
           postContext={postContext}
           onPostContextPress={handlePostContextPress}
+          hidePostContextLine={hideCommunityContext}
           feelingText={feelingText}
           privacyIcon={privacyIcon}
           isBoosted={isBoosted}
@@ -745,6 +794,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           onReactionsPress={() => setReactionsModalVisible(true)}
           onRepost={() => setRepostModalVisible(true)}
           onCollectionSave={() => setSaveCollectionsModalVisible(true)}
+          onAskAI={handleAskAI}
         />
       </View>
 
@@ -1232,6 +1282,7 @@ export default memo(FeedCard, (prev, next) => {
     prev.feed.page?.title        === next.feed.page?.title        &&
     prev.feed.page?.avatar       === next.feed.page?.avatar       &&
     prev.isVisible               === next.isVisible               &&
+    prev.hideCommunityContext    === next.hideCommunityContext    &&
     prev.onPostPress             === next.onPostPress             &&
     JSON.stringify(prev.feed.reactions) === JSON.stringify(next.feed.reactions)
   );

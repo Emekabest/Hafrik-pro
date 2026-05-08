@@ -17,7 +17,7 @@ const withOpacity = (hex, opacity) => {
 const ACCENT = Colors.primary;
 const MUTED  = Colors.secondaryText;
 
-const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress, feelingText, privacyIcon, onEdit, onDelete, isOwner = false, onFollow }) => {
+const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postContext = null, onPostContextPress, hidePostContextLine = false, feelingText, privacyIcon, onEdit, onDelete, isOwner = false, onFollow }) => {
     const navigation = useNavigation();
     const [optionsModalVisible, setOptionsModalVisible] = useState(false);
 
@@ -64,6 +64,8 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
     } : null);
 
     const handleCtxPress = postContext ? onPostContextPress : handleLegacyContextPress;
+    const isBusinessPage = ctx?.type === 'page' || String(feed?.user?.entity || '').toLowerCase() === 'page';
+    const showCommunityChip = !hidePostContextLine && ctx && ctx.type !== 'page' && !!ctx.title;
 
     // console.log(elapsedTime, feed.created, feed.id)
 
@@ -87,21 +89,31 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
                         </View>
                     )}
 
+                    {isBusinessPage && (
+                        <View style={styles.businessBadge}>
+                            <Ionicons name="storefront-outline" size={10} color={Colors.white} />
+                            <Text style={styles.businessBadgeText}>Business Page</Text>
+                        </View>
+                    )}
+
                     {!!feelingText && (
                         <Text style={styles.actionText}>{feelingText}</Text>
                     )}
                 </TouchableOpacity>
 
-                {/* ── Line 2: "posted" / "posted in Group" / "posted via Page" ── */}
+                {/* ── Line 2: compact post context ───────────────────────────── */}
                 <View style={styles.postedRow}>
                     <Text style={styles.postedText}>posted</Text>
 
-                    {ctx && ctx.type !== 'page' && !!ctx.title && (
+                    {showCommunityChip && (
                         <>
-                            <Text style={styles.postedText}>
-                                {ctx.type === 'group' ? ' in ' : ' in '}
-                            </Text>
-                            <TouchableOpacity onPress={handleCtxPress} activeOpacity={0.75}>
+                            <Text style={styles.postedText}> in </Text>
+                            <TouchableOpacity onPress={handleCtxPress} activeOpacity={0.75} style={styles.contextChip}>
+                                <Ionicons
+                                    name={ctx.type === 'group' ? 'people-outline' : 'albums-outline'}
+                                    size={10}
+                                    color={ACCENT}
+                                />
                                 <Text style={styles.contextTitle} numberOfLines={1}>{ctx.title}</Text>
                             </TouchableOpacity>
                         </>
@@ -150,6 +162,7 @@ const UserDetails = ({ feed, source, fullNameFontSize = 14, onOwnerPress, postCo
             <OptionsModal
                 visible={optionsModalVisible}
                 postId={feed.id}
+                userId={feed.user?.id}
                 onClose={() => setOptionsModalVisible(false)}
                 onEdit={onEdit}
                 onDelete={onDelete}
@@ -192,6 +205,24 @@ const styles = StyleSheet.create({
         marginTop: 1,
     },
 
+    businessBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 999,
+        backgroundColor: Colors.primary,
+    },
+
+    businessBadgeText: {
+        color: Colors.white,
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 0.15,
+        fontFamily: AppDetails.fontFamily.heading,
+    },
+
     actionText: {
         color:      Colors.neutral700,
         fontFamily: AppDetails.fontFamily.body,
@@ -210,6 +241,19 @@ const styles = StyleSheet.create({
         color:      MUTED,
         fontSize:   12,
         fontFamily: AppDetails.fontFamily.body,
+    },
+
+    contextChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        maxWidth: 190,
+        paddingHorizontal: 7,
+        paddingVertical: 2,
+        borderRadius: 999,
+        backgroundColor: withOpacity(ACCENT, 0.08),
+        borderWidth: 1,
+        borderColor: withOpacity(ACCENT, 0.14),
     },
 
     contextTitle: {
@@ -272,6 +316,7 @@ export default memo(UserDetails, (prev, next) => {
         prev.postContext?.id            === next.postContext?.id            &&
         prev.postContext?.type          === next.postContext?.type          &&
         prev.postContext?.title         === next.postContext?.title         &&
+        prev.hidePostContextLine        === next.hidePostContextLine        &&
         prev.onOwnerPress               === next.onOwnerPress               &&
         prev.onPostContextPress         === next.onPostContextPress         &&
         prev.feelingText                === next.feelingText                &&

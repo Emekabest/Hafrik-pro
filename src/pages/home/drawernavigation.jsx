@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Modal,
   Animated,
+  Easing,
   Dimensions,
   TouchableWithoutFeedback,
   TouchableOpacity,
@@ -168,16 +169,38 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
 
   const close = useCallback(() => {
     Animated.parallel([
-      Animated.timing(translateX,     { toValue: -DRAWER_W, duration: 220, useNativeDriver: true }),
-      Animated.timing(overlayOpacity, { toValue: 0,         duration: 220, useNativeDriver: true }),
+      Animated.timing(translateX, {
+        toValue: -DRAWER_W,
+        duration: 210,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 210,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
     ]).start(() => { setShowModal(false); onClose?.(); });
   }, [onClose, overlayOpacity, translateX]);
 
   const open = useCallback(() => {
     setShowModal(true);
+    // Reset position instantly before animating in (handles re-open edge case)
+    translateX.setValue(-DRAWER_W);
     Animated.parallel([
-      Animated.spring(translateX,     { toValue: 0, tension: 70, friction: 12, useNativeDriver: true }),
-      Animated.timing(overlayOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: 270,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayOpacity, {
+        toValue: 1,
+        duration: 230,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
     ]).start();
   }, [overlayOpacity, translateX]);
 
@@ -193,12 +216,13 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
 
   const go = useCallback((screen, params) => {
     close();
-    setTimeout(() => navigation.navigate(screen, params), 200);
+    // Navigate once the close animation finishes (210ms) — no extra wait
+    setTimeout(() => navigation.navigate(screen, params), 220);
   }, [close, navigation]);
 
   const openWeb = useCallback((title, url) => {
     close();
-    setTimeout(() => navigation.navigate("InAppBrowser", { title, url }), 200);
+    setTimeout(() => navigation.navigate("InAppBrowser", { title, url }), 220);
   }, [close, navigation]);
 
   const openHafrikPlay = useCallback(() => {
@@ -345,7 +369,7 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
             {/* Quick actions */}
             <SectionLabel>Hafrik Products</SectionLabel>
             <View style={s.quickRow}>
-              <QuickBtn icon="sparkles"      label="AI Chat"  gradient={[ACCENT, '#13c296']}                                    onPress={() => go("AIChat")} />
+              <QuickBtn icon="sparkles"      label="AI Chat"  gradient={[ACCENT, '#13c296']}                                    onPress={() => go("AIChat", { fresh: true })} />
               <QuickBtn icon="tv"            label="HafrikTV" gradient={[ACCENT, BRAND]}                                        onPress={() => go("HafrikTV")} />
               <QuickBtn icon="musical-notes" label="Play"     gradient={["#9c27b0", "#6d28d9"]}                                 onPress={openHafrikPlay} />
             </View>
@@ -407,6 +431,13 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
                 sub="Translate to & from any language"
                 iconGrad={["#06b6d4", "#0e7490"]}
                 onPress={() => go("TranslatorScreen")}
+              />
+              <MenuItem
+                icon="school"
+                label="Learn"
+                sub="Import guides, sourcing tips & more"
+                iconGrad={["#ef4444", "#b91c1c"]}
+                onPress={() => go("HafrikXLearn")}
                 last
               />
             </View>

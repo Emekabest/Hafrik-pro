@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, SafeAreaView, KeyboardAvoidingView,
-  Platform, AppState, Modal, Animated, Dimensions, ScrollView,
+  Alert, SafeAreaView, KeyboardAvoidingView,
+  Platform, AppState, Dimensions, ScrollView,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../AuthContext';
-import UploadMediaController from '../../controllers/uploadmediacontroller';
 import { startBackgroundUpload } from '../../helpers/BackgroundUploadManager';
 import { useIsFocused } from '@react-navigation/native';
 import AppDetails from '../../helpers/appdetails';
@@ -28,13 +27,15 @@ const withOpacity = (hex, opacity) => {
   return `#${normalized}${alpha}`;
 };
 
-
 const { width: SW } = Dimensions.get('window');
-const DARK   = Colors.nearBlack;
-const BRAND  = Colors.primaryDark;
-const ACCENT = Colors.primary;
-const GLASS  = withOpacity(Colors.white, 0.07);
-const BORDER = withOpacity(Colors.white, 0.11);
+const DARK          = Colors.nearBlack        ?? '#0a0a0a';
+const BRAND         = Colors.primaryDark      ?? '#0a6370';
+const ACCENT        = Colors.primary          ?? '#13c296';
+const TEAL_MID      = Colors.tealAccentMid    ?? '#0fa87d';
+const TEAL_DARK     = Colors.tealAccentDark   ?? '#0a9e78';
+const NEUTRAL_DARK  = Colors.neutral780       ?? '#2a2a2a';
+const GLASS         = withOpacity(Colors.white ?? '#ffffff', 0.07);
+const BORDER        = withOpacity(Colors.white ?? '#ffffff', 0.11);
 const MAX_CAPTION = 300;
 
 const CreateReels = ({ navigation, route }) => {
@@ -43,42 +44,23 @@ const CreateReels = ({ navigation, route }) => {
     const [caption, setCaption] = useState('');
     const [location, setLocation] = useState('');
     const [selectedVideo, setSelectedVideo] = useState(null);
-    const [uploading, setUploading] = useState(false);
-    const [posting, setPosting] = useState(false);
     const [step, setStep] = useState('gallery'); // 'gallery' | 'preview' | 'details'
-    const [uploadProgress, setUploadProgress] = useState(0);
 
-    // Animated progress bar width
-    const barAnim = useRef(new Animated.Value(0)).current;
-    useEffect(() => {
-        Animated.timing(barAnim, {
-            toValue: uploadProgress / 100,
-            duration: 350,
-            useNativeDriver: false,
-        }).start();
-    }, [uploadProgress]);
-
-    const currentReel_store = useStore((state)=> state.currentReel);
+    const currentReel_store = useStore((state) => state.currentReel);
     const isNextVideo_store = useStore((state) => state.isNextVideo);
 
-    
     const isFocused = useIsFocused();
     const [appState, setAppState] = useState(AppState.currentState);
     const uploadIdRef = useRef(0);
 
-    // Track previous focus state to only pause when gaining focus
     const prevFocusedRef = useRef(false);
     useEffect(() => {
-        // Only pause videos when this screen GAINS focus (user navigated TO createreels)
         if (isFocused && !prevFocusedRef.current) {
-            console.log("CreateReels gained focus - pausing all videos");
             VideoManager.singlePause();
             ReelsManager.singlePause();
         }
         prevFocusedRef.current = isFocused;
-    },[isFocused]);
-
-
+    }, [isFocused]);
 
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
@@ -87,21 +69,15 @@ const CreateReels = ({ navigation, route }) => {
         return () => subscription.remove();
     }, []);
 
-
-
-
-
-
     useEffect(() => {
         if (route.params?.videoAsset) {
             const asset = route.params.videoAsset;
             setStep('preview');
             processVideoSelection(asset);
-            navigation.setParams({ videoAsset: null }); // Clear params to prevent re-trigger
+            navigation.setParams({ videoAsset: null });
         }
     }, [route.params?.videoAsset]);
 
-    // Hide Tab Bar in Preview Mode
     useLayoutEffect(() => {
         if (step === 'preview' || step === 'details') {
             navigation.setOptions({ tabBarStyle: { display: 'none' } });
@@ -111,13 +87,23 @@ const CreateReels = ({ navigation, route }) => {
     }, [navigation, step]);
 
     const processVideoSelection = async (asset) => {
-        setUploading(false);
+        // ── Reel limits: 500 MB / 3 minutes ──────────────────────────────────
+        const MAX_REEL_BYTES    = 500 * 1024 * 1024;
+        const MAX_REEL_DURATION = 180 * 1000;
+        if (asset.fileSize && asset.fileSize > MAX_REEL_BYTES) {
+            Alert.alert('File Too Large', 'Reels must be under 500 MB. Please trim or compress your video and try again.');
+            return;
+        }
+        if (asset.duration && asset.duration > MAX_REEL_DURATION) {
+            Alert.alert('Video Too Long', 'Reels can be at most 3 minutes long. Please trim your video and try again.');
+            return;
+        }
+
         setCaption('');
         setLocation('');
         const currentId = Date.now();
         uploadIdRef.current = currentId;
-        
-        // 1. Set local state for preview immediately
+
         const localVideo = {
             uri: asset.uri,
             duration: asset.duration,
@@ -126,126 +112,22 @@ const CreateReels = ({ navigation, route }) => {
             mimeType: asset.mimeType || ((asset.fileName || asset.uri || '').toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4'),
             fileType: 'video',
             fileSize: asset.fileSize,
-            uploading: false,
             serverUrl: null,
-            thumbnailUrl: null
+            thumbnailUrl: null,
         };
         setSelectedVideo(localVideo);
 
         try {
-            // 2. Generate Thumbnail
-            const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(asset.uri, {
-                time: 1000,
-            });
+            const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(asset.uri, { time: 1000 });
             if (uploadIdRef.current !== currentId) return;
             setSelectedVideo(prev => ({ ...prev, localThumbnailUri: thumbUri }));
-        } catch (error) {
-            console.error("Error processing video selection:", error);
-        }
+        } catch (_) {}
     };
 
-    const startUpload = async () => {
-        if (!selectedVideo || selectedVideo.uploading || selectedVideo.serverUrl) return;
-        
-        const currentId = uploadIdRef.current;
-        setUploading(true);
-        setUploadProgress(0);
-
-        // Simulate progress
-        const progressInterval = setInterval(() => {
-            setUploadProgress(prev => {
-                if (prev >= 90) return 90;
-                return prev + 5;
-            });
-        }, 500);
-
-        try {
-            // 3. Upload Video
-            const videoFile = {
-                uri: selectedVideo.uri,
-                type: 'video/mp4',
-                fileName: selectedVideo.uri.split('/').pop() || 'reel.mp4',
-                fileType: 'video'
-            };
-            console.log('[CreateReels] video upload starting:', videoFile);
-            const videoResponse = await UploadMediaController(videoFile, token);
-            console.log('[CreateReels] video upload response:', videoResponse);
-            if (uploadIdRef.current !== currentId) return;
-
-            // 4. Upload Thumbnail
-            let thumbUri = selectedVideo.localThumbnailUri;
-            if (!thumbUri) {
-                 const { uri } = await VideoThumbnails.getThumbnailAsync(selectedVideo.uri, { time: 1000 });
-                 thumbUri = uri;
-            }
-
-            const thumbFile = {
-                uri: thumbUri,
-                type: 'image/jpeg',
-                fileName: 'thumbnail.jpg',
-                fileType: 'photo'
-            };
-            console.log('[CreateReels] thumbnail upload starting:', thumbFile);
-            const thumbResponse = await UploadMediaController(thumbFile, token);
-            console.log('[CreateReels] thumbnail upload response:', thumbResponse);
-            if (uploadIdRef.current !== currentId) return;
-
-            clearInterval(progressInterval);
-            setUploadProgress(100);
-
-            if (videoResponse.status === "success" && thumbResponse.status === "success") {
-                console.log("Upload successful. Video URL:", videoResponse.data.url, "Thumb URL:", thumbResponse.data.url);
-                setSelectedVideo(prev => ({
-                    ...prev,
-                    uploading: false,
-                    serverUrl: videoResponse.data.url,
-                    thumbnailUrl: thumbResponse.data.url
-                }));
-                setUploading(false);
-            } else {
-                console.log("[CreateReels] upload failed details:", { videoResponse, thumbResponse });
-                const uploadReason =
-                    videoResponse?.message ||
-                    thumbResponse?.message ||
-                    videoResponse?.errorData?.message ||
-                    thumbResponse?.errorData?.message ||
-                    "Could not upload media.";
-                Alert.alert("Upload Failed", uploadReason);
-                setUploading(false);
-            }
-
-        } catch (error) {
-            if (uploadIdRef.current !== currentId) return;
-            console.error('[CreateReels] upload exception:', {
-                message: error?.message,
-                code: error?.code,
-                httpStatus: error?.response?.status,
-                response: error?.response?.data,
-                stack: error?.stack,
-            });
-            Alert.alert("Error", error?.message || "An error occurred during upload.");
-            setUploading(false);
-        } finally {
-            // setUploading(false) is handled in success/error blocks or kept true if we want to show loading state
-            clearInterval(progressInterval);
-        }
-    };
-
-    const handlePost = async () => {
+    const handlePost = () => {
         if (!selectedVideo?.uri) {
-            Alert.alert("Wait", "Please select a reel first.");
+            Alert.alert('Wait', 'Please select a reel first.');
             return;
-        }
-
-        setPosting(true);
-        
-        let postData = {
-            text: caption,
-            location: location,
-        };
-
-        if (selectedVideo != null) {
-            postData.type = "reel";
         }
 
         const videoFile = {
@@ -257,32 +139,22 @@ const CreateReels = ({ navigation, route }) => {
             fileSize: selectedVideo.fileSize,
         };
         const thumbnailFile = selectedVideo.localThumbnailUri
-            ? {
-                uri: selectedVideo.localThumbnailUri,
-                type: 'image/jpeg',
-                fileName: 'thumbnail.jpg',
-                fileType: 'photo',
-            }
+            ? { uri: selectedVideo.localThumbnailUri, type: 'image/jpeg', fileName: 'thumbnail.jpg', fileType: 'photo' }
             : null;
 
-        console.log('[CreateReels] handing reel to background composer uploader:', {
-            postData,
-            videoFile,
-            hasThumbnail: !!thumbnailFile,
-        });
         startBackgroundUpload({
-            postBody: postData,
+            postBody: { type: 'reel', text: caption, location },
             activeTab: 'reel',
             selectedVideo: videoFile,
             selectedThumbnail: thumbnailFile,
             token,
         });
-        setPosting(false);
+
+        // Reset and go home — GlobalUploadBanner tracks the rest
         setCaption('');
         setLocation('');
         setSelectedVideo(null);
         setStep('gallery');
-        setUploadProgress(0);
         uploadIdRef.current = 0;
         navigation.navigate('Home');
     };
@@ -295,30 +167,12 @@ const CreateReels = ({ navigation, route }) => {
                 aspect: [9, 16],
                 quality: 1,
             });
-
             if (!result.canceled) {
-                const asset = result.assets[0];
-                setSelectedVideo(prev => ({ ...prev, localThumbnailUri: asset.uri }));
-
-                if (!uploading && selectedVideo?.serverUrl) {
-                     const thumbFile = {
-                        uri: asset.uri,
-                        type: 'image/jpeg',
-                        fileName: 'thumbnail.jpg',
-                        fileType: 'photo'
-                    };
-                    const thumbResponse = await UploadMediaController(thumbFile, token);
-                    if (thumbResponse.status === "success") {
-                        setSelectedVideo(prev => ({ ...prev, thumbnailUrl: thumbResponse.data.url }));
-                    }
-                }
+                setSelectedVideo(prev => ({ ...prev, localThumbnailUri: result.assets[0].uri }));
             }
-        } catch (error) {
-            console.log("Error picking thumbnail", error);
-        }
+        } catch (_) {}
     };
 
-    // Render Custom Gallery Step
     if (step === 'gallery') {
         return (
             <Gallery onSelect={(asset) => {
@@ -328,21 +182,16 @@ const CreateReels = ({ navigation, route }) => {
         );
     }
 
-    
-    // Render Preview Step
     if (step === 'preview' && selectedVideo) {
         return (
-            <Preview 
+            <Preview
                 videoUri={selectedVideo.uri}
                 onBack={() => {
                     uploadIdRef.current = 0;
-                    setUploading(false);
                     setStep('gallery');
                     setSelectedVideo(null);
                 }}
-                onNext={() => {
-                    setStep('details');
-                }}
+                onNext={() => setStep('details')}
                 isFocused={isFocused}
                 appState={appState}
                 primaryColor={AppDetails.primaryColor}
@@ -350,15 +199,7 @@ const CreateReels = ({ navigation, route }) => {
         );
     }
 
-
-
-
-
-
-
-
-
-    const canPost = !!selectedVideo?.uri && !posting && !uploading;
+    const canPost = !!selectedVideo?.uri;
 
     return (
         <KeyboardAvoidingView
@@ -373,7 +214,6 @@ const CreateReels = ({ navigation, route }) => {
                         style={s.backBtn}
                         onPress={() => {
                             uploadIdRef.current = 0;
-                            setUploading(false);
                             setStep('preview');
                         }}
                     >
@@ -389,15 +229,12 @@ const CreateReels = ({ navigation, route }) => {
                         activeOpacity={0.8}
                     >
                         <LinearGradient
-                            colors={[ACCENT, Colors.tealAccentMid]}
+                            colors={[ACCENT, TEAL_MID]}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={s.postPillGrad}
                         >
-                            {posting
-                                ? <ActivityIndicator size="small" color={Colors.white} />
-                                : <Text style={s.postPillTxt}>Share</Text>
-                            }
+                            <Text style={s.postPillTxt}>Share</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
@@ -425,12 +262,7 @@ const CreateReels = ({ navigation, route }) => {
                                     <Ionicons name="videocam-outline" size={28} color={withOpacity(Colors.white, 0.25)} />
                                 </View>
                             )}
-                            {/* change cover */}
-                            <TouchableOpacity
-                                style={s.changeCoverBtn}
-                                onPress={handleChangeThumbnail}
-                                disabled={uploading}
-                            >
+                            <TouchableOpacity style={s.changeCoverBtn} onPress={handleChangeThumbnail}>
                                 <Ionicons name="image-outline" size={14} color={Colors.white} />
                                 <Text style={s.changeCoverTxt}>Cover</Text>
                             </TouchableOpacity>
@@ -448,55 +280,13 @@ const CreateReels = ({ navigation, route }) => {
                                 maxLength={MAX_CAPTION}
                                 selectionColor={ACCENT}
                             />
-                            <Text style={s.charCount}>
-                                {caption.length}/{MAX_CAPTION}
-                            </Text>
+                            <Text style={s.charCount}>{caption.length}/{MAX_CAPTION}</Text>
                         </View>
                     </View>
-
-                    {/* ── Upload progress ── */}
-                    {(uploading || uploadProgress > 0) && (
-                        <View style={s.progressWrap}>
-                            <View style={s.progressRow}>
-                                <Text style={s.progressLabel}>
-                                    {uploadProgress < 100 ? 'Uploading…' : '✓ Upload complete'}
-                                </Text>
-                                <Text style={s.progressPct}>{Math.round(uploadProgress)}%</Text>
-                            </View>
-                            <View style={s.progressTrack}>
-                                <Animated.View
-                                    style={[
-                                        s.progressFill,
-                                        {
-                                            width: barAnim.interpolate({
-                                                inputRange: [0, 1],
-                                                outputRange: ['0%', '100%'],
-                                            }),
-                                        },
-                                    ]}
-                                />
-                                {/* glow dot */}
-                                {uploading && (
-                                    <Animated.View
-                                        style={[
-                                            s.progressGlow,
-                                            {
-                                                left: barAnim.interpolate({
-                                                    inputRange: [0, 1],
-                                                    outputRange: ['0%', '100%'],
-                                                }),
-                                            },
-                                        ]}
-                                    />
-                                )}
-                            </View>
-                        </View>
-                    )}
 
                     {/* ── Options ── */}
                     <View style={s.optionsWrap}>
 
-                        {/* Location */}
                         <View style={s.optionRow}>
                             <View style={s.optionIcon}>
                                 <Ionicons name="location-outline" size={18} color={ACCENT} />
@@ -518,7 +308,6 @@ const CreateReels = ({ navigation, route }) => {
 
                         <View style={s.divider} />
 
-                        {/* Audience pill */}
                         <View style={s.optionRow}>
                             <View style={s.optionIcon}>
                                 <Ionicons name="earth-outline" size={18} color={ACCENT} />
@@ -531,7 +320,6 @@ const CreateReels = ({ navigation, route }) => {
 
                         <View style={s.divider} />
 
-                        {/* Comments */}
                         <View style={s.optionRow}>
                             <View style={s.optionIcon}>
                                 <Ionicons name="chatbubble-ellipses-outline" size={18} color={ACCENT} />
@@ -543,7 +331,7 @@ const CreateReels = ({ navigation, route }) => {
                         </View>
                     </View>
 
-                    {/* ── Big post button ── */}
+                    {/* ── Post button ── */}
                     <TouchableOpacity
                         onPress={handlePost}
                         disabled={!canPost}
@@ -551,47 +339,22 @@ const CreateReels = ({ navigation, route }) => {
                         style={{ marginHorizontal: 18, marginTop: 28, marginBottom: Math.max(bottom + 20, 36) }}
                     >
                         <LinearGradient
-                            colors={canPost ? [ACCENT, Colors.tealAccentDark] : [Colors.neutral780, Colors.neutral780]}
+                            colors={canPost ? [ACCENT, TEAL_DARK] : [NEUTRAL_DARK, NEUTRAL_DARK]}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={s.bigPostBtn}
                         >
-                            {posting ? (
-                                <>
-                                    <ActivityIndicator size="small" color={Colors.white} />
-                                    <Text style={s.bigPostTxt}>Posting…</Text>
-                                </>
-                            ) : uploading ? (
-                                <>
-                                    <ActivityIndicator size="small" color={Colors.white} />
-                                    <Text style={s.bigPostTxt}>Uploading…</Text>
-                                </>
-                            ) : (
-                                <>
-                                    <Ionicons name="send" size={20} color={Colors.white} />
-                                    <Text style={s.bigPostTxt}>Post Reel</Text>
-                                </>
-                            )}
+                            <Ionicons name="send" size={20} color={Colors.white} />
+                            <Text style={s.bigPostTxt}>Post Reel</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 </ScrollView>
-
-                {/* Posting overlay */}
-                <Modal transparent animationType="fade" visible={posting} onRequestClose={() => {}}>
-                    <View style={s.overlay}>
-                        <View style={s.overlayBox}>
-                            <ActivityIndicator size="large" color={ACCENT} />
-                            <Text style={s.overlayTxt}>Posting reel…</Text>
-                        </View>
-                    </View>
-                </Modal>
             </SafeAreaView>
         </KeyboardAvoidingView>
     );
 };
 
 const s = StyleSheet.create({
-    // Header
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -614,10 +377,7 @@ const s = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: 0.3,
     },
-    postPill: {
-        borderRadius: 22,
-        overflow: 'hidden',
-    },
+    postPill: { borderRadius: 22, overflow: 'hidden' },
     postPillGrad: {
         paddingHorizontal: 20,
         paddingVertical: 10,
@@ -631,11 +391,7 @@ const s = StyleSheet.create({
         fontSize: 14,
         letterSpacing: 0.4,
     },
-
-    // Scroll
     scroll: { paddingTop: 20 },
-
-    // Main row: thumb + caption
     mainRow: {
         flexDirection: 'row',
         paddingHorizontal: 18,
@@ -650,11 +406,7 @@ const s = StyleSheet.create({
         backgroundColor: Colors.nearBlackSoft,
         position: 'relative',
     },
-    thumb: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 14,
-    },
+    thumb: { width: '100%', height: '100%', borderRadius: 14 },
     thumbPlaceholder: {
         justifyContent: 'center',
         alignItems: 'center',
@@ -665,9 +417,7 @@ const s = StyleSheet.create({
     },
     changeCoverBtn: {
         position: 'absolute',
-        bottom: 8,
-        left: 0,
-        right: 0,
+        bottom: 8, left: 0, right: 0,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -675,11 +425,7 @@ const s = StyleSheet.create({
         backgroundColor: withOpacity(Colors.black, 0.55),
         paddingVertical: 5,
     },
-    changeCoverTxt: {
-        color: Colors.white,
-        fontSize: 11,
-        fontWeight: '700',
-    },
+    changeCoverTxt: { color: Colors.white, fontSize: 11, fontWeight: '700' },
     captionCard: {
         flex: 1,
         backgroundColor: GLASS,
@@ -702,58 +448,6 @@ const s = StyleSheet.create({
         fontSize: 11,
         marginTop: 6,
     },
-
-    // Progress
-    progressWrap: {
-        marginHorizontal: 18,
-        marginBottom: 18,
-        backgroundColor: GLASS,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: BORDER,
-        padding: 14,
-    },
-    progressRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-    },
-    progressLabel: {
-        color: withOpacity(Colors.white, 0.6),
-        fontSize: 12.5,
-        fontWeight: '600',
-    },
-    progressPct: {
-        color: ACCENT,
-        fontSize: 12.5,
-        fontWeight: '900',
-    },
-    progressTrack: {
-        height: 5,
-        backgroundColor: withOpacity(Colors.white, 0.08),
-        borderRadius: 99,
-        overflow: 'visible',
-        position: 'relative',
-    },
-    progressFill: {
-        height: '100%',
-        backgroundColor: ACCENT,
-        borderRadius: 99,
-    },
-    progressGlow: {
-        position: 'absolute',
-        top: -5,
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: ACCENT,
-        shadowColor: ACCENT,
-        shadowOpacity: 1,
-        shadowRadius: 6,
-        marginLeft: -7,
-    },
-
-    // Options
     optionsWrap: {
         marginHorizontal: 18,
         backgroundColor: GLASS,
@@ -769,20 +463,9 @@ const s = StyleSheet.create({
         paddingVertical: 14,
         gap: 12,
     },
-    optionIcon: {
-        width: 30,
-        alignItems: 'center',
-    },
-    optionInput: {
-        flex: 1,
-        color: Colors.white,
-        fontSize: 14,
-    },
-    optionLabel: {
-        flex: 1,
-        color: withOpacity(Colors.white, 0.75),
-        fontSize: 14,
-    },
+    optionIcon: { width: 30, alignItems: 'center' },
+    optionInput: { flex: 1, color: Colors.white, fontSize: 14 },
+    optionLabel: { flex: 1, color: withOpacity(Colors.white, 0.75), fontSize: 14 },
     audiencePill: {
         backgroundColor: withOpacity(Colors.tealAccent, 0.15),
         borderRadius: 20,
@@ -791,18 +474,8 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: withOpacity(Colors.tealAccent, 0.3),
     },
-    audiencePillTxt: {
-        color: ACCENT,
-        fontSize: 12,
-        fontWeight: '800',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: BORDER,
-        marginLeft: 58,
-    },
-
-    // Big post button
+    audiencePillTxt: { color: ACCENT, fontSize: 12, fontWeight: '800' },
+    divider: { height: 1, backgroundColor: BORDER, marginLeft: 58 },
     bigPostBtn: {
         height: 58,
         borderRadius: 16,
@@ -816,28 +489,6 @@ const s = StyleSheet.create({
         fontSize: 17,
         fontWeight: '900',
         letterSpacing: 0.3,
-    },
-
-    // Modal
-    overlay: {
-        flex: 1,
-        backgroundColor: withOpacity(Colors.black, 0.75),
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    overlayBox: {
-        backgroundColor: Colors.nearBlackSoft,
-        borderRadius: 20,
-        padding: 30,
-        alignItems: 'center',
-        gap: 14,
-        borderWidth: 1,
-        borderColor: BORDER,
-    },
-    overlayTxt: {
-        color: Colors.white,
-        fontWeight: '700',
-        fontSize: 15,
     },
 });
 

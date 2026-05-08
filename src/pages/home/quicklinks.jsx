@@ -53,10 +53,11 @@ const items = [
     colors: [Colors.tealNavy, Colors.tealDeepStrong],
   },
   {
-    label: "Learn",
-    icon: (active) => <Ionicons name="school" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "HafrikXLearn",
-    colors: [Colors.redStrong, Colors.redDeep],
+    label: "AI Chat",
+    icon: (active) => <Ionicons name="sparkles" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "AIChat",
+    params: { fresh: true },
+    colors: ['#7c3aed', '#4c1d95'],
   },
 ];
 

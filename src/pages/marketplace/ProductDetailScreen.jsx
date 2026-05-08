@@ -8,10 +8,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors }    from '../../theme';
-import AppDetails    from '../../helpers/appdetails';
-import useStore      from '../../repository/store';
-import { useAuth }   from '../../AuthContext';
+import { Colors }         from '../../theme';
+import AppDetails         from '../../helpers/appdetails';
+import useStore           from '../../repository/store';
+import { useAuth }        from '../../AuthContext';
 import {
   getProductDetail,
   addToCart,
@@ -227,6 +227,33 @@ export default function ProductDetailScreen({ navigation, route }) {
     setAdding(false);
   }, [allSelected, buildSelectedVariations, qty, token, product, setCartCount, showToast]);
 
+  const handleAskAI = useCallback(() => {
+    if (!product) return;
+    navigation.navigate('AIChat', {
+      mode: 'Product Assistant',
+      contextType: 'product',
+      contextId: product.post_id,
+      initialPrompt: 'Explain this product and what I should check before buying.',
+      contextData: {
+        product_id: product.post_id,
+        title: cleanTitle,
+        description: cleanDesc,
+        price: product.price,
+        currency: product.currency,
+        category_id: product.category_id,
+        in_stock: product.in_stock,
+        quantity: product.quantity,
+        rating,
+        review_count: reviewCount,
+        variations: variations.map(v => ({
+          name: v.name,
+          slug: v.slug,
+          options: (v.options ?? []).map(o => o.value ?? o.name ?? o.slug).filter(Boolean),
+        })),
+      },
+    });
+  }, [cleanDesc, cleanTitle, navigation, product, rating, reviewCount, variations]);
+
   return (
     <View style={s.root}>
       <StatusBar barStyle="light-content" backgroundColor={BRAND} />
@@ -259,14 +286,19 @@ export default function ProductDetailScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={s.topBtn} onPress={() => navigation.navigate('CartScreen')}>
-          <Ionicons name="bag-outline" size={20} color={WHITE} />
-          {cartCount > 0 && (
-            <View style={s.cartBadge}>
-              <Text style={s.cartBadgeTxt}>{cartCount > 99 ? '99+' : cartCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity style={s.topBtn} onPress={handleAskAI}>
+            <Ionicons name="sparkles-outline" size={20} color={WHITE} />
+          </TouchableOpacity>
+          <TouchableOpacity style={s.topBtn} onPress={() => navigation.navigate('CartScreen')}>
+            <Ionicons name="bag-outline" size={20} color={WHITE} />
+            {cartCount > 0 && (
+              <View style={s.cartBadge}>
+                <Text style={s.cartBadgeTxt}>{cartCount > 99 ? '99+' : cartCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       <ScrollView

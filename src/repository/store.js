@@ -281,12 +281,13 @@ const useStore = create((set, get) => ({
         isVisible: false,
         feedId: null,
         sharedVideo: null, // Optional video data for seamless transfer
+        initialText: '',
     },
-    openCommentModal: (feedId, sharedVideo = null) => set({
-        commentModal: { isVisible: true, feedId, sharedVideo }
+    openCommentModal: (feedId, sharedVideo = null, initialText = '') => set({
+        commentModal: { isVisible: true, feedId, sharedVideo, initialText }
     }),
     closeCommentModal: () => set({
-        commentModal: { isVisible: false, feedId: null, sharedVideo: null }
+        commentModal: { isVisible: false, feedId: null, sharedVideo: null, initialText: '' }
     }),
 
 

@@ -356,12 +356,10 @@ const MiniCard = memo(({ title, subtitle, image, iconName, onPress, badge }) => 
 const MarketplaceCard = memo(({ item, onPress }) => {
   const thumb      = item.thumbnail ?? item.photos?.[0] ?? null;
   const inStock    = item.stock_status === 'In Stock';
-  const isPage     = item.seller?.type === 'page';
-  const sellerName = isPage && item.seller?.page_name
-    ? item.seller.page_name
-    : item.seller?.username ?? null;
-  const sellerAvatar = item.seller?.avatar ?? null;
   const photoCnt   = Number(item.photos_count ?? 0);
+  const title      = decodeHtml(item.title ?? 'Product')
+    .replace(/shop\.itstrendymart\.com/gi, 'shop.hafrik.com')
+    .replace(/itstrendymart|trendymart/gi, 'Hafrik Shop');
 
   return (
     <TouchableOpacity style={ss.gridCard} activeOpacity={0.88} onPress={onPress}>
@@ -401,31 +399,13 @@ const MarketplaceCard = memo(({ item, onPress }) => {
       <View style={ss.gridBody}>
         {/* Fixed 2-line title keeps all cards same height */}
         <Text numberOfLines={2} style={ss.gridTitle}>
-          {decodeHtml(item.title ?? 'Product')}
+          {title}
         </Text>
 
         {/* Price in green */}
         <Text numberOfLines={1} style={ss.gridPrice}>
           {fmtPrice(item.currency, item.price) ?? '—'}
         </Text>
-
-        {/* Seller row */}
-        <View style={ss.gridSellerRow}>
-          {isRealImage(sellerAvatar) ? (
-            <Image source={{ uri: sellerAvatar }} style={ss.gridSellerAvatar} />
-          ) : (
-            <View style={[ss.gridSellerAvatar, ss.imgFallback]}>
-              <Ionicons name="person-outline" size={10} color={BRAND} />
-            </View>
-          )}
-          <Text numberOfLines={1} style={ss.gridSellerName}>{sellerName ?? '—'}</Text>
-          <View style={{ flex: 1 }} />
-          {sellerName && (
-            <View style={[ss.gridTypeBadge, isPage && ss.gridTypeBadgePage]}>
-              <Text style={ss.gridTypeTxt}>{isPage ? 'PAGE' : 'USER'}</Text>
-            </View>
-          )}
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -2444,6 +2424,15 @@ export default function DiscoveryScreen() {
           </View>
 
           <View style={ss.headerRight}>
+            {/* QR Code */}
+            <TouchableOpacity
+              style={ss.iconBtn}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('ProfileQr')}
+            >
+              <Ionicons name="qr-code-outline" size={22} color={WHITE} />
+            </TouchableOpacity>
+
             {/* Notifications */}
             <TouchableOpacity
               style={ss.iconBtn}
@@ -2976,16 +2965,16 @@ const ss = StyleSheet.create({
   gridCard: {
     width: CARD_W,
     backgroundColor: WHITE,
-    borderRadius: 18,
+    borderRadius: 0,
     overflow: 'hidden',
     marginBottom: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: DARK,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
 
   gridImgWrap: {
@@ -3007,7 +2996,7 @@ const ss = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: ACCENT + 'EB',
-    borderRadius: 100,
+    borderRadius: 0,
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
@@ -3037,7 +3026,7 @@ const ss = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     backgroundColor: DARK + '85',
-    borderRadius: 100,
+    borderRadius: 0,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
@@ -3053,7 +3042,7 @@ const ss = StyleSheet.create({
     top: 7,
     left: 7,
     backgroundColor: BRAND,
-    borderRadius: 100,
+    borderRadius: 0,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },

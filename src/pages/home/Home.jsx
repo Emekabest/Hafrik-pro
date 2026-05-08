@@ -6,6 +6,7 @@ import {
   StatusBar,
   TouchableOpacity,
   Animated,
+  Easing,
   Modal,
   Text,
 } from 'react-native';
@@ -38,7 +39,6 @@ const HomePage = ({ route, navigation }) => {
   const tabletMode         = useStore((state) => state.tabletMode);
   const tabletDimension    = useStore((state) => state.tabletDimension);
   const openComposer       = useStore((state) => state.openComposer);
-  const openCreateMenu     = useStore((state) => state.openCreateMenu);
   const showWelcomeModal   = useStore((state) => state.showWelcomeModal);
   const setShowWelcomeModal = useStore((state) => state.setShowWelcomeModal);
   const feedDoubleTap      = useStore((state) => state.tabRefreshSignals?.Feed ?? 0);
@@ -96,6 +96,15 @@ const HomePage = ({ route, navigation }) => {
   const swipeX = useRef(new Animated.Value(0)).current;
   const maxTabIndex = FEED_TABS.length - 1;
 
+  const snapBack = useCallback(() => {
+    Animated.timing(swipeX, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [swipeX]);
+
   const handleScreenSwipe = Animated.event(
     [{ nativeEvent: { translationX: swipeX } }],
     { useNativeDriver: true },
@@ -104,20 +113,23 @@ const HomePage = ({ route, navigation }) => {
   const handleScreenSwipeEnd = useCallback((event) => {
     const { translationX, velocityX, state } = event.nativeEvent;
     if (state === State.END || state === State.FAILED || state === State.CANCELLED) {
-      const swipe = translationX + velocityX * 0.1;
-      // Skip nav-only tabs (e.g. TV) when swiping
+      // Momentum-weighted displacement
+      const swipe = translationX + velocityX * 0.12;
+
+      if (swipe > 60 && activeTab === 0) {
+        // Swipe right on the first tab → open the sidebar
+        snapBack();
+        openDrawer();
+        return;
+      }
+
       const nextIndex = swipe < -60 ? activeTab + 1 : swipe > 60 ? activeTab - 1 : activeTab;
       if (nextIndex !== activeTab && nextIndex >= 0 && nextIndex <= maxTabIndex) {
         handleTabChange(nextIndex);
       }
-      Animated.spring(swipeX, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 200,
-        friction: 20,
-      }).start();
+      snapBack();
     }
-  }, [activeTab, swipeX, maxTabIndex, handleTabChange]);
+  }, [activeTab, swipeX, maxTabIndex, handleTabChange, openDrawer, snapBack]);
 
   const handleFeedLayout = useCallback((e) => {
     const w = e.nativeEvent.layout.width;
@@ -150,8 +162,8 @@ const HomePage = ({ route, navigation }) => {
             <PanGestureHandler
               onGestureEvent={handleScreenSwipe}
               onHandlerStateChange={handleScreenSwipeEnd}
-              activeOffsetX={[-15, 15]}
-              failOffsetY={[-20, 20]}
+              activeOffsetX={[-18, 18]}
+              failOffsetY={[-15, 15]}
             >
               <Animated.View
                 style={[
@@ -176,7 +188,7 @@ const HomePage = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader onOpenDrawer={openDrawer} hideSearch />
+      <AppHeader onOpenDrawer={openDrawer} />
 
       {tabletMode ? (
         <View style={[styles.homeContainer, { height: homeViewHeight, flexDirection: 'row' }]}>
@@ -193,6 +205,21 @@ const HomePage = ({ route, navigation }) => {
       )}
 
       {/* FAB removed — composer accessible via daily prompt card */}
+      {!isSearchVisible && !isSearchResultsVisible && !currentTabConfig?.isTV && (
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.9}
+          onPress={() => openComposer({ initialTab: 'text' })}
+        >
+          <LinearGradient
+            colors={[Colors.primaryDark, Colors.primary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <Ionicons name="add" size={30} color={Colors.white} />
+        </TouchableOpacity>
+      )}
 
       {/* PostComposerModal and CreateMenuSheet are now mounted globally in App.js */}
 
@@ -258,8 +285,8 @@ const styles = StyleSheet.create({
   // FAB
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 20,
+    bottom: 22,
+    right: 18,
     width: 56,
     height: 56,
     borderRadius: 28,

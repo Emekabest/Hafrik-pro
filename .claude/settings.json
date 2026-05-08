@@ -13,7 +13,12 @@
       "Bash(curl -s https://shop.itstrendymart.com/wp-json/wc/store/v1/checkout -X POST -H 'Content-Type: application/json' -d '{\"billing_address\":{\"first_name\":\"Test\",\"last_name\":\"User\",\"address_1\":\"123 Street\",\"city\":\"Lagos\",\"country\":\"NG\",\"email\":\"test@test.com\",\"phone\":\"08000000000\",\"state\":\"\",\"postcode\":\"\",\"address_2\":\"\",\"company\":\"\"},\"shipping_address\":{\"first_name\":\"Test\",\"last_name\":\"User\",\"address_1\":\"123 Street\",\"city\":\"Lagos\",\"country\":\"NG\",\"phone\":\"08000000000\",\"state\":\"\",\"postcode\":\"\",\"address_2\":\"\",\"company\":\"\"},\"payment_method\":\"paystack\",\"customer_note\":\"\"}')",
       "Bash(python3 -m json.tool)",
       "Bash(curl -s \"https://shop.itstrendymart.com/wp-json/wc/store/v1/checkout\" -X POST -H \"Content-Type: application/json\" -d '{\"billing_address\":{\"first_name\":\"Test\",\"last_name\":\"User\",\"address_1\":\"123 Street\",\"city\":\"Lagos\",\"country\":\"NG\",\"email\":\"test@test.com\",\"phone\":\"08000000000\",\"state\":\"\",\"postcode\":\"\",\"address_2\":\"\",\"company\":\"\"},\"shipping_address\":{\"first_name\":\"Test\",\"last_name\":\"User\",\"address_1\":\"123 Street\",\"city\":\"Lagos\",\"country\":\"NG\",\"phone\":\"08000000000\",\"state\":\"\",\"postcode\":\"\",\"address_2\":\"\",\"company\":\"\"},\"payment_method\":\"paystack\",\"customer_note\":\"\"}')",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npm show:*)",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\('version:', p.get\\('version'\\)\\); print\\('peerDeps:', p.get\\('peerDependencies',{}\\)\\)\")",
+      "Bash(npm install:*)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const p=JSON.parse\\(fs.readFileSync\\('/dev/stdin','utf8'\\)\\); console.log\\('version:', p.version, '\\\\npeerDeps:', JSON.stringify\\(p.peerDependencies,null,2\\)\\)\")",
+      "Bash(pod install:*)"
     ]
   }
 }

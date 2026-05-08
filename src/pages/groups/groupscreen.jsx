@@ -1,244 +1,246 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
-  FlatList, Image, ActivityIndicator, ScrollView,
-  StatusBar, Modal, TouchableWithoutFeedback,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  Image,
+  ActivityIndicator,
+  ScrollView,
+  StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../../AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../AuthContext';
 import { Colors } from '../../theme';
 import { useTheme } from '../../theme/ThemeContext';
-
-// ─── API imports ─────────────────────────────────────────────────────────────
 import { getGroups, getCategories, joinGroup, leaveGroup } from './services/groupApi';
 import CreateModal from './CreateModal';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const BRAND          = Colors.primaryDark;
-const ACCENT         = Colors.primary;
-const CREAM          = Colors.background;
-const MUTED          = Colors.secondaryText;
-const DARK           = Colors.black;
+const BRAND = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const BG = '#F4F8F8';
+const CARD = Colors.white;
+const WHITE = Colors.white;
+const BLACK = Colors.black;
+const MUTED = Colors.secondaryText;
+const TEXT = Colors.black;
+const BORDER = Colors.borderSoft ?? Colors.borderLight ?? '#E6EEEE';
+const GREEN = '#18A957';
+const GOLD = '#F2A900';
 
-const CARD           = Colors.white;
-const WHITE          = Colors.white;
-const BLACK          = Colors.black;
-const FEATURE_GOLD   = Colors.gradientOrange?.[0] ?? '#f59e0b';
-const COVER_TINT     = ACCENT + 'CC';
-const SCRIM_STRONG   = BLACK + 'C7';
-const SCRIM_MEDIUM   = BLACK + '8C';
-const ON_DARK_80     = WHITE + 'CC';
-const ON_DARK_85     = WHITE + 'D9';
-const ON_DARK_14     = WHITE + '24';
-const ON_DARK_04     = WHITE + '0A';
-const ACCENT_SOFT_09 = ACCENT + '17';
-const ACCENT_SOFT_22 = ACCENT + '38';
-const ACCENT_SOFT_26 = ACCENT + '42';
-const ACCENT_SOFT_50 = ACCENT + '80';
-const BRAND_SOFT_07  = BRAND + '12';
-const TEXT_ACCENT    = BRAND;
-const TEXT_SUBDUED   = Colors.grey;
+const TABS = [
+  { key: 'discover', label: 'Discover', icon: 'compass-outline' },
+  { key: 'joined', label: 'Joined', icon: 'checkmark-circle-outline' },
+];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const decodeHtml = (text = '') =>
   String(text)
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/&mdash;/g, '—').replace(/&rsquo;/g, "'").replace(/&lsquo;/g, "'");
+    .replace(/&#039;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;amp;/g, '&')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;/g, '-')
+    .replace(/&ndash;/g, '-')
+    .replace(/&hellip;/g, '...')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
 
 const cleanText = (text = '') =>
   decodeHtml(text).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 
 const fmtCount = (n) => {
   const v = Number(n ?? 0);
-  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
-  if (v >= 1_000)     return (v / 1_000).toFixed(1) + 'k';
+  if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
   return String(v);
 };
 
 const isRealImage = (url) =>
-  typeof url === 'string' && url.trim().length > 6 &&
-  !url.includes('default-avatar') && !url.includes('blank_profile');
+  typeof url === 'string' &&
+  url.trim().length > 6 &&
+  !url.includes('default-avatar') &&
+  !url.includes('blank_profile');
 
+const getGroupId = (group) => group?.id ?? group?.group_id;
+const getMembers = (group) => Number(group?.members ?? group?.members_count ?? group?.total_members ?? 0);
+const isJoined = (group) => group?.is_joined === true || group?.is_joined === 1 || group?.is_member === true || group?.is_member === 1;
 
-// ─── Community Card (horizontal list) ────────────────────────────────────────
-const CommunityCard = ({ item, onJoinToggle, onOpen }) => {
-  const title   = cleanText(item.title ?? '');
-  const avatar  = item.avatar ?? null;
-  const members = item.members ?? item.members_count ?? 0;
-  const joined  = item.is_joined === true || item.is_joined === 1;
+const Metric = ({ value, label }) => (
+  <View style={styles.heroMetric}>
+    <Text style={styles.heroMetricValue}>{value}</Text>
+    <Text style={styles.heroMetricLabel}>{label}</Text>
+  </View>
+);
 
+const CategoryChip = ({ item, active, onPress }) => {
+  const label = item ? cleanText(item.name ?? item.category_name ?? 'Category') : 'All';
   return (
-    <View style={cc.card}>
-      {/* Single row: avatar | info | join btn | chevron */}
-      <TouchableOpacity style={cc.row} activeOpacity={0.88} onPress={onOpen}>
-        {/* Avatar */}
-        {isRealImage(avatar) ? (
-          <Image source={{ uri: avatar }} style={cc.avatar} resizeMode="cover" />
-        ) : (
-          <LinearGradient colors={[BRAND, ACCENT]} style={[cc.avatar, cc.avatarFb]}>
-            <Ionicons name="people" size={22} color={WHITE} />
-          </LinearGradient>
-        )}
-
-        {/* Info */}
-        <View style={cc.info}>
-          <Text style={cc.title} numberOfLines={1}>{title || 'Community'}</Text>
-          <Text style={cc.members}>{fmtCount(members)} Members</Text>
-        </View>
-
-        {/* Join / Joined button — stops propagation so tap doesn't open group */}
-        <TouchableOpacity
-          style={joined ? cc.joinedBtn : cc.joinBtn}
-          onPress={(e) => { e.stopPropagation(); onJoinToggle(item); }}
-          activeOpacity={0.85}
-          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-        >
-          <Text style={joined ? cc.joinedText : cc.joinText}>
-            {joined ? '✓ Joined' : '+ Join'}
-          </Text>
-        </TouchableOpacity>
-
-        <Ionicons name="chevron-forward" size={16} color={MUTED + '80'} />
-      </TouchableOpacity>
-    </View>
+    <TouchableOpacity style={[styles.categoryChip, active && styles.categoryChipActive]} onPress={onPress} activeOpacity={0.82}>
+      <Ionicons name={item ? 'pricetag-outline' : 'apps-outline'} size={13} color={active ? WHITE : BRAND} />
+      <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]} numberOfLines={1}>{label}</Text>
+    </TouchableOpacity>
   );
 };
 
-// ─── Community Card Styles ────────────────────────────────────────────────────
-const cc = StyleSheet.create({
-  card: {
-    backgroundColor: CARD,
-    borderRadius: 14,
-    marginHorizontal: 14,
-    borderWidth: 1,
-    borderColor: BRAND_SOFT_07,
-    shadowColor: BLACK,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-  },
-  avatarFb: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  info: {
-    flex: 1,
-    gap: 3,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: DARK,
-    lineHeight: 19,
-  },
-  members: {
-    fontSize: 12,
-    color: MUTED,
-    fontWeight: '500',
-  },
-  joinBtn: {
-    backgroundColor: BRAND,
-    borderRadius: 100,
-    paddingHorizontal: 22,
-    paddingVertical: 9,
-  },
-  joinedBtn: {
-    backgroundColor: ACCENT,
-    borderRadius: 100,
-    paddingHorizontal: 22,
-    paddingVertical: 9,
-  },
-  joinText:   { fontSize: 13, fontWeight: '800', color: WHITE },
-  joinedText: { fontSize: 13, fontWeight: '800', color: WHITE },
-  postBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: 100,
-    paddingVertical: 9,
-    backgroundColor: ACCENT + '12',
-    borderWidth: 1,
-    borderColor: ACCENT + '30',
-  },
-  postTxt: { fontSize: 13, fontWeight: '700', color: ACCENT },
-});
+const CommunityCard = ({ item, onOpen, onJoinToggle, categoryName }) => {
+  const title = cleanText(item?.title ?? item?.name ?? 'Community');
+  const about = cleanText(item?.description ?? item?.about ?? '');
+  const category = cleanText(categoryName ?? item?.category_name ?? item?.category_title ?? '');
+  const privacy = cleanText(item?.privacy ?? item?.type ?? '');
+  const cover = item?.cover ?? item?.cover_image ?? item?.cover_photo ?? item?.cover_url ?? item?.banner ?? item?.group_cover ?? item?.image ?? item?.avatar;
+  const avatar = item?.avatar ?? item?.icon ?? item?.group_picture ?? item?.profile_picture ?? item?.image;
+  const joined = isJoined(item);
+  const members = getMembers(item);
+  const posts = Number(item?.posts_count ?? item?.posts ?? 0);
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+  return (
+    <TouchableOpacity style={styles.groupCard} onPress={onOpen} activeOpacity={0.9}>
+      <View style={styles.coverWrap}>
+        {isRealImage(cover) ? (
+          <Image source={{ uri: cover }} style={styles.coverImage} resizeMode="cover" />
+        ) : (
+          <LinearGradient colors={[BRAND, '#0C4B4F', ACCENT]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.coverImage} />
+        )}
+        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.66)']} style={StyleSheet.absoluteFill} />
+        <View style={styles.coverBadgeRow}>
+          {!!category && (
+            <View style={styles.coverBadge}>
+              <Text style={styles.coverBadgeText} numberOfLines={1}>{category}</Text>
+            </View>
+          )}
+          {!!privacy && (
+            <View style={styles.privacyBadge}>
+              <Ionicons name={privacy.toLowerCase() === 'private' ? 'lock-closed' : 'earth'} size={10} color={WHITE} />
+              <Text style={styles.privacyBadgeText}>{privacy}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <View style={styles.cardBody}>
+        <View style={styles.avatarRow}>
+          {isRealImage(avatar) ? (
+            <Image source={{ uri: avatar }} style={styles.groupAvatar} resizeMode="cover" />
+          ) : (
+            <LinearGradient colors={[BRAND, ACCENT]} style={[styles.groupAvatar, styles.avatarFallback]}>
+              <Ionicons name="people" size={24} color={WHITE} />
+            </LinearGradient>
+          )}
+
+          <View style={styles.titleBlock}>
+            <Text style={styles.groupTitle} numberOfLines={1}>{title}</Text>
+            <Text style={styles.groupMeta} numberOfLines={1}>
+              {members > 0 ? `${fmtCount(members)} members` : 'New community'}
+              {posts > 0 ? ` · ${fmtCount(posts)} posts` : ''}
+            </Text>
+          </View>
+        </View>
+
+        {!!about && <Text style={styles.groupAbout} numberOfLines={2}>{about}</Text>}
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={[styles.joinButton, joined && styles.joinedButton]}
+            onPress={(event) => {
+              event.stopPropagation();
+              onJoinToggle(item);
+            }}
+            activeOpacity={0.84}
+          >
+            <Ionicons name={joined ? 'checkmark' : 'add'} size={15} color={joined ? BRAND : WHITE} />
+            <Text style={[styles.joinButtonText, joined && styles.joinedButtonText]}>{joined ? 'Joined' : 'Join'}</Text>
+          </TouchableOpacity>
+
+          <View style={styles.viewButton}>
+            <Text style={styles.viewButtonText}>View community</Text>
+            <Ionicons name="arrow-forward" size={13} color={ACCENT} />
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const SkeletonCard = ({ index }) => (
+  <View style={[styles.groupCard, { opacity: 0.75 - index * 0.08 }]}>
+    <View style={styles.skeletonCover} />
+    <View style={styles.cardBody}>
+      <View style={styles.avatarRow}>
+        <View style={styles.skeletonAvatar} />
+        <View style={{ flex: 1, gap: 8 }}>
+          <View style={styles.skeletonLineBig} />
+          <View style={styles.skeletonLineSmall} />
+        </View>
+      </View>
+      <View style={styles.skeletonTextLine} />
+      <View style={[styles.skeletonTextLine, { width: '68%' }]} />
+    </View>
+  </View>
+);
+
 const CommunitiesScreen = () => {
-  const navigation      = useNavigation();
-  const { top }         = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const { top } = useSafeAreaInsets();
   const { token, user } = useAuth();
-  const { colors: tc }  = useTheme();
+  const { colors: tc } = useTheme();
 
-  const TABS = [
-    { key: 'discover', label: 'Discover' },
-    { key: 'joined',   label: 'Joined Communities' },
-    { key: 'managed',  label: 'My Communities' },
-  ];
-
-  const [showCreate,       setShowCreate]       = useState(false);
-  const [groups,           setGroups]           = useState([]);
-  const [groupsLoad,       setGroupsLoad]       = useState(true);
-  const [groupsPage,       setGroupsPage]       = useState(1);
-  const [groupsMore,       setGroupsMore]       = useState(true);
-  const [activeTab,        setActiveTab]        = useState('discover');
-  const [categories,       setCategories]       = useState([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [groupsLoad, setGroupsLoad] = useState(true);
+  const [groupsPage, setGroupsPage] = useState(1);
+  const [groupsMore, setGroupsMore] = useState(true);
+  const [activeTab, setActiveTab] = useState('discover');
+  const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [showCatPicker,    setShowCatPicker]    = useState(false);
-  const [search,           setSearch]           = useState('');
-  const [refreshing,       setRefreshing]       = useState(false);
+  const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const activeTabRef       = useRef(activeTab);
-  const searchRef          = useRef(search);
-  const selectedCatRef     = useRef(selectedCategory);
-  activeTabRef.current     = activeTab;
-  searchRef.current        = search;
-  selectedCatRef.current   = selectedCategory;
+  const activeTabRef = useRef(activeTab);
+  const searchRef = useRef(search);
+  const selectedCatRef = useRef(selectedCategory);
+  activeTabRef.current = activeTab;
+  searchRef.current = search;
+  selectedCatRef.current = selectedCategory;
 
   const loadGroups = useCallback(async (page = 1, replace = false) => {
     try {
-      setGroupsLoad(true);
-      const tab   = activeTabRef.current;
-      const query = searchRef.current;
-      const cat   = selectedCatRef.current;
-
+      if (page === 1) setGroupsLoad(true);
+      const tab = activeTabRef.current;
+      const query = searchRef.current.trim();
+      const cat = selectedCatRef.current;
       const params = {};
-      if (tab === 'joined')  params.joined  = 1;
-      if (tab === 'managed') params.managed = 1;
-      if (cat?.id)           params.category_id = cat.id;
-      if (query.trim())      params.search  = query.trim();
+
+      if (tab === 'joined') params.joined = 1;
+      if (cat?.id || cat?.category_id) params.category_id = cat.id ?? cat.category_id;
+      if (query) params.search = query;
 
       const res = await getGroups(page, 20, params);
       if (res?.status === 'success') {
-        const items = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        setGroups((p) => (replace ? items : [...p, ...items]));
+        const items = Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
+        setGroups((prev) => replace ? items : [...prev, ...items]);
         setGroupsMore(items.length >= 20);
         setGroupsPage(page);
       }
-    } catch (e) {
-      console.log('[Communities] loadGroups error:', e);
+    } catch (error) {
+      console.log('[Communities] loadGroups error:', error?.response?.data || error?.message || error);
     } finally {
       setGroupsLoad(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -246,247 +248,291 @@ const CommunitiesScreen = () => {
     try {
       const res = await getCategories(token);
       if (res?.status === 'success') {
-        const raw = Array.isArray(res.data) ? res.data : [];
+        const raw = Array.isArray(res.data) ? res.data : Array.isArray(res.data?.data) ? res.data.data : [];
         setCategories(raw);
       }
-    } catch (e) {
-      console.log('[Communities] loadCategories error:', e);
+    } catch (error) {
+      console.log('[Communities] loadCategories error:', error?.response?.data || error?.message || error);
     }
   }, [token]);
 
-  // Initial load
   useEffect(() => {
     loadGroups(1, true);
     loadCategories();
-  }, []); // eslint-disable-line
+  }, [loadGroups, loadCategories]);
 
-  // Reload when tab changes
-  const firstTabRender = useRef(true);
+  const firstTab = useRef(true);
   useEffect(() => {
-    if (firstTabRender.current) { firstTabRender.current = false; return; }
-    setSelectedCategory(null); // reset category on tab switch
+    if (firstTab.current) {
+      firstTab.current = false;
+      return;
+    }
+    setSelectedCategory(null);
     setGroups([]);
     setGroupsPage(1);
     setGroupsMore(true);
     loadGroups(1, true);
-  }, [activeTab]); // eslint-disable-line
+  }, [activeTab, loadGroups]);
 
-  // Reload when category changes
-  const firstCatRender = useRef(true);
+  const firstCat = useRef(true);
   useEffect(() => {
-    if (firstCatRender.current) { firstCatRender.current = false; return; }
+    if (firstCat.current) {
+      firstCat.current = false;
+      return;
+    }
     setGroups([]);
     setGroupsPage(1);
     setGroupsMore(true);
     loadGroups(1, true);
-  }, [selectedCategory]); // eslint-disable-line
+  }, [selectedCategory, loadGroups]);
 
-  // Reload on search change (debounced)
-  const firstSearchRender = useRef(true);
+  const firstSearch = useRef(true);
   useEffect(() => {
-    if (firstSearchRender.current) { firstSearchRender.current = false; return; }
-    const t = setTimeout(() => {
+    if (firstSearch.current) {
+      firstSearch.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
       setGroups([]);
       setGroupsPage(1);
       setGroupsMore(true);
       loadGroups(1, true);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [search]); // eslint-disable-line
+    }, 360);
+    return () => clearTimeout(timer);
+  }, [search, loadGroups]);
 
-  const onRefresh = useCallback(async () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    await loadGroups(1, true);
-    setRefreshing(false);
+    loadGroups(1, true);
   }, [loadGroups]);
 
-  // ── Optimistic join/leave — state lives here, card is pure display ──────────
   const handleJoinToggle = useCallback(async (item) => {
-    const isJoining = !(item.is_joined === true || item.is_joined === 1);
+    const id = getGroupId(item);
+    if (!id) return;
+    const joining = !isJoined(item);
+    const delta = joining ? 1 : -1;
 
-    // Optimistic update
-    setGroups(prev => prev.map(c =>
-      c.id === item.id
-        ? { ...c, is_joined: isJoining, members: isJoining ? (c.members ?? 0) + 1 : Math.max(0, (c.members ?? 0) - 1) }
-        : c
-    ));
+    setGroups((prev) => prev.map((group) => {
+      if (String(getGroupId(group)) !== String(id)) return group;
+      const currentMembers = getMembers(group);
+      return {
+        ...group,
+        is_joined: joining,
+        is_member: joining,
+        members: Math.max(0, currentMembers + delta),
+        members_count: Math.max(0, currentMembers + delta),
+      };
+    }));
 
     try {
-      const res = await (isJoining ? joinGroup(item.id) : leaveGroup(item.id));
-      const updated = res?.data;
+      const res = await (joining ? joinGroup(id) : leaveGroup(id));
+      const updated = res?.data ?? res;
       if (updated) {
-        setGroups(prev => prev.map(c =>
-          c.id === item.id
-            ? { ...c, is_joined: updated.is_joined, members: updated.members }
-            : c
-        ));
+        setGroups((prev) => prev.map((group) => (
+          String(getGroupId(group)) === String(id)
+            ? {
+                ...group,
+                is_joined: updated.is_joined ?? joining,
+                is_member: updated.is_joined ?? joining,
+                members: updated.members ?? group.members,
+                members_count: updated.members ?? group.members_count,
+              }
+            : group
+        )));
       }
-    } catch {
-      // Rollback
-      setGroups(prev => prev.map(c =>
-        c.id === item.id
-          ? { ...c, is_joined: !isJoining, members: isJoining ? Math.max(0, (c.members ?? 0) - 1) : (c.members ?? 0) + 1 }
-          : c
-      ));
+    } catch (error) {
+      console.log('[Communities] join error:', error?.response?.data || error?.message || error);
+      setGroups((prev) => prev.map((group) => {
+        if (String(getGroupId(group)) !== String(id)) return group;
+        const currentMembers = getMembers(group);
+        return {
+          ...group,
+          is_joined: !joining,
+          is_member: !joining,
+          members: Math.max(0, currentMembers - delta),
+          members_count: Math.max(0, currentMembers - delta),
+        };
+      }));
     }
   }, []);
 
+  const joinedCount = useMemo(() => groups.filter(isJoined).length, [groups]);
+  const activeTabLabel = TABS.find((tab) => tab.key === activeTab)?.label ?? 'Discover';
+  const categoryMap = useMemo(() => {
+    const map = {};
+    categories.forEach((cat) => {
+      const id = cat?.id ?? cat?.category_id;
+      const name = cleanText(cat?.name ?? cat?.category_name ?? cat?.title ?? '');
+      if (id != null && name) map[String(id)] = name;
+    });
+    return map;
+  }, [categories]);
 
-  const joinedCount = useMemo(
-    () => groups.filter((g) => g.is_joined === true || g.is_joined === 1).length,
-    [groups]
-  );
+  const getCategoryName = useCallback((group) => {
+    const direct = cleanText(group?.category_name ?? group?.category_title ?? '');
+    if (direct && !/^\d+$/.test(direct)) return direct;
+    const id = group?.category_id ?? group?.category;
+    return id != null ? categoryMap[String(id)] ?? '' : '';
+  }, [categoryMap]);
 
-  const renderGroup = useCallback(
-    ({ item }) => (
-      <CommunityCard
-        item={item}
-        onJoinToggle={handleJoinToggle}
-        onOpen={() => navigation.navigate('GroupDetails', { groupId: item.id })}
-      />
-    ),
-    [handleJoinToggle, navigation]
-  );
+  const renderGroup = useCallback(({ item }) => (
+    <CommunityCard
+      item={item}
+      categoryName={getCategoryName(item)}
+      onJoinToggle={handleJoinToggle}
+      onOpen={() => navigation.navigate('GroupDetails', { groupId: getGroupId(item) })}
+    />
+  ), [getCategoryName, handleJoinToggle, navigation]);
 
-  return (
-    <View style={[gs.root, { backgroundColor: tc.background ?? CREAM }]}>
-      <StatusBar barStyle="light-content" />
-
-      {/* ── Slim fixed header ── */}
-      <View style={[gs.header, { paddingTop: top + 8 }]}>
-        <View style={gs.headerTop}>
-          <TouchableOpacity style={gs.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={20} color={WHITE} />
-          </TouchableOpacity>
-          <View style={gs.headerLogoWrap} pointerEvents="none">
-            <Image source={require('../../assl.js/Layer 3.png')} style={gs.headerLogo} resizeMode="contain" />
+  const ListHeader = useMemo(() => (
+    <View>
+      <LinearGradient
+        colors={[BRAND, '#0C4B4F', ACCENT]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroBlock}
+      >
+        <View style={styles.heroPillRow}>
+          <View style={styles.heroPill}>
+            <View style={styles.liveDot} />
+            <Text style={styles.heroPillText}>COMMUNITIES</Text>
           </View>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity style={gs.createBtn} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
-            <Ionicons name="add" size={16} color={WHITE} />
-            <Text style={gs.createBtnTxt}>Create</Text>
-          </TouchableOpacity>
+          <View style={styles.heroPill}>
+            <Ionicons name="sparkles" size={11} color={WHITE} />
+            <Text style={styles.heroPillText}>Find your people</Text>
+          </View>
         </View>
+
+        <Text style={styles.heroTitle}>Discover communities{'\n'}built around real life.</Text>
+        <Text style={styles.heroSub}>Ask questions, share updates, join city groups, business circles and interest spaces on Hafrik.</Text>
+
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={18} color={WHITE + 'CC'} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search communities..."
+            placeholderTextColor={WHITE + '8A'}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {!!search && (
+            <TouchableOpacity style={styles.searchClear} onPress={() => setSearch('')} activeOpacity={0.8}>
+              <Ionicons name="close" size={16} color={BRAND} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </LinearGradient>
+
+      <View style={styles.tabsCard}>
+        {TABS.map((tab) => {
+          const active = activeTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tabButton, active && styles.tabButtonActive]}
+              onPress={() => setActiveTab(tab.key)}
+              activeOpacity={0.78}
+            >
+              <Ionicons name={tab.icon} size={15} color={active ? WHITE : MUTED} />
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
-      {/* ── List ── */}
+      {activeTab === 'discover' && (
+        <View style={styles.categoryStrip}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+            <CategoryChip item={null} active={!selectedCategory} onPress={() => setSelectedCategory(null)} />
+            {categories.map((cat, index) => {
+              const id = cat.id ?? cat.category_id ?? index;
+              const active = String(selectedCategory?.id ?? selectedCategory?.category_id ?? '') === String(id);
+              return (
+                <CategoryChip
+                  key={`cat-${id}`}
+                  item={cat}
+                  active={active}
+                  onPress={() => setSelectedCategory(cat)}
+                />
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      <View style={styles.sectionIntro}>
+        <Text style={styles.sectionIntroTitle}>{activeTabLabel} communities</Text>
+        <Text style={styles.sectionIntroSub}>
+          {search ? `Showing results for "${search}"` : selectedCategory ? cleanText(selectedCategory.name ?? selectedCategory.category_name) : 'Tap a community to view posts, members and media.'}
+        </Text>
+      </View>
+    </View>
+  ), [activeTab, activeTabLabel, categories, search, selectedCategory]);
+
+  return (
+    <View style={[styles.root, { backgroundColor: tc.background ?? BG }]}>
+      <StatusBar barStyle="light-content" />
+
+      <View style={[styles.header, { paddingTop: top + 8 }]}>
+        <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.goBack()} activeOpacity={0.84}>
+          <Ionicons name="arrow-back" size={20} color={WHITE} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Communities</Text>
+          <Text style={styles.headerSub}>Connect, learn, belong</Text>
+        </View>
+        <TouchableOpacity style={styles.createButton} onPress={() => setShowCreate(true)} activeOpacity={0.86}>
+          <Ionicons name="add" size={18} color={BRAND} />
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={groups}
-        keyExtractor={(item, index) => `${item.id ?? index}_${index}`}
+        keyExtractor={(item, index) => `community-${getGroupId(item) ?? index}-${index}`}
         renderItem={renderGroup}
-        contentContainerStyle={gs.listContent}
+        ListHeaderComponent={ListHeader}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        onEndReached={() => { if (groupsMore && !groupsLoad) loadGroups(groupsPage + 1); }}
-        onEndReachedThreshold={0.4}
-        ListHeaderComponent={
-          <View>
-            {/* ── Hero — DO NOT TOUCH ── */}
-            <View style={gs.heroBlock}>
-              <View style={gs.heroPills}>
-                <View style={gs.heroLivePill}>
-                  <View style={gs.heroLiveDot} />
-                  <Text style={gs.heroLiveText}>COMMUNITIES</Text>
-                </View>
-                {joinedCount > 0 && (
-                  <View style={gs.heroCountPill}>
-                    <Ionicons name="checkmark-circle" size={10} color={WHITE + 'BF'} />
-                    <Text style={gs.heroCountText}>{fmtCount(joinedCount)} Joined</Text>
-                  </View>
-                )}
-              </View>
-
-              <Text style={gs.heroTitle}>Connect & Grow{'\n'}Together.</Text>
-              <Text style={gs.heroSub}>
-                Discover communities, meet like-minded people, and be part of conversations that matter.
-              </Text>
-
-              
-
-              {/* Search */}
-              <View style={gs.heroSearch}>
-                <Ionicons name="search" size={19} color={WHITE + 'BF'} />
-                <TextInput
-                  style={gs.searchInput}
-                  placeholder="Search communities…"
-                  placeholderTextColor={WHITE + '70'}
-                  value={search}
-                  onChangeText={setSearch}
-                  returnKeyType="search"
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity activeOpacity={0.85} style={gs.heroSearchBtn} onPress={() => setSearch('')}>
-                  {search.length > 0
-                    ? <Ionicons name="close" size={16} color={BRAND} />
-                    : <Ionicons name="arrow-forward" size={17} color={BRAND} />
-                  }
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* ── 3 Tabs ── */}
-            <View style={gs.tabsRow}>
-              {TABS.map((tab) => {
-                const on = activeTab === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={[gs.tab, on && gs.tabOn]}
-                    onPress={() => setActiveTab(tab.key)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={[gs.tabTxt, on && gs.tabTxtOn]}>{tab.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* ── Category dropdown ── */}
-            {activeTab === 'discover' && categories.length > 0 && (
-              <TouchableOpacity
-                style={gs.catBtn}
-                onPress={() => setShowCatPicker(true)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="grid-outline" size={14} color={selectedCategory ? ACCENT : MUTED} />
-                <Text style={[gs.catBtnTxt, selectedCategory && gs.catBtnTxtOn]} numberOfLines={1}>
-                  {selectedCategory ? cleanText(selectedCategory.name ?? selectedCategory.category_name ?? '') : 'All Categories'}
-                </Text>
-                <Ionicons name="chevron-down" size={14} color={selectedCategory ? ACCENT : MUTED} />
-              </TouchableOpacity>
-            )}
-          </View>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={ACCENT}
+            colors={[ACCENT, BRAND]}
+            progressBackgroundColor={WHITE}
+          />
         }
+        onEndReached={() => {
+          if (groupsMore && !groupsLoad) loadGroups(groupsPage + 1);
+        }}
+        onEndReachedThreshold={0.4}
         ListEmptyComponent={
           groupsLoad ? (
-            <View style={gs.emptyWrap}>
-              <ActivityIndicator color={ACCENT} size="large" />
+            <View style={styles.skeletonWrap}>
+              {[0, 1, 2].map((index) => <SkeletonCard key={index} index={index} />)}
             </View>
           ) : (
-            <View style={gs.emptyWrap}>
-              <View style={gs.emptyCircle}>
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyCircle}>
                 <Ionicons name="people-outline" size={36} color={MUTED} />
               </View>
-              <Text style={gs.emptyTitle}>
-                {activeTab === 'joined'  ? 'No joined communities yet' :
-                 activeTab === 'managed' ? 'No communities created yet' :
-                 'No communities found'}
+              <Text style={styles.emptyTitle}>
+                {activeTab === 'joined' ? 'No joined communities yet' : 'No communities found'}
               </Text>
-              <Text style={gs.emptySub}>
-                {activeTab === 'joined'  ? 'Join a community to see it here' :
-                 activeTab === 'managed' ? 'Create one using the button above' :
-                 'Try adjusting your search'}
+              <Text style={styles.emptySub}>
+                {activeTab === 'joined' ? 'Join a community and it will appear here.' : 'Try another search or category.'}
               </Text>
             </View>
           )
         }
         ListFooterComponent={
-          groupsLoad && groups.length > 0
-            ? <ActivityIndicator color={ACCENT} style={{ marginVertical: 20 }} />
-            : null
+          groupsLoad && groups.length > 0 ? (
+            <ActivityIndicator color={ACCENT} style={styles.footerLoader} />
+          ) : null
         }
       />
 
@@ -499,188 +545,452 @@ const CommunitiesScreen = () => {
         onClose={() => setShowCreate(false)}
         onCreated={() => loadGroups(1, true)}
       />
-
-
-      {/* ── Category Picker Modal ── */}
-      <Modal
-        visible={showCatPicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCatPicker(false)}
-        statusBarTranslucent
-      >
-        <TouchableWithoutFeedback onPress={() => setShowCatPicker(false)}>
-          <View style={gs.catOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={gs.catSheet}>
-                <View style={gs.catHandle} />
-                <Text style={gs.catSheetTitle}>Filter by Category</Text>
-
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  {/* All option */}
-                  <TouchableOpacity
-                    style={[gs.catItem, !selectedCategory && gs.catItemOn]}
-                    onPress={() => { setSelectedCategory(null); setShowCatPicker(false); }}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name="grid" size={16} color={!selectedCategory ? ACCENT : MUTED} />
-                    <Text style={[gs.catItemTxt, !selectedCategory && gs.catItemTxtOn]}>All Categories</Text>
-                    {!selectedCategory && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
-                  </TouchableOpacity>
-
-                  {categories.map((cat, idx) => {
-                    const name = cleanText(cat.name ?? cat.category_name ?? '');
-                    const on   = selectedCategory?.id === (cat.id ?? cat.category_id);
-                    return (
-                      <TouchableOpacity
-                        key={`cat_${cat.id ?? cat.category_id ?? idx}`}
-                        style={[gs.catItem, on && gs.catItemOn]}
-                        onPress={() => { setSelectedCategory(cat); setShowCatPicker(false); }}
-                        activeOpacity={0.75}
-                      >
-                        <Ionicons name="people-outline" size={16} color={on ? ACCENT : MUTED} />
-                        <Text style={[gs.catItemTxt, on && gs.catItemTxtOn]}>{name}</Text>
-                        {cat.group_count ? <Text style={gs.catItemCount}>{fmtCount(cat.group_count)}</Text> : null}
-                        {on && <Ionicons name="checkmark-circle" size={18} color={ACCENT} />}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </View>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const gs = StyleSheet.create({
-  root: { flex: 1, backgroundColor: CREAM },
-
-  // ── Slim header ──
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
   header: {
     backgroundColor: BRAND,
-    paddingHorizontal: 16, paddingBottom: 10,
-    shadowColor: BRAND, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22, shadowRadius: 10, elevation: 8,
-  },
-  headerTop:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn:        { width: 36, height: 36, borderRadius: 18, backgroundColor: ON_DARK_14, alignItems: 'center', justifyContent: 'center' },
-  headerLogoWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  headerLogo:     { height: 26, width: 110 },
-  createBtn:    { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: ACCENT, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 100 },
-  createBtnTxt: { fontSize: 12, fontWeight: '800', color: WHITE },
-
-  listContent: { paddingBottom: 100, gap: 10 },
-
-  // ── Tabs ──
-  tabsRow: {
-    flexDirection: 'row',
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
-    backgroundColor: CARD,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND_SOFT_07,
-  },
-  tab: {
-    flex: 1,
+    paddingBottom: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 9,
-    borderRadius: 100,
-    backgroundColor: BRAND_SOFT_07,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    gap: 12,
   },
-  tabOn: {
+  headerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: WHITE + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: WHITE + '20',
+  },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitle: {
+    color: WHITE,
+    fontSize: 16,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  headerSub: {
+    color: WHITE + 'A8',
+    fontSize: 11,
+    marginTop: 1,
+    fontFamily: 'ReadexPro-Regular',
+  },
+  createButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listContent: { paddingBottom: 110 },
+
+  heroBlock: {
+    paddingHorizontal: 18,
+    paddingTop: 22,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: 'hidden',
+  },
+  heroPillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 15,
+  },
+  heroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: WHITE + '16',
+    borderWidth: 1,
+    borderColor: WHITE + '24',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: ACCENT,
+  },
+  heroPillText: {
+    color: WHITE + 'D0',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.75,
+    fontFamily: 'ReadexPro-Bold',
+  },
+  heroTitle: {
+    color: WHITE,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '900',
+    letterSpacing: -0.7,
+    fontFamily: 'ReadexPro-Bold',
+  },
+  heroSub: {
+    color: WHITE + 'B8',
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 8,
+    fontFamily: 'ReadexPro-Regular',
+  },
+  heroMetrics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 18,
+    paddingVertical: 13,
+    paddingHorizontal: 12,
+    backgroundColor: WHITE + '14',
+    borderWidth: 1,
+    borderColor: WHITE + '1F',
+    borderRadius: 20,
+  },
+  heroMetric: { flex: 1, alignItems: 'center', gap: 2 },
+  heroMetricValue: {
+    color: WHITE,
+    fontSize: 17,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  heroMetricLabel: {
+    color: WHITE + '94',
+    fontSize: 9.5,
+    textTransform: 'uppercase',
+    letterSpacing: 0.55,
+    fontWeight: '800',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  heroMetricDivider: { width: 1, height: 30, backgroundColor: WHITE + '24' },
+  searchBox: {
+    marginTop: 16,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: WHITE + '17',
+    borderWidth: 1,
+    borderColor: WHITE + '28',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingLeft: 16,
+    paddingRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: WHITE,
+    fontSize: 14,
+    paddingVertical: 0,
+    fontFamily: 'ReadexPro-Regular',
+  },
+  searchClear: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  tabsCard: {
+    marginHorizontal: 14,
+    marginTop: 14,
+    backgroundColor: CARD,
+    borderRadius: 24,
+    padding: 6,
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 5,
+  },
+  tabButtonActive: { backgroundColor: BRAND },
+  tabText: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  tabTextActive: { color: WHITE },
+
+  categoryStrip: {
+    paddingVertical: 12,
+  },
+  categoryScroll: {
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    maxWidth: 180,
+  },
+  categoryChipActive: {
     backgroundColor: BRAND,
     borderColor: BRAND,
   },
-  tabTxt:   { fontSize: 11, fontWeight: '700', color: MUTED },
-  tabTxtOn: { color: WHITE },
+  categoryChipText: {
+    color: BRAND,
+    fontSize: 12,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  categoryChipTextActive: { color: WHITE },
 
-  // ── Category dropdown button ──
-  catBtn: {
+  sectionIntro: {
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 10,
+  },
+  sectionIntroTitle: {
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  sectionIntroSub: {
+    color: MUTED,
+    fontSize: 12,
+    marginTop: 3,
+    fontFamily: 'ReadexPro-Regular',
+  },
+
+  groupCard: {
+    marginHorizontal: 14,
+    marginBottom: 14,
+    backgroundColor: CARD,
+    borderRadius: 26,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: BLACK,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+  coverWrap: {
+    height: 118,
+    backgroundColor: BRAND,
+    overflow: 'hidden',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverBadgeRow: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 10,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
-    marginHorizontal: 14,
-    marginTop: 10,
-    marginBottom: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    backgroundColor: CARD,
-    borderRadius: 12,
+  },
+  coverBadge: {
+    maxWidth: '64%',
+    backgroundColor: WHITE + '20',
     borderWidth: 1,
-    borderColor: BRAND_SOFT_07,
+    borderColor: WHITE + '26',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  catBtnTxt:   { flex: 1, fontSize: 13, color: MUTED, fontWeight: '600' },
-  catBtnTxtOn: { color: ACCENT, fontWeight: '700' },
+  coverBadgeText: {
+    color: WHITE,
+    fontSize: 10.5,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  privacyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: BLACK + '44',
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  privacyBadgeText: {
+    color: WHITE,
+    fontSize: 10.5,
+    fontWeight: '800',
+    textTransform: 'capitalize',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  cardBody: {
+    padding: 14,
+  },
+  avatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  groupAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    backgroundColor: BORDER,
+    marginTop: -30,
+    borderWidth: 3,
+    borderColor: CARD,
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleBlock: { flex: 1, paddingTop: 2 },
+  groupTitle: {
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  groupMeta: {
+    color: MUTED,
+    fontSize: 11.5,
+    marginTop: 3,
+    fontFamily: 'ReadexPro-Regular',
+  },
+  groupAbout: {
+    color: MUTED,
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginTop: 11,
+    fontFamily: 'ReadexPro-Regular',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+  },
+  joinButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: BRAND,
+    borderRadius: 999,
+    paddingHorizontal: 17,
+    paddingVertical: 10,
+    minWidth: 92,
+  },
+  joinedButton: {
+    backgroundColor: CARD,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+  },
+  joinButtonText: {
+    color: WHITE,
+    fontSize: 12,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  joinedButtonText: { color: BRAND },
+  viewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: ACCENT + '10',
+    borderWidth: 1,
+    borderColor: ACCENT + '24',
+    borderRadius: 999,
+    paddingVertical: 10,
+  },
+  viewButtonText: {
+    color: ACCENT,
+    fontSize: 12,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
 
-  // ── Category picker modal ──
-  catOverlay:  { flex: 1, justifyContent: 'flex-end', backgroundColor: BLACK + '55' },
-  catSheet: {
-    backgroundColor: WHITE,
-    borderTopLeftRadius: 22, borderTopRightRadius: 22,
-    paddingTop: 10, maxHeight: '65%',
+  skeletonWrap: { paddingTop: 4 },
+  skeletonCover: { height: 118, backgroundColor: BRAND + '12' },
+  skeletonAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    backgroundColor: BRAND + '14',
+    marginTop: -30,
+    borderWidth: 3,
+    borderColor: CARD,
   },
-  catHandle:   { width: 36, height: 4, borderRadius: 2, backgroundColor: MUTED + '44', alignSelf: 'center', marginBottom: 12 },
-  catSheetTitle: { fontSize: 14, fontWeight: '800', color: DARK, paddingHorizontal: 18, marginBottom: 8 },
-  catItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 18, paddingVertical: 13,
-    borderBottomWidth: 1, borderBottomColor: BRAND_SOFT_07,
+  skeletonLineBig: {
+    width: '72%',
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: BRAND + '12',
   },
-  catItemOn:   { backgroundColor: ACCENT + '0D' },
-  catItemTxt:  { flex: 1, fontSize: 14, color: DARK, fontWeight: '600' },
-  catItemTxtOn:{ color: ACCENT, fontWeight: '800' },
-  catItemCount:{ fontSize: 12, color: MUTED },
-
-  // ── Hero ──
-  heroBlock: {
-    backgroundColor: '#0c3f44',
-    paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20,
-    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
-    overflow: 'hidden', marginBottom: 0,
+  skeletonLineSmall: {
+    width: '44%',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: BRAND + '0D',
   },
-  heroPills:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
-  heroLivePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: WHITE + '12', borderWidth: 1, borderColor: WHITE + '1E', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  heroLiveDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: ACCENT },
-  heroLiveText: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, color: WHITE + 'BF' },
-  heroCountPill:{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: WHITE + '12', borderWidth: 1, borderColor: WHITE + '1E', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  heroCountText:{ fontSize: 11, fontWeight: '700', color: WHITE + 'BF' },
-  heroTitle:    { fontSize: 27, fontWeight: '900', color: WHITE, lineHeight: 34 },
-  heroSub:      { marginTop: 6, fontSize: 13, lineHeight: 18, color: WHITE + '99' },
-  heroStats: {
-    flexDirection: 'row', alignItems: 'center', marginTop: 18,
-    backgroundColor: WHITE + '12', borderRadius: 14,
-    borderWidth: 1, borderColor: WHITE + '1A',
-    paddingVertical: 13, paddingHorizontal: 16,
+  skeletonTextLine: {
+    width: '92%',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: BRAND + '0D',
+    marginTop: 11,
   },
-  heroStatItem:   { flex: 1, alignItems: 'center' },
-  heroStatNum:    { fontSize: 18, fontWeight: '900', color: WHITE },
-  heroStatLabel:  { fontSize: 10, color: WHITE + '88', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  heroStatDivider:{ width: 1, height: 30, backgroundColor: WHITE + '22' },
-  heroSearch: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: WHITE + '15', borderRadius: 999,
-    borderWidth: 1, borderColor: WHITE + '28',
-    paddingHorizontal: 18, paddingRight: 10, height: 52, marginTop: 18,
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 58,
+    paddingHorizontal: 30,
   },
-  heroSearchBtn: {
-    width: 36, height: 36, borderRadius: 999,
-    backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center',
+  emptyCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: ACCENT + '14',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
   },
-  searchInput: { flex: 1, color: WHITE, fontSize: 14, paddingVertical: 0 },
-
-
-  // ── Empty ──
-  emptyWrap:   { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 14 },
-  emptyCircle: { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT + '18' },
-  emptyTitle:  { fontSize: 16, fontWeight: '800', color: DARK },
-  emptySub:    { fontSize: 12, color: MUTED, textAlign: 'center' },
+  emptyTitle: {
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: '900',
+    fontFamily: 'ReadexPro-Bold',
+  },
+  emptySub: {
+    color: MUTED,
+    textAlign: 'center',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
+    fontFamily: 'ReadexPro-Regular',
+  },
+  footerLoader: { marginVertical: 22 },
 });
 
 export default CommunitiesScreen;

@@ -10,9 +10,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../AuthContext';
+import apiClient from '../../api/apiClient';
 import { startBackgroundUpload } from '../../helpers/BackgroundUploadManager';
 import PostFeedList from '../../helpers/postfeedlists';
 import useStore from '../../repository/store';
@@ -30,12 +32,88 @@ const BLACK  = Colors.black;
 
 // ─── Predefined hashtag categories ────────────────────────────────────────────
 const PREDEFINED_HASHTAGS = [
-    'Jobs', 'Schools', 'Universities', 'Visa', 'Business',
-    'Accommodation', 'Shipping', 'BuyAndSell', 'Events',
-    'Health', 'Food', 'Technology', 'Finance', 'Travel',
-    'Culture', 'Sports', 'Music', 'Fashion', 'Remittance',
-    'Housing', 'Language', 'News', 'Community', 'Diaspora',
+    'ChinaLife', 'Guangzhou', 'MarketFinds', 'Shipping',
+    'Sourcing', 'BusinessTips', 'FactoryVisit', 'HafrikShop',
+    'BuyAndShip', 'StudentLife', 'Admission', 'Scholarship',
+    'VisaHelp', 'Accommodation', 'AfricanFood', 'TravelChina',
+    'Jobs', 'Community', 'WalletTips', 'Translator',
 ];
+
+const cleanAiText = (text = '') =>
+    String(text)
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/^["'“”‘’\s]+|["'“”‘’\s]+$/g, '')
+        .trim();
+
+const cleanAiError = (message = '') => {
+    const text = String(message || '').trim();
+    if (!text) return 'AI could not respond clearly. Please try again.';
+    if (/kimi|moonshot|provider|empty response|empty\s+respon/i.test(text)) {
+        return 'AI could not respond clearly. Please try again.';
+    }
+    return text;
+};
+
+const parseAiDrafts = (reply = '') => {
+    const lines = String(reply)
+        .split('\n')
+        .map(line => cleanAiText(line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '')))
+        .filter(Boolean)
+        .filter(line => !/^(options?|drafts?|captions?|rewrites?)[:：]?$/i.test(line));
+
+    if (lines.length > 1) return Array.from(new Set(lines)).slice(0, 4);
+
+    const parts = String(reply)
+        .split(/\n{2,}|(?:Option|Draft)\s*\d+[:：]/i)
+        .map(cleanAiText)
+        .filter(Boolean);
+
+    return Array.from(new Set(parts)).slice(0, 4);
+};
+
+const fallbackComposerDrafts = ({ draft = '', activeTab = 'text', selectedHashtags = [] }) => {
+    const tags = selectedHashtags.length ? `\n\n${selectedHashtags.map(t => `#${t}`).join(' ')}` : '';
+    const base = draft.trim();
+    if (base) {
+        return [
+            `${base}${tags}`,
+            `Sharing this because it may help someone here: ${base}${tags}`,
+            `Quick one: ${base}${tags}`,
+            `What do you think about this? ${base}${tags}`,
+        ].map(cleanAiText);
+    }
+
+    if (activeTab === 'reel') {
+        return [
+            `A quick moment worth sharing.${tags}`,
+            `Watch this and tell me what you think.${tags}`,
+            `Small clip, big message.${tags}`,
+            `Sharing this from Hafrik.${tags}`,
+        ];
+    }
+    if (activeTab === 'photos') {
+        return [
+            `A few moments from today.${tags}`,
+            `Photos that tell the story better.${tags}`,
+            `Sharing this with my Hafrik people.${tags}`,
+            `Which one is your favorite?${tags}`,
+        ];
+    }
+    if (activeTab === 'video') {
+        return [
+            `This video explains it better.${tags}`,
+            `Sharing something useful here.${tags}`,
+            `Watch this and share your thoughts.${tags}`,
+            `A quick video update.${tags}`,
+        ];
+    }
+    return [
+        `What is on my mind today...${tags}`,
+        `Let me share this with you all.${tags}`,
+        `Quick thought for the Hafrik community.${tags}`,
+        `I would like to hear your thoughts on this.${tags}`,
+    ];
+};
 
 // ─── Target picker modal ──────────────────────────────────────────────────────
 const TargetPickerModal = memo(({ visible, targets, selectedIdx, onSelect, onClose }) => {
@@ -284,7 +362,12 @@ const PostComposerModal = () => {
     const [selectedVideo,     setSelectedVideo]     = useState(null);
     const [selectedThumbnail, setSelectedThumbnail] = useState(null);
     const [selectedCategory,  setSelectedCategory]  = useState(null);
+    const [iCloudDownloading, setICloudDownloading] = useState(false);
+    const [thumbnailLoading,  setThumbnailLoading]  = useState(false);
     const [selectedHashtags,  setSelectedHashtags]  = useState([]);
+    const [aiDrafts,          setAiDrafts]          = useState([]);
+    const [aiWriting,         setAiWriting]         = useState(false);
+    const thumbnailAttemptRef = useRef(null);
 
     // ── Poll state ────────────────────────────────────────────────────────────
     const [pollOptions, setPollOptions] = useState(['', '']);
@@ -316,12 +399,70 @@ const PostComposerModal = () => {
         }
     }, [selectedVideo?.uri]); // eslint-disable-line
 
+    const generateVideoThumbnail = useCallback(async (videoUri, force = false) => {
+        if (!videoUri) return null;
+
+        const cleanUri = videoUri.includes('#') ? videoUri.split('#')[0] : videoUri;
+        if (!force && thumbnailAttemptRef.current === cleanUri) return null;
+
+        thumbnailAttemptRef.current = cleanUri;
+        setThumbnailLoading(true);
+
+        try {
+            const attempts = [
+                { time: 1000 },
+                { time: 500 },
+                { time: 0 },
+            ];
+
+            let generated = null;
+            for (const options of attempts) {
+                try {
+                    generated = await VideoThumbnails.getThumbnailAsync(cleanUri, options);
+                    if (generated?.uri) break;
+                } catch (_) {}
+            }
+
+            if (!generated?.uri) return null;
+
+            const thumb = {
+                id: `${Date.now()}`,
+                uri: generated.uri,
+                fileName: `hafrik_thumb_${Date.now()}.jpg`,
+                type: 'image/jpeg',
+                mimeType: 'image/jpeg',
+                fileType: 'thumbnail',
+            };
+            setSelectedThumbnail(thumb);
+            return thumb;
+        } finally {
+            setThumbnailLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!isComposerOpen) return;
+        if (!(activeTab === 'video' || activeTab === 'reel')) return;
+        if (!selectedVideo?.uri || selectedThumbnail?.uri || thumbnailLoading) return;
+        generateVideoThumbnail(selectedVideo.uri);
+    }, [
+        activeTab,
+        generateVideoThumbnail,
+        isComposerOpen,
+        selectedThumbnail?.uri,
+        selectedVideo?.uri,
+        thumbnailLoading,
+    ]);
+
     // ── Apply initialTab from composerConfig ──────────────────────────────────
     useEffect(() => {
         if (!isComposerOpen) return;
         const tab = composerConfig?.initialTab;
         if (tab) setActiveTab(tab);
-    }, [isComposerOpen, composerConfig?.initialTab]);
+        if (typeof composerConfig?.initialText === 'string') {
+            setPostText(composerConfig.initialText);
+        }
+    }, [isComposerOpen, composerConfig?.initialTab, composerConfig?.initialText]);
 
     // ── Fetch targets on open ─────────────────────────────────────────────────
     useEffect(() => {
@@ -374,7 +515,11 @@ const PostComposerModal = () => {
         setPostText(''); setLocationText(''); setShowLocation(false);
         setSelectedImages([]); setSelectedVideo(null);
         setSelectedThumbnail(null); setSelectedCategory(null);
+        thumbnailAttemptRef.current = null;
+        setThumbnailLoading(false);
         setSelectedHashtags([]);
+        setAiDrafts([]);
+        setAiWriting(false);
         setPollOptions(['', '']);
         setTargetPickerOpen(false);
     }, []); // eslint-disable-line
@@ -422,14 +567,26 @@ const PostComposerModal = () => {
             selectionLimit: 10 - selectedImages.length,
         });
         if (result.canceled) return;
-        const next = result.assets.slice(0, 10 - selectedImages.length).map(a => ({
+
+        // ── Photo limit: 20 MB per image ──────────────────────────────────────
+        const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
+        const oversized = result.assets.filter(a => a.fileSize && a.fileSize > MAX_PHOTO_BYTES);
+        if (oversized.length > 0) {
+            Alert.alert(
+                'Photo Too Large',
+                `${oversized.length > 1 ? `${oversized.length} photos are` : 'One photo is'} over 20 MB and ${oversized.length > 1 ? 'were' : 'was'} skipped. Please use smaller images.`,
+            );
+        }
+        const valid = result.assets.filter(a => !a.fileSize || a.fileSize <= MAX_PHOTO_BYTES);
+        const next = valid.slice(0, 10 - selectedImages.length).map(a => ({
             id: `${Date.now()}_${Math.random()}`,
             uri: a.uri, fileName: a.fileName || 'photo.jpg', type: 'image', fileType: 'photo',
+            fileSize: a.fileSize,
         }));
         setSelectedImages(prev => [...prev, ...next]);
     };
 
-    const pickVideo = async () => {
+    const pickVideo = async (forReel = false) => {
         if (!(await requestPermission())) return;
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['videos'],
@@ -437,21 +594,69 @@ const PostComposerModal = () => {
         });
         if (result.canceled) return;
         const a = result.assets[0];
+
+        // ── Resolve iCloud / off-device assets ────────────────────────────────
+        // On iOS, videos stored only in iCloud return a URI that isn't fully
+        // downloaded yet. getAssetInfoAsync with shouldDownloadFromNetwork:true
+        // blocks until the file is fully available locally before we proceed.
+        let resolvedUri = a.uri;
+        if (a.assetId) {
+            try {
+                setICloudDownloading(true);
+                const info = await MediaLibrary.getAssetInfoAsync(a.assetId, {
+                    shouldDownloadFromNetwork: true,
+                });
+                if (info?.localUri) resolvedUri = info.localUri;
+            } catch (_) {
+                // iCloud fetch failed — fall back to picker URI and let upload handle it
+            } finally {
+                setICloudDownloading(false);
+            }
+        }
+
+        // Strip iOS spatial/immersive video metadata fragment (e.g. #YnBsaXN0...).
+        // iPhone 15 Pro+ appends a binary-plist fragment to spatial video URIs.
+        // Both expo-video-thumbnails and react-native-compressor fail when the
+        // file path contains this fragment, so strip it here once for all callers.
+        if (resolvedUri?.includes('#')) {
+            resolvedUri = resolvedUri.split('#')[0];
+        }
+        thumbnailAttemptRef.current = null;
+
+        // ── Per-type limits ───────────────────────────────────────────────────
+        const MAX_BYTES    = 1024 * 1024 * 1024;  // 1 GB for both reels and videos
+        const MAX_DURATION = 10 * 60 * 1000;      // 10 min for both reels and videos
+        const typeLabel    = forReel ? 'Reels' : 'Videos';
+        const maxSizeLabel = '1 GB';
+        const maxDurLabel  = '10 minutes';
+
+        if (a.fileSize && a.fileSize > MAX_BYTES) {
+            Alert.alert(
+                'File Too Large',
+                `${typeLabel} must be under ${maxSizeLabel}. Please trim or compress and try again.`,
+            );
+            return;
+        }
+        if (a.duration && a.duration > MAX_DURATION) {
+            Alert.alert(
+                'Video Too Long',
+                `${typeLabel} can be at most ${maxDurLabel} long. Please trim and try again.`,
+            );
+            return;
+        }
+
         setSelectedVideo({
             id: `${Date.now()}`,
-            uri: a.uri,
+            uri: resolvedUri,
             fileName: a.fileName || 'video.mp4',
             type: a.mimeType || 'video/mp4',
             mimeType: a.mimeType || 'video/mp4',
-            fileType: 'video',
+            fileType: forReel ? 'reel' : 'video',
             fileSize: a.fileSize,
             duration: a.duration,
         });
         setSelectedThumbnail(null);
-        try {
-            const { uri } = await VideoThumbnails.getThumbnailAsync(a.uri, { time: 1000 });
-            setSelectedThumbnail({ id: `${Date.now()}`, uri, fileName: 'thumb.jpg', type: 'image', fileType: 'photo' });
-        } catch (_) {}
+        generateVideoThumbnail(resolvedUri, true).catch(() => {});
     };
 
     const pickThumbnail = async () => {
@@ -462,8 +667,57 @@ const PostComposerModal = () => {
         });
         if (result.canceled) return;
         const a = result.assets[0];
+        thumbnailAttemptRef.current = null;
         setSelectedThumbnail({ id: `${Date.now()}`, uri: a.uri, fileName: a.fileName || 'thumb.jpg', type: 'image', fileType: 'photo' });
     };
+
+    const handleAiWrite = useCallback(async () => {
+        if (aiWriting) return;
+
+        const draft = postText.trim();
+        const mediaType = activeTab === 'text' ? 'normal text post' : activeTab;
+        const hashtagText = selectedHashtags.length ? selectedHashtags.map(t => `#${t}`).join(' ') : '';
+        const prompt = draft
+            ? `Return only 4 caption options as a numbered list. Rewrite this Hafrik ${mediaType} caption. Keep the user's meaning, make it natural, short, and social. Do not add fake facts. Draft: ${draft}${hashtagText ? `\nHashtags: ${hashtagText}` : ''}`
+            : `Return only 4 caption options as a numbered list for a Hafrik ${mediaType}. Make them natural, useful, and easy to post.${hashtagText ? ` Use these hashtags if helpful: ${hashtagText}` : ''}`;
+
+        setAiWriting(true);
+        try {
+            const response = await apiClient.post('/ai/chat.php', {
+                mode: 'Post Composer',
+                context_type: 'post_composer',
+                context_data: {
+                    active_tab: activeTab,
+                    selected_hashtags: selectedHashtags,
+                    current_text: draft,
+                },
+                messages: [{ role: 'user', content: `${prompt}\nVariation seed: ${Date.now()}-${Math.random().toString(36).slice(2, 7)}.` }],
+                response_style: 'composer_drafts',
+            }, { timeout: 45000 });
+
+            if (response?.data?.status && response.data.status !== 'success') {
+                throw new Error(response.data.message || 'AI could not respond clearly.');
+            }
+
+            const reply = response?.data?.reply
+                ?? response?.data?.data?.reply
+                ?? response?.data?.data?.content
+                ?? response?.data?.content
+                ?? response?.data?.text
+                ?? '';
+            const drafts = parseAiDrafts(reply);
+            if (drafts.length) {
+                setAiDrafts(drafts);
+            } else {
+                setAiDrafts(fallbackComposerDrafts({ draft, activeTab, selectedHashtags }));
+            }
+        } catch (error) {
+            setAiDrafts(fallbackComposerDrafts({ draft, activeTab, selectedHashtags }));
+            Alert.alert('AI helper', cleanAiError(error?.response?.data?.message ?? error?.message));
+        } finally {
+            setAiWriting(false);
+        }
+    }, [activeTab, aiWriting, postText, selectedHashtags]);
 
     // ── Toolbar press ─────────────────────────────────────────────────────────
     const handleToolbarPress = useCallback(async (actionId) => {
@@ -478,12 +732,12 @@ const PostComposerModal = () => {
         }
         if (actionId === 'video') {
             setActiveTab('video');
-            await pickVideo();
+            await pickVideo(false);
             return;
         }
         if (actionId === 'reel') {
             setActiveTab('reel');
-            await pickVideo();
+            await pickVideo(true);
             return;
         }
         if (actionId === 'poll') {
@@ -669,8 +923,53 @@ const PostComposerModal = () => {
                                     onChangeText={setPostText}
                                     autoFocus={activeTab === 'text' || activeTab === 'poll'}
                                     textAlignVertical="top"
+                                    scrollEnabled
+                                    nestedScrollEnabled
                                 />
                             </View>
+                        </View>
+
+                        <View style={styles.aiWriterCard}>
+                            <View style={styles.aiWriterHead}>
+                                <View style={styles.aiWriterIcon}>
+                                    <Ionicons name="sparkles" size={15} color={WHITE} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.aiWriterTitle}>Hafrik AI writer</Text>
+                                    <Text style={styles.aiWriterSub}>
+                                        {postText.trim() ? 'Improve your draft before posting' : 'Need an idea? Generate a caption'}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.aiRefreshBtn}
+                                    activeOpacity={0.84}
+                                    onPress={handleAiWrite}
+                                    disabled={aiWriting}
+                                >
+                                    {aiWriting ? (
+                                        <ActivityIndicator size="small" color={BRAND} />
+                                    ) : (
+                                        <Ionicons name={aiDrafts.length ? 'refresh' : 'sparkles-outline'} size={16} color={BRAND} />
+                                    )}
+                                    <Text style={styles.aiRefreshText}>{aiDrafts.length ? 'Shuffle' : 'Help me'}</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {aiDrafts.length > 0 && (
+                                <View style={styles.aiDraftList}>
+                                    {aiDrafts.map((draft, index) => (
+                                        <TouchableOpacity
+                                            key={`${draft}-${index}`}
+                                            style={styles.aiDraftBtn}
+                                            activeOpacity={0.86}
+                                            onPress={() => setPostText(draft)}
+                                        >
+                                            <Text style={styles.aiDraftText}>{draft}</Text>
+                                            <Ionicons name="checkmark-circle-outline" size={17} color={ACCENT} />
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
                         </View>
 
                         {/* ── Media content by tab ── */}
@@ -739,12 +1038,22 @@ const PostComposerModal = () => {
                                         <View style={styles.thumbRow}>
                                             <Text style={styles.thumbLabel}>Thumbnail</Text>
                                             <TouchableOpacity style={styles.thumbPicker} onPress={pickThumbnail} activeOpacity={0.85}>
-                                                {selectedThumbnail ? (
+                                                {thumbnailLoading ? (
+                                                    <View style={styles.thumbPlaceholder}>
+                                                        <ActivityIndicator size="small" color={ACCENT} />
+                                                        <Text style={styles.thumbPlaceholderText}>Making</Text>
+                                                    </View>
+                                                ) : selectedThumbnail ? (
                                                     <>
                                                         <Image source={{ uri: selectedThumbnail.uri }} style={styles.thumbImg} resizeMode="cover" />
                                                         <TouchableOpacity
                                                             style={styles.thumbRemove}
-                                                            onPress={(e) => { e.stopPropagation?.(); setSelectedThumbnail(null); }}
+                                                            onPress={(e) => {
+                                                                e.stopPropagation?.();
+                                                                setSelectedThumbnail(null);
+                                                                thumbnailAttemptRef.current = null;
+                                                                if (selectedVideo?.uri) generateVideoThumbnail(selectedVideo.uri, true).catch(() => {});
+                                                            }}
                                                         >
                                                             <Ionicons name="close-circle" size={16} color={WHITE} />
                                                         </TouchableOpacity>
@@ -777,6 +1086,12 @@ const PostComposerModal = () => {
                                             </View>
                                         )}
                                     </>
+                                ) : iCloudDownloading ? (
+                                    <View style={styles.mediaPicker}>
+                                        <ActivityIndicator size="large" color={ACCENT} />
+                                        <Text style={styles.mediaPickerTitle}>Downloading from iCloud…</Text>
+                                        <Text style={styles.mediaPickerSub}>This may take a moment</Text>
+                                    </View>
                                 ) : (
                                     <TouchableOpacity style={styles.mediaPicker} onPress={pickVideo} activeOpacity={0.85}>
                                         <Ionicons name={activeTab === 'reel' ? 'play-circle' : 'videocam'} size={38} color={ACCENT} />
@@ -975,7 +1290,81 @@ const styles = StyleSheet.create({
     },
     textInput: {
         fontSize: 16, color: BRAND, lineHeight: 24,
-        minHeight: 112, textAlignVertical: 'top',
+        minHeight: 112,
+        maxHeight: 220,
+        textAlignVertical: 'top',
+        paddingBottom: 10,
+    },
+    aiWriterCard: {
+        marginHorizontal: 14,
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: 20,
+        backgroundColor: ACCENT + '09',
+        borderWidth: 1,
+        borderColor: ACCENT + '25',
+    },
+    aiWriterHead: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    aiWriterIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: BRAND,
+    },
+    aiWriterTitle: {
+        fontSize: 13.5,
+        fontWeight: '900',
+        color: BRAND,
+    },
+    aiWriterSub: {
+        fontSize: 11.5,
+        fontWeight: '600',
+        color: MUTED,
+        marginTop: 1,
+    },
+    aiRefreshBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderRadius: 999,
+        backgroundColor: WHITE,
+        borderWidth: 1,
+        borderColor: ACCENT + '22',
+    },
+    aiRefreshText: {
+        fontSize: 11.5,
+        fontWeight: '900',
+        color: BRAND,
+    },
+    aiDraftList: {
+        gap: 8,
+        marginTop: 12,
+    },
+    aiDraftBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 9,
+        paddingHorizontal: 12,
+        paddingVertical: 11,
+        borderRadius: 16,
+        backgroundColor: WHITE,
+        borderWidth: 1,
+        borderColor: BRAND + '10',
+    },
+    aiDraftText: {
+        flex: 1,
+        fontSize: 13.5,
+        lineHeight: 19,
+        fontWeight: '700',
+        color: BRAND,
     },
 
     // ── Media section ─────────────────────────────────────────────────────────

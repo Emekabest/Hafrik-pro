@@ -4,8 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 /**
  * Detects horizontal swipe gestures using PanResponder.
- * - Swipe right → like (onSwipeRight)
- * - Swipe left  → go back (onSwipeLeft), with animated back indicator
+ * - Swipe right → onSwipeRight
+ * - Swipe left  → onSwipeLeft
  */
 export default function ReelGestures({ children, onSwipeRight, onSwipeLeft }) {
   const dragX   = useRef(new Animated.Value(0)).current;
@@ -18,12 +18,9 @@ export default function ReelGestures({ children, onSwipeRight, onSwipeLeft }) {
         Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy),
 
       onPanResponderMove: (_, { dx }) => {
-        if (dx < 0) {
-          // swiping left — drive the indicator
-          const progress = Math.min(1, Math.abs(dx) / 90);
-          dragX.setValue(dx);
-          opacity.setValue(progress * 0.9);
-        }
+        const progress = Math.min(1, Math.abs(dx) / 90);
+        dragX.setValue(dx);
+        opacity.setValue(progress * 0.9);
       },
 
       onPanResponderRelease: (_, { dx }) => {
@@ -33,7 +30,7 @@ export default function ReelGestures({ children, onSwipeRight, onSwipeLeft }) {
           Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
         ]).start();
 
-        if (dx > 80)  onSwipeRight?.();
+        if (dx > 80)       onSwipeRight?.();
         else if (dx < -80) onSwipeLeft?.();
       },
 
@@ -44,24 +41,24 @@ export default function ReelGestures({ children, onSwipeRight, onSwipeLeft }) {
     })
   ).current;
 
-  // Back chevron slides in from the left as you swipe left
+  // Switch indicator slides with the swipe direction.
   const indicatorTranslate = dragX.interpolate({
-    inputRange: [-120, 0],
-    outputRange: [0, -44],
+    inputRange: [-120, 0, 120],
+    outputRange: [0, 0, 0],
     extrapolate: 'clamp',
   });
 
   return (
     <View style={styles.wrap} {...panResponder.panHandlers}>
-      {/* Swipe-back indicator — appears on left edge */}
+      {/* Swipe tab indicator */}
       <Animated.View
         style={[
-          styles.backIndicator,
+          styles.switchIndicator,
           { opacity, transform: [{ translateX: indicatorTranslate }] },
         ]}
         pointerEvents="none"
       >
-        <Ionicons name="chevron-back" size={22} color="#fff" />
+        <Ionicons name="swap-horizontal" size={22} color="#fff" />
       </Animated.View>
 
       {children}
@@ -71,9 +68,9 @@ export default function ReelGestures({ children, onSwipeRight, onSwipeLeft }) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
-  backIndicator: {
+  switchIndicator: {
     position: 'absolute',
-    left: 0,
+    alignSelf: 'center',
     top: '50%',
     marginTop: -22,
     width: 44,

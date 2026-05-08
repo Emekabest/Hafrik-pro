@@ -44,6 +44,25 @@ function handleNotificationNavigation(data: Record<string, any> | null | undefin
   try {
     if (!data) return;
 
+    const screen = String(data.screen ?? data.target?.screen ?? data.data?.screen ?? "");
+    const allowedScreens: Record<string, string> = {
+      AIChat: "AIChat",
+      ExploreHome: "ExploreHome",
+      GroupScreen: "GroupScreen",
+      HafrikXHome: "HafrikXHome",
+      HafrikXVisa: "HafrikXVisa",
+      MarketplaceScreen: "MarketplaceScreen",
+      Reels2: "Reels2",
+      WalletScreen: "WalletScreen",
+    };
+    if (screen && allowedScreens[screen]) {
+      const params: Record<string, any> = {};
+      if (screen === "AIChat") params.fresh = true;
+      if (screen === "Reels2" && data.mode) params.mode = data.mode;
+      navigate(allowedScreens[screen], params);
+      return;
+    }
+
     // Resolve type + id from either format
     const type = String(
       data.type ?? data.target?.type ?? data.data?.type ?? ""

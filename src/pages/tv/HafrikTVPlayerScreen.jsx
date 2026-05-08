@@ -54,6 +54,11 @@ const WHITE        = '#ffffff';
 const WHITE_DIM    = 'rgba(255,255,255,0.65)';
 const WHITE_MUTED  = 'rgba(255,255,255,0.38)';
 const BORDER       = 'rgba(255,255,255,0.08)';
+const LIGHT_BG     = '#F4F8F8';
+const LIGHT_CARD   = '#ffffff';
+const LIGHT_BORDER = '#E3ECEC';
+const LIGHT_TEXT   = '#071e21';
+const LIGHT_MUTED  = '#667A7D';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmtCount(n) {
@@ -553,7 +558,7 @@ function VideoLayout({ video, related, onBack, onRelatedPress, token }) {
           <ExpandableDesc text={video.description} />
           {video.views > 0 ? (
             <View style={styles.viewsRow}>
-              <Ionicons name="eye-outline" size={13} color={WHITE_MUTED} />
+              <Ionicons name="eye-outline" size={13} color={LIGHT_MUTED} />
               <Text style={styles.viewsTxt}>{fmtCount(video.views)} views</Text>
             </View>
           ) : null}
@@ -564,19 +569,19 @@ function VideoLayout({ video, related, onBack, onRelatedPress, token }) {
           <TouchableOpacity style={eng.btn} onPress={handleLike} disabled={likeLoading}>
             {likeLoading
               ? <ActivityIndicator size="small" color={ACCENT} />
-              : <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? '#ff4d6d' : WHITE_DIM} />}
+              : <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? '#ff4d6d' : LIGHT_MUTED} />}
             {likeCount > 0
               ? <Text style={[eng.count, liked && { color: '#ff4d6d' }]}>{fmtCount(likeCount)}</Text>
               : null}
           </TouchableOpacity>
           <View style={eng.divider} />
           <TouchableOpacity style={eng.btn} onPress={() => setCommentOpen(true)}>
-            <Ionicons name="chatbubble-outline" size={21} color={WHITE_DIM} />
+            <Ionicons name="chatbubble-outline" size={21} color={LIGHT_MUTED} />
             {video.comments > 0 ? <Text style={eng.count}>{fmtCount(video.comments)}</Text> : null}
           </TouchableOpacity>
           <View style={eng.divider} />
           <TouchableOpacity style={eng.btn} onPress={() => setRepostOpen(true)}>
-            <Ionicons name="repeat-outline" size={23} color={WHITE_DIM} />
+            <Ionicons name="repeat-outline" size={23} color={LIGHT_MUTED} />
             {video.shares > 0 ? <Text style={eng.count}>{fmtCount(video.shares)}</Text> : null}
           </TouchableOpacity>
         </View>
@@ -634,12 +639,12 @@ function RelatedRow({ item, onPress }) {
           {item.title || item.description?.slice(0, 60) || 'Untitled'}
         </Text>
         <View style={rel.meta}>
-          <Ionicons name="eye-outline" size={10} color={WHITE_MUTED} />
+          <Ionicons name="eye-outline" size={10} color={LIGHT_MUTED} />
           <Text style={rel.metaTxt}>{fmtCount(item.views)} views</Text>
-          {item.time ? <><Text style={{ color: WHITE_MUTED, fontSize: 10 }}> · </Text><Text style={rel.metaTxt}>{fmtTime(item.time)}</Text></> : null}
+          {item.time ? <><Text style={{ color: LIGHT_MUTED, fontSize: 10 }}> · </Text><Text style={rel.metaTxt}>{fmtTime(item.time)}</Text></> : null}
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={13} color={WHITE_MUTED} style={{ alignSelf: 'center' }} />
+      <Ionicons name="chevron-forward" size={13} color={LIGHT_MUTED} style={{ alignSelf: 'center' }} />
     </TouchableOpacity>
   );
 }
@@ -771,34 +776,34 @@ const eng = StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 16, marginTop: 4, marginBottom: 4,
-    backgroundColor: BG_CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER, overflow: 'hidden',
+    backgroundColor: LIGHT_CARD, borderRadius: 18, borderWidth: 1, borderColor: LIGHT_BORDER, overflow: 'hidden',
   },
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 6 },
-  count: { color: WHITE_DIM, fontSize: 13, fontFamily: 'WorkSans_500Medium' },
-  divider: { width: 1, height: 24, backgroundColor: BORDER },
+  count: { color: LIGHT_MUTED, fontSize: 13, fontFamily: 'WorkSans_500Medium' },
+  divider: { width: 1, height: 24, backgroundColor: LIGHT_BORDER },
 });
 
 // ─── Related row styles ────────────────────────────────────────────────────────
 const rel = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', padding: 12, borderBottomWidth: 1, borderBottomColor: BORDER, gap: 12 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', padding: 12, borderBottomWidth: 1, borderBottomColor: LIGHT_BORDER, gap: 12 },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: 8, backgroundColor: BG_ROW, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   play: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)', alignItems: 'center', justifyContent: 'center' },
   ytBadge: { position: 'absolute', top: 5, right: 5, backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 3, padding: 2 },
   reelBadge: { position: 'absolute', top: 5, left: 5, backgroundColor: 'rgba(31,142,147,0.75)', borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1 },
   reelBadgeTxt: { color: WHITE, fontSize: 7, fontFamily: 'WorkSans_700Bold', letterSpacing: 0.5 },
-  title: { color: WHITE, fontSize: 13, fontFamily: 'WorkSans_600SemiBold', lineHeight: 18 },
+  title: { color: LIGHT_TEXT, fontSize: 13, fontFamily: 'WorkSans_600SemiBold', lineHeight: 18 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  metaTxt: { color: WHITE_MUTED, fontSize: 11, fontFamily: 'WorkSans_400Regular' },
+  metaTxt: { color: LIGHT_MUTED, fontSize: 11, fontFamily: 'WorkSans_400Regular' },
 });
 
 // ─── Shared styles ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1, backgroundColor: LIGHT_BG },
   topBar: {
     position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingBottom: 10,
-    backgroundColor: 'rgba(7,30,33,0.92)', borderBottomWidth: 1, borderBottomColor: BORDER,
+    backgroundColor: 'rgba(7,30,33,0.96)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
   tvBadge: {
@@ -808,18 +813,29 @@ const styles = StyleSheet.create({
     borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3,
   },
   tvBadgeTxt: { color: ACCENT, fontSize: 11, fontFamily: 'WorkSans_600SemiBold', letterSpacing: 0.5 },
-  videoWrap: { width: W, height: VIDEO_H, backgroundColor: BG_CARD, overflow: 'hidden' },
+  videoWrap: { width: W, height: VIDEO_H, backgroundColor: '#000', overflow: 'hidden' },
   loaderWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   loaderCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(13,45,50,0.85)', borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
   centreBtn: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
   centreCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(7,30,33,0.65)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', alignItems: 'center', justifyContent: 'center' },
-  infoBlock: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
-  videoTitle: { color: WHITE, fontSize: 17, fontFamily: 'ReadexPro_600SemiBold', lineHeight: 24, marginBottom: 6 },
-  videoDesc: { color: WHITE_DIM, fontSize: 13, fontFamily: 'WorkSans_400Regular', lineHeight: 19 },
+  infoBlock: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 8,
+    backgroundColor: LIGHT_CARD,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: LIGHT_BORDER,
+    paddingHorizontal: 16,
+    paddingTop: 15,
+    paddingBottom: 12,
+  },
+  videoTitle: { color: LIGHT_TEXT, fontSize: 18, fontFamily: 'ReadexPro_600SemiBold', lineHeight: 25, marginBottom: 7 },
+  videoDesc: { color: LIGHT_MUTED, fontSize: 13, fontFamily: 'WorkSans_400Regular', lineHeight: 19 },
   viewsRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  viewsTxt: { color: WHITE_MUTED, fontSize: 12, fontFamily: 'WorkSans_400Regular' },
+  viewsTxt: { color: LIGHT_MUTED, fontSize: 12, fontFamily: 'WorkSans_400Regular' },
   relatedSection: { marginTop: 16 },
   relatedHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 },
-  relatedTitle: { color: WHITE, fontSize: 15, fontFamily: 'ReadexPro_600SemiBold' },
-  relatedList: { marginHorizontal: 16, backgroundColor: BG_CARD, borderRadius: 14, borderWidth: 1, borderColor: BORDER, overflow: 'hidden' },
+  relatedTitle: { color: LIGHT_TEXT, fontSize: 16, fontFamily: 'ReadexPro_600SemiBold' },
+  relatedList: { marginHorizontal: 16, backgroundColor: LIGHT_CARD, borderRadius: 20, borderWidth: 1, borderColor: LIGHT_BORDER, overflow: 'hidden' },
 });

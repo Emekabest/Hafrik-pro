@@ -12,6 +12,7 @@ import { useNavigation } from "@react-navigation/native";
 import { getGroupFeed } from "./services/groupApi";
 import { useAuth } from '../../AuthContext';
 import FeedCard from "../home/feeds/feedcard";
+import CommentModal from "../home/feeds/comments/commentmodal";
 import { Colors } from '../../theme';
 
 const ACCENT     = Colors.primary;
@@ -124,6 +125,7 @@ export default function GroupFeed({ route }) {
           </View>
         }
       />
+      <CommentModal />
     </View>
   );
 }

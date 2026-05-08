@@ -32,6 +32,7 @@ import IoniconsFont from './assets/fonts/ionicons.ttf';
 import MaterialCommunityIconsFont from './assets/fonts/material-community.ttf';
 import FeatherFont from './assets/fonts/feather.ttf';
 import GroupDetails from "./src/pages/groups/GroupDetails";
+import GroupMembers from "./src/pages/groups/GroupMembers";
 import GuideScreen from './src/pages/GuideScreen';
 import JobsScreen from './src/pages/JobsScreen';
 import MarketplaceTabNavigator    from './src/pages/marketplace/MarketplaceTabNavigator';
@@ -61,7 +62,7 @@ import PagesScreen from './src/pages/pages_/pagesscreen';
 import BusinessDetails from "./src/pages/pages_/BusinessDetails";
 import BusinessList from './src/pages/pages_/BusinessList';
 import Reels2 from './src/pages/reels/reels2';
-import CreateReels from './src/pages/createreels/createreelscreen';
+import VideoPlayerScreen from './src/pages/video/VideoPlayerScreen';
 import HafrikTVScreen from './src/pages/tv/HafrikTVScreen';
 import HafrikTVPlayerScreen from './src/pages/tv/HafrikTVPlayerScreen';
 import AIChatScreen from './src/pages/ai/AIChatScreen';
@@ -76,6 +77,7 @@ import PostDetailScreen from './src/pages/home/feeds/PostDetailScreen';
 import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen             from './src/pages/settings/SettingsScreen';
 import AboutUsScreen              from './src/pages/settings/AboutUsScreen';
+import BlockedUsersScreen         from './src/pages/settings/BlockedUsersScreen';
 import ProfileQrScreen            from './src/pages/profile/ProfileQrScreen';
 import ProfileQrScannerScreen     from './src/pages/profile/ProfileQrScannerScreen';
 import VerificationIntroScreen   from './src/pages/verification/VerificationIntroScreen';
@@ -471,11 +473,12 @@ function AppNavigator() {
               <Stack.Screen name="BusinessDetails" component={BusinessDetails} />
               <Stack.Screen name="BusinessPages" component={BusinessList} />
         <Stack.Screen name="Reels2" component={Reels2} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
-        <Stack.Screen name="CreateReel" component={CreateReels} options={{ headerShown: false }} />
+        <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
 <Stack.Screen
   name="GroupDetails"
   component={GroupDetails}
 />
+<Stack.Screen name="GroupMembers" component={GroupMembers} options={{ headerShown: false }} />
               <Stack.Screen name="ArticlesScreen" component={ArticlesScreen} />
               <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} />
               <Stack.Screen name="EventDetail" component={EventDetailScreen} />
@@ -486,6 +489,7 @@ function AppNavigator() {
               <Stack.Screen name="Thread" component={ThreadScreen} />
               <Stack.Screen name="InAppBrowser" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="Settings"            component={SettingsScreen} />
+              <Stack.Screen name="BlockedUsers"        component={BlockedUsersScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ProfileQr"           component={ProfileQrScreen}        options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="ProfileQrScanner"    component={ProfileQrScannerScreen} options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="AboutUs"             component={AboutUsScreen}  options={{ headerShown: false }} />

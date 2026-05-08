@@ -77,6 +77,15 @@ const SearchEmptyState = ({
   // ── Discovery mode (no query) ──────────────────────────────────────────────
   return (
     <View style={styles.wrap}>
+      <View style={styles.discoveryHero}>
+        <View style={styles.discoveryIcon}>
+          <Ionicons name="sparkles" size={24} color={ACCENT} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.discoveryTitle}>What are you looking for?</Text>
+          <Text style={styles.discoverySub}>Search across the Hafrik community, businesses, articles and posts.</Text>
+        </View>
+      </View>
 
       {/* Recent searches */}
       {recentSearches?.length > 0 && (
@@ -151,6 +160,38 @@ const SearchEmptyState = ({
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 14, paddingTop: 16 },
+  discoveryHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    padding: 16,
+    borderRadius: 24,
+    backgroundColor: PRIMARY,
+    marginBottom: 18,
+    overflow: 'hidden',
+  },
+  discoveryIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: WHITE + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: WHITE + '24',
+  },
+  discoveryTitle: {
+    color: WHITE,
+    fontSize: 17,
+    fontFamily: AppDetails.fontFamily.redex.bold,
+  },
+  discoverySub: {
+    color: WHITE + 'B8',
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginTop: 3,
+    fontFamily: AppDetails.fontFamily.inter.regular,
+  },
 
   // No-results empty
   iconBg: {

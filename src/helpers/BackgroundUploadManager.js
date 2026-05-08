@@ -17,6 +17,14 @@ import UploadMediaController from '../controllers/uploadmediacontroller';
 import PostFeedController from '../controllers/postfeedcontroller';
 import useStore from '../repository/store';
 import { navigate } from './navigationRef';
+// Lazy-load compressor — only available after pod install + native rebuild.
+// Falls back gracefully (no compression) if the native module isn't linked yet.
+let VideoCompressor = null;
+try {
+    VideoCompressor = require('react-native-compressor').Video;
+} catch {
+    // Native module not linked — compression skipped until app is rebuilt
+}
 
 /**
  * Kick off a background upload + post creation.
@@ -38,7 +46,7 @@ export async function startBackgroundUpload({
     selectedThumbnail = null,
     selectedCategory = null,
     token,
-    pollOptions = [],
+    pollOptions: _pollOptions = [],
 }) {
     const { startUpload, updateUploadProgress, completeUpload, failUpload, triggerRefresh } =
         useStore.getState();
@@ -47,8 +55,8 @@ export async function startBackgroundUpload({
     const labelMap = {
         text:   'Publishing post…',
         photos: `Uploading ${selectedImages.length} photo${selectedImages.length > 1 ? 's' : ''}…`,
-        video:  'Uploading video…',
-        reel:   'Uploading reel…',
+        video:  'Compressing video…',
+        reel:   'Compressing reel…',
         poll:   'Creating poll…',
     };
     startUpload(labelMap[activeTab] || 'Uploading…');
@@ -60,16 +68,43 @@ export async function startBackgroundUpload({
             fallbackProgressTimer = null;
         }
     };
+
+    // Labels shown while the upload is still in-flight at 99% — rotated every
+    // LABEL_INTERVAL_TICKS ticks so the user knows it hasn't frozen.
+    const WAITING_LABELS = [
+        'Uploading large file…',
+        'Still uploading, please wait…',
+        'Large file – this may take a while…',
+        'Upload in progress, hang tight…',
+        'Almost done – server is receiving your file…',
+    ];
+    const LABEL_INTERVAL_TICKS = 8; // rotate label every ~10 s (8 × 1200 ms)
+
     const startFallbackProgress = (from = 2, to = 82, step = 3) => {
         stopFallbackProgress();
         let pct = from;
+        let ticksAtCeiling = 0;
         updateUploadProgress({ pct });
         fallbackProgressTimer = setInterval(() => {
-            pct = Math.min(to, pct + step);
-            updateUploadProgress({ pct });
-            if (pct >= to && fallbackProgressTimer) {
-                clearInterval(fallbackProgressTimer);
-                fallbackProgressTimer = null;
+            if (pct < to) {
+                pct = Math.min(to, pct + step);
+                updateUploadProgress({ pct: Math.round(pct * 10) / 10 });
+            } else if (pct < 99) {
+                // Crawl slowly to 99 while the server is still receiving the file.
+                pct = Math.min(99, pct + 0.2);
+                updateUploadProgress({
+                    pct: Math.round(pct * 10) / 10,
+                    label: 'Uploading large file…',
+                });
+            } else {
+                // Pinned at 99 — keep the interval alive and rotate labels so the
+                // user can see the upload is still active (not frozen / crashed).
+                ticksAtCeiling += 1;
+                const labelIdx = Math.floor(ticksAtCeiling / LABEL_INTERVAL_TICKS) % WAITING_LABELS.length;
+                updateUploadProgress({
+                    pct: 99,
+                    label: WAITING_LABELS[labelIdx],
+                });
             }
         }, 1200);
     };
@@ -115,67 +150,115 @@ export async function startBackgroundUpload({
             const urls = await Promise.all(uploadPromises);
             postBody.media = urls;
 
-        // ── VIDEO / REEL — sequential upload ───────────────────────────────
+        // ── VIDEO / REEL — compress → upload sequentially ──────────────────
         } else if (activeTab === 'video' || activeTab === 'reel') {
             const uploadType = activeTab === 'reel' ? 'reel' : 'video';
             const total = selectedThumbnail ? 2 : 1;
             updateUploadProgress({ done: 0, total, pct: 0 });
 
-            console.log('[BackgroundUpload] media upload starting:', {
-                activeTab,
-                uploadType,
-                hasVideo: !!selectedVideo,
-                hasThumbnail: !!selectedThumbnail,
-                video: selectedVideo ? {
-                    fileName: selectedVideo.fileName,
-                    type: selectedVideo.type,
-                    fileType: selectedVideo.fileType,
-                    uri: selectedVideo.uri,
-                } : null,
-            });
+            // Strip iOS metadata fragments from the URI (e.g. spatial/immersive video
+            // files on iPhone 15 Pro+ have a #base64plist appended by the OS).
+            // The native compressor and upload layer treat the fragment as part of
+            // the file path and throw "Compression Failed" / file-not-found errors.
+            const cleanVideo = selectedVideo?.uri?.includes('#')
+                ? { ...selectedVideo, uri: selectedVideo.uri.split('#')[0] }
+                : selectedVideo;
 
-            // 1. Upload video
+            // ── 1. On-device compression (0 → 20 %) ──────────────────────────
+            // Uses AVAssetWriter (manual mode) so the bitrate is enforced exactly.
+            // Caps resolution at 1080p — handles 4K automatically via maxSize.
+            // Falls back to AVAssetExportSession (auto) for spatial/HEVC videos that
+            // manual mode cannot handle, then falls back to the original if both fail.
+            let videoToUpload = cleanVideo;
+            try {
+                updateUploadProgress({ pct: 1, label: `Compressing ${activeTab}…` });
+
+                let compressedUri;
+                try {
+                    compressedUri = await VideoCompressor.compress(
+                        cleanVideo.uri,
+                        {
+                            compressionMethod: 'manual', // AVAssetWriter — respects bitrate exactly
+                            maxSize: 1920,               // caps 4K → 1080p
+                            bitrate: 8_000_000,          // 8 Mbps
+                            minimumFileSizeForCompress: 30,
+                        },
+                        (progress) => {
+                            updateUploadProgress({
+                                pct: 1 + Math.round(progress * 19),
+                                label: `Compressing ${activeTab}… ${Math.round(progress * 100)}%`,
+                            });
+                        },
+                    );
+                } catch (manualErr) {
+                    // manual (AVAssetWriter) fails on spatial/stereo video (multi-track)
+                    // and some HEVC profiles — retry with auto (AVAssetExportSession).
+                    updateUploadProgress({ pct: 1, label: `Compressing ${activeTab}…` });
+                    compressedUri = await VideoCompressor.compress(
+                        cleanVideo.uri,
+                        {
+                            compressionMethod: 'auto', // AVAssetExportSession — handles HEVC/spatial
+                            maxSize: 1920,
+                            minimumFileSizeForCompress: 30,
+                        },
+                        (progress) => {
+                            updateUploadProgress({
+                                pct: 1 + Math.round(progress * 19),
+                                label: `Compressing ${activeTab}… ${Math.round(progress * 100)}%`,
+                            });
+                        },
+                    );
+                }
+
+                videoToUpload = { ...cleanVideo, uri: compressedUri };
+                updateUploadProgress({ pct: 20, label: 'Compression done, uploading…' });
+            } catch (compressErr) {
+                videoToUpload = cleanVideo;
+                updateUploadProgress({ pct: 2, label: `Uploading ${activeTab}…` });
+            }
+
+            // ── 2. Upload compressed video (20 → ~92 %) ───────────────────────
             updateUploadProgress({ label: `Uploading ${activeTab}…` });
-            // Some RN uploads do not expose progressEvent.total, especially large
-            // .mov files. Keep the fallback moving so the banner never looks stuck.
-            startFallbackProgress(2, 97, 1);
+            startFallbackProgress(20, 92, 1);
             const vidRes = await UploadMediaController(
-                selectedVideo,
+                videoToUpload,
                 token,
                 (progressEvent) => {
                     if (progressEvent.total) {
                         stopFallbackProgress();
                         const fileFraction = progressEvent.loaded / progressEvent.total;
-                        const overallPct = (fileFraction / total) * 90;
+                        const overallPct = 20 + (fileFraction / total) * 72;
                         updateUploadProgress({ pct: overallPct });
                     }
                 },
                 uploadType,
             );
 
-            console.log('[BackgroundUpload] video upload response:', vidRes);
             stopFallbackProgress();
 
             if (vidRes.status !== 'success' || !vidRes.data?.url) {
-                const reason = vidRes.message || vidRes.errorData?.message || 'Video upload failed. Please try again.';
+                const ffmpegOutput = vidRes.errorData?.ffmpeg_output || vidRes.errorData?.error || vidRes.errorData?.aws_error;
+                const reason = ffmpegOutput
+                    ? `${vidRes.message || 'Video upload failed'}: ${String(ffmpegOutput).slice(0, 220)}`
+                    : vidRes.message || vidRes.errorData?.message || 'Video upload failed. Please try again.';
                 throw new Error(reason);
             }
 
             postBody.video_url = vidRes.data.url;
-            // Use server-generated thumbnail as fallback
-            const serverThumbUrl = vidRes.data.thumbnail_url || null;
+            // Server may return thumbnail_url or thumbnail — check both
+            const serverThumbUrl = vidRes.data.thumbnail_url || vidRes.data.thumbnail || null;
 
             updateUploadProgress({
                 done: 1,
                 total,
-                pct: selectedThumbnail ? 97 : 98,
-                label: selectedThumbnail ? 'Finalizing thumbnail…' : 'Finalizing upload…',
+                pct: selectedThumbnail ? 92 : 98,
+                label: selectedThumbnail ? 'Uploading thumbnail…' : 'Finalizing upload…',
             });
 
-            // 2. Upload custom thumbnail (if user picked one)
+            // 3. Upload custom thumbnail (if user picked one)
             if (selectedThumbnail) {
                 updateUploadProgress({ label: 'Uploading thumbnail…' });
-                startFallbackProgress(97, 98, 1);
+                startFallbackProgress(92, 97, 1);
                 const tRes = await UploadMediaController(
                     selectedThumbnail,
                     token,
@@ -189,13 +272,11 @@ export async function startBackgroundUpload({
                     },
                     'thumbnail',
                 );
-                console.log('[BackgroundUpload] thumbnail upload response:', tRes);
                 stopFallbackProgress();
                 if (tRes.status === 'success' && tRes.data?.url) {
                     postBody.thumbnail = tRes.data.url;
-                } else {
-                    // Fall back to server-generated thumbnail
-                    if (serverThumbUrl) postBody.thumbnail = serverThumbUrl;
+                } else if (serverThumbUrl) {
+                    postBody.thumbnail = serverThumbUrl;
                 }
                 updateUploadProgress({ done: 2, total, pct: 98 });
             } else if (serverThumbUrl) {
@@ -206,18 +287,13 @@ export async function startBackgroundUpload({
             if (activeTab === 'video' && selectedCategory) {
                 postBody.category_id = selectedCategory;
             }
+
         }
 
         // ── PUBLISH ────────────────────────────────────────────────────────
-        updateUploadProgress({ phase: 'publishing', pct: 92, label: 'Publishing your post…' });
+        updateUploadProgress({ phase: 'publishing', pct: 99, label: 'Publishing your post…' });
 
         const response = await PostFeedController(postBody, token);
-        console.log('[BackgroundUpload] publish response:', {
-            status: response?.status,
-            httpStatus: response?.httpStatus,
-            message: response?.message || response?.data?.message,
-            data: response?.data,
-        });
 
         if (response.status === 'success' || response.httpStatus === 200) {
             completeUpload();
@@ -245,22 +321,14 @@ export async function startBackgroundUpload({
                 useStore.getState().clearUpload();
             }, 2500);
         } else {
-            console.log('[BackgroundUpload] publish failed:', response);
             failUpload(response.data?.message || response.message || 'Post failed. Please try again.');
         }
     } catch (err) {
         stopFallbackProgress();
         try {
-            // Safety if an upload throws before the local timer is stopped.
             const current = useStore.getState().activeUpload;
             if (current?.phase === 'uploading') useStore.getState().updateUploadProgress({ pct: Math.max(current.pct ?? 0, 1) });
         } catch {}
-        console.log('[BackgroundUpload] failed:', {
-            message: err?.message,
-            activeTab,
-            postType: postBody?.type,
-            stack: err?.stack,
-        });
         useStore.getState().failUpload(err?.message || 'Something went wrong. Please try again.');
     }
 }

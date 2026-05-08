@@ -19,7 +19,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../AuthContext';
-import { useNavigation } from '@react-navigation/native';
 import useStore from '../../repository/store';
 import ReelMedia from './reelmedia';
 import ReelInteractionContainer from './reelinteractioncontainer';
@@ -27,8 +26,6 @@ import ReelGestures from './ReelGestures';
 import ReelProgressBar from './ReelProgressBar';
 import HeartBurst from './HeartBurst';
 import { useDoubleTap } from './useDoubleTap';
-import { useWatchTime } from './useWatchTime';
-import { useViewCounter } from './useViewCounter';
 import { recordWatch } from './reelsApi';
 import { Colors } from '../../theme/colors';
 
@@ -42,14 +39,14 @@ const withOpacity = (hex, opacity) => {
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
-const ReelCard = ({ reel, height = SCREEN_H }) => {
+const ReelCard = ({ reel, height = SCREEN_H, onSwipeMode }) => {
   const { token } = useAuth();
-  const navigation = useNavigation();
   const { top: safeTop } = useSafeAreaInsets();
+  const postId = reel?.post_id ?? reel?.id;
 
   // ── Active state (Zustand – only this card re-renders on change) ──────────
   const currentReelId = useStore((s) => s.currentReel?.reelId);
-  const isActive = currentReelId === reel.id;
+  const isActive = currentReelId === postId;
 
   const interactionRef    = useRef(null);
   const progress          = useRef(new Animated.Value(0)).current;
@@ -57,6 +54,8 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
   const [isPaused,  setIsPaused]  = useState(false);
   const [pauseIcon, setPauseIcon] = useState('pause-circle');
   const [isMuted,   setIsMuted]   = useState(false);
+  const [playback,  setPlayback]  = useState({ progress: 0, currentTime: 0 });
+  const seekRef = useRef(null);
 
   // Mute icon scale bounce
   const muteScale = useRef(new Animated.Value(1)).current;
@@ -72,26 +71,18 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
   }, [isActive]);
 
   // ── Watch-time & view tracking ───────────────────────────────────────────
-  const { start, pause, flush } = useWatchTime({
-    onFlush: (reelId, totalMs) => {
-      if (!token || totalMs < 2000) return;
-      recordWatch(reelId, totalMs, undefined, token).catch(() => {});
-    },
-  });
-  const { start: viewStart, stop: viewStop } = useViewCounter({
-    minWatchMs: 1200,
-    onView: () => {},
-  });
+  // viewFiredRef: ensures recordWatch is called at most once per playback session.
+  // Resets each time this reel becomes active (new session).
+  const viewFiredRef = useRef(false);
+  const prevIsActiveForViewRef = useRef(false);
   useEffect(() => {
-    if (isActive && !isPaused) {
-      start(reel.id);
-      viewStart(reel.id);
-    } else {
-      pause();
-      viewStop();
+    if (isActive && !prevIsActiveForViewRef.current) {
+      // Reel just became active — fresh session, allow one view recording
+      viewFiredRef.current = false;
     }
-    return () => { flush(); viewStop(); };
-  }, [isActive, reel.id, isPaused]);
+    prevIsActiveForViewRef.current = isActive;
+  }, [isActive]);
+
 
   // ── Centre pause/play flash indicator ────────────────────────────────────
   const showIndicator = useCallback((icon) => {
@@ -137,22 +128,42 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
   }, [muteScale]);
 
   // ── Progress bar callback ─────────────────────────────────────────────────
-  const handleTimeUpdate = useCallback((ratio) => {
-    progress.setValue(Math.min(1, Math.max(0, ratio)));
+  const handleTimeUpdate = useCallback((ratio, currentTime = 0) => {
+    const nextRatio = Math.min(1, Math.max(0, ratio));
+    progress.setValue(nextRatio);
+    setPlayback({ progress: nextRatio, currentTime });
+
+    // Fire view exactly once per session after the user watches >= 2 seconds
+    if (isActive && !isPaused && !viewFiredRef.current && token && postId && currentTime >= 2) {
+      viewFiredRef.current = true;
+      recordWatch(postId, Math.round(currentTime * 1000), token).catch(() => {});
+    }
+  }, [isActive, isPaused, postId, progress, token]);
+
+  const handleSeekReady = useCallback((seek) => {
+    seekRef.current = seek;
+  }, []);
+
+  const handleSeek = useCallback((ratio) => {
+    const nextRatio = Math.max(0, Math.min(1, ratio));
+    seekRef.current?.(nextRatio);
+    progress.setValue(nextRatio);
+    setPlayback((prev) => ({ ...prev, progress: nextRatio }));
   }, [progress]);
 
   const handlePress      = useDoubleTap(handleDoubleTap, handleSingleTap);
   const handleSwipeRight = useCallback(() => {
-    setHeartKey(String(Date.now()));
-    interactionRef.current?.triggerLike();
-  }, []);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onSwipeMode?.('right');
+  }, [onSwipeMode]);
+
   const handleSwipeLeft = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    if (navigation.canGoBack()) navigation.goBack();
-  }, [navigation]);
+    onSwipeMode?.('left');
+  }, [onSwipeMode]);
 
-  // Mute button sits just below the overlay header
-  const muteBtnTop = safeTop + 58;
+  // Mute button sits below the header tabs.
+  const muteBtnTop = safeTop + 78;
 
   return (
     <ReelGestures onSwipeRight={handleSwipeRight} onSwipeLeft={handleSwipeLeft}>
@@ -167,6 +178,7 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
             isPaused={isPaused}
             isMuted={isMuted}
             onTimeUpdate={handleTimeUpdate}
+            onSeekReady={handleSeekReady}
           />
 
           {/* ── Bottom gradient (text legibility) ────────────────────────── */}
@@ -182,7 +194,10 @@ const ReelCard = ({ reel, height = SCREEN_H }) => {
 
           {/* ── Progress bar — bottom of screen, TikTok-style ────────────── */}
           <View style={styles.progressWrap}>
-            <ReelProgressBar progress={progress} />
+            <ReelProgressBar
+              progress={playback.progress}
+              onSeek={handleSeek}
+            />
           </View>
 
           {/* ── Centre pause / play flash (auto-hides) ───────────────────── */}
@@ -244,7 +259,7 @@ const styles = StyleSheet.create({
   // Progress bar — TikTok puts it at the very bottom
   progressWrap: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 10,
     left: 0,
     right: 0,
     zIndex: 5,
@@ -275,10 +290,10 @@ const styles = StyleSheet.create({
     zIndex: 25,
   },
   muteBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: withOpacity(Colors.black, 0.48),
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: withOpacity(Colors.black, 0.34),
     borderWidth: 1,
     borderColor: withOpacity(Colors.white, 0.18),
     alignItems: 'center',
@@ -287,4 +302,9 @@ const styles = StyleSheet.create({
 });
 
 // Only re-render when reel id changes; isActive is managed via Zustand subscription
-export default memo(ReelCard, (prev, next) => prev.reel.id === next.reel.id && prev.height === next.height);
+export default memo(
+  ReelCard,
+  (prev, next) =>
+    (prev.reel.post_id ?? prev.reel.id) === (next.reel.post_id ?? next.reel.id) &&
+    prev.height === next.height,
+);

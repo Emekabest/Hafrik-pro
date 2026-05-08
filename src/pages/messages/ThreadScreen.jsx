@@ -26,6 +26,13 @@ const BLACK     = Colors.black;
 const RECV_BG   = '#f0f2f5';
 const POLL_MS   = 3000;
 const GROUP_GAP = 120_000;
+const HAFRIK_REEL_RE = /https?:\/\/(?:www\.)?hafrik\.com\/reels\/(\d+)/i;
+const HAFRIK_POST_RE = /https?:\/\/(?:www\.)?hafrik\.com\/posts\/(\d+)/i;
+
+const getHafrikPostId = (text = '') => {
+  const match = String(text || '').match(HAFRIK_REEL_RE) || String(text || '').match(HAFRIK_POST_RE);
+  return match?.[1] ?? null;
+};
 
 /* ─── API helper ─────────────────────────────────────────────────────────── */
 const api = async (path, token, opts = {}) => {
@@ -255,8 +262,16 @@ const ImageWithLoader = React.memo(({ uri, style }) => {
 const TRANSLATE_URL = 'https://translate.googleapis.com/translate_a/single';
 
 /* ─── Bubble ─────────────────────────────────────────────────────────────── */
-const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePress, convSeen }) => {
+const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePress, onOpenReel, convSeen }) => {
   const text      = item.message ?? item.message_text ?? item.text ?? '';
+  const reelPostId = getHafrikPostId(text);
+  const displayText = reelPostId
+    ? text
+        .replace(HAFRIK_REEL_RE, '')
+        .replace(HAFRIK_POST_RE, '')
+        .replace(/Sent you a reel on Hafrik/i, '')
+        .trim()
+    : text;
   const imgUrl    = resolveUrl(item.image ?? item.image_url ?? (item.media_type === 'image' ? item.media_url : null));
   const vidUrl    = resolveUrl(item.video ?? item.video_url ?? (item.media_type === 'video' ? item.media_url : null));
   const voiceUrl  = resolveUrl(item.voice_note ?? item.voice_url ?? item.audio_url ?? (item.media_type === 'voice' ? item.media_url : null));
@@ -272,10 +287,10 @@ const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePres
 
   const handleTranslate = useCallback(async () => {
     if (xlText) { setXlText(''); return; }
-    if (!text)  return;
+    if (!displayText)  return;
     setXling(true);
     try {
-      const params = new URLSearchParams({ client: 'gtx', sl: 'auto', tl: 'en', dt: 't', q: text });
+      const params = new URLSearchParams({ client: 'gtx', sl: 'auto', tl: 'en', dt: 't', q: displayText });
       const res  = await fetch(`${TRANSLATE_URL}?${params}`);
       const json = await res.json();
       if (Array.isArray(json) && Array.isArray(json[0])) {
@@ -283,7 +298,7 @@ const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePres
       }
     } catch {}
     finally { setXling(false); }
-  }, [text, xlText]);
+  }, [displayText, xlText]);
 
   const avatarSlot = (
     <View style={isMe ? s.avSlotMe : s.avSlot}>
@@ -352,12 +367,36 @@ const Bubble = React.memo(({ item, isMe, otherAv, myAv, onLongPress, onImagePres
             ) : null}
 
             {/* Text */}
-            {!!text && (
-              <Text style={[s.bubbleTxt, isMe ? s.bubbleTxtMe : s.bubbleTxtThem]}>{text}</Text>
+            {!!displayText && (
+              <Text style={[s.bubbleTxt, isMe ? s.bubbleTxtMe : s.bubbleTxtThem]}>{displayText}</Text>
+            )}
+
+            {!!reelPostId && (
+              <TouchableOpacity
+                style={[s.reelLinkCard, isMe ? s.reelLinkCardMe : s.reelLinkCardThem]}
+                activeOpacity={0.84}
+                onPress={() => onOpenReel?.(reelPostId)}
+              >
+                <LinearGradient
+                  colors={isMe ? [WHITE + '2E', WHITE + '18'] : [ACCENT + '20', BRAND + '10']}
+                  style={s.reelLinkIcon}
+                >
+                  <Ionicons name="play" size={18} color={isMe ? WHITE : ACCENT} />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.reelLinkTitle, isMe ? s.reelLinkTitleMe : s.reelLinkTitleThem]}>
+                    Hafrik Reel
+                  </Text>
+                  <Text style={[s.reelLinkSub, isMe ? s.reelLinkSubMe : s.reelLinkSubThem]}>
+                    Tap to watch in Reels
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={isMe ? WHITE + 'BB' : MUTED} />
+              </TouchableOpacity>
             )}
 
             {/* Translate */}
-            {!!text && (
+            {!!displayText && (
               <View>
                 <TouchableOpacity onPress={handleTranslate} activeOpacity={0.7} style={s.xlBtn}>
                   {xling
@@ -890,6 +929,14 @@ export default function ThreadScreen() {
     Alert.alert('Message', undefined, opts);
   }, [myId, token, otherName]);
 
+  const handleOpenReel = useCallback((postId) => {
+    if (!postId) return;
+    navigation.navigate('Reels2', {
+      mode: 'discover',
+      initialReelId: Number(postId),
+    });
+  }, [navigation]);
+
   /* ── Scroll (inverted: y=0 is the bottom / newest) ───────────────────── */
   const onScroll = useCallback((e) => {
     setShowScrollBtn(e.nativeEvent.contentOffset.y > 220);
@@ -913,10 +960,11 @@ export default function ThreadScreen() {
         otherAv={otherAv} myAv={myAv}
         onLongPress={handleLongPress}
         onImagePress={setFullscreenImg}
+        onOpenReel={handleOpenReel}
         convSeen={convSeen}
       />
     );
-  }, [myId, otherAv, myAv, handleLongPress, convSeen]);
+  }, [myId, otherAv, myAv, handleLongPress, handleOpenReel, convSeen]);
 
   const hasText = text.trim().length > 0;
   const sharedMedia = useMemo(() => messages
@@ -1227,6 +1275,54 @@ const s = StyleSheet.create({
   bubbleTxt:    { fontSize: 15.2, lineHeight: 22 },
   bubbleTxtMe:  { color: WHITE },
   bubbleTxtThem:{ color: DARK },
+  reelLinkCard: {
+    minWidth: 214,
+    maxWidth: 248,
+    marginTop: 2,
+    borderRadius: 17,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reelLinkCardMe: {
+    backgroundColor: WHITE + '17',
+    borderWidth: 1,
+    borderColor: WHITE + '1F',
+  },
+  reelLinkCardThem: {
+    backgroundColor: BRAND + '08',
+    borderWidth: 1,
+    borderColor: BRAND + '18',
+  },
+  reelLinkIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reelLinkTitle: {
+    fontSize: 13.5,
+    fontWeight: '900',
+  },
+  reelLinkTitleMe: {
+    color: WHITE,
+  },
+  reelLinkTitleThem: {
+    color: BRAND,
+  },
+  reelLinkSub: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  reelLinkSubMe: {
+    color: WHITE + 'B8',
+  },
+  reelLinkSubThem: {
+    color: MUTED,
+  },
 
   metaRow:  { flexDirection: 'row', alignItems: 'center', marginTop: 4, paddingHorizontal: 4 },
   metaTime: { fontSize: 10.5, color: MUTED, fontWeight: '700' },

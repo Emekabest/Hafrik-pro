@@ -6,13 +6,16 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Image,
   FlatList, Modal, ActivityIndicator, RefreshControl,
   StatusBar, Dimensions, Animated, Alert, ScrollView,
+  ActionSheetIOS, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../AuthContext';
 import FeedCard from '../home/feeds/feedcard.jsx';
+import CommentModal from '../home/feeds/comments/commentmodal.jsx';
 import { Colors } from '../../theme/colors';
+import { blockUser } from '../../api/feedApi';
 
 const withOpacity = (hex, opacity) => {
   const normalized = (hex || "").replace("#", "");
@@ -439,6 +442,45 @@ export default function UserProfileScreen({ navigation, route }) {
     setFollowLoad(false);
   }, [userId, token]);
 
+  // ── Block user ─────────────────────────────────────────────────────────────
+  const handleBlockUser = useCallback(() => {
+    const options = ['Block User', 'Cancel'];
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options, destructiveButtonIndex: 0, cancelButtonIndex: 1 },
+        (idx) => {
+          if (idx === 0) confirmBlock();
+        },
+      );
+    } else {
+      confirmBlock();
+    }
+
+    function confirmBlock() {
+      Alert.alert(
+        'Block User',
+        `Block ${displayName}? They will no longer be able to see your posts or interact with you.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Block',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await blockUser(userId);
+                Alert.alert('Blocked', 'User has been blocked.', [
+                  { text: 'OK', onPress: () => navigation.goBack() },
+                ]);
+              } catch {
+                Alert.alert('Error', 'Could not block user. Please try again.');
+              }
+            },
+          },
+        ],
+      );
+    }
+  }, [userId, displayName, navigation]);
+
   // ── Chat / Message ─────────────────────────────────────────────────────────
   const [chatLoading, setChatLoading] = useState(false);
 
@@ -837,6 +879,14 @@ export default function UserProfileScreen({ navigation, route }) {
                   </>
               }
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={ss.moreBtn}
+              activeOpacity={0.85}
+              onPress={handleBlockUser}
+            >
+              <Ionicons name="ellipsis-horizontal" size={18} color={BRAND} />
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -966,6 +1016,7 @@ export default function UserProfileScreen({ navigation, route }) {
           onClose={() => setPeopleModal(null)}
         />
       )}
+      <CommentModal />
     </View>
   );
 }
@@ -1173,6 +1224,11 @@ const ss = StyleSheet.create({
     borderWidth: 1.5, borderColor: withOpacity(BRAND, 0.16),
   },
   msgBtnTxt: { fontSize: 14.5, fontWeight: '700', color: BRAND },
+  moreBtn: {
+    width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: withOpacity(BRAND, 0.06),
+    borderWidth: 1.5, borderColor: withOpacity(BRAND, 0.16),
+  },
 
   // ── Tab bar ────────────────────────────────────────────────────────────────
   tabsBar: {

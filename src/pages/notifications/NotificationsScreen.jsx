@@ -114,9 +114,17 @@ const extractPostIdFromText = (value) => {
   return null;
 };
 
+const TARGET_POST_TYPES = new Set(['post', 'feed', 'comment', 'reply', 'reaction', 'mention']);
+
 const getTargetPostId = (item = {}) => {
   const action = String(item.action ?? item.type ?? '').toLowerCase();
   const nodeType = String(item.node_type ?? item.object_type ?? item.target_type ?? '').toLowerCase();
+
+  // Handle { target: { id, type } } shape returned by the API
+  const targetObj = item.target ?? item.object ?? null;
+  const targetObjType = String(targetObj?.type ?? '').toLowerCase();
+  const targetObjId = targetObj?.id ?? null;
+
   const raw = firstValue(
     getNested(item, 'post_id'),
     getNested(item, 'postId'),
@@ -130,6 +138,7 @@ const getTargetPostId = (item = {}) => {
     item.post?.post_id,
     item.feed?.id,
     item.feed?.post_id,
+    TARGET_POST_TYPES.has(targetObjType) ? targetObjId : undefined,
   );
   if (raw) return raw;
 
@@ -550,21 +559,30 @@ export default function NotificationsScreen() {
   const openNotification = useCallback((item) => {
     markOneRead(item);
     const action = String(item.action ?? item.type ?? item.node_type ?? '').toLowerCase();
+    const screen = item.screen ?? item.data?.screen ?? item.payload?.screen;
+    const allowedScreens = new Set([
+      'AIChat',
+      'ExploreHome',
+      'GroupScreen',
+      'HafrikXHome',
+      'HafrikXVisa',
+      'MarketplaceScreen',
+      'Reels2',
+      'WalletScreen',
+    ]);
+    if (screen && allowedScreens.has(screen)) {
+      const params = {};
+      if (screen === 'AIChat') params.fresh = true;
+      if (screen === 'Reels2' && (item.mode ?? item.data?.mode)) params.mode = item.mode ?? item.data?.mode;
+      navigation.navigate(screen, params);
+      return;
+    }
     const isContentAction = CONTENT_ACTIONS.has(action) || ['post', 'feed', 'comment', 'reply', 'reaction'].some((part) => action.includes(part));
     const actor  = item.actor ?? item.from_user ?? item.user ?? {};
     const actorId = actor?.id ?? actor?.user_id ?? item?.from_user_id ?? item?.user_id;
     const conversationId = item.conversation_id ?? item.thread_id ?? item.chat_id;
     const postId = getTargetPostId(item);
     const commentId = getTargetCommentId(item);
-
-    console.log('[Notifications] open resolved target:', {
-      action,
-      nodeType: item?.node_type,
-      postId,
-      commentId,
-      actorId,
-      raw: item,
-    });
 
     if (action === 'message') {
       if (conversationId) {
@@ -595,7 +613,6 @@ export default function NotificationsScreen() {
     }
 
     if (isContentAction) {
-      console.log('[Notifications] content notification has no post id; not opening actor profile:', item);
       return;
     }
 

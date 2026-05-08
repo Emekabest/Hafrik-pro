@@ -1,4 +1,4 @@
-import apiClient from '../api/apiClient';
+import { uploadClient } from '../api/apiClient';
 
 const inferMimeType = (media = {}) => {
     const explicit = media.mimeType || media.type || '';
@@ -46,18 +46,6 @@ const UploadMediaController = async(media, token, onProgress, uploadType)=>{
           const resolvedMime = inferMimeType(media);
           const resolvedName = normalizeFileName(media, resolvedMime);
 
-          console.log('[UploadMedia] request:', {
-            endpoint: API_URL,
-            uploadType,
-            resolvedType,
-            fileName: resolvedName,
-            mime: media.type,
-            mimeType: media.mimeType,
-            resolvedMime,
-            fileSize: media.fileSize,
-            hasToken: !!token,
-            uri: media.uri,
-          });
 
           formData.append('type', resolvedType);
           formData.append('file', {
@@ -67,10 +55,9 @@ const UploadMediaController = async(media, token, onProgress, uploadType)=>{
           });
 
 
-          const isLargeUpload = ['video', 'reel', 'thumbnail'].includes(resolvedType);
-          const response = await apiClient.post(API_URL, formData, {
+          const response = await uploadClient.post(API_URL, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
-            timeout: isLargeUpload ? 0 : 30000, // no timeout for videos; 30s for photos
+            // uploadClient has no timeout — safe for files of any size
             onUploadProgress: (progressEvent) => {
                 if (onProgress && progressEvent.total) {
                     onProgress(progressEvent);
@@ -78,26 +65,26 @@ const UploadMediaController = async(media, token, onProgress, uploadType)=>{
             },
         })
 
-        console.log('[UploadMedia] response:', {
-            httpStatus: response.status,
-            uploadType: resolvedType,
-            data: response.data,
-        });
   
 
-        return {status:response.data.status, data:response.data.data} 
+        if (response.data?.status !== 'success') {
+            return {
+                status: 'error',
+                httpStatus: response.status,
+                message: response.data?.message || 'Upload failed',
+                errorData: response.data,
+            }
+        }
+
+        return {
+            status: response.data.status,
+            data: response.data.data,
+            httpStatus: response.status,
+        } 
 
     }
     catch(error){
 
-        console.log('[UploadMedia] error:', {
-            message: error?.message,
-            code: error?.code,
-            status: error?.status,
-            httpStatus: error?.response?.status,
-            response: error?.response?.data,
-            hasRequest: !!error?.request,
-        });
 
         return {
             status: 'error',

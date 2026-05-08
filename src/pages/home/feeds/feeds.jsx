@@ -44,6 +44,17 @@ const BRAND   = Colors.primaryDark;
 const ACCENT  = Colors.primary;
 const MUTED   = Colors.secondaryText;
 
+const cleanInlineText = (value = '') =>
+  String(value)
+    .replace(/<[^>]+>/g, '')
+    .replace(/&#039;/g, "'")
+    .replace(/&#8217;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 // ─── Filter definitions ───────────────────────────────────────────────────────
 const FEED_FILTERS = [
   { label: 'All',      value: '',        icon: 'grid-outline',      params: {} },
@@ -199,42 +210,47 @@ const BusinessToFollow = memo(({ items }) => {
 // ─── Communities to Join card ─────────────────────────────────────────────────
 const CommunityToJoin = memo(({ items }) => {
   const navigation = useNavigation();
-  const list = items?.slice(0, 2) ?? [];
+  const list = items?.slice(0, 3) ?? [];
   if (!list.length) return null;
+  const openGroup = (group) => navigation.navigate('GroupDetails', { groupId: group.id ?? group.group_id });
+
   return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionHeaderLeft}>
-          <View style={[styles.sectionIconBubble, { backgroundColor: BRAND }]}>
-            <Ionicons name="people-circle" size={14} color={Colors.white} />
-          </View>
-          <Text style={styles.sectionTitle}>Communities to Join</Text>
+    <View style={styles.communityInviteSimple}>
+      <View style={styles.communityInviteSimpleHeader}>
+        <View style={styles.communityInviteSimpleIcon}>
+          <Ionicons name="people-circle" size={18} color={BRAND} />
         </View>
-      </View>
-      {list.map((group, idx) => (
-        <TouchableOpacity
-          key={group.id ?? idx}
-          style={[styles.suggestionRow, idx < list.length - 1 && styles.suggestionRowBorder]}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('GroupDetails', { groupId: group.id })}
-        >
-          <Image source={{ uri: group.avatar ?? group.cover ?? group.image }} style={styles.suggestionAvatar} />
-          <View style={styles.suggestionInfo}>
-            <Text style={styles.suggestionName} numberOfLines={1}>{group.title ?? group.name}</Text>
-            {!!group.description && (
-              <Text style={styles.suggestionMeta} numberOfLines={1}>
-                {group.description.replace(/<[^>]+>/g, '')}
-              </Text>
-            )}
-            {!!group.members_count && (
-              <Text style={styles.suggestionMeta}>{group.members_count?.toLocaleString()} members</Text>
-            )}
-          </View>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: BRAND }]} activeOpacity={0.8}>
-            <Text style={styles.actionBtnText}>Join</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.communitySimpleTitle}>Join communities</Text>
+          <Text style={styles.communitySimpleSub}>Find people sharing useful updates and answers.</Text>
+        </View>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('GroupScreen')} style={styles.communitySimpleExplore}>
+          <Text style={styles.communitySimpleExploreText}>Explore</Text>
         </TouchableOpacity>
-      ))}
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.communitySimpleScroll}
+      >
+        {list.map((group, idx) => (
+          <TouchableOpacity
+            key={`${group.id ?? group.group_id ?? idx}-${idx}`}
+            style={styles.communitySimpleCard}
+            activeOpacity={0.86}
+            onPress={() => openGroup(group)}
+          >
+            <Image source={{ uri: group.avatar ?? group.cover ?? group.image }} style={styles.communitySimpleImage} />
+            <Text style={styles.communitySimpleName} numberOfLines={1}>{group.title ?? group.name ?? 'Community'}</Text>
+            <Text style={styles.communitySimpleMeta} numberOfLines={1}>
+              {Number(group.members_count ?? group.members ?? 0) > 0
+                ? `${Number(group.members_count ?? group.members).toLocaleString()} members`
+                : 'View community'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 });
@@ -462,6 +478,7 @@ const Feeds = ({
   onPostPress,
   hideScrollTop = false,
   initialDataLoaded = false,
+  scrollToTopRef = null,
 }) => {
   const pageRef        = useRef(1);
   const loadingMoreRef = useRef(false);
@@ -562,6 +579,11 @@ const Feeds = ({
   const scrollToTop = useCallback(() => {
     flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
+
+  // Expose scrollToTop to parent via ref
+  useEffect(() => {
+    if (scrollToTopRef) scrollToTopRef.current = scrollToTop;
+  }, [scrollToTopRef, scrollToTop]);
 
   // Track which feed item is visible on screen (video) + send view to backend once per session.
   // Update immediately so videos pause as soon as they leave the viewport.
@@ -732,7 +754,9 @@ const Feeds = ({
       layout.size = 56;
     } else if (item.type === 'feedsheader') {
       layout.size = 72;
-    } else if (item.type === 'peoplecard' || item.type === 'bizcard' || item.type === 'communitycard') {
+    } else if (item.type === 'communitycard') {
+      layout.size = 190;
+    } else if (item.type === 'peoplecard' || item.type === 'bizcard') {
       layout.size = 180;
     }
     // 'feed' items use the default estimatedItemSize of 550
@@ -807,18 +831,18 @@ const styles = StyleSheet.create({
 
   scrollTopBtn: {
     position:        'absolute',
-    bottom:          90,      // sits above the FAB (56px tall at bottom 24 + 8px gap = 88)
-    right:           18,
-    width:           44,
-    height:          44,
-    borderRadius:    22,
-    backgroundColor: BRAND,
+    bottom:          92,
+    right:           26,
+    width:           42,
+    height:          42,
+    borderRadius:    21,
+    backgroundColor: Colors.primaryDark,
     alignItems:      'center',
     justifyContent:  'center',
     shadowColor:     BRAND,
     shadowOffset:    { width: 0, height: 4 },
-    shadowOpacity:   0.35,
-    shadowRadius:    8,
+    shadowOpacity:   0.28,
+    shadowRadius:    10,
     elevation:       8,
     zIndex:          50,
   },
@@ -937,6 +961,237 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.white,
     fontWeight: '700',
+  },
+
+  // ── Community invitation card ────────────────────────────────────────────
+  communityInviteSimple: {
+    backgroundColor: BG_CARD,
+    paddingTop: 14,
+    paddingBottom: 12,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  communityInviteSimpleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  communityInviteSimpleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: BRAND + '10',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BRAND + '18',
+  },
+  communitySimpleTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: BRAND,
+    letterSpacing: -0.2,
+  },
+  communitySimpleSub: {
+    fontSize: 11,
+    color: MUTED,
+    marginTop: 2,
+  },
+  communitySimpleExplore: {
+    backgroundColor: BRAND,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  communitySimpleExploreText: {
+    color: Colors.white,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  communitySimpleScroll: {
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  communitySimpleCard: {
+    width: 128,
+    backgroundColor: Colors.surfaceTint,
+    borderRadius: 18,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderLight ?? '#EEF2F2',
+  },
+  communitySimpleImage: {
+    width: '100%',
+    height: 72,
+    borderRadius: 14,
+    backgroundColor: BRAND + '12',
+    marginBottom: 8,
+  },
+  communitySimpleName: {
+    color: BRAND,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  communitySimpleMeta: {
+    color: MUTED,
+    fontSize: 10.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+
+  communityInviteCard: {
+    backgroundColor: BG_CARD,
+    overflow: 'hidden',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  communityInviteHero: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+  },
+  communityInviteTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  communityInviteIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  communityInviteKicker: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  communityInviteTitle: {
+    color: Colors.white,
+    fontSize: 15,
+    fontWeight: '900',
+    marginTop: 2,
+    letterSpacing: -0.2,
+  },
+  communityInviteSeeAll: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  communityInviteSeeAllText: {
+    color: Colors.white,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  featuredCommunity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 22,
+    padding: 11,
+  },
+  featuredCommunityImage: {
+    width: 62,
+    height: 62,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryDark + '22',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  featuredCommunityText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  featuredCommunityName: {
+    color: Colors.white,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  featuredCommunityMeta: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 4,
+  },
+  featuredCommunityFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 7,
+  },
+  featuredCommunityFooterText: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  featuredJoinPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.white,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  featuredJoinText: {
+    color: BRAND,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  communityMiniRow: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+    backgroundColor: BG_CARD,
+  },
+  communityMiniCard: {
+    flex: 1,
+    backgroundColor: Colors.surfaceTint,
+    borderRadius: 18,
+    padding: 9,
+    borderWidth: 1,
+    borderColor: Colors.borderLight ?? '#EEF2F2',
+  },
+  communityMiniImage: {
+    width: '100%',
+    height: 74,
+    borderRadius: 14,
+    backgroundColor: Colors.primaryDark + '12',
+    marginBottom: 8,
+  },
+  communityMiniText: {
+    gap: 2,
+  },
+  communityMiniName: {
+    color: BRAND,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  communityMiniMeta: {
+    color: MUTED,
+    fontSize: 10.5,
+    fontWeight: '600',
   },
 
   // ── Ad card ──────────────────────────────────────────────────────────────

@@ -189,7 +189,7 @@ const ProfileScreen = () => {
             <StatusBar barStyle="light-content" />
             <ProgressBarLoader visible={false} />
             {/* Header already handles top safe-area via useSafeAreaInsets internally */}
-            <AppHeader onOpenDrawer={openDrawer} hideSearch />
+            <AppHeader onOpenDrawer={openDrawer} />
             <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
             {loading ? (
                 <BrandLoader />

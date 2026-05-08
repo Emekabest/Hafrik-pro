@@ -243,31 +243,76 @@ const FeedReelPlayer = memo(({ item, isVisible, feedId }) => {
   );
 });
 
-// ─── ImageGrid — Threads-style feed layout (cover, no in-feed carousel) ────────
-// 1 image  → full width, natural aspect ratio (cover)
-// 2 images → two equal columns side by side (cover)
-// 3 images → full-width top + two equal columns below (cover)
-// 4+       → full-width top + two columns below, last cell shows "+N" badge
-const GRID_GAP   = 3;
-const HALF_W     = (MEDIA_W - GRID_GAP) / 2;
+// ─── SmartImage — dynamic aspect ratio, no forced cropping ───────────────────
+// • Reads real image dimensions from onLoad (or from media.width/height if the
+//   API already supplies them).
+// • Wide images (ratio ≥ 1.9 — banners, event posters, promo cards):
+//     contentFit="contain"  → full image always visible, black/transparent bars
+// • Normal photos (ratio < 1.9):
+//     contentFit="cover"    → fills the container, but the container is sized to
+//                             the natural ratio so nothing important is cropped.
+// • Very tall portrait images are capped at 1.5× the container width so they
+//   don't dominate the feed. Above that cap we fall back to cover.
+const BANNER_RATIO = 1.9;   // wider than this → banner / poster
+const MAX_RATIO    = 1 / 1.5; // min ratio (portrait cap: height ≤ 1.5 × width)
+
+const SmartImage = memo(({ uri, containerW, borderRadius = 12, knownRatio = null }) => {
+  // Seed from API-supplied dimensions when available (no layout jump)
+  const [ratio, setRatio] = useState(knownRatio ?? (4 / 3));
+
+  const handleLoad = useCallback(({ source }) => {
+    if (source?.width && source?.height && source.width > 0) {
+      setRatio(source.width / source.height);
+    }
+  }, []);
+
+  // ratio = width / height
+  const isBanner   = ratio >= BANNER_RATIO;
+  const isTallCap  = ratio < MAX_RATIO;         // too tall → cap height
+  const contentFit = isBanner ? 'contain' : 'cover';
+
+  // Dynamic height: natural for most images, capped for extreme portraits
+  const naturalH   = Math.round(containerW / ratio);
+  const cappedH    = Math.round(containerW * 1.5);
+  const height     = isTallCap ? cappedH : naturalH;
+
+  return (
+    <ExpoImage
+      source={{ uri }}
+      style={{ width: containerW, height, borderRadius }}
+      contentFit={isTallCap ? 'cover' : contentFit}
+      cachePolicy="memory-disk"
+      transition={200}
+      onLoad={handleLoad}
+    />
+  );
+});
+
+// ─── ImageGrid — Threads-style feed layout ────────────────────────────────────
+// 1 image  → full width, smart aspect ratio (no forced crop)
+// 2 images → two equal columns side by side (cover — thumbnails, crop OK)
+// 3 images → full-width top smart + two equal columns below
+// 4+       → full-width top smart + two columns below, last cell shows "+N"
+const GRID_GAP    = 3;
+const HALF_W      = (MEDIA_W - GRID_GAP) / 2;
 const GRID_CELL_H = Math.round(HALF_W * 0.88);
-const GRID_R     = 12;
+const GRID_R      = 12;
 
 const ImageGrid = memo(({ media }) => {
   const n = media.length;
   if (n === 0) return null;
 
-  const singleH = Math.round(MEDIA_W * 0.72);
-
-  // ── Single image ────────────────────────────────────────────────────────────
+  // ── Single image — smart resize ─────────────────────────────────────────────
   if (n === 1) {
+    const m = media[0];
+    // Use API-supplied dimensions when available to avoid any layout jump
+    const knownRatio = m.width && m.height ? m.width / m.height : null;
     return (
-      <ExpoImage
-        source={{ uri: media[0].url }}
-        style={{ width: MEDIA_W, height: singleH, borderRadius: GRID_R }}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        transition={200}
+      <SmartImage
+        uri={m.url}
+        containerW={MEDIA_W}
+        borderRadius={GRID_R}
+        knownRatio={knownRatio}
       />
     );
   }
@@ -290,19 +335,19 @@ const ImageGrid = memo(({ media }) => {
     );
   }
 
-  // ── Three or more: full top + two-column bottom row ──────────────────────────
+  // ── Three or more: smart top image + two-column bottom row ──────────────────
   const top      = media[0];
   const bottoms  = media.slice(1, 3);
   const overflow = n > 3 ? n - 3 : 0;
+  const topKnownRatio = top.width && top.height ? top.width / top.height : null;
 
   return (
     <View style={{ borderRadius: GRID_R, overflow: 'hidden' }}>
-      <ExpoImage
-        source={{ uri: top.url }}
-        style={{ width: MEDIA_W, height: Math.round(MEDIA_W * 0.56) }}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        transition={200}
+      <SmartImage
+        uri={top.url}
+        containerW={MEDIA_W}
+        borderRadius={0}
+        knownRatio={topKnownRatio}
       />
       <View style={{ flexDirection: 'row', gap: GRID_GAP, marginTop: GRID_GAP }}>
         {bottoms.map((item, i) => {

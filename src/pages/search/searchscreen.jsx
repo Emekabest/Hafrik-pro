@@ -54,6 +54,12 @@ const SECTION_ORDER = [
   { type: 'article', label: 'Articles', tabIndex: 5 },
 ];
 
+const cleanSearchText = (value = '') =>
+  String(value || '')
+    .trim()
+    .replace(/^#+/, '')
+    .replace(/\s+#/g, ' ')
+    .replace(/\s{2,}/g, ' ');
 
 // ─── SearchScreen ─────────────────────────────────────────────────────────────
 const SearchScreen = () => {
@@ -113,7 +119,7 @@ const SearchScreen = () => {
   useEffect(() => {
     const initial = route.params?.initialQuery;
     if (!initial) return;
-    const q = String(initial).trim();
+    const q = cleanSearchText(initial);
     setSearchQuery(q);
     runSearch(q);
   }, [route.params?.initialQuery]);
@@ -132,7 +138,7 @@ const SearchScreen = () => {
 
   // ── Hashtag search ─────────────────────────────────────────────────────────
   const runHashtagSearch = useCallback(async (q) => {
-    const tag = q?.trim().replace(/^#/, '');
+    const tag = cleanSearchText(q);
     if (!tag) { setHashtagResults([]); return; }
     setHashtagLoading(true);
     try {
@@ -153,7 +159,7 @@ const SearchScreen = () => {
 
   // ── Explicit search — fires only on Enter / search icon ─────────────────────
   const runSearch = useCallback(async (q) => {
-    const trimmed = q?.trim();
+    const trimmed = cleanSearchText(q);
     if (!trimmed) { setResults([]); setHashtagResults([]); return; }
     setIsLoading(true);
     try {
@@ -166,18 +172,10 @@ const SearchScreen = () => {
     runHashtagSearch(trimmed);
   }, [token, runHashtagSearch]);
 
-  const handleSubmit = useCallback(() => {
-    const q = searchQuery?.trim();
-    if (!q) return;
-    saveRecent(q);
-    inputRef.current?.blur();
-    runSearch(q);
-  }, [searchQuery, saveRecent, runSearch]);
-
   // ── Recent search helpers ──────────────────────────────────────────────────
   const saveRecent = useCallback(async (q) => {
-    if (!q?.trim()) return;
-    const trimmed = q.trim();
+    const trimmed = cleanSearchText(q);
+    if (!trimmed) return;
     setRecentSearches(prev => {
       const next = [trimmed, ...prev.filter(x => x !== trimmed)].slice(0, MAX_RECENT);
       AsyncStorage.setItem(RECENT_KEY, JSON.stringify(next));
@@ -197,6 +195,15 @@ const SearchScreen = () => {
     setRecentSearches([]);
     AsyncStorage.removeItem(RECENT_KEY);
   }, []);
+
+  const handleSubmit = useCallback(() => {
+    const q = cleanSearchText(searchQuery);
+    if (!q) return;
+    setSearchQuery(q);
+    saveRecent(q);
+    inputRef.current?.blur();
+    runSearch(q);
+  }, [searchQuery, setSearchQuery, saveRecent, runSearch]);
 
   // ── Navigation / back ──────────────────────────────────────────────────────
   const handleBack = useCallback(() => {
@@ -228,10 +235,11 @@ const SearchScreen = () => {
 
   // ── Recent item tap ───────────────────────────────────────────────────────
   const handleRecentPress = useCallback((q) => {
-    setSearchQuery(q);
-    saveRecent(q);
+    const qText = cleanSearchText(q);
+    setSearchQuery(qText);
+    saveRecent(qText);
     inputRef.current?.blur();
-    runSearch(q);
+    runSearch(qText);
   }, [setSearchQuery, saveRecent, runSearch]);
 
   // ── Follow toggle (optimistic) ─────────────────────────────────────────────
@@ -278,7 +286,7 @@ const SearchScreen = () => {
       return [0, 1, 2, 3, 4].map(i => ({ _key: `sk_${i}`, _type: 'skeleton' }));
     }
 
-    const q = searchQuery?.trim();
+    const q = cleanSearchText(searchQuery);
     if (!q || results.length === 0) return [];
 
     const targetType = TABS[activeTab].type;
@@ -420,7 +428,7 @@ const SearchScreen = () => {
   const keyExtractor = useCallback((item) => item._key, []);
 
   const listData  = buildListData();
-  const q         = searchQuery?.trim();
+  const q         = cleanSearchText(searchQuery);
   const showEmpty = !isLoading && listData.length === 0;
 
   return (
@@ -430,7 +438,7 @@ const SearchScreen = () => {
       <SearchHeader
         inputRef={inputRef}
         searchQuery={searchQuery}
-        onChangeText={(text) => { setSearchQuery(text); setShowAllItems(false); setResults([]); }}
+        onChangeText={(text) => { setSearchQuery(text.replace(/^#+/, '')); setShowAllItems(false); setResults([]); }}
         onSubmit={handleSubmit}
         onBack={handleBack}
         onClear={() => { setSearchQuery(''); setResults([]); setShowAllItems(false); }}
@@ -449,17 +457,19 @@ const SearchScreen = () => {
             <SearchEmptyState
               query={q}
               onTrendingPress={(label) => {
-                setSearchQuery(label);
-                saveRecent(label);
+                const qText = cleanSearchText(label);
+                setSearchQuery(qText);
+                saveRecent(qText);
                 inputRef.current?.blur();
-                runSearch(label);
+                runSearch(qText);
               }}
               recentSearches={recentSearches}
-              onRecentPress={(label) => {
-                setSearchQuery(label);
-                saveRecent(label);
+      onRecentPress={(label) => {
+                const qText = cleanSearchText(label);
+                setSearchQuery(qText);
+                saveRecent(qText);
                 inputRef.current?.blur();
-                runSearch(label);
+                runSearch(qText);
               }}
               onRemoveRecent={removeRecent}
               suggestedPeople={suggestedPeople}

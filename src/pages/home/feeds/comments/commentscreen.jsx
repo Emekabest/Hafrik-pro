@@ -145,7 +145,7 @@ const CommentScreen = ({ route }) => {
 
   const handleShare = useCallback(async () => {
     try {
-      await Share.share({ message: `Check this out on Hafrik: https://hafrik.com/post/${feedId}` });
+      await Share.share({ message: `Check this out on Hafrik: https://hafrik.com/posts/${feedId}` });
     } catch { /* user cancelled */ }
   }, [feedId]);
 

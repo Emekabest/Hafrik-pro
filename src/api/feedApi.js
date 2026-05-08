@@ -35,3 +35,37 @@ export const getSavedPosts = async (token, page = 1, limit = 10) => {
   });
   return res.data;
 };
+
+// ─── Block User ───────────────────────────────────────────────────────────────
+export const blockUser = async (userId) => {
+  const form = new FormData();
+  form.append('user_id', String(userId));
+
+  const res = await apiClient.post('/users/block.php', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+};
+
+// ─── Unblock User ─────────────────────────────────────────────────────────────
+export const unblockUser = async (userId) => {
+  const form = new FormData();
+  form.append('user_id', String(userId));
+
+  const res = await apiClient.post('/users/unblock.php', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+};
+
+// ─── Report Post ──────────────────────────────────────────────────────────────
+export const reportPost = async (postId, reason = '') => {
+  const form = new FormData();
+  form.append('post_id', String(postId));
+  if (reason) form.append('reason', reason);
+
+  const res = await apiClient.post('/feed/report.php', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+};
