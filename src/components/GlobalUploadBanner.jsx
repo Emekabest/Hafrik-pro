@@ -1,252 +1,239 @@
 /**
  * GlobalUploadBanner
  * ──────────────────────────────────────────────────────────────────────────────
- * A slim, persistent progress bar rendered at the app root so users see
- * upload progress on every screen. Slides in from the top and auto-dismisses.
+ * A small floating upload bubble anchored above the bottom tab bar. It avoids
+ * headers and keeps the app usable while large videos upload in the background.
+ *
+ * States:
+ *   uploading  → animated progress bar + percentage
+ *   done       → green success flash, auto-dismisses after 2 s
+ *   error      → red pill with dismiss tap
  */
 
 import React, { useEffect, useRef, memo } from 'react';
 import {
-    StyleSheet, Text, View, Animated, TouchableOpacity,
-    Dimensions, Platform,
+    Animated, Easing, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useStore from '../repository/store';
 import { Colors } from '../theme';
+import AppDetails from '../helpers/appdetails';
 
-const SCREEN_W = Dimensions.get('window').width;
-
-const ACCENT = Colors.primary;
-const BRAND  = Colors.primaryDark;
-const WHITE  = Colors.white;
-const BG     = Colors.surfaceTint;
-const BORDER = Colors.border;
-const MUTED  = Colors.secondaryText;
-const ERROR_COLOR = '#E53935';
-const SUCCESS_COLOR = '#43A047';
+const TAB_H         = AppDetails.mainTabNavigatorHeight ?? 60;
+const ACCENT        = Colors.primary;
+const BRAND         = Colors.primaryDark;
+const WHITE         = Colors.white;
+const SUCCESS       = '#22c55e';
+const ERROR_C       = '#ef4444';
+const BUBBLE_H      = 62;
 
 const GlobalUploadBanner = () => {
+    const { bottom } = useSafeAreaInsets();
     const activeUpload = useStore((s) => s.activeUpload);
     const clearUpload  = useStore((s) => s.clearUpload);
 
-    const slideAnim    = useRef(new Animated.Value(-120)).current;
-    const progressAnim = useRef(new Animated.Value(0)).current;
-    const pulseAnim    = useRef(new Animated.Value(1)).current;
-    const isVisible    = useRef(false);
+    // Slide up from bottom
+    const slideY    = useRef(new Animated.Value(BUBBLE_H + 20)).current;
+    // Progress bar width (0–100)
+    const progAnim  = useRef(new Animated.Value(0)).current;
+    // Subtle pulse on the icon while in-progress
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
-    // ── Show / hide the banner ─────────────────────────────────────────────
+    const isVisible = useRef(false);
+    const pulseLoop = useRef(null);
+
+    // ── Show / hide ────────────────────────────────────────────────────────
     useEffect(() => {
         if (activeUpload && !isVisible.current) {
             isVisible.current = true;
-            progressAnim.setValue(0);
-            Animated.spring(slideAnim, {
+            progAnim.setValue(0);
+            Animated.timing(slideY, {
                 toValue: 0,
+                duration: 320,
+                easing: Easing.out(Easing.cubic),
                 useNativeDriver: true,
-                friction: 8,
-                tension: 50,
             }).start();
         } else if (!activeUpload && isVisible.current) {
             isVisible.current = false;
-            Animated.timing(slideAnim, {
-                toValue: -120,
-                duration: 300,
+            Animated.timing(slideY, {
+                toValue: BUBBLE_H + 20,
+                duration: 260,
+                easing: Easing.in(Easing.cubic),
                 useNativeDriver: true,
             }).start();
         }
     }, [activeUpload]);
 
-    // ── Animate progress bar ───────────────────────────────────────────────
+    // ── Progress bar ───────────────────────────────────────────────────────
     useEffect(() => {
         if (!activeUpload) return;
-        Animated.timing(progressAnim, {
+        Animated.timing(progAnim, {
             toValue: activeUpload.pct ?? 0,
-            duration: 300,
+            duration: 280,
+            easing: Easing.out(Easing.quad),
             useNativeDriver: false,
         }).start();
     }, [activeUpload?.pct]);
 
     // ── Pulse while uploading ──────────────────────────────────────────────
     useEffect(() => {
+        if (pulseLoop.current) { pulseLoop.current.stop(); pulseLoop.current = null; }
         if (!activeUpload || activeUpload.phase === 'done' || activeUpload.phase === 'error') {
             pulseAnim.setValue(1);
             return;
         }
-        const loop = Animated.loop(
+        pulseLoop.current = Animated.loop(
             Animated.sequence([
-                Animated.timing(pulseAnim, { toValue: 0.6, duration: 800, useNativeDriver: true }),
-                Animated.timing(pulseAnim, { toValue: 1,   duration: 800, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 0.55, duration: 750, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 1,    duration: 750, useNativeDriver: true }),
             ]),
         );
-        loop.start();
-        return () => loop.stop();
+        pulseLoop.current.start();
+        return () => { if (pulseLoop.current) { pulseLoop.current.stop(); pulseLoop.current = null; } };
     }, [activeUpload?.phase]);
 
-    // Don't render DOM at all when idle (after slide-out finishes)
     if (!activeUpload) return null;
 
-    const phase = activeUpload.phase;
-    const isDone  = phase === 'done';
-    const isError = phase === 'error';
-    const pct     = activeUpload.pct ?? 0;
+    const phase    = activeUpload.phase;
+    const isDone   = phase === 'done';
+    const isError  = phase === 'error';
+    const pct      = Math.max(0, Math.min(100, Math.round(activeUpload.pct ?? 0)));
 
-    // Icons per state
-    const iconName  = isDone ? 'checkmark-circle' : isError ? 'alert-circle' : 'cloud-upload';
-    const iconColor = isDone ? SUCCESS_COLOR : isError ? ERROR_COLOR : ACCENT;
+    const accentColor = isDone ? SUCCESS : isError ? ERROR_C : ACCENT;
 
-    // Label
     let label = activeUpload.label || 'Uploading…';
-    if (isDone)  label = 'Posted successfully!';
+    if (isDone)  label = 'Posted!';
     if (isError) label = activeUpload.error || 'Upload failed';
+
+    const iconName = isDone ? 'checkmark-circle' : isError ? 'alert-circle' : 'cloud-upload-outline';
+
+    // Bottom offset: safe area + tab bar height + small gap
+    const bottomOffset = bottom + TAB_H + 10;
 
     return (
         <Animated.View
             style={[
-                styles.container,
-                { transform: [{ translateY: slideAnim }] },
+                styles.wrapper,
+                { bottom: bottomOffset, transform: [{ translateY: slideY }] },
             ]}
             pointerEvents="box-none"
         >
-            <View style={[
-                styles.card,
-                isDone && styles.cardDone,
-                isError && styles.cardError,
-            ]}>
-                {/* Left icon */}
-                <Animated.View style={{ opacity: pulseAnim }}>
-                    <Ionicons name={iconName} size={22} color={iconColor} />
+            <TouchableOpacity
+                activeOpacity={isError || isDone ? 0.8 : 1}
+                onPress={isError || isDone ? clearUpload : undefined}
+                style={[styles.bubble, isError && styles.bubbleError, isDone && styles.bubbleDone]}
+            >
+                <Animated.View style={[styles.iconWrap, { backgroundColor: accentColor + '22', opacity: !isDone && !isError ? pulseAnim : 1 }]}>
+                    <Ionicons name={iconName} size={19} color={accentColor} />
                 </Animated.View>
 
-                {/* Text + bar */}
-                <View style={styles.body}>
-                    <View style={styles.labelRow}>
-                        <Text style={styles.label} numberOfLines={1}>{label}</Text>
-                        {!isDone && !isError && (
-                            <Text style={styles.pct}>{Math.round(pct)}%</Text>
-                        )}
-                    </View>
+                {!isDone && !isError ? (
+                    <Text style={[styles.pct, { color: accentColor }]}>{pct}%</Text>
+                ) : (
+                    <Ionicons name="close" size={13} color={Colors.secondaryText} style={styles.closeIcon} />
+                )}
 
-                    {/* Progress bar */}
-                    {!isDone && !isError && (
-                        <View style={styles.barTrack}>
-                            <Animated.View
-                                style={[
-                                    styles.barFill,
-                                    {
-                                        width: progressAnim.interpolate({
-                                            inputRange: [0, 100],
-                                            outputRange: ['0%', '100%'],
-                                            extrapolate: 'clamp',
-                                        }),
-                                    },
-                                ]}
-                            />
-                        </View>
-                    )}
+                <Text style={styles.label} numberOfLines={1}>{label}</Text>
 
-                    {/* Done bar — full green */}
-                    {isDone && (
-                        <View style={styles.barTrack}>
-                            <View style={[styles.barFill, styles.barFillDone, { width: '100%' }]} />
-                        </View>
-                    )}
+                <View style={styles.track}>
+                    <Animated.View
+                        style={[
+                            styles.fill,
+                            { backgroundColor: accentColor },
+                            {
+                                width: isDone
+                                    ? '100%'
+                                    : progAnim.interpolate({
+                                        inputRange: [0, 100],
+                                        outputRange: ['0%', '100%'],
+                                        extrapolate: 'clamp',
+                                    }),
+                            },
+                        ]}
+                    />
                 </View>
-
-                {/* Dismiss */}
-                {(isDone || isError) && (
-                    <TouchableOpacity onPress={clearUpload} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                        <Ionicons name="close" size={18} color={MUTED} />
-                    </TouchableOpacity>
-                )}
-
-                {/* Retry */}
-                {isError && (
-                    <TouchableOpacity
-                        style={styles.retryBtn}
-                        onPress={clearUpload}
-                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    >
-                        <Text style={styles.retryText}>Dismiss</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
+            </TouchableOpacity>
         </Animated.View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    wrapper: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 54 : 12,
-        left: 12,
-        right: 12,
+        right: 14,
+        width: 92,
         zIndex: 9999,
         elevation: 9999,
+        alignItems: 'flex-end',
     },
-    card: {
-        flexDirection: 'row',
+    bubble: {
+        width: 92,
+        minHeight: BUBBLE_H,
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 7,
         backgroundColor: WHITE,
-        borderRadius: 16,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        gap: 10,
-        // shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
+        borderRadius: 22,
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: ACCENT + '22',
+        shadowColor: BRAND,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.14,
+        shadowRadius: 16,
+        elevation: 10,
     },
-    cardDone: {
-        borderColor: SUCCESS_COLOR + '44',
+    bubbleDone: {
+        borderColor: SUCCESS + '44',
     },
-    cardError: {
-        borderColor: ERROR_COLOR + '44',
+    bubbleError: {
+        borderColor: ERROR_C + '44',
+        width: 150,
+        alignItems: 'flex-start',
+        paddingHorizontal: 12,
     },
-    body: {
-        flex: 1,
-        gap: 6,
-    },
-    labelRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    iconWrap: {
+        width: 28,
+        height: 28,
+        borderRadius: 10,
         alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
     },
     label: {
-        fontSize: 13,
-        fontWeight: '700',
+        fontSize: 9.5,
+        fontWeight: '800',
         color: BRAND,
-        flex: 1,
+        marginTop: 3,
+        maxWidth: '100%',
+        textAlign: 'center',
+        fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
     },
     pct: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: ACCENT,
-        marginLeft: 8,
+        position: 'absolute',
+        top: 9,
+        right: 8,
+        fontSize: 10,
+        fontWeight: '900',
+        fontFamily: AppDetails?.fontFamily?.redex?.bold ?? 'System',
     },
-    barTrack: {
-        height: 5,
-        backgroundColor: BG,
-        borderRadius: 3,
+    closeIcon: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+    },
+    track: {
+        height: 3,
+        width: '100%',
+        marginTop: 6,
+        backgroundColor: Colors.surfaceTint ?? '#f0f4f8',
+        borderRadius: 999,
         overflow: 'hidden',
     },
-    barFill: {
+    fill: {
         height: '100%',
-        backgroundColor: ACCENT,
-        borderRadius: 3,
-    },
-    barFillDone: {
-        backgroundColor: SUCCESS_COLOR,
-    },
-    retryBtn: {
-        marginLeft: 4,
-    },
-    retryText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: ERROR_COLOR,
+        borderRadius: 999,
     },
 });
 

@@ -6,6 +6,7 @@ import {
   StatusBar,
   TouchableOpacity,
   Animated,
+  Easing,
   Modal,
   Text,
 } from 'react-native';
@@ -15,8 +16,9 @@ import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useIsFocused } from '@react-navigation/native';
 import DrawerNavigation from './drawernavigation.jsx';
 import AppHeader from '../../pages/AppHeader.jsx';
-import FeedTabBar, { ContentFilterBar, FEED_TABS } from './FeedTabBar.jsx';
+import FeedTabBar, { FEED_TABS } from './FeedTabBar.jsx';
 import UnifiedFeedScreen from './UnifiedFeedScreen.jsx';
+import { HafrikTVContent } from '../tv/HafrikTVScreen.jsx';
 import SearchModal from '../search/searchmodal.jsx';
 import useStore from '../../repository/store.js';
 import SearchScreen from '../search/searchscreen.jsx';
@@ -37,7 +39,6 @@ const HomePage = ({ route, navigation }) => {
   const tabletMode         = useStore((state) => state.tabletMode);
   const tabletDimension    = useStore((state) => state.tabletDimension);
   const openComposer       = useStore((state) => state.openComposer);
-  const openCreateMenu     = useStore((state) => state.openCreateMenu);
   const showWelcomeModal   = useStore((state) => state.showWelcomeModal);
   const setShowWelcomeModal = useStore((state) => state.setShowWelcomeModal);
   const feedDoubleTap      = useStore((state) => state.tabRefreshSignals?.Feed ?? 0);
@@ -55,16 +56,12 @@ const HomePage = ({ route, navigation }) => {
 
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [activeTab,       setActiveTab]       = useState(0); // 0 = For You
-  const [contentFilter,   setContentFilter]   = useState('');
 
   useEffect(() => {
     const tabKey = route?.params?.initialTabKey;
     if (!tabKey) return;
     const idx = FEED_TABS.findIndex((tab) => tab.key === tabKey);
-    if (idx >= 0) {
-      setActiveTab(idx);
-      setContentFilter('');
-    }
+    if (idx >= 0) setActiveTab(idx);
     navigation?.setParams?.({ initialTabKey: undefined });
   }, [route?.params?.initialTabKey, navigation]);
 
@@ -91,15 +88,22 @@ const HomePage = ({ route, navigation }) => {
   const openDrawer  = useCallback(() => setIsDrawerVisible(true),  []);
   const closeDrawer = useCallback(() => setIsDrawerVisible(false), []);
 
-  // Reset content filter when switching primary tabs
   const handleTabChange = useCallback((index) => {
     setActiveTab(index);
-    setContentFilter('');
   }, []);
 
   // ── Swipe-to-switch tabs ───────────────────────────────────────────────────
   const swipeX = useRef(new Animated.Value(0)).current;
   const maxTabIndex = FEED_TABS.length - 1;
+
+  const snapBack = useCallback(() => {
+    Animated.timing(swipeX, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [swipeX]);
 
   const handleScreenSwipe = Animated.event(
     [{ nativeEvent: { translationX: swipeX } }],
@@ -109,20 +113,23 @@ const HomePage = ({ route, navigation }) => {
   const handleScreenSwipeEnd = useCallback((event) => {
     const { translationX, velocityX, state } = event.nativeEvent;
     if (state === State.END || state === State.FAILED || state === State.CANCELLED) {
-      const swipe = translationX + velocityX * 0.1;
-      if (swipe < -60 && activeTab < maxTabIndex) {
-        handleTabChange(activeTab + 1);
-      } else if (swipe > 60 && activeTab > 0) {
-        handleTabChange(activeTab - 1);
+      // Momentum-weighted displacement
+      const swipe = translationX + velocityX * 0.12;
+
+      if (swipe > 60 && activeTab === 0) {
+        // Swipe right on the first tab → open the sidebar
+        snapBack();
+        openDrawer();
+        return;
       }
-      Animated.spring(swipeX, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 200,
-        friction: 20,
-      }).start();
+
+      const nextIndex = swipe < -60 ? activeTab + 1 : swipe > 60 ? activeTab - 1 : activeTab;
+      if (nextIndex !== activeTab && nextIndex >= 0 && nextIndex <= maxTabIndex) {
+        handleTabChange(nextIndex);
+      }
+      snapBack();
     }
-  }, [activeTab, swipeX, maxTabIndex, handleTabChange]);
+  }, [activeTab, swipeX, maxTabIndex, handleTabChange, openDrawer, snapBack]);
 
   const handleFeedLayout = useCallback((e) => {
     const w = e.nativeEvent.layout.width;
@@ -133,7 +140,6 @@ const HomePage = ({ route, navigation }) => {
   }, [setFeedWidth]);
 
   const currentTabConfig = FEED_TABS[activeTab];
-  const showContentFilter = true;
 
   const homeItem = () => (
     <>
@@ -142,37 +148,37 @@ const HomePage = ({ route, navigation }) => {
       ) : (
         <>
           {/* ── Primary Tab Bar ── */}
-          <FeedTabBar activeIndex={activeTab} onTabChange={handleTabChange} />
-
-          {/* ── Secondary Content Filter Pills ── */}
-          {showContentFilter && (
-            <ContentFilterBar
-              activeFilter={contentFilter}
-              onFilterChange={setContentFilter}
-            />
-          )}
+          <FeedTabBar
+            activeIndex={activeTab}
+            onTabChange={handleTabChange}
+          />
 
           {/* ── Feed Content ── */}
-          <PanGestureHandler
-            onGestureEvent={handleScreenSwipe}
-            onHandlerStateChange={handleScreenSwipeEnd}
-            activeOffsetX={[-15, 15]}
-            failOffsetY={[-20, 20]}
-          >
-            <Animated.View
-              style={[
-                styles.screenArea,
-                { transform: [{ translateX: swipeX }] },
-              ]}
+          {currentTabConfig.isTV ? (
+            <View style={styles.screenArea}>
+              <HafrikTVContent />
+            </View>
+          ) : (
+            <PanGestureHandler
+              onGestureEvent={handleScreenSwipe}
+              onHandlerStateChange={handleScreenSwipeEnd}
+              activeOffsetX={[-18, 18]}
+              failOffsetY={[-15, 15]}
             >
-              <UnifiedFeedScreen
-                key={currentTabConfig.key}
-                tabConfig={currentTabConfig}
-                contentFilter={contentFilter}
-                feedWidth={feedWidthRef.current}
-              />
-            </Animated.View>
-          </PanGestureHandler>
+              <Animated.View
+                style={[
+                  styles.screenArea,
+                  { transform: [{ translateX: swipeX }] },
+                ]}
+              >
+                <UnifiedFeedScreen
+                  key={currentTabConfig.key}
+                  tabConfig={currentTabConfig}
+                  feedWidth={feedWidthRef.current}
+                />
+              </Animated.View>
+            </PanGestureHandler>
+          )}
         </>
       )}
       <DrawerNavigation isVisible={isDrawerVisible} onClose={closeDrawer} />
@@ -198,16 +204,22 @@ const HomePage = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* FAB — opens composer immediately */}
-      <TouchableOpacity style={styles.fab} activeOpacity={0.88} onPress={() => openComposer()}>
-        <LinearGradient
-          colors={[Colors.primaryDark, Colors.primary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <Ionicons name="add" size={28} color={WHITE} />
-      </TouchableOpacity>
+      {/* FAB removed — composer accessible via daily prompt card */}
+      {!isSearchVisible && !isSearchResultsVisible && !currentTabConfig?.isTV && (
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.9}
+          onPress={() => openComposer({ initialTab: 'text' })}
+        >
+          <LinearGradient
+            colors={[Colors.primaryDark, Colors.primary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <Ionicons name="add" size={30} color={Colors.white} />
+        </TouchableOpacity>
+      )}
 
       {/* PostComposerModal and CreateMenuSheet are now mounted globally in App.js */}
 
@@ -273,8 +285,8 @@ const styles = StyleSheet.create({
   // FAB
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 20,
+    bottom: 22,
+    right: 18,
     width: 56,
     height: 56,
     borderRadius: 28,

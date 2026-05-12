@@ -1,22 +1,32 @@
-import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, Dimensions, Animated } from "react-native";
-import AppDetails from "../../helpers/appdetails";
+import React, { useEffect, useRef } from 'react';
+import { Animated, Dimensions, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme/colors';
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const FALLBACK_HEIGHT = SCREEN_HEIGHT - (AppDetails.mainTabNavigatorHeight || 0);
-const MEDIA_WIDTH = SCREEN_WIDTH;
-const RIGHT_COLUMN_WIDTH = 64;
+
+const alpha = (hex, opacity) => {
+  const normalized = String(hex || '').replace('#', '');
+  if (normalized.length !== 6) return hex || 'transparent';
+  return `#${normalized}${Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0')}`;
+};
+
+const SkeletonBlock = ({ style, pulse }) => (
+  <Animated.View style={[styles.skeleton, style, { opacity: pulse }]} />
+);
 
 const SkeletonReelCard = ({ height = FALLBACK_HEIGHT }) => {
-  const pulse = useRef(new Animated.Value(0.85)).current;
+  const pulse = useRef(new Animated.Value(0.42)).current;
 
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.6, duration: 700, useNativeDriver: true }),
-      ])
+        Animated.timing(pulse, { toValue: 0.78, duration: 760, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.42, duration: 760, useNativeDriver: true }),
+      ]),
     );
     loop.start();
     return () => loop.stop();
@@ -24,20 +34,34 @@ const SkeletonReelCard = ({ height = FALLBACK_HEIGHT }) => {
 
   return (
     <View style={[styles.container, { height }]}>
-      <View style={styles.mediaWrapper}>
-        <View style={styles.mediaPlaceholder} />
+      <LinearGradient colors={['#071F23', '#0D5056', '#020909']} style={StyleSheet.absoluteFill} />
+      <View style={styles.centerBadge}>
+        <Ionicons name="play" size={28} color={Colors.white} />
       </View>
 
-      <View style={styles.rightColumn}>
-        <Animated.View style={[styles.iconPlaceholder, { opacity: pulse }]} />
-        <Animated.View style={[styles.iconPlaceholder, { marginTop: 16, opacity: pulse }]} />
-        <Animated.View style={[styles.iconPlaceholder, { marginTop: 16, opacity: pulse }]} />
-        <Animated.View style={[styles.iconPlaceholder, { marginTop: 16, opacity: pulse }]} />
+      <View style={styles.rightRail}>
+        {[0, 1, 2, 3, 4].map((item) => (
+          <View key={item} style={styles.actionWrap}>
+            <SkeletonBlock pulse={pulse} style={styles.actionCircle} />
+            <SkeletonBlock pulse={pulse} style={styles.actionLabel} />
+          </View>
+        ))}
       </View>
 
-      <View style={styles.bottomInfo}>
-        <Animated.View style={[styles.usernamePlaceholder, { opacity: pulse }]} />
-        <Animated.View style={[styles.captionPlaceholder, { opacity: pulse }]} />
+      <View style={styles.bottomPanel}>
+        <View style={styles.creatorRow}>
+          <SkeletonBlock pulse={pulse} style={styles.avatar} />
+          <View style={{ flex: 1 }}>
+            <SkeletonBlock pulse={pulse} style={styles.nameLine} />
+            <SkeletonBlock pulse={pulse} style={styles.handleLine} />
+          </View>
+        </View>
+        <SkeletonBlock pulse={pulse} style={styles.captionLine} />
+        <SkeletonBlock pulse={pulse} style={[styles.captionLine, { width: '70%' }]} />
+        <View style={styles.chips}>
+          <SkeletonBlock pulse={pulse} style={styles.chip} />
+          <SkeletonBlock pulse={pulse} style={[styles.chip, { width: 82 }]} />
+        </View>
       </View>
     </View>
   );
@@ -45,52 +69,92 @@ const SkeletonReelCard = ({ height = FALLBACK_HEIGHT }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: "100%",
-    backgroundColor: Colors.neutral900,
-    position: "relative",
-    overflow: "hidden",
-  },
-  mediaWrapper: {
-    width: MEDIA_WIDTH,
-    height: "100%",
+    width: '100%',
     backgroundColor: Colors.black,
+    position: 'relative',
+    overflow: 'hidden',
   },
-  mediaPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: Colors.black,
+  centerBadge: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: '43%',
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: alpha('#000000', 0.24),
+    borderWidth: 1,
+    borderColor: alpha(Colors.white, 0.14),
   },
-  rightColumn: {
-    position: "absolute",
+  skeleton: {
+    backgroundColor: alpha(Colors.white, 0.22),
+  },
+  rightRail: {
+    position: 'absolute',
     right: 12,
-    top: "20%",
-    width: RIGHT_COLUMN_WIDTH,
-    alignItems: "center",
+    bottom: 112,
+    width: 66,
+    alignItems: 'center',
+    gap: 13,
   },
-  iconPlaceholder: {
-    width: 48,
-    height: 48,
+  actionWrap: {
+    alignItems: 'center',
+  },
+  actionCircle: {
+    width: 47,
+    height: 47,
     borderRadius: 24,
-    backgroundColor: Colors.neutral780,
   },
-  bottomInfo: {
-    position: "absolute",
-    left: 12,
-    bottom: 36,
-    right: RIGHT_COLUMN_WIDTH + 24,
+  actionLabel: {
+    width: 32,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 7,
   },
-  usernamePlaceholder: {
-    width: "55%",
+  bottomPanel: {
+    position: 'absolute',
+    left: 14,
+    right: 92,
+    bottom: 112,
+  },
+  creatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  nameLine: {
+    width: '72%',
     height: 14,
-    borderRadius: 6,
-    backgroundColor: Colors.neutral780,
+    borderRadius: 7,
     marginBottom: 8,
   },
-  captionPlaceholder: {
-    width: "90%",
-    height: 48,
+  handleLine: {
+    width: '44%',
+    height: 10,
+    borderRadius: 5,
+  },
+  captionLine: {
+    width: '94%',
+    height: 12,
     borderRadius: 6,
-    backgroundColor: Colors.neutral790,
+    marginBottom: 8,
+  },
+  chips: {
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 4,
+  },
+  chip: {
+    width: 64,
+    height: 24,
+    borderRadius: 12,
   },
 });
 

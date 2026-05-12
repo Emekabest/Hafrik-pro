@@ -8,7 +8,6 @@ import {
   ActivityIndicator, Image, ScrollView, StatusBar, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Banner from '../home/banner';
 import StaticShortcutRow from '../home/quicklinks';
@@ -403,34 +402,6 @@ export default function ExploreScreen() {
 
         {/* Banner slider (includes HafrikTV slide) */}
         <Banner />
-
-        {/* HafrikTV CTA — right above first section */}
-        <TouchableOpacity
-          style={s.tvCta}
-          activeOpacity={0.88}
-          onPress={() => navigation.navigate('HafrikTV')}
-        >
-          <LinearGradient
-            colors={['#071e21', '#0d2d32', '#1c7a80']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={s.tvCtaGrad}
-          >
-            <View style={s.tvCtaLeft}>
-              <View style={s.tvCtaIconWrap}>
-                <Ionicons name="tv" size={20} color="#27adb5" />
-              </View>
-              <View>
-                <Text style={s.tvCtaTitle}>HafrikTV</Text>
-                <Text style={s.tvCtaSub}>Watch videos, reels & live content</Text>
-              </View>
-            </View>
-            <View style={s.tvCtaBtn}>
-              <Text style={s.tvCtaBtnTxt}>Watch Now</Text>
-              <Ionicons name="chevron-forward" size={13} color="#071e21" />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
 
         {/* 1. Communities */}
         <Section

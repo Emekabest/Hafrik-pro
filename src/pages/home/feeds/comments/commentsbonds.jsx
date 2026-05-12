@@ -26,7 +26,7 @@ const MUTED  = Colors.secondaryText;
 // ------------------------------------------------------------------
 // Single comment card (exported so CommentScreen can use it in its FlatList)
 // ------------------------------------------------------------------
-export const CommentItem = React.memo(({ comment, token, onReply }) => {
+export const CommentItem = React.memo(({ comment, token, onReply, highlighted = false }) => {
   const navigation = useNavigation();
   const [liked,     setLiked]     = useState(!!comment.is_liked);
   const [likeCount, setLikeCount] = useState(Number(comment.likes_count ?? comment.like_count ?? comment.likes ?? 0));
@@ -97,33 +97,33 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
 
   return (
     <TouchableOpacity
-      style={cs.card}
+      style={[cs.card, highlighted && cs.cardHighlighted]}
       activeOpacity={1}
       onLongPress={comment.is_mine ? handleDelete : undefined}
       delayLongPress={500}
     >
-      {/* Avatar — tap to view profile */}
       <TouchableOpacity onPress={handleUserPress} activeOpacity={0.8}>
-        <Image
-          source={{ uri: comment.user?.avatar }}
-          style={cs.avatar}
-        />
+        {comment.user?.avatar ? (
+          <Image source={{ uri: comment.user.avatar }} style={cs.avatar} />
+        ) : (
+          <View style={[cs.avatar, cs.avatarFallback]}>
+            <Ionicons name="person-outline" size={15} color={BRAND} />
+          </View>
+        )}
       </TouchableOpacity>
 
-      {/* Right content */}
       <View style={cs.cardBody}>
-        {/* Name bubble — tap to view profile */}
-        <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7} style={cs.nameBubble}>
-          <Text style={cs.nameText} numberOfLines={1}>
-            {comment.user?.full_name || comment.user?.username || 'User'}
-          </Text>
-          <Text style={cs.timeText}>{CalculateElapsedTime(comment.created)}</Text>
-        </TouchableOpacity>
+        <View style={cs.bubble}>
+          <TouchableOpacity onPress={handleUserPress} activeOpacity={0.7} style={cs.nameBubble}>
+            <Text style={cs.nameText} numberOfLines={1}>
+              {comment.user?.full_name || comment.user?.username || 'User'}
+            </Text>
+            <Text style={cs.timeText}>{CalculateElapsedTime(comment.created)}</Text>
+          </TouchableOpacity>
 
-        {/* Comment text */}
-        <Text style={cs.commentText}>{comment.text}</Text>
+          <Text style={cs.commentText}>{comment.text}</Text>
+        </View>
 
-        {/* Actions row */}
         <View style={cs.actionsRow}>
           {/* Like */}
           <TouchableOpacity style={cs.actionBtn} onPress={handleLike} activeOpacity={0.7}>
@@ -186,7 +186,7 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
         {showReplies && !loadingReplies && replies.map((r, i) => (
           <View key={r.id ?? `reply-${i}`} style={cs.replyRow}>
             <Image source={{ uri: r.user?.avatar }} style={cs.replyAvatar} />
-            <View style={{ flex: 1 }}>
+            <View style={cs.replyBubble}>
               <View style={cs.replyNameRow}>
                 <Text style={cs.replyName}>{r.user?.full_name || r.user?.username}</Text>
                 <Text style={cs.timeText}>{CalculateElapsedTime(r.created)}</Text>
@@ -203,7 +203,7 @@ export const CommentItem = React.memo(({ comment, token, onReply }) => {
 // ------------------------------------------------------------------
 // List of comments
 // ------------------------------------------------------------------
-const CommentBonds = ({ postId, token, onReply }) => {
+const CommentBonds = ({ postId, token, onReply, newComment }) => {
   const [comments, setComments] = useState([]);
   const [loading,  setLoading]  = useState(true);
 
@@ -223,6 +223,12 @@ const CommentBonds = ({ postId, token, onReply }) => {
     load();
     return () => { mounted = false; };
   }, [postId, token]);
+
+  // Prepend optimistic comment immediately after user posts
+  useEffect(() => {
+    if (!newComment) return;
+    setComments(prev => [newComment, ...prev]);
+  }, [newComment]);
 
   if (loading) {
     return (
@@ -245,7 +251,7 @@ const CommentBonds = ({ postId, token, onReply }) => {
   return (
     <View>
       {comments.map((c, i) => (
-        <CommentItem key={c.id ?? `temp-${i}`} comment={c} token={token} onReply={onReply} />
+        <CommentItem key={`${c.id ?? 'temp'}-${i}`} comment={c} token={token} onReply={onReply} />
       ))}
     </View>
   );
@@ -255,52 +261,76 @@ const cs = StyleSheet.create({
   // Card
   card: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 12,
-    marginHorizontal: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  cardHighlighted: {
+    backgroundColor: withOpacity(ACCENT, 0.08),
+    borderRadius: 20,
+    marginHorizontal: 10,
   },
   avatar: {
-    width: 34, height: 34, borderRadius: 17,
+    width: 36, height: 36, borderRadius: 18,
     backgroundColor: Colors.borderLightAlt, marginRight: 10, marginTop: 2,
   },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: withOpacity(BRAND, 0.08),
+  },
   cardBody: { flex: 1 },
+  bubble: {
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    borderRadius: 18,
+    borderTopLeftRadius: 7,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: withOpacity(BRAND, 0.08),
+  },
 
   nameBubble: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 },
-  nameText: { fontSize: 13.5, fontWeight: '800', color: DARK, flexShrink: 1 },
-  timeText: { fontSize: 11.5, color: MUTED },
+  nameText: { fontSize: 13.5, fontWeight: '900', color: DARK, flexShrink: 1 },
+  timeText: { fontSize: 11, color: MUTED, fontWeight: '700' },
 
-  commentText: { fontSize: 14.5, color: Colors.textStrongDeep, lineHeight: 21, marginBottom: 8 },
+  commentText: { fontSize: 14.3, color: Colors.textStrongDeep, lineHeight: 21 },
 
-  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 7, marginLeft: 10 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 24 },
   actionCount: { fontSize: 12, color: MUTED, fontWeight: '600' },
-  actionLabel: { fontSize: 12, color: MUTED, fontWeight: '600' },
+  actionLabel: { fontSize: 12, color: MUTED, fontWeight: '800' },
 
   // Replies
   replyRow: {
-    flexDirection: 'row', marginTop: 10, paddingTop: 10,
-    borderTopWidth: 0.5, borderTopColor: withOpacity(Colors.black, 0.05),
-    paddingLeft: 4,
+    flexDirection: 'row',
+    marginTop: 9,
+    paddingLeft: 8,
   },
   replyAvatar: {
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: Colors.borderLightAlt, marginRight: 10,
   },
+  replyBubble: {
+    flex: 1,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderTopLeftRadius: 6,
+    backgroundColor: withOpacity(BRAND, 0.045),
+    borderWidth: 1,
+    borderColor: withOpacity(BRAND, 0.08),
+  },
   replyNameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2, gap: 6 },
-  replyName: { fontSize: 12.5, fontWeight: '700', color: DARK },
+  replyName: { fontSize: 12.5, fontWeight: '900', color: DARK },
   replyText: { fontSize: 13.5, color: Colors.textBodyMuted, lineHeight: 19 },
 
   // States
   loaderWrap: { paddingVertical: 30, alignItems: 'center' },
-  emptyWrap:  { paddingVertical: 40, alignItems: 'center', gap: 6 },
-  emptyTitle: { fontSize: 15, fontWeight: '800', color: Colors.mutedBlueGraySoft },
+  emptyWrap:  { marginHorizontal: 14, marginTop: 10, paddingVertical: 38, alignItems: 'center', gap: 6, borderRadius: 24, backgroundColor: Colors.white, borderWidth: 1, borderColor: withOpacity(BRAND, 0.08) },
+  emptyTitle: { fontSize: 15, fontWeight: '900', color: BRAND },
   emptySub:   { fontSize: 13, color: Colors.mutedBlueGraySofter },
 });
 

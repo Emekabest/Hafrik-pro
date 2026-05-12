@@ -216,6 +216,8 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
         <View style={styles.container}>
             {/* ── Cover Photo with gradient overlay ── */}
             <View style={styles.coverPhotoContainer}>
+                <View style={styles.coverBlobOne} pointerEvents="none" />
+                <View style={styles.coverBlobTwo} pointerEvents="none" />
                 <ExpoImage
                     source={{ uri: coverImage?.uri || user?.cover }}
                     style={styles.coverImage}
@@ -223,11 +225,15 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                     cachePolicy="memory-disk"
                 />
                 <LinearGradient
-                    colors={['transparent', withOpacity(BRAND, 0.80)]}
+                    colors={[withOpacity(BRAND, 0.08), withOpacity(BRAND, 0.46), withOpacity(Colors.black, 0.78)]}
                     start={{ x: 0.5, y: 0 }}
                     end={{ x: 0.5, y: 1 }}
                     style={styles.coverGradient}
                 />
+                <View style={styles.profileBadgeTop}>
+                    <Ionicons name="sparkles-outline" size={13} color={Colors.white} />
+                    <Text style={styles.profileBadgeTopText}>MY HAFRIK</Text>
+                </View>
                 {/* Cover upload progress overlay */}
                 {coverImage?.uploading && (
                     <View style={styles.coverUploadOverlay}>
@@ -398,8 +404,12 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
                 {isOwner ? (
                     <View style={styles.ownerActions}>
                         <TouchableOpacity style={styles.editButton} activeOpacity={0.8} onPress={() => setEditSheetVisible(true)}>
-                            <Ionicons name="create-outline" size={15} color={BRAND} />
+                            <Ionicons name="create-outline" size={15} color={Colors.white} />
                             <Text style={styles.editButtonText}>Edit Profile</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.qrButton} activeOpacity={0.8} onPress={() => navigation.navigate('ProfileQr')}>
+                            <Ionicons name="qr-code-outline" size={16} color={ACCENT} />
+                            <Text style={styles.qrButtonText}>QR Code</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -570,14 +580,15 @@ const ProfileHeader = ({ userDetails, user, postsCount, followersCount, followin
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: Colors.white,
+        backgroundColor: '#EEF7F7',
+        paddingBottom: 10,
     },
 
     // ── Cover photo ───────────────────────────────────────────────
     coverPhotoContainer: {
         width: '100%',
-        height: 200,
-        backgroundColor: Colors.neutral180,
+        height: 220,
+        backgroundColor: BRAND,
         overflow: 'hidden',
     },
     coverImage: {
@@ -589,7 +600,49 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: 100,
+        height: '100%',
+    },
+    coverBlobOne: {
+        position: 'absolute',
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        backgroundColor: withOpacity(ACCENT, 0.34),
+        top: -58,
+        right: -46,
+        zIndex: 1,
+    },
+    coverBlobTwo: {
+        position: 'absolute',
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: withOpacity(TEAL, 0.22),
+        bottom: 18,
+        left: -42,
+        zIndex: 1,
+    },
+    profileBadgeTop: {
+        position: 'absolute',
+        left: 16,
+        bottom: 76,
+        zIndex: 3,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 999,
+        backgroundColor: withOpacity(Colors.white, 0.16),
+        borderWidth: 1,
+        borderColor: withOpacity(Colors.white, 0.24),
+    },
+    profileBadgeTopText: {
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 1.1,
+        fontFamily: AppDetails.fontFamily?.body,
     },
     coverUploadOverlay: {
         position: 'absolute',
@@ -631,8 +684,22 @@ const styles = StyleSheet.create({
     profileInfoRow: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        paddingHorizontal: 20,
-        marginTop: -45,
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 12,
+        marginHorizontal: 14,
+        marginTop: -58,
+        backgroundColor: Colors.white,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        borderWidth: 1,
+        borderBottomWidth: 0,
+        borderColor: withOpacity(BRAND, 0.08),
+        shadowColor: BRAND,
+        shadowOffset: { width: 0, height: 14 },
+        shadowOpacity: 0.10,
+        shadowRadius: 22,
+        elevation: 7,
     },
     avatarSection: {
         marginRight: 16,
@@ -641,17 +708,17 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     mainAvatarContainer: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
-        borderWidth: 3.5,
+        width: 96,
+        height: 96,
+        borderRadius: 48,
+        borderWidth: 4,
         borderColor: Colors.white,
         backgroundColor: Colors.neutral180,
         overflow: 'hidden',
-        shadowColor: Colors.black,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowColor: ACCENT,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 14,
         elevation: 6,
     },
     mainAvatar: {
@@ -673,7 +740,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: -2,
         right: -2,
-        backgroundColor: ACCENT,
+        backgroundColor: BRAND,
         width: 28,
         height: 28,
         borderRadius: 14,
@@ -692,7 +759,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'center',
-        paddingBottom: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 10,
+        borderRadius: 24,
+        backgroundColor: BRAND,
+        borderWidth: 1,
+        borderColor: withOpacity(Colors.white, 0.16),
     },
     statBlock: {
         alignItems: 'center',
@@ -700,29 +772,43 @@ const styles = StyleSheet.create({
     statNumber: {
         fontSize: 18,
         fontWeight: '800',
-        color: BRAND,
+        color: Colors.white,
         fontFamily: AppDetails.fontFamily?.inter?.bold,
     },
     statLabel: {
-        fontSize: 12,
-        color: Colors.mutedBlueGrayAlt,
+        fontSize: 11,
+        color: withOpacity(Colors.white, 0.68),
         marginTop: 2,
         fontFamily: AppDetails.fontFamily?.body,
-        letterSpacing: 0.3,
+        letterSpacing: 0.4,
+        textTransform: 'uppercase',
     },
 
     // ── User info ─────────────────────────────────────────────────
     userInfoSection: {
-        paddingHorizontal: 20,
-        marginTop: 12,
-        paddingBottom: 12,
+        paddingHorizontal: 16,
+        marginHorizontal: 14,
+        marginTop: 0,
+        paddingTop: 2,
+        paddingBottom: 18,
+        backgroundColor: Colors.white,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+        borderWidth: 1,
+        borderTopWidth: 0,
+        borderColor: withOpacity(BRAND, 0.08),
+        shadowColor: BRAND,
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.08,
+        shadowRadius: 18,
+        elevation: 5,
     },
     nameRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     fullNameText: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '800',
         color: Colors.textBodyIndigo,
         fontFamily: AppDetails.fontFamily?.inter?.bold,
@@ -733,9 +819,10 @@ const styles = StyleSheet.create({
     },
     usernameText: {
         fontSize: 14,
-        color: Colors.mutedBlueGray,
+        color: ACCENT,
         marginTop: 2,
         fontFamily: AppDetails.fontFamily?.body,
+        fontWeight: '700',
     },
     bioText: {
         fontSize: 14,
@@ -755,7 +842,9 @@ const styles = StyleSheet.create({
     infoChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.surfaceCool,
+        backgroundColor: withOpacity(ACCENT, 0.08),
+        borderWidth: 1,
+        borderColor: withOpacity(ACCENT, 0.14),
         borderRadius: 20,
         paddingHorizontal: 12,
         paddingVertical: 6,
@@ -834,16 +923,33 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 5,
-        backgroundColor: Colors.surfaceCool,
-        borderRadius: 12,
+        backgroundColor: BRAND,
+        borderRadius: 16,
         height: 44,
-        borderWidth: 1.5,
-        borderColor: BRAND + '40',
+        borderWidth: 0,
     },
     editButtonText: {
         fontSize: 13.5,
         fontFamily: AppDetails.fontFamily?.outfit?.medium,
-        color: BRAND,
+        color: Colors.white,
+        fontWeight: '700',
+    },
+    qrButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
+        backgroundColor: withOpacity(ACCENT, 0.12),
+        borderRadius: 16,
+        height: 44,
+        borderWidth: 1.5,
+        borderColor: withOpacity(ACCENT, 0.26),
+    },
+    qrButtonText: {
+        fontSize: 13.5,
+        fontFamily: AppDetails.fontFamily?.outfit?.medium,
+        color: ACCENT,
         fontWeight: '700',
     },
     membershipBtn: {

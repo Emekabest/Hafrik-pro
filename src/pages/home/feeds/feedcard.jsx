@@ -69,7 +69,6 @@ const PRIVACY_ICONS = {
   custom:   'lock-closed-outline',
 };
 
-
 /**
  * ✅ NEW RULE:
  * Use feed.user.entity from API ("user" | "page" | "group")
@@ -94,7 +93,7 @@ const getOwnerRoute = (feedUser) => {
 };
 
 // ─── FeedCard ─────────────────────────────────────────────────────────────────
-const FeedCard = ({ feed, isVisible, onPostPress }) => {
+const FeedCard = ({ feed, isVisible, onPostPress, hideCommunityContext = false }) => {
   const navigation       = useNavigation();
   const { token, user: authUser } = useAuth();
   const [shareModalVisible,          setShareModalVisible]          = useState(false);
@@ -107,6 +106,9 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   const [editDraftText,    setEditDraftText]    = useState('');
   const [editSaving,       setEditSaving]       = useState(false);
   const [editError,        setEditError]        = useState('');
+  const [xlText,           setXlText]           = useState('');
+  const [xling,            setXling]            = useState(false);
+  const [textExpanded,     setTextExpanded]     = useState(false);
 
   // ── Double-tap heart animation ─────────────────────────────────────────────
   const heartScaleAnim   = useRef(new Animated.Value(0)).current;
@@ -215,50 +217,65 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           id: groupId,
           title: groupTitle,
           avatar: group?.avatar || group?.image || group?.photo || null,
+          members: group?.members ?? group?.members_count ?? group?.total_members ?? null,
+          privacy: group?.privacy ?? group?.type ?? null,
+        };
+      }
+    }
+
+    const legacyContext = feed?.context;
+    if ((legacyContext?.type || '').toLowerCase() === 'group') {
+      const groupId = Number(legacyContext?.id ?? feed?.group_id ?? 0);
+      const groupTitle = legacyContext?.title || legacyContext?.name || feed?.group_name || null;
+      if (groupId > 0 && groupTitle) {
+        return {
+          type: 'group',
+          label: 'Posted in',
+          id: groupId,
+          title: groupTitle,
+          avatar: legacyContext?.avatar || legacyContext?.image || legacyContext?.cover || null,
+          members: legacyContext?.members ?? legacyContext?.members_count ?? null,
+          privacy: legacyContext?.privacy ?? null,
         };
       }
     }
 
     return null;
-  }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id, feed?.user]);
+  }, [feed?.page, feed?.group, feed?.page_id, feed?.group_id, feed?.user, feed?.context, feed?.group_name]);
 
   // ── Text + hashtag extraction ──────────────────────────────────────────────
-  const { displayText, showSeeMore, allTags, extractedUrl } = useMemo(() => {
+  const { displayText, fullText, showSeeMore, allTags, extractedUrl } = useMemo(() => {
     const apiTags = feed?.hashtags || [];
     let extractedUrl = null;
 
     if (!feed?.text) {
-      // For link-type posts with no text body, still grab the URL
       const fallbackUrl = feed?.url || feed?.link_url || feed?.payload?.url || null;
-      return { displayText: "", showSeeMore: false, allTags: apiTags, extractedUrl: fallbackUrl };
+      return { displayText: "", fullText: "", showSeeMore: false, allTags: apiTags, extractedUrl: fallbackUrl };
     }
 
-    // Always parse and strip URL from text so the LinkPreview card replaces it
     const parsed = parseLinkFromText(feed.text);
     let text = parsed.text;
     extractedUrl = parsed.url;
 
-    // For link-type posts fall back to feed.url if text had no URL
     if (!extractedUrl) {
       extractedUrl = feed?.url || feed?.link_url || feed?.payload?.url || null;
     }
 
-    // Keep hashtags inline in the text — just clean and truncate
     const cleaned = CleanText(text.trim());
 
-    // Pills row: only API hashtags NOT already visible inline in text
     const inlineSet = new Set((text.match(/#\w+/g) || []).map(t => t.slice(1).toLowerCase()));
     const allTags = apiTags.filter(tag => !inlineSet.has((tag || '').toLowerCase()));
 
     if (cleaned.length > MAX_FEED_TEXT_LENGTH) {
       return {
         displayText: `${cleaned.substring(0, MAX_FEED_TEXT_LENGTH)}...`,
+        fullText: cleaned,
         showSeeMore: true,
         allTags,
         extractedUrl,
       };
     }
-    return { displayText: cleaned, showSeeMore: false, allTags, extractedUrl };
+    return { displayText: cleaned, fullText: cleaned, showSeeMore: false, allTags, extractedUrl };
   }, [feed?.text, feed?.type, feed?.hashtags]);
 
   // ── Has media? ────────────────────────────────────────────────────────────
@@ -332,21 +349,22 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   }, [feed?.id, token]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const isReel = feed?.type === 'reel' || (
-    feed?.media?.length === 1 &&
-    feed.media[0]?.video_url &&
-    !feed.media[0]?.url &&
-    feed?.type === 'video'
-  );
+  const isReel  = feed?.type === 'reel';
+  const isVideo = feed?.type === 'video' && !!feed?.media?.[0]?.video_url;
 
   const handleMoveToCommentScreen = useCallback(() => {
-    // Reels ALWAYS open the full-screen Reels2 viewer, regardless of onPostPress
+    // Reels open the full-screen vertical Reels2 viewer
     if (isReel) {
       navigation.navigate('Reels2', {
         initialReels: [feed],
         startIndex: 0,
         initialReelId: feed?.id,
       });
+      return;
+    }
+    // Videos open the 16:9 VideoPlayerScreen
+    if (isVideo) {
+      navigation.navigate('VideoPlayer', { feed });
       return;
     }
     if (onPostPress) {
@@ -357,14 +375,30 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       navigation.navigate('ArticleDetails', { postId: feed?.id, title: feed?.payload?.title });
       return;
     }
-    // Shared article → open the original article in ArticleDetails
     if (feed?.type === 'shared' && feed?.shared_post?.type === 'article') {
       const orig = feed.shared_post;
       navigation.navigate('ArticleDetails', { postId: orig.id, title: orig.payload?.title ?? orig.title });
       return;
     }
     navigation.navigate('PostDetail', { postId: feed?.id });
-  }, [feed?.id, feed?.type, feed?.payload?.title, feed?.shared_post, navigation, onPostPress, isReel, feed]);
+  }, [feed?.id, feed?.type, feed?.payload?.title, feed?.shared_post, navigation, onPostPress, isReel, isVideo, feed]);
+
+  // ── Inline comment (opens bottom-sheet modal without leaving the feed) ─────
+  const handleOpenComments = useCallback(() => {
+    if (isReel) {
+      navigation.navigate('Reels2', {
+        initialReels: [feed],
+        startIndex: 0,
+        initialReelId: feed?.id,
+      });
+      return;
+    }
+    if (isVideo) {
+      navigation.navigate('VideoPlayer', { feed });
+      return;
+    }
+    useStore.getState().openCommentModal(feed?.id);
+  }, [isReel, isVideo, feed, navigation]);
 
   const handleOwnerPress = useCallback(() => {
     const route = getOwnerRoute(user);
@@ -382,6 +416,31 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
       navigation.navigate('GroupDetails', { groupId: postContext.id });
     }
   }, [navigation, postContext]);
+
+  const handleAskAI = useCallback(() => {
+    navigation.navigate('AIChat', {
+      mode: 'Post Assistant',
+      contextType: 'post',
+      contextId: feed?.id,
+      contextData: {
+        post_id: feed?.id,
+        type: feed?.type,
+        text: feed?.text,
+        author: feed?.user?.full_name ?? feed?.user?.username,
+        username: feed?.user?.username,
+        likes_count: totalLikes(feed?.reactions, feed?.likes_count),
+        comments_count: feed?.comments_count ?? 0,
+        shares_count: feed?.shares_count ?? 0,
+        views: feed?.views ?? 0,
+        context: postContext ? {
+          type: postContext.type,
+          id: postContext.id,
+          title: postContext.title,
+        } : feed?.context ?? null,
+        payload: feed?.payload ?? null,
+      },
+    });
+  }, [feed, navigation, postContext]);
 
   // ── Double-tap like ───────────────────────────────────────────────────────
   const triggerHeartAnimation = useCallback(() => {
@@ -419,6 +478,22 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
   }, [feed?.id, feed?.is_liked, feed?.my_reaction, token, triggerHeartAnimation]);
 
   const mediaTapHandler = useDoubleTap(handleDoubleTapLike, handleMoveToCommentScreen);
+
+  // ── Translate post text ───────────────────────────────────────────────────
+  const handleTranslate = useCallback(async () => {
+    if (xlText) { setXlText(''); return; }
+    if (!displayText) return;
+    setXling(true);
+    try {
+      const params = new URLSearchParams({ client: 'gtx', sl: 'auto', tl: 'en', dt: 't', q: displayText });
+      const res  = await fetch(`https://translate.googleapis.com/translate_a/single?${params}`);
+      const json = await res.json();
+      if (Array.isArray(json) && Array.isArray(json[0])) {
+        setXlText(json[0].map(c => (Array.isArray(c) ? c[0] : '')).join(''));
+      }
+    } catch {}
+    finally { setXling(false); }
+  }, [displayText, xlText]);
 
   // ── Follow author ─────────────────────────────────────────────────────────
   const handleFollow = useCallback(async () => {
@@ -529,6 +604,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           onOwnerPress={isAnonymous ? undefined : (isPagePost ? handlePostContextPress : handleOwnerPress)}
           postContext={postContext}
           onPostContextPress={handlePostContextPress}
+          hidePostContextLine={hideCommunityContext}
           feelingText={feelingText}
           privacyIcon={privacyIcon}
           isBoosted={isBoosted}
@@ -597,19 +673,15 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
             ) : (
               <>
                 {/* ── Caption ── */}
-                {displayText ? (
-                  <TouchableOpacity
-                    onPress={handleMoveToCommentScreen}
-                    activeOpacity={0.85}
-                    style={styles.textSection}
-                  >
+                {(textExpanded ? fullText : displayText) ? (
+                  <View style={styles.textSection}>
                     <Text style={[styles.postText, isTextOnly && styles.postTextLarge]}>
-                      {displayText.split(/(#\w+)/g).map((part, i) =>
+                      {(textExpanded ? fullText : displayText).split(/(#\w+)/g).map((part, i) =>
                         /^#\w+$/.test(part) ? (
                           <Text
                             key={i}
                             style={styles.inlineHashtag}
-                            onPress={() => navigation.navigate('HashtagScreen', { hashtag: part.slice(1) })}
+                            onPress={() => navigation.navigate('SearchScreen', { initialQuery: part, initialTab: 2 })}
                           >
                             {part}
                           </Text>
@@ -617,9 +689,35 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
                           <Text key={i}>{part}</Text>
                         )
                       )}
-                      {showSeeMore ? <Text style={styles.seeMore}> see more</Text> : null}
+                      {showSeeMore && !textExpanded ? (
+                        <Text style={styles.seeMore} onPress={() => setTextExpanded(true)}> see more</Text>
+                      ) : null}
                     </Text>
-                  </TouchableOpacity>
+                  </View>
+                ) : null}
+
+                {/* ── Translate button + result ── */}
+                {displayText ? (
+                  <View>
+                    <TouchableOpacity
+                      onPress={handleTranslate}
+                      activeOpacity={0.7}
+                      style={styles.translateBtn}
+                    >
+                      {xling
+                        ? <ActivityIndicator size={10} color={ACCENT} style={{ marginRight: 4 }} />
+                        : <Ionicons name="language-outline" size={12} color={ACCENT} />}
+                      <Text style={styles.translateBtnTxt}>
+                        {xling ? 'Translating…' : xlText ? 'See original' : 'Translate'}
+                      </Text>
+                    </TouchableOpacity>
+                    {!!xlText && (
+                      <View style={styles.xlBox}>
+                        <Text style={styles.xlText}>{xlText}</Text>
+                        <Text style={styles.xlPowered}>Translated by Google</Text>
+                      </View>
+                    )}
+                  </View>
                 ) : null}
               </>
             )}
@@ -671,7 +769,7 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
               <TouchableOpacity
                 key={`${tag}-${idx}`}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('HashtagScreen', { hashtag: tag })}
+                onPress={() => navigation.navigate('SearchScreen', { initialQuery: `#${tag}`, initialTab: 2 })}
               >
                 <Text style={styles.hashtag}>#{tag}</Text>
               </TouchableOpacity>
@@ -692,10 +790,11 @@ const FeedCard = ({ feed, isVisible, onPostPress }) => {
           commentsDisabled={commentsDisabled}
           viewsCount={feed?.views ?? 0}
           onOpenShare={() => setShareModalVisible(true)}
-          onCommentPress={commentsDisabled ? undefined : handleMoveToCommentScreen}
+          onCommentPress={commentsDisabled ? undefined : handleOpenComments}
           onReactionsPress={() => setReactionsModalVisible(true)}
           onRepost={() => setRepostModalVisible(true)}
           onCollectionSave={() => setSaveCollectionsModalVisible(true)}
+          onAskAI={handleAskAI}
         />
       </View>
 
@@ -1011,6 +1110,40 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  // ── Translate ──────────────────────────────────────────────────────────────
+  translateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  translateBtnTxt: {
+    fontSize: 12,
+    color: ACCENT,
+    fontWeight: '600',
+  },
+  xlBox: {
+    marginTop: 6,
+    backgroundColor: ACCENT + '0d',
+    borderLeftWidth: 2,
+    borderLeftColor: ACCENT + '66',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  xlText: {
+    fontSize: 14,
+    color: TEXT_BODY,
+    lineHeight: 21,
+  },
+  xlPowered: {
+    fontSize: 10,
+    color: ACCENT + '88',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+
   // ── Adult content overlay ──────────────────────────────────────────────────
   adultOverlay: {
     marginTop: 8,
@@ -1149,6 +1282,7 @@ export default memo(FeedCard, (prev, next) => {
     prev.feed.page?.title        === next.feed.page?.title        &&
     prev.feed.page?.avatar       === next.feed.page?.avatar       &&
     prev.isVisible               === next.isVisible               &&
+    prev.hideCommunityContext    === next.hideCommunityContext    &&
     prev.onPostPress             === next.onPostPress             &&
     JSON.stringify(prev.feed.reactions) === JSON.stringify(next.feed.reactions)
   );

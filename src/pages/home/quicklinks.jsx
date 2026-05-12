@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Animated,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -28,66 +28,36 @@ const MIST   = Colors.surfaceTint;
 const BORDER = Colors.borderSoft;
 
 const items = [
-  // {
-  //   label: "Arrival",
-  //   icon: (active) => <Ionicons name="airplane" size={20} color={active ? Colors.white : BRAND} />,
-  //   screen: "ArrivalConcierge",
-  //   colors: ['#c9a84c', '#8a6820'],
-  // },
   {
-    label: "Community",
-    icon: (active) => <Ionicons name="people" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "GroupScreen",
-    params: { initialTab: 0 },
-    colors: [BRAND, Colors.tealDeep],
+    label: "Shop",
+    icon: (active) => <Ionicons name="bag-handle" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "MarketplaceScreen",
+    colors: ['#f97316', '#c2410c'],
   },
   {
-    label: "Business",
-    icon: (active) => <Ionicons name="business" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "BusinessPages",
-    colors: [ACCENT, Colors.tealMint],
-  },
-  // {
-  //   label: "City Guide",
-  //   icon: (active) => <Ionicons name="map" size={20} color={active ? Colors.white : BRAND} />,
-  //   screen: "CityGuide",
-  //   colors: [Colors.teal, Colors.tealDark],
-  // },
-  // {
-  //   label: "Exchange",
-  //   icon: (active) => <Ionicons name="swap-horizontal" size={20} color={active ? Colors.white : BRAND} />,
-  //   screen: "HafrikXCurrency",
-  //   colors: ['#c9a84c', '#8a6820'],
-  // },
-  {
-    label: "Articles",
-    icon: (active) => <Ionicons name="newspaper" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "ArticlesScreen",
-    colors: [Colors.violet, Colors.violetDeep],
-  },
-  // {
-  //   label: "Visa",
-  //   icon: (active) => <Ionicons name="document-text" size={20} color={active ? Colors.white : BRAND} />,
-  //   screen: "HafrikXVisa",
-  //   colors: [Colors.tealNavy, Colors.tealDeepStrong],
-  // },
-  // {
-  //   label: "Learn",
-  //   icon: (active) => <Ionicons name="school" size={20} color={active ? Colors.white : BRAND} />,
-  //   screen: "HafrikXLearn",
-  //   colors: [Colors.redStrong, Colors.redDeep],
-  // },
-  {
-    label: "Events",
-    icon: (active) => <MaterialCommunityIcons name="calendar-star" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "EventsScreen",
-    colors: [Colors.orangeStrong, Colors.orangeDeep],
+    label: "Translator",
+    icon: (active) => <Ionicons name="language" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "TranslatorScreen",
+    colors: [Colors.teal, Colors.tealDark],
   },
   {
-    label: "Jobs",
-    icon: (active) => <MaterialCommunityIcons name="briefcase" size={20} color={active ? Colors.white : BRAND} />,
-    screen: "JobsScreen",
-    colors: [Colors.pinkBright, Colors.pinkDeep],
+    label: "Exchange",
+    icon: (active) => <Ionicons name="swap-horizontal" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "HafrikXCurrency",
+    colors: ['#c9a84c', '#8a6820'],
+  },
+  {
+    label: "Services",
+    icon: (active) => <Ionicons name="document-text" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "HafrikXVisa",
+    colors: [Colors.tealNavy, Colors.tealDeepStrong],
+  },
+  {
+    label: "AI Chat",
+    icon: (active) => <Ionicons name="sparkles" size={20} color={active ? Colors.white : BRAND} />,
+    screen: "AIChat",
+    params: { fresh: true },
+    colors: ['#7c3aed', '#4c1d95'],
   },
 ];
 
@@ -172,37 +142,6 @@ export default function StaticShortcutRow() {
         end={{ x: 1, y: 0 }}
       />
 
-      {/* ── HafrikTV featured banner ──────────────────────────────── */}
-      <TouchableOpacity
-        style={styles.tvBanner}
-        activeOpacity={0.88}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          navigation.navigate('HafrikTV');
-        }}
-      >
-        <LinearGradient
-          colors={['#071e21', '#0f3539', '#1f8e93']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.tvBannerGrad}
-        >
-          <View style={styles.tvBannerLeft}>
-            <View style={styles.tvIconWrap}>
-              <Ionicons name="tv" size={20} color="#27adb5" />
-            </View>
-            <View>
-              <Text style={styles.tvBannerTitle}>HafrikTV</Text>
-              <Text style={styles.tvBannerSub}>Videos · Reels · More</Text>
-            </View>
-          </View>
-          <View style={styles.tvWatchBtn}>
-            <Text style={styles.tvWatchTxt}>Watch Now</Text>
-            <Ionicons name="play" size={11} color="#071e21" style={{ paddingLeft: 1 }} />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-
       {rows.map((row, ri) => (
         <View key={ri} style={[styles.row, ri > 0 && styles.rowGap]}>
           {row.map((item, index) => (
@@ -216,36 +155,6 @@ export default function StaticShortcutRow() {
         </View>
       ))}
 
-      {/* ── Hafrik AI chat button ─────────────────────────────── */}
-      {/* <TouchableOpacity
-        style={styles.aiBanner}
-        activeOpacity={0.88}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          navigation.navigate('AIChat');
-        }}
-      >
-        <LinearGradient
-          colors={['#071e21', '#0c2d32', '#1f8e93']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.aiBannerGrad}
-        >
-          <View style={styles.aiBannerLeft}>
-            <View style={styles.aiIconWrap}>
-              <Ionicons name="sparkles" size={18} color="#a8e063" />
-            </View>
-            <View>
-              <Text style={styles.aiBannerTitle}>Hafrik AI</Text>
-              <Text style={styles.aiBannerSub}>Ask anything · Searches the platform</Text>
-            </View>
-          </View>
-          <View style={styles.aiAskBtn}>
-            <Text style={styles.aiAskTxt}>Ask Now</Text>
-            <Ionicons name="arrow-forward" size={11} color="#071e21" />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity> */}
     </View>
   );
 }

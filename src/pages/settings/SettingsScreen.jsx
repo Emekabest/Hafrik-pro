@@ -155,6 +155,12 @@ export default function SettingsScreen() {
             onPress={() => openWeb('Notifications', `https://hafrik.com/settings/privacy?token=${token}`)}
           />
           <Row
+            icon="ban-outline"
+            iconColor="#ef4444"
+            label="Blocked Users"
+            onPress={() => navigation.navigate('BlockedUsers')}
+          />
+          <Row
             icon="trash-outline"
             iconColor="#ef4444"
             label="Delete Account"
@@ -162,17 +168,6 @@ export default function SettingsScreen() {
             last
           />
         </Section>
-
-        {/* Grow */}
-        {/* <Section title="Grow">
-          <Row
-            icon="megaphone-outline"
-            iconColor="#f59e0b"
-            label="Ads Manager"
-            onPress={() => Alert.alert('Coming Soon', 'Ads Manager is coming soon!')}
-            last
-          />
-        </Section> */}
 
         {/* About */}
         <Section title="About">

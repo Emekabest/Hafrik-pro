@@ -27,6 +27,7 @@ const ReelMedia = ({
   isPaused    = false,
   isMuted     = false,
   onTimeUpdate,
+  onSeekReady,
 }) => (
   <View style={StyleSheet.absoluteFill}>
 
@@ -50,6 +51,7 @@ const ReelMedia = ({
       isPaused={isPaused}
       isMuted={isMuted}
       onTimeUpdate={onTimeUpdate}
+      onSeekReady={onSeekReady}
     />
 
   </View>
@@ -63,6 +65,7 @@ const ActiveReelPlayer = memo(({
   isPaused,
   isMuted,
   onTimeUpdate,
+  onSeekReady,
 }) => {
   const isFocused   = useIsFocused();
   const isAppActive = useStore((s) => s.isAppActive);
@@ -114,9 +117,22 @@ const ActiveReelPlayer = memo(({
     if (!onTimeUpdate || !player) return;
     try {
       const dur = player.duration;
-      if (dur > 0) onTimeUpdate(currentTime / dur);
+      if (dur > 0) onTimeUpdate(currentTime / dur, currentTime, dur);
     } catch (_) {}
   }, [currentTime, player, onTimeUpdate]);
+
+  // ── Expose seek control to the reel card scrubber ────────────────────────
+  useEffect(() => {
+    if (!onSeekReady || !player) return undefined;
+    const seek = (ratio) => {
+      try {
+        const dur = Number(player.duration || 0);
+        if (dur > 0) player.currentTime = Math.max(0, Math.min(1, ratio)) * dur;
+      } catch (_) {}
+    };
+    onSeekReady(seek);
+    return () => onSeekReady(null);
+  }, [onSeekReady, player]);
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => {

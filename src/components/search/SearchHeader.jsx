@@ -14,6 +14,7 @@ const PRIMARY = Colors.primaryDark;
 const ACCENT  = Colors.primary;
 const DARK    = Colors.black;
 const WHITE   = Colors.white;
+const MUTED   = Colors.secondaryText;
 
 export const TABS = [
   { label: 'All',      icon: 'flash',         type: null      },
@@ -97,6 +98,10 @@ const SearchHeader = ({
       {/* Decorative blobs */}
       <View style={styles.blob1} />
       <View style={styles.blob2} />
+      <View style={styles.titleBlock}>
+        <Text style={styles.kicker}>Hafrik Search</Text>
+        <Text style={styles.title}>Find people, posts, pages and stories</Text>
+      </View>
 
       {/* Search row */}
       <View style={styles.row}>
@@ -113,7 +118,7 @@ const SearchHeader = ({
           <Ionicons
             name="search"
             size={17}
-            color={inputFocused ? ACCENT : WHITE + '80'}
+            color={inputFocused ? ACCENT : MUTED}
           />
           <TextInput
             ref={inputRef}
@@ -137,7 +142,7 @@ const SearchHeader = ({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.7}
             >
-              <Ionicons name="close-circle" size={18} color={WHITE + '99'} />
+              <Ionicons name="close-circle" size={18} color={MUTED} />
             </TouchableOpacity>
           ) : null}
         </Animated.View>
@@ -183,7 +188,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: PRIMARY,
     paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingBottom: 12,
     overflow: 'hidden',
     zIndex: 10,
     elevation: 6,
@@ -200,6 +205,23 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 130, height: 130, borderRadius: 65,
     backgroundColor: WHITE + '0A', bottom: -40, left: -20,
   },
+  titleBlock: {
+    marginBottom: 14,
+  },
+  kicker: {
+    color: ACCENT,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 2.2,
+    textTransform: 'uppercase',
+  },
+  title: {
+    color: WHITE,
+    fontSize: 20,
+    lineHeight: 25,
+    marginTop: 3,
+    fontFamily: AppDetails.fontFamily.redex.bold,
+  },
   row: {
     flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10,
   },
@@ -211,22 +233,22 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: WHITE + '1F',
-    borderRadius: 14, borderWidth: 1.5,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 7,
+    backgroundColor: WHITE,
+    borderRadius: 18, borderWidth: 1.5,
+    paddingHorizontal: 13,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 9,
     gap: 8,
   },
   searchInput: {
-    flex: 1, fontSize: 15, color: WHITE,
+    flex: 1, fontSize: 15, color: DARK,
     fontFamily: AppDetails.fontFamily.inter.regular,
     paddingVertical: 0,
   },
-  tabsContent: { paddingBottom: 2, gap: 8 },
+  tabsContent: { paddingBottom: 2, gap: 9 },
   tabChip: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 13, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: WHITE + '1F',
+    paddingHorizontal: 13, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: WHITE + '16',
     borderWidth: 1, borderColor: WHITE + '1F',
   },
   tabChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },

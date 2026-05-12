@@ -12,8 +12,9 @@ import React, {
   useState, useEffect, useRef, useMemo, useCallback, memo,
 } from 'react';
 import {
-  View, StyleSheet, Animated, InteractionManager, AppState,
+  View, Text, StyleSheet, Animated, Easing, TouchableOpacity, AppState,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext.js';
 import Feeds from './feeds/feeds.jsx';
@@ -22,11 +23,15 @@ import GetFeedsController from '../../controllers/getfeedscontroller.js';
 import useStore from '../../repository/store.js';
 import AppDetails from '../../helpers/appdetails.js';
 import { Colors } from '../../theme';
+import OnlineNowStrip from './OnlineNowStrip.jsx';
+import ExchangeRateTicker from './ExchangeRateTicker.jsx';
 
-const BG = Colors.white;
-const AUTO_REFRESH_MS = 30_000;
+const BG     = Colors.white;
+const BRAND  = Colors.primaryDark;
+const ACCENT = Colors.primary;
+const AUTO_REFRESH_MS = 20_000;
 
-const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
+const UnifiedFeedScreen = ({ tabConfig, feedWidth }) => {
   const { token }    = useAuth();
   const navigation   = useNavigation();
   const feedsName    = tabConfig.listName;
@@ -34,10 +39,10 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   // ── Store selectors ─────────────────────────────────────────────────────────
   const clearFeedsList_store     = useStore(s => s.clearFeedsList);
   const addFeedsToList_store     = useStore(s => s.addFeedsToList);
-  const prependFeedsToList_store = useStore(s => s.prependFeedsToList);
   const setFeedsMeta_store       = useStore(s => s.setFeedsMeta);
   const refreshSignal            = useStore(s => s.refreshSignal);
   const selectedCountryId        = useStore(s => s.selectedCountryId);
+  const contentFilter            = useStore(s => s.feedContentFilter);
   const ids                      = useStore(s => s.feeds.lists[feedsName] || []);
   const feedsById                = useStore(s => s.feeds.feedsById);
 
@@ -67,6 +72,12 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const displayFeedsIdsRef  = useRef(new Set());
   // true before a hard/refresh load → replace; false → pagination append
   const pendingFreshSortRef = useRef(true);
+
+  // New-posts badge
+  const [pendingCount,  setPendingCount]  = useState(0);
+  const pillAnim     = useRef(new Animated.Value(-56)).current;
+  const pillVisible  = useRef(false);
+  const feedScrollTopRef = useRef(null);
 
   // ── Build the API URL from tab config + content filter + country ──────────
   const apiUrl = useMemo(() => {
@@ -129,6 +140,30 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     }
   }, [initialFetchDone, feeds]);
 
+  // ── Pill show / hide ──────────────────────────────────────────────────────
+  const showPill = useCallback((count) => {
+    setPendingCount(count);
+    if (!pillVisible.current) {
+      pillVisible.current = true;
+      Animated.spring(pillAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 120,
+        friction: 10,
+      }).start();
+    }
+  }, [pillAnim]);
+
+  const hidePill = useCallback(() => {
+    pillVisible.current = false;
+    Animated.timing(pillAnim, {
+      toValue: -56,
+      duration: 220,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => setPendingCount(0));
+  }, [pillAnim]);
+
   // ── Hard load (clears list and reloads page 1) ─────────────────────────────
   const getFeeds = useCallback(async (url) => {
     pendingFreshSortRef.current = true;
@@ -149,6 +184,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
 
   // ── Pull-to-refresh ───────────────────────────────────────────────────────
   const onRefresh = useCallback(async () => {
+    hidePill();
     pendingFreshSortRef.current = true;
     setRefreshing(true);
     try {
@@ -164,7 +200,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     } finally {
       setRefreshing(false);
     }
-  }, [apiUrl, token, feedsName]);
+  }, [apiUrl, token, feedsName, hidePill]);
 
   const onRefreshRef = useRef(onRefresh);
   useEffect(() => { onRefreshRef.current = onRefresh; }, [onRefresh]);
@@ -190,20 +226,31 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     setFeeds(feedsFromStoreFiltered);
   }, [feedsFromStoreFiltered]);
 
-  // ── Silent background refresh ──────────────────────────────────────────────
+  // ── Silent background poll — detects new posts without disrupting scroll ──
   const silentRefresh = useCallback(async () => {
     try {
       const response = await GetFeedsController(apiUrl, token, 1);
-      if (response?.status === 200 && Array.isArray(response?.data) && response.data.length > 0) {
-        InteractionManager.runAfterInteractions(() => {
-          prependFeedsToList_store(feedsName, response.data);
-          if (response.meta) {
-            setFeedsMeta_store(feedsName, response.meta);
-          }
-        });
+      if (response?.status !== 200 || !Array.isArray(response?.data)) return;
+      const fetched = response.data;
+      if (fetched.length === 0) return;
+
+      // Count how many returned posts are not already in the display
+      const newCount = fetched.filter(
+        (f) => !displayFeedsIdsRef.current.has(String(f.id))
+      ).length;
+
+      if (newCount > 0) {
+        showPill(newCount);
       }
     } catch {}
-  }, [apiUrl, token, feedsName]);
+  }, [apiUrl, token, showPill]);
+
+  // ── Tap pill: scroll to top + full refresh ───────────────────────────────
+  const handleNewPostsPress = useCallback(() => {
+    hidePill();
+    feedScrollTopRef.current?.();
+    onRefreshRef.current?.();
+  }, [hidePill]);
 
   // ── Auto-poll while screen is focused ─────────────────────────────────────
   const isFirstFocus = useRef(true);
@@ -247,7 +294,10 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
   const combinedData = useMemo(() => {
     const items = [
       { type: 'banner', feedWidth: feedWidth || 0 },
-      { type: 'feedsheader', name: tabConfig.label, description: tabConfig.description, id: feedsName },
+      { type: 'feedquicklinks' },
+      { type: 'feedsheader', name: tabConfig.feedTitle ?? tabConfig.label, description: tabConfig.description, id: feedsName },
+      { type: 'postfeed' },
+      { type: 'onlinestrip', data: peopleList },
     ];
 
     // Interstitial pool (fixed order, no shuffle)
@@ -272,7 +322,7 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
     });
 
     return items;
-  }, [displayFeeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName]);
+  }, [displayFeeds, feedWidth, peopleList, bizList, communityList, tabConfig.label, feedsName, tabConfig.description]);
 
   // Discover uses the same FeedCard layout as Following (no masonry)
   const finalCombinedData = combinedData;
@@ -342,7 +392,27 @@ const UnifiedFeedScreen = ({ tabConfig, contentFilter = '', feedWidth }) => {
         refreshing={refreshing}
         onRefresh={onRefresh}
         onPostPress={handlePostPress}
+        scrollToTopRef={feedScrollTopRef}
       />
+
+      {/* ── New posts pill ────────────────────────────────────────────────── */}
+      {pendingCount > 0 && (
+        <Animated.View
+          style={[styles.pillWrapper, { transform: [{ translateY: pillAnim }] }]}
+          pointerEvents="box-none"
+        >
+          <TouchableOpacity
+            style={styles.pill}
+            activeOpacity={0.88}
+            onPress={handleNewPostsPress}
+          >
+            <Ionicons name="arrow-up" size={14} color={BRAND} style={styles.pillIcon} />
+            <Text style={styles.pillText}>
+              {pendingCount} new post{pendingCount > 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -351,4 +421,37 @@ export default memo(UnifiedFeedScreen);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BG },
+  pillWrapper: {
+    position: 'absolute',
+    top: 10,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 999,
+    elevation: 999,
+    pointerEvents: 'box-none',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    backgroundColor: BRAND,
+    borderRadius: 999,
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  pillIcon: {
+    marginRight: 2,
+  },
+  pillText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
 });

@@ -23,6 +23,7 @@ const EngagementBar = ({
   onReactionsPress,
   onRepost,
   onCollectionSave,
+  onAskAI,
 }) => {
   const { token } = useAuth();
 
@@ -154,12 +155,21 @@ const EngagementBar = ({
           </TouchableOpacity>
         ) : <View />}
 
-        {viewsCount > 0 && (
-          <View style={styles.viewsRow}>
-            <Ionicons name="eye-outline" size={13} color={Colors.neutral500} />
-            <Text style={styles.viewsText}>{Number(viewsCount).toLocaleString()}</Text>
-          </View>
-        )}
+        <View style={styles.summaryRight}>
+          {viewsCount > 0 && (
+            <View style={styles.viewsRow}>
+              <Ionicons name="eye-outline" size={13} color={Colors.neutral500} />
+              <Text style={styles.viewsText}>{Number(viewsCount).toLocaleString()}</Text>
+            </View>
+          )}
+
+          {!!onAskAI && (
+            <TouchableOpacity style={styles.askAiPill} activeOpacity={0.82} onPress={onAskAI}>
+              <Ionicons name="sparkles-outline" size={12} color={Colors.primaryDark} />
+              <Text style={styles.askAiText}>Ask AI</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* ── Action row: Like | Comment | Repost | Save | Share ── */}
@@ -169,7 +179,7 @@ const EngagementBar = ({
         <TouchableOpacity style={styles.actionItem} onPress={handleLike} activeOpacity={0.7}>
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
-            size={22}
+            size={18}
             color={likeColor}
           />
           <Text style={[styles.actionLabel, isLiked && { color: likeColor }]}>
@@ -180,7 +190,7 @@ const EngagementBar = ({
         {/* Comment */}
         {!commentsDisabled && (
           <TouchableOpacity style={styles.actionItem} onPress={onCommentPress} activeOpacity={0.7}>
-            <SvgIcon name="comment" width={20} height={20} color={Colors.neutral700} />
+            <SvgIcon name="comment" width={17} height={17} color={Colors.neutral700} />
             <Text style={styles.actionLabel}>
               {Number(commentsCount) > 0 ? Number(commentsCount).toLocaleString() : 'Comment'}
             </Text>
@@ -189,7 +199,7 @@ const EngagementBar = ({
 
         {/* Repost */}
         <TouchableOpacity style={styles.actionItem} onPress={onRepost} activeOpacity={0.7}>
-          <Ionicons name="repeat-outline" size={22} color={Colors.neutral700} />
+          <Ionicons name="repeat-outline" size={18} color={Colors.neutral700} />
           <Text style={styles.actionLabel}>Repost</Text>
         </TouchableOpacity>
 
@@ -201,8 +211,8 @@ const EngagementBar = ({
         >
           <SvgIcon
             name="favourite"
-            width={20}
-            height={20}
+            width={17}
+            height={17}
             color={saved ? Colors.primary : Colors.neutral700}
           />
           <Text style={[styles.actionLabel, saved && { color: Colors.primary }]}>Save</Text>
@@ -210,7 +220,7 @@ const EngagementBar = ({
 
         {/* Share */}
         <TouchableOpacity style={styles.actionItem} onPress={onOpenShare} activeOpacity={0.7}>
-          <SvgIcon name="share" width={20} height={20} color={Colors.neutral700} />
+          <SvgIcon name="share" width={17} height={17} color={Colors.neutral700} />
           <Text style={styles.actionLabel}>Share</Text>
         </TouchableOpacity>
 
@@ -250,6 +260,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.neutral500,
   },
+  summaryRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  askAiPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryDark + '0D',
+    borderWidth: 1,
+    borderColor: Colors.primaryDark + '18',
+  },
+  askAiText: {
+    color: Colors.primaryDark,
+    fontSize: 11,
+    fontWeight: '800',
+  },
 
   actionRow: {
     flexDirection: 'row',
@@ -280,5 +311,6 @@ export default memo(EngagementBar, (prev, next) => (
   prev.sharesCount      === next.sharesCount      &&
   prev.isSaved          === next.isSaved          &&
   prev.commentsDisabled === next.commentsDisabled &&
-  prev.viewsCount       === next.viewsCount
+  prev.viewsCount       === next.viewsCount &&
+  prev.onAskAI          === next.onAskAI
 ));

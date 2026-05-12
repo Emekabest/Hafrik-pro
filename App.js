@@ -32,13 +32,20 @@ import IoniconsFont from './assets/fonts/ionicons.ttf';
 import MaterialCommunityIconsFont from './assets/fonts/material-community.ttf';
 import FeatherFont from './assets/fonts/feather.ttf';
 import GroupDetails from "./src/pages/groups/GroupDetails";
+import GroupMembers from "./src/pages/groups/GroupMembers";
 import GuideScreen from './src/pages/GuideScreen';
 import JobsScreen from './src/pages/JobsScreen';
-import MarketplaceScreen from './src/pages/marketplace/index';
+import MarketplaceTabNavigator    from './src/pages/marketplace/MarketplaceTabNavigator';
 import ProductDetailScreen from './src/pages/marketplace/ProductDetailScreen';
 import CreateListingScreen from './src/pages/marketplace/CreateListingScreen';
 // MarketplaceWebviewScreen replaced by UniversalWebView
-import MyListingsScreen from './src/pages/marketplace/MyListingsScreen';
+import MyListingsScreen              from './src/pages/marketplace/MyListingsScreen';
+import CartScreen                    from './src/pages/marketplace/CartScreen';
+import CheckoutScreen                from './src/pages/marketplace/CheckoutScreen';
+import MarketplacePaymentScreen      from './src/pages/marketplace/MarketplacePaymentScreen';
+import MarketplaceOrdersScreen       from './src/pages/marketplace/MarketplaceOrdersScreen';
+import OrderDetailScreen             from './src/pages/marketplace/OrderDetailScreen';
+import SellerOrdersScreen            from './src/pages/marketplace/SellerOrdersScreen';
 import ArticlesScreen from './src/pages/blogs/ArticlesScreen';
 import ArticleDetailsScreen from './src/pages/blogs/ArticleDetailsScreen';
 import EventDetailScreen from './src/pages/events/EventDetailScreen';
@@ -55,7 +62,7 @@ import PagesScreen from './src/pages/pages_/pagesscreen';
 import BusinessDetails from "./src/pages/pages_/BusinessDetails";
 import BusinessList from './src/pages/pages_/BusinessList';
 import Reels2 from './src/pages/reels/reels2';
-import CreateReels from './src/pages/createreels/createreelscreen';
+import VideoPlayerScreen from './src/pages/video/VideoPlayerScreen';
 import HafrikTVScreen from './src/pages/tv/HafrikTVScreen';
 import HafrikTVPlayerScreen from './src/pages/tv/HafrikTVPlayerScreen';
 import AIChatScreen from './src/pages/ai/AIChatScreen';
@@ -71,12 +78,14 @@ import ReportPostScreen from './src/pages/home/feeds/reportpostscreen';
 import TrendingOnHafrikScreen from './src/pages/home/trendingonhafrikscreen';
 import SettingsScreen             from './src/pages/settings/SettingsScreen';
 import AboutUsScreen              from './src/pages/settings/AboutUsScreen';
+import BlockedUsersScreen         from './src/pages/settings/BlockedUsersScreen';
+import ProfileQrScreen            from './src/pages/profile/ProfileQrScreen';
+import ProfileQrScannerScreen     from './src/pages/profile/ProfileQrScannerScreen';
 import VerificationIntroScreen   from './src/pages/verification/VerificationIntroScreen';
 import VerificationUploadScreen  from './src/pages/verification/VerificationUploadScreen';
 import VerificationPendingScreen from './src/pages/verification/VerificationPendingScreen';
 import SearchScreen   from './src/pages/search/searchscreen';
 import HashtagScreen  from './src/pages/hashtag/HashtagScreen';
-import EarningsScreen        from './src/pages/earnings/EarningsScreen';
 import PointsScreen          from './src/pages/earnings/PointsScreen';
 import WalletScreen          from './src/pages/earnings/WalletScreen';
 import AffiliatesScreen      from './src/pages/earnings/AffiliatesScreen';
@@ -93,6 +102,11 @@ import SavedPostsScreen      from './src/pages/saved/SavedPostsScreen';
 // ── City Guide ──
 import CityGuideHomeScreen   from './src/pages/cityguide/CityGuideHomeScreen';
 import CityDetailScreen      from './src/pages/cityguide/CityDetailScreen';
+// ── Explore ──
+import ExploreHome           from './src/pages/explore/ExploreHome';
+import ExploreCityDetail     from './src/pages/explore/CityDetailScreen';
+import ExplorePlaceDetail    from './src/pages/explore/PlaceDetailScreen';
+import ExploreServiceDetail  from './src/pages/explore/ServiceDetailScreen';
 // ── HafrikX Module ──
 import HafrikXHome           from './src/pages/hafrikx/HafrikXHome';
 // ── Arrival Concierge ──
@@ -109,9 +123,17 @@ import HafrikXTrack          from './src/pages/hafrikx/TrackShipping';
 import HafrikXWarehouses     from './src/pages/hafrikx/WarehouseInfo';
 import HafrikXLearn          from './src/pages/hafrikx/LearnImporting';
 import HafrikXVisa           from './src/pages/hafrikx/VisaServices';
-import HafrikXMyOrders       from './src/pages/hafrikx/MyOrders';
-import HafrikXMyShipments    from './src/pages/hafrikx/MyShipments';
-import HafrikXMyRequests     from './src/pages/hafrikx/MyRequests';
+import HafrikXMyOrders          from './src/pages/hafrikx/MyOrders';
+import HafrikXMyShipments       from './src/pages/hafrikx/MyShipments';
+import HafrikXMyRequests        from './src/pages/hafrikx/MyRequests';
+import ServiceApplyScreen       from './src/pages/hafrikx/ServiceApplyScreen';
+import MyApplicationsScreen     from './src/pages/hafrikx/MyApplicationsScreen';
+import ApplicationDetailScreen  from './src/pages/hafrikx/ApplicationDetailScreen';
+import TourGuideScreen          from './src/pages/hafrikx/TourGuideScreen';
+import TranslatorScreen        from './src/pages/translator/TranslatorScreen';
+import HafrikShopGuide         from './src/pages/marketplace/HafrikShopGuide';
+import SchoolAdmissionScreen   from './src/pages/hafrikx/SchoolAdmissionScreen';
+import AdmissionInfoScreen     from './src/pages/hafrikx/AdmissionInfoScreen';
 import ExchangePayment        from './src/pages/hafrikx/ExchangePayment';
 import ExchangeUploadReceipt  from './src/pages/hafrikx/ExchangeUploadReceipt';
 import ExchangeUploadQR       from './src/pages/hafrikx/ExchangeUploadQR';
@@ -428,11 +450,17 @@ function AppNavigator() {
               <Stack.Screen name="EventsScreen" component={EventsScreen} />
               <Stack.Screen name="GuideScreen" component={GuideScreen} />
               <Stack.Screen name="JobsScreen" component={JobsScreen} />
-              <Stack.Screen name="MarketplaceScreen" component={MarketplaceScreen} />
+              <Stack.Screen name="MarketplaceScreen" component={MarketplaceTabNavigator} options={{ gestureEnabled: true, gestureDirection: 'horizontal' }} />
               <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
               <Stack.Screen name="CreateListing" component={CreateListingScreen} />
               <Stack.Screen name="MarketplaceWebview" component={UniversalWebView} options={{ headerShown: false }} />
-              <Stack.Screen name="MyListings" component={MyListingsScreen} />
+              <Stack.Screen name="MyListings"     component={MyListingsScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="CartScreen"                component={CartScreen}               options={{ headerShown: false }} />
+              <Stack.Screen name="CheckoutScreen"           component={CheckoutScreen}           options={{ headerShown: false }} />
+              <Stack.Screen name="MarketplacePaymentScreen" component={MarketplacePaymentScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="MarketplaceOrdersScreen"  component={MarketplaceOrdersScreen}  options={{ headerShown: false }} />
+              <Stack.Screen name="OrderDetailScreen"        component={OrderDetailScreen}         options={{ headerShown: false }} />
+              <Stack.Screen name="SellerOrdersScreen"       component={SellerOrdersScreen}        options={{ headerShown: false }} />
               <Stack.Screen name="Groups" component={GroupsScreen} />
               <Stack.Screen name="WebView" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="WhatsNearby" component={WhatsNearbyScreen} />
@@ -449,11 +477,12 @@ function AppNavigator() {
               <Stack.Screen name="BusinessDetails" component={BusinessDetails} />
               <Stack.Screen name="BusinessPages" component={BusinessList} />
         <Stack.Screen name="Reels2" component={Reels2} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
-        <Stack.Screen name="CreateReel" component={CreateReels} options={{ headerShown: false }} />
+        <Stack.Screen name="VideoPlayer" component={VideoPlayerScreen} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
 <Stack.Screen
   name="GroupDetails"
   component={GroupDetails}
 />
+<Stack.Screen name="GroupMembers" component={GroupMembers} options={{ headerShown: false }} />
               <Stack.Screen name="ArticlesScreen" component={ArticlesScreen} />
               <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} />
               <Stack.Screen name="EventDetail" component={EventDetailScreen} />
@@ -464,6 +493,9 @@ function AppNavigator() {
               <Stack.Screen name="Thread" component={ThreadScreen} />
               <Stack.Screen name="InAppBrowser" component={UniversalWebView} options={{ headerShown: false }} />
               <Stack.Screen name="Settings"            component={SettingsScreen} />
+              <Stack.Screen name="BlockedUsers"        component={BlockedUsersScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ProfileQr"           component={ProfileQrScreen}        options={{ headerShown: false, gestureEnabled: true }} />
+              <Stack.Screen name="ProfileQrScanner"    component={ProfileQrScannerScreen} options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="AboutUs"             component={AboutUsScreen}  options={{ headerShown: false }} />
               <Stack.Screen name="VerificationIntro"  component={VerificationIntroScreen}  options={{ headerShown: false }} />
               <Stack.Screen name="VerificationUpload" component={VerificationUploadScreen} options={{ headerShown: false }} />
@@ -478,7 +510,7 @@ function AppNavigator() {
               <Stack.Screen name="JoinedCommunities" component={JoinedCommunitiesScreen}  options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="LikedBusinesses"   component={LikedBusinessesScreen}    options={{ headerShown: false, gestureEnabled: true }} />
               <Stack.Screen name="SavedPosts"        component={SavedPostsScreen}          options={{ headerShown: false, gestureEnabled: true }} />
-              <Stack.Screen name="Earnings"          component={EarningsScreen}   options={{ headerShown: false }} />
+              <Stack.Screen name="Earnings"          component={WalletScreen}     options={{ headerShown: false }} />
               <Stack.Screen name="PointsScreen"      component={PointsScreen}     options={{ headerShown: false }} />
               <Stack.Screen name="WalletScreen"      component={WalletScreen}     options={{ headerShown: false }} />
               <Stack.Screen name="AffiliatesScreen"  component={AffiliatesScreen} options={{ headerShown: false }} />
@@ -491,6 +523,12 @@ function AppNavigator() {
               {/* ── City Guide ── */}
               <Stack.Screen name="CityGuide"  component={CityGuideHomeScreen} options={{ headerShown: false }} />
               <Stack.Screen name="CityDetail" component={CityDetailScreen}    options={{ headerShown: false }} />
+
+              {/* ── Explore ── */}
+              <Stack.Screen name="ExploreHome"         component={ExploreHome}          options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ExploreCityDetail"   component={ExploreCityDetail}    options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ExplorePlaceDetail"  component={ExplorePlaceDetail}   options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="ExploreServiceDetail" component={ExploreServiceDetail} options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
 
               {/* ── HafrikX Module ── */}
               <Stack.Screen
@@ -541,6 +579,14 @@ function AppNavigator() {
               <Stack.Screen name="HafrikXMyOrders"    component={HafrikXMyOrders}    options={{ headerShown: false }} />
               <Stack.Screen name="HafrikXMyShipments" component={HafrikXMyShipments} options={{ headerShown: false }} />
               <Stack.Screen name="HafrikXMyRequests"  component={HafrikXMyRequests}  options={{ headerShown: false }} />
+              <Stack.Screen name="TourGuideScreen"        component={TourGuideScreen}         options={{ headerShown: false }} />
+              <Stack.Screen name="ServiceApplyScreen"     component={ServiceApplyScreen}      options={{ headerShown: false }} />
+              <Stack.Screen name="MyApplications"         component={MyApplicationsScreen}    options={{ headerShown: false }} />
+              <Stack.Screen name="ApplicationDetail"      component={ApplicationDetailScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="TranslatorScreen"       component={TranslatorScreen}        options={{ headerShown: false }} />
+              <Stack.Screen name="HafrikShopGuide"       component={HafrikShopGuide}          options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="SchoolAdmissionScreen" component={SchoolAdmissionScreen}    options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
+              <Stack.Screen name="AdmissionInfoScreen"   component={AdmissionInfoScreen}      options={{ headerShown: false, gestureEnabled: true, gestureDirection: 'horizontal' }} />
               <Stack.Screen name="ExchangePayment"       component={ExchangePayment}       options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeUploadReceipt" component={ExchangeUploadReceipt} options={{ headerShown: false }} />
               <Stack.Screen name="ExchangeUploadQR"      component={ExchangeUploadQR}      options={{ headerShown: false }} />

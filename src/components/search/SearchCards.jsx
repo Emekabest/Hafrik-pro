@@ -18,6 +18,7 @@ const WHITE   = Colors.white;
 const BORDER  = Colors.border;
 const MUTED   = Colors.secondaryText;
 const SURFACE = Colors.surfaceTint;
+const cleanQuery = (value = '') => String(value || '').replace(/^#+/, '').trim();
 
 // ── ResultsLabel ─────────────────────────────────────────────────────────────
 export const ResultsLabel = React.memo(({ count, query }) => (
@@ -26,7 +27,7 @@ export const ResultsLabel = React.memo(({ count, query }) => (
     <Text style={styles.resultsText}>
       <Text style={styles.resultsCount}>{count}</Text>
       {' result'}{count !== 1 ? 's' : ''} for{' '}
-      <Text style={styles.resultsQuery}>"{query}"</Text>
+      <Text style={styles.resultsQuery}>"{cleanQuery(query)}"</Text>
     </Text>
   </View>
 ));

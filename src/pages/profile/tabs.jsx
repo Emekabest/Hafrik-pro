@@ -5,7 +5,6 @@ import AppDetails from '../../helpers/appdetails';
 import { Colors } from '../../theme/colors';
 
 const BRAND  = Colors.primaryDark;
-const ACCENT = Colors.primary;
 
 // Keep last horizontal scroll position across mounts
 let _lastScrollX = 0;
@@ -70,18 +69,13 @@ const ProfileTabs = memo(({ tabs, activeTab, onTabChange }) => {
 
 const styles = StyleSheet.create({
     tabsWrapper: {
-        backgroundColor: Colors.white,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.borderLight,
-        shadowColor: Colors.black,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 3,
-        elevation: 2,
+        backgroundColor: '#EEF7F7',
+        borderBottomWidth: 0,
+        paddingTop: 8,
     },
     tabsContainer: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
         gap: 8,
     },
     tabItem: {
@@ -90,18 +84,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 9,
         borderRadius: 24,
-        backgroundColor: Colors.surfaceCool,
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: Colors.borderLight,
+        borderColor: '#DCEBEB',
     },
     activeTabItem: {
-        backgroundColor: ACCENT,
-        borderColor: ACCENT,
-        shadowColor: ACCENT,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 6,
-        elevation: 4,
+        backgroundColor: BRAND,
+        borderColor: BRAND,
+        shadowColor: BRAND,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        elevation: 5,
     },
     tabIcon: {
         marginRight: 5,

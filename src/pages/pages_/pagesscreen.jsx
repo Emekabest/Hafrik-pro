@@ -21,6 +21,7 @@ import DrawerNavigation from '../home/drawernavigation';
 import PostComposerModal from '../home/PostComposerModal';
 import CreateMenuSheet from '../home/CreateMenuSheet';
 import { fetchArticles, fetchTrendingArticles } from '../blogs/articlesApi';
+import { fetchMarketplaceProducts } from '../marketplace/marketplaceApi';
 import { useLiveCounts } from '../../hooks/useLiveCounts';
 import { Colors } from '../../theme';
 import { TOPIC_POOL, shuffle, pickRandom } from '../../helpers/topicPool';
@@ -38,7 +39,6 @@ const SEC_PAD    = 14;  // section inner padding each side
 const CARD_W     = (SCREEN_W - H_PAD * 2 - SEC_PAD * 2 - CARD_GAP * (NUM_COLS - 1)) / NUM_COLS;
 
 const BASE_URL           = 'https://hafrik.com';
-const MARKETPLACE_URL    = 'https://hafrik.com/api/v1/marketplace/get_marketplace.php';
 const EXPLORE_URL        = '/api/v1/explore/home.php?ads_placement=explore';
 const MARKETPLACE_LIMIT  = 6;
 
@@ -356,12 +356,10 @@ const MiniCard = memo(({ title, subtitle, image, iconName, onPress, badge }) => 
 const MarketplaceCard = memo(({ item, onPress }) => {
   const thumb      = item.thumbnail ?? item.photos?.[0] ?? null;
   const inStock    = item.stock_status === 'In Stock';
-  const isPage     = item.seller?.type === 'page';
-  const sellerName = isPage && item.seller?.page_name
-    ? item.seller.page_name
-    : item.seller?.username ?? null;
-  const sellerAvatar = item.seller?.avatar ?? null;
   const photoCnt   = Number(item.photos_count ?? 0);
+  const title      = decodeHtml(item.title ?? 'Product')
+    .replace(/shop\.itstrendymart\.com/gi, 'shop.hafrik.com')
+    .replace(/itstrendymart|trendymart/gi, 'Hafrik Shop');
 
   return (
     <TouchableOpacity style={ss.gridCard} activeOpacity={0.88} onPress={onPress}>
@@ -401,31 +399,13 @@ const MarketplaceCard = memo(({ item, onPress }) => {
       <View style={ss.gridBody}>
         {/* Fixed 2-line title keeps all cards same height */}
         <Text numberOfLines={2} style={ss.gridTitle}>
-          {decodeHtml(item.title ?? 'Product')}
+          {title}
         </Text>
 
         {/* Price in green */}
         <Text numberOfLines={1} style={ss.gridPrice}>
           {fmtPrice(item.currency, item.price) ?? '—'}
         </Text>
-
-        {/* Seller row */}
-        <View style={ss.gridSellerRow}>
-          {isRealImage(sellerAvatar) ? (
-            <Image source={{ uri: sellerAvatar }} style={ss.gridSellerAvatar} />
-          ) : (
-            <View style={[ss.gridSellerAvatar, ss.imgFallback]}>
-              <Ionicons name="person-outline" size={10} color={BRAND} />
-            </View>
-          )}
-          <Text numberOfLines={1} style={ss.gridSellerName}>{sellerName ?? '—'}</Text>
-          <View style={{ flex: 1 }} />
-          {sellerName && (
-            <View style={[ss.gridTypeBadge, isPage && ss.gridTypeBadgePage]}>
-              <Text style={ss.gridTypeTxt}>{isPage ? 'PAGE' : 'USER'}</Text>
-            </View>
-          )}
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -790,27 +770,43 @@ const HotArticlesSection = ({ articles, navigation }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const FeaturedBizCard = memo(({ item, onPress }) => {
   const avatar    = item?.avatar ?? item?.image ?? item?.logo ?? null;
+  const cover     = item?.cover ?? item?.banner ?? item?.cover_image ?? avatar;
   const name      = decodeHtml(item?.title ?? item?.name ?? 'Business');
   const cat       = item?.category ?? item?.type ?? null;
   const desc      = decodeHtml(item?.description ?? item?.about ?? '');
   const followers = Number(item?.followers_count ?? item?.followers ?? 0);
   return (
     <TouchableOpacity style={ss.fbCard} activeOpacity={0.88} onPress={onPress}>
-      {isRealImage(avatar) ? (
-        <Image source={{ uri: avatar }} style={ss.fbAvatar} resizeMode="cover" />
-      ) : (
-        <View style={[ss.fbAvatar, ss.imgFallback]}><Text style={{fontSize:24}}>🏢</Text></View>
-      )}
+      <LinearGradient colors={[BRAND, Colors.primaryDark]} style={ss.fbCover}>
+        {isRealImage(cover) && <Image source={{ uri: cover }} style={ss.fbCoverImg} resizeMode="cover" />}
+        <LinearGradient colors={['transparent', DARK + 'A6']} style={ss.fbCoverShade} />
+        <View style={ss.fbVerifiedPill}>
+          <Ionicons name="shield-checkmark" size={10} color={ACCENT} />
+          <Text style={ss.fbVerifiedText}>VERIFIED</Text>
+        </View>
+      </LinearGradient>
+      <View style={ss.fbAvatarWrap}>
+        {isRealImage(avatar) ? (
+          <Image source={{ uri: avatar }} style={ss.fbAvatar} resizeMode="cover" />
+        ) : (
+          <View style={[ss.fbAvatar, ss.imgFallback]}><Ionicons name="business" size={22} color={BRAND} /></View>
+        )}
+      </View>
       <View style={ss.fbBody}>
         <View style={ss.fbNameRow}>
-          <Text numberOfLines={1} style={ss.fbName}>{name}</Text>
+          <Text numberOfLines={2} style={ss.fbName}>{name}</Text>
           {!!item?.verified && <Ionicons name="checkmark-circle" size={14} color={ACCENT} />}
         </View>
-        {!!cat  && <Text numberOfLines={1} style={ss.fbCat}>{cat}</Text>}
+        {!!cat  && <Text numberOfLines={1} style={ss.fbCat}>{decodeHtml(cat)}</Text>}
         {!!desc && <Text numberOfLines={2} style={ss.fbDesc}>{desc}</Text>}
-        <Text style={ss.fbFollowers}>{followers.toLocaleString()} followers</Text>
+        <View style={ss.fbFooter}>
+          <Text style={ss.fbFollowers}>{followers.toLocaleString()} followers</Text>
+          <View style={ss.fbOpenPill}>
+            <Text style={ss.fbOpenText}>Open</Text>
+            <Ionicons name="arrow-forward" size={10} color={BRAND} />
+          </View>
+        </View>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={ACCENT} />
     </TouchableOpacity>
   );
 });
@@ -840,17 +836,18 @@ const FeaturedBusinessSection = ({ navigation, token, shuffleKey }) => {
 
   if (!loading && items.length === 0) return null;
   return (
-    <View style={[ss.section, { paddingHorizontal: 0, overflow: 'hidden' }]}>
-      <View style={{ paddingHorizontal: 14, marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+    <View style={ss.featuredBizSection}>
+      <View style={ss.featuredBizHeader}>
         <View style={ss.sectionTitleRow}>
           <View style={ss.sectionAccent} />
-          <Text style={ss.sectionTitle}>Verified Businesses Near You</Text>
+          <Text style={ss.sectionTitle}>Featured Businesses</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: ACCENT + '1A', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
-          <Ionicons name="shield-checkmark" size={10} color={ACCENT} />
-          <Text style={{ fontSize: 9, fontWeight: '800', color: ACCENT, letterSpacing: 0.8 }}>VERIFIED</Text>
-        </View>
+        <TouchableOpacity onPress={() => navigation.navigate('BusinessPages')} activeOpacity={0.8} style={ss.seeAllBtn}>
+          <Text style={ss.seeAllText}>See all</Text>
+          <Ionicons name="chevron-forward" size={14} color={ACCENT} />
+        </TouchableOpacity>
       </View>
+      <Text style={[ss.sectionSubtitle, { paddingHorizontal: 14 }]}>Trusted pages, services and stores from the Hafrik community</Text>
       {loading ? (
         <View style={[ss.sectionLoader, { paddingHorizontal: 14 }]}><ActivityIndicator size="small" color={BRAND} /></View>
       ) : (
@@ -1403,18 +1400,12 @@ export default function DiscoveryScreen() {
     setMarketLoading(true);
     const timer = addTimeout(ctrl, 8000);
     try {
-      // Fetch more than we need so manual local shuffle has enough variance
-      const url = `${MARKETPLACE_URL}?page=1&limit=${MARKETPLACE_LIMIT * 2}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        signal: ctrl.signal,
-      });
-      const json = await res.json();
-      // Handle every possible response shape the API might return
-      const raw = json?.data?.products ?? json?.products ?? json?.data ?? [];
-      const products = Array.isArray(raw) ? raw : [];
-      // Keep API order here; local shuffle button handles reordering
-      setMarketProducts(products.slice(0, MARKETPLACE_LIMIT));
+      const data = await fetchMarketplaceProducts(
+        { page: 1, limit: MARKETPLACE_LIMIT * 2 },
+        ctrl.signal,
+        token,
+      );
+      setMarketProducts(Array.isArray(data?.products) ? data.products : []);
     } catch (e) {
       if (e?.name !== 'AbortError') setMarketProducts([]);
     } finally {
@@ -1657,7 +1648,15 @@ export default function DiscoveryScreen() {
       console.log('[REELS] json.data keys:', Object.keys(json?.data || {}));
       console.log('[REELS] json.data full:', JSON.stringify(json?.data));
       const list = json?.data?.reels ?? json?.data?.posts ?? json?.data?.data ?? json?.data ?? json?.reels ?? json?.posts ?? [];
-      const fresh = Array.isArray(list) ? list : [];
+      const rawFresh = Array.isArray(list) ? list : [];
+      // Deduplicate within the response itself
+      const seenInFresh = new Set();
+      const fresh = rawFresh.filter(r => {
+        const key = String(r.id ?? r.post_id ?? '');
+        if (!key || seenInFresh.has(key)) return false;
+        seenInFresh.add(key);
+        return true;
+      });
       console.log('[REELS] fresh count:', fresh.length, '| first item id:', fresh[0]?.id ?? fresh[0]?.post_id);
       if (fresh.length === 0) {
         setReelsHasMore(false);
@@ -1809,7 +1808,7 @@ export default function DiscoveryScreen() {
   const hotCommunities  = useMemo(() => shuffle(suggestedGroups).slice(0, 3), [suggestedGroups, shuffleKey]);
   const hotEvents       = useMemo(() => shuffle(events).slice(0, 8),           [events,          shuffleKey]);
   const ads             = useMemo(() => shuffle(rawAds),                        [rawAds,          shuffleKey]);
-  const displayTrending = useMemo(() => trendingPosts.slice(0, 5),             [trendingPosts]); // eslint-disable-line
+  const displayTrending = useMemo(() => trendingPosts.slice(0, 3),             [trendingPosts]); // eslint-disable-line
 
   const businessesInChina = useMemo(() => {
     const arr   = shuffle(suggestedPages);
@@ -1871,53 +1870,57 @@ export default function DiscoveryScreen() {
   // ─────────────────────────────────────────────────────────────────────────
   const flatListData = useMemo(() => {
     const items = [];
-    // 1. Trending Now
+    // 1. Trending — directly after hero + quick links.
     if (trendingPosts.length > 0)
       items.push({ id: 'trending', type: 'trending' });
-    // 2. Reels (horizontal scroll, max 4)
-    if (reels.length > 0 || reelsLoading)
-      items.push({ id: 'reels', type: 'reels' });
+    // 2. Marketplace Picks
+    if (displayProducts.length > 0 || marketLoading)
+      items.push({ id: 'marketplace_picks', type: 'marketplace_picks' });
     // 3. Browse Categories
     items.push({ id: 'categories_grid', type: 'categories_grid' });
-    // 4. Hot Topics (search suggestion pills)
-    items.push({ id: 'hot_topics', type: 'hot_topics' });
-    // 4. People You May Know
+    // 4. Featured Businesses
+    items.push({ id: 'featured_business', type: 'featured_business' });
+    // 5. People You May Know
     const realPeople = Array.isArray(people) && people.filter(p => isRealImage(p?.avatar ?? p?.image ?? p?.thumbnail) && !p.is_follow).length > 0;
     if (realPeople || peopleLoading)
       items.push({ id: 'people', type: 'people' });
-    // 5. Suggested Communities
+    // 6. Hot Topics
+    items.push({ id: 'hot_topics', type: 'hot_topics' });
+    // Rest of the existing sections
+    if (reels.length > 0 || reelsLoading)
+      items.push({ id: 'reels', type: 'reels' });
     if (communities.length > 0 || communitiesLoading)
       items.push({ id: 'community_highlights', type: 'community_highlights' });
-    // 6. Verified Businesses Near You
-    items.push({ id: 'featured_business', type: 'featured_business' });
-    // 7. New Users
-    if (newUsers.length > 0 || newUsersLoading)
-      items.push({ id: 'new_users', type: 'new_users' });
-    // 8. Articles
     if (articleItems.length > 0 || articleLoading)
       items.push({ id: 'articles', type: 'articles' });
+    if (newUsers.length > 0 || newUsersLoading)
+      items.push({ id: 'new_users', type: 'new_users' });
     return items;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trendingPosts.length, reels.length, reelsLoading, people, peopleLoading, communities.length, communitiesLoading, newUsers.length, newUsersLoading, articleItems.length, articleLoading]);
+  }, [trendingPosts.length, reels.length, reelsLoading, displayProducts.length, marketLoading, people, peopleLoading, communities.length, communitiesLoading, newUsers.length, newUsersLoading, articleItems.length, articleLoading]);
 
   const renderSection = useCallback(({ item }) => {
     switch (item.type) {
 
       case 'trending':
         return (
-          <View style={ss.section}>
+          <View style={ss.trendingCompactSection}>
             <View style={ss.sectionHeader}>
               <View style={ss.sectionTitleRow}>
                 <View style={ss.sectionAccent} />
-                <Text style={ss.sectionTitle}>🔥 Trending Now</Text>
-                <View style={[ss.trendingBadge, { marginLeft: 8 }]}>
+                <Text style={ss.sectionTitle}>Trending Conversations</Text>
+                <View style={ss.trendingBadge}>
                   <View style={ss.liveDot} />
                   <Text style={ss.trendingBadgeTxt}>LIVE</Text>
                 </View>
               </View>
+              <TouchableOpacity style={ss.seeAllBtn} activeOpacity={0.85} onPress={goToPopularFeedTab}>
+                <Text style={ss.seeAllText}>View all</Text>
+                <Ionicons name="chevron-forward" size={14} color={ACCENT} />
+              </TouchableOpacity>
             </View>
-            <Text style={ss.sectionSubtitle}>What the community is talking about</Text>
-            <View style={{ gap: 7 }}>
+            <Text style={ss.sectionSubtitle}>A quick pulse of what people are discussing now</Text>
+            <View style={ss.trendingCompactList}>
               {displayTrending.map((post, i) => (
                 <RankedTrendingCard
                   key={post.id ?? post.post_id ?? `tp-${i}`}
@@ -1937,12 +1940,6 @@ export default function DiscoveryScreen() {
                 />
               ))}
             </View>
-            <HotArticlesSection articles={popularThisWeek} navigation={navigation} />
-            <TouchableOpacity style={ss.viewMoreBtn} activeOpacity={0.85} onPress={goToPopularFeedTab}>
-              <Ionicons name="flame-outline" size={14} color={ACCENT} />
-              <Text style={ss.viewMoreText}>View All Trending Posts</Text>
-              <Ionicons name="arrow-forward" size={14} color={ACCENT} />
-            </TouchableOpacity>
           </View>
         );
 
@@ -1951,6 +1948,36 @@ export default function DiscoveryScreen() {
 
       case 'featured_business':
         return <FeaturedBusinessSection navigation={navigation} token={token} shuffleKey={shuffleKey} />;
+
+      case 'marketplace_picks':
+        return (
+          <View style={ss.section}>
+            <View style={ss.sectionHeader}>
+              <View style={ss.sectionTitleRow}>
+                <View style={ss.sectionAccent} />
+                <Text style={ss.sectionTitle}>Marketplace Picks</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('MarketplaceScreen')} activeOpacity={0.8} style={ss.seeAllBtn}>
+                <Text style={ss.seeAllText}>Shop more</Text>
+                <Ionicons name="chevron-forward" size={14} color={ACCENT} />
+              </TouchableOpacity>
+            </View>
+            <Text style={ss.sectionSubtitle}>Fresh products and offers from Hafrik sellers</Text>
+            {marketLoading && displayProducts.length === 0 ? (
+              <View style={ss.sectionLoader}><ActivityIndicator size="small" color={BRAND} /></View>
+            ) : (
+              <View style={ss.marketGrid}>
+                {displayProducts.slice(0, 4).map((product, i) => (
+                  <MarketplaceCard
+                    key={product.id ?? product.post_id ?? `mp-${i}`}
+                    item={product}
+                    onPress={() => navigation.navigate('ProductDetail', { product })}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        );
 
       case 'categories_grid':
         return (
@@ -1968,43 +1995,63 @@ export default function DiscoveryScreen() {
 
       case 'hot_topics':
         return (
-          <View style={ss.section}>
-            <View style={ss.hotHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={ss.hotTitle}>🔥 Hot Topics</Text>
+          <View style={ss.hotTopicsSection}>
+            <LinearGradient
+              colors={[BRAND, '#0f5960']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={ss.hotHero}
+            >
+              <View style={ss.hotOrbOne} />
+              <View style={ss.hotOrbTwo} />
+              <View style={ss.hotHeroTop}>
+                <View style={ss.hotIconBox}>
+                  <Ionicons name="sparkles" size={18} color={ACCENT} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={ss.hotKicker}>LIVE SEARCH IDEAS</Text>
+                  <Text style={ss.hotTitle}>Hot Topics</Text>
+                </View>
                 <View style={ss.hotBadge}><Text style={ss.hotBadgeTxt}>{hotTopics.length}</Text></View>
               </View>
+              <Text style={ss.hotSub}>Tap a topic to jump straight into what the community is exploring.</Text>
               <TouchableOpacity
                 style={ss.shuffleBtn}
-                activeOpacity={0.75}
+                activeOpacity={0.78}
                 onPress={() => setHotTopics(pickRandom(TOPIC_POOL, 5))}
               >
-                <Ionicons name="shuffle" size={17} color={BRAND} />
+                <Ionicons name="shuffle" size={15} color={BRAND} />
+                <Text style={ss.shuffleTxt}>Refresh topics</Text>
               </TouchableOpacity>
-            </View>
-            <Text style={ss.hotSub}>Tap any tag to search posts instantly</Text>
+            </LinearGradient>
+
             <View style={ss.hotTopicsWrap}>
               {hotTopics.map((t, i) => {
                 const palettes = [
-                  { bg: BRAND, text: WHITE, border: BRAND },
-                  { bg: ACCENT, text: DARK, border: ACCENT },
-                  { bg: Colors.warning + '1A', text: Colors.warning, border: Colors.warning },
-                  { bg: BRAND + '12', text: BRAND, border: BRAND + '66' },
-                  { bg: ACCENT + '1A', text: ACCENT, border: ACCENT },
-                  { bg: ACCENT + '1F', text: BRAND, border: ACCENT },
+                  { bg: '#fff7ed', text: '#9a3412', border: '#fed7aa', icon: 'flame' },
+                  { bg: '#ecfeff', text: '#0e7490', border: '#a5f3fc', icon: 'compass' },
+                  { bg: '#f0fdf4', text: '#047857', border: '#bbf7d0', icon: 'trending-up' },
+                  { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe', icon: 'search' },
+                  { bg: '#fefce8', text: '#a16207', border: '#fde68a', icon: 'star' },
                 ];
                 const pal = palettes[i % palettes.length];
                 return (
                   <TouchableOpacity
                     key={`${t}-${i}`}
                     onPress={() => {
-                      navigation.navigate('SearchScreen', { initialQuery: t, initialTab: 'posts' });
+                      navigation.navigate('SearchScreen', { initialQuery: t, initialTab: 'articles' });
                     }}
-                    activeOpacity={0.78}
+                    activeOpacity={0.82}
                     style={[ss.topicPill, { backgroundColor: pal.bg, borderColor: pal.border }]}
                   >
-                    <Text style={[ss.topicHashtag, { color: pal.text, opacity: 0.6 }]}>#</Text>
-                    <Text style={[ss.topicPillText, { color: pal.text }]}>{t}</Text>
+                    <View style={[ss.topicIcon, { backgroundColor: pal.text + '14' }]}>
+                      <Ionicons name={pal.icon} size={13} color={pal.text} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[ss.topicPillText, { color: pal.text }]} numberOfLines={1}>{t}</Text>
+                      <Text style={ss.topicHint}>Search articles</Text>
+                    </View>
+                    <Ionicons name="arrow-forward" size={13} color={pal.text} />
                   </TouchableOpacity>
                 );
               })}
@@ -2060,7 +2107,7 @@ export default function DiscoveryScreen() {
                 contentContainerStyle={{ gap: 8, paddingRight: 4 }}
               >
                 {reels.slice(0, 4).map((r, i) => (
-                  <ReelGridCard key={r.id ?? `reel-${i}`} item={r} onPress={() => handleReelPress(i)} />
+                  <ReelGridCard key={`reel-${r.id ?? i}`} item={r} onPress={() => handleReelPress(i)} />
                 ))}
                 <TouchableOpacity
                   style={ss.reelSeeMoreCard}
@@ -2149,7 +2196,7 @@ export default function DiscoveryScreen() {
 
       case 'community_highlights':
         return (
-          <View style={ss.section}>
+          <View style={ss.communitySection}>
             <SectionHeader title="Suggested Communities" onSeeAll={() => navigation.navigate('GroupScreen')} />
             <Text style={ss.sectionSubtitle}>Join communities that match your interests</Text>
             {communitiesLoading && communities.length === 0 ? (
@@ -2167,14 +2214,23 @@ export default function DiscoveryScreen() {
                     activeOpacity={0.88}
                     onPress={() => navigation.navigate('GroupDetails', { groupId: g.id })}
                   >
-                    {isRealImage(avatar)
-                      ? <Image source={{ uri: avatar }} style={ss.commHAvatar} resizeMode="cover" />
-                      : <LinearGradient colors={[BRAND, Colors.primaryDark]} style={[ss.commHAvatar, { alignItems: 'center', justifyContent: 'center' }]}>
-                          <Ionicons name="people" size={18} color={WHITE} />
-                        </LinearGradient>
-                    }
-                    <Text numberOfLines={1} style={ss.commHName}>{name}</Text>
-                    <Text style={ss.commHSub}>{members} members</Text>
+                    <LinearGradient colors={[BRAND, Colors.primaryDark]} style={ss.commHTop}>
+                      <View style={ss.commHGlow} />
+                      {isRealImage(avatar)
+                        ? <Image source={{ uri: avatar }} style={ss.commHAvatar} resizeMode="cover" />
+                        : <View style={[ss.commHAvatar, ss.imgFallback]}>
+                            <Ionicons name="people" size={20} color={BRAND} />
+                          </View>
+                      }
+                    </LinearGradient>
+                    <View style={ss.commHBody}>
+                      <Text numberOfLines={2} style={ss.commHName}>{name}</Text>
+                      <View style={ss.commHMetaPill}>
+                        <Ionicons name="people-outline" size={10} color={ACCENT} />
+                        <Text style={ss.commHSub}>{members} members</Text>
+                      </View>
+                      <Text style={ss.commHJoin}>View community</Text>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -2262,7 +2318,7 @@ export default function DiscoveryScreen() {
         return null;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayTrending, people, peopleLoading, reels, reelsLoading, communities, communitiesLoading, newUsers, newUsersLoading, articleItems, articleLoading, articleHasMore, articleLoadingMore, articlePage, navigation, token, shuffleKey, hotTopics]);
+  }, [displayTrending, displayProducts, marketLoading, people, peopleLoading, reels, reelsLoading, communities, communitiesLoading, newUsers, newUsersLoading, articleItems, articleLoading, articleHasMore, articleLoadingMore, articlePage, navigation, token, shuffleKey, hotTopics]);
 
   const listHeader = (
     <>
@@ -2368,6 +2424,15 @@ export default function DiscoveryScreen() {
           </View>
 
           <View style={ss.headerRight}>
+            {/* QR Code */}
+            <TouchableOpacity
+              style={ss.iconBtn}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('ProfileQr')}
+            >
+              <Ionicons name="qr-code-outline" size={22} color={WHITE} />
+            </TouchableOpacity>
+
             {/* Notifications */}
             <TouchableOpacity
               style={ss.iconBtn}
@@ -2467,6 +2532,23 @@ const ss = StyleSheet.create({
 
   // ── FAB ──────────────────────────────────────────────────────────────────
   // ── Trending badge ────────────────────────────────────────────────────────
+  trendingCompactSection: {
+    backgroundColor: WHITE,
+    borderRadius: 22,
+    padding: 12,
+    marginTop: 14,
+    marginHorizontal: 14,
+    borderWidth: 1,
+    borderColor: Colors.warning + '22',
+    shadowColor: Colors.warning,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  trendingCompactList: {
+    gap: 7,
+  },
   trendingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2477,6 +2559,12 @@ const ss = StyleSheet.create({
     paddingVertical: 3,
     borderWidth: 1,
     borderColor: Colors.warning + '33',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.warning,
   },
   trendingBadgeTxt: {
     fontSize: 9,
@@ -2630,16 +2718,113 @@ const ss = StyleSheet.create({
   sectionLoader:   { paddingVertical: 14, alignItems: 'center' },
 
   // ── Hot topics ────────────────────────────────────────────────────────────
-  hotHeader:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  hotTitle:      { fontSize: 16, fontWeight: '900', color: DARK },
-  hotBadge:      { backgroundColor: ACCENT, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
-  hotBadgeTxt:   { fontSize: 10, fontWeight: '900', color: WHITE },
-  shuffleBtn:    { width: 36, height: 36, borderRadius: 12, backgroundColor: BRAND + '0F', alignItems: 'center', justifyContent: 'center' },
-  hotSub:        { marginTop: 5, color: MUTED, fontSize: 12 },
-  hotTopicsWrap: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  topicPill:     { flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9, borderWidth: 1.5, gap: 2 },
-  topicHashtag:  { fontSize: 12, fontWeight: '900' },
-  topicPillText: { fontSize: 12.5, fontWeight: '800' },
+  hotTopicsSection: {
+    backgroundColor: WHITE,
+    borderRadius: 24,
+    marginTop: 14,
+    marginHorizontal: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    overflow: 'hidden',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  hotHero: {
+    padding: 16,
+    overflow: 'hidden',
+  },
+  hotOrbOne: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: WHITE,
+    opacity: 0.06,
+    top: -70,
+    right: -40,
+  },
+  hotOrbTwo: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: ACCENT,
+    opacity: 0.16,
+    bottom: -44,
+    left: 30,
+  },
+  hotHeroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  hotIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: WHITE + '18',
+    borderWidth: 1,
+    borderColor: WHITE + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hotKicker: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: WHITE + '99',
+    letterSpacing: 1.6,
+  },
+  hotTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: WHITE,
+    marginTop: 1,
+  },
+  hotBadge: {
+    backgroundColor: ACCENT,
+    borderRadius: 999,
+    minWidth: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  hotBadgeTxt:   { fontSize: 11, fontWeight: '900', color: BRAND },
+  hotSub:        { marginTop: 12, color: WHITE + 'B8', fontSize: 12.5, lineHeight: 18 },
+  shuffleBtn: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: ACCENT,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  shuffleTxt:    { fontSize: 11.5, fontWeight: '900', color: BRAND },
+  hotTopicsWrap: { padding: 12, gap: 9 },
+  topicPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
+    borderWidth: 1.3,
+    gap: 10,
+  },
+  topicIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topicPillText: { fontSize: 13, fontWeight: '900' },
+  topicHint:     { fontSize: 10.5, color: MUTED, marginTop: 1, fontWeight: '600' },
 
   // ── Upgrade to Pro ────────────────────────────────────────────────────────
   proWrap: { marginTop: 12 },
@@ -2780,16 +2965,16 @@ const ss = StyleSheet.create({
   gridCard: {
     width: CARD_W,
     backgroundColor: WHITE,
-    borderRadius: 18,
+    borderRadius: 0,
     overflow: 'hidden',
     marginBottom: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: DARK,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
 
   gridImgWrap: {
@@ -2811,7 +2996,7 @@ const ss = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: ACCENT + 'EB',
-    borderRadius: 100,
+    borderRadius: 0,
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
@@ -2841,7 +3026,7 @@ const ss = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     backgroundColor: DARK + '85',
-    borderRadius: 100,
+    borderRadius: 0,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
@@ -2857,7 +3042,7 @@ const ss = StyleSheet.create({
     top: 7,
     left: 7,
     backgroundColor: BRAND,
-    borderRadius: 100,
+    borderRadius: 0,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
@@ -3116,15 +3301,111 @@ const ss = StyleSheet.create({
   tpStat:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
   tpStatText: { fontSize: 11, color: MUTED },
 
-  // ── Featured business horizontal card ────────────────────────────────────
-  fbCard:     { width: 240, backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
-  fbAvatar:   { width: 52, height: 52, borderRadius: 14, backgroundColor: BRAND + '14', alignItems: 'center', justifyContent: 'center' },
-  fbBody:     { flex: 1, gap: 2 },
+  // ── Featured business cards ──────────────────────────────────────────────
+  featuredBizSection: {
+    backgroundColor: WHITE,
+    borderRadius: 24,
+    paddingVertical: 14,
+    marginTop: 14,
+    marginHorizontal: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: DARK,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  featuredBizHeader: {
+    paddingHorizontal: 14,
+    marginBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  fbCard: {
+    width: 218,
+    backgroundColor: WHITE,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: BRAND + '12',
+    overflow: 'hidden',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  fbCover: {
+    height: 92,
+    backgroundColor: BRAND,
+    overflow: 'hidden',
+  },
+  fbCoverImg: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.72,
+  },
+  fbCoverShade: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  fbVerifiedPill: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: WHITE + 'F2',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  fbVerifiedText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: BRAND,
+    letterSpacing: 0.6,
+  },
+  fbAvatarWrap: {
+    width: 62,
+    height: 62,
+    borderRadius: 19,
+    backgroundColor: WHITE,
+    padding: 4,
+    marginLeft: 14,
+    marginTop: -30,
+    shadowColor: DARK,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  fbAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 15,
+    backgroundColor: BRAND + '14',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fbBody:     { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 14, gap: 4 },
   fbNameRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  fbName:     { fontSize: 13, fontWeight: '900', color: DARK, flex: 1 },
-  fbCat:      { fontSize: 11, color: ACCENT, fontWeight: '600' },
-  fbDesc:     { fontSize: 11, color: MUTED, lineHeight: 15 },
-  fbFollowers:{ fontSize: 10, color: MUTED, marginTop: 2 },
+  fbName:     { fontSize: 14, fontWeight: '900', color: DARK, flex: 1, lineHeight: 18 },
+  fbCat:      { fontSize: 11, color: ACCENT, fontWeight: '800' },
+  fbDesc:     { fontSize: 11, color: MUTED, lineHeight: 15, minHeight: 30 },
+  fbFooter:   { marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  fbFollowers:{ fontSize: 10, color: MUTED, fontWeight: '700', flex: 1 },
+  fbOpenPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: ACCENT,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+  },
+  fbOpenText: { fontSize: 10, fontWeight: '900', color: BRAND },
 
   // ── Quick Access chips ────────────────────────────────────────────────────
   qaChip:      { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: BRAND + '0F', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: BRAND + '14' },
@@ -3241,14 +3522,73 @@ const ss = StyleSheet.create({
   eventMeta:   { fontSize: 11, color: MUTED },
 
   // ── Community highlight card (horizontal scroll) ──────────────────────────
-  commHCard: {
-    width: 148, alignItems: 'center', backgroundColor: WHITE, borderRadius: 20, padding: 16,
-    borderWidth: 1, borderColor: BORDER, gap: 8,
-    shadowColor: DARK, shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.07, shadowRadius: 10, elevation: 3,
+  communitySection: {
+    backgroundColor: WHITE,
+    borderRadius: 24,
+    padding: 12,
+    marginTop: 14,
+    marginHorizontal: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: DARK,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 5,
   },
-  commHAvatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: BRAND + '14' },
-  commHName:   { fontSize: 13, fontWeight: '800', color: DARK, textAlign: 'center' },
-  commHSub:    { fontSize: 10, color: MUTED, textAlign: 'center' },
+  commHCard: {
+    width: 164,
+    backgroundColor: WHITE,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: BRAND + '12',
+    overflow: 'hidden',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  commHTop: {
+    height: 82,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  commHGlow: {
+    position: 'absolute',
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    backgroundColor: WHITE,
+    opacity: 0.08,
+    top: -54,
+    right: -34,
+  },
+  commHAvatar: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: WHITE,
+    borderWidth: 3,
+    borderColor: WHITE,
+  },
+  commHBody: {
+    padding: 12,
+    alignItems: 'center',
+    gap: 8,
+  },
+  commHName:   { fontSize: 13, fontWeight: '900', color: DARK, textAlign: 'center', lineHeight: 17, minHeight: 34 },
+  commHMetaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: ACCENT + '14',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  commHSub:    { fontSize: 10, color: ACCENT, textAlign: 'center', fontWeight: '800' },
+  commHJoin:   { fontSize: 11, color: BRAND, fontWeight: '900' },
 
 });

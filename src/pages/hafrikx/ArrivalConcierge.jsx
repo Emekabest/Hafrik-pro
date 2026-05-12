@@ -1,253 +1,363 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, FlatList,
-  TouchableOpacity, StatusBar, Dimensions,
+  View, Text, StyleSheet, ScrollView,
+  TouchableOpacity, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-const { width: W } = Dimensions.get('window');
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const BRAND  = '#0c3f44';
+const TEAL   = '#1f8e93';
+const GOLD   = '#d4a017';
+const BG     = '#f4f9fa';
+const CARD   = '#ffffff';
+const BORDER = '#ddeaec';
+const DARK   = '#0d2b2e';
+const MUTED  = '#5f7275';
+const WHITE  = '#ffffff';
+const GREEN  = '#1a9e5c';
 
-const BG    = '#f7fff7';
-const CARD  = '#ffffff';
-const BORDER= '#e4eeef';
-const MUTED = '#5f6b6d';
-const WHITE = '#ffffff';
-const BRAND = '#0c3f44';
-const TEAL  = '#1f8e93';
+const a = (hex, alpha) => {
+  const n = Math.round(alpha * 255).toString(16).padStart(2, '0');
+  return `${hex}${n}`;
+};
 
-const STEPS = [
-  { num: '01', icon: 'create-outline',     title: 'Fill the Form',       desc: 'Tell us your flight date, arrival city and what services you need.' },
-  { num: '02', icon: 'chatbubble-outline', title: 'Agent Confirms',      desc: 'A HafrikX agent contacts you within 2 hours to confirm details.' },
-  { num: '03', icon: 'card-outline',       title: 'Make Payment',        desc: 'Pay securely through the app. No hidden charges.' },
-  { num: '04', icon: 'airplane-outline',   title: 'Land & Be Received',  desc: 'Your driver and guide are already at the airport waiting for you.' },
+// ─── Data ─────────────────────────────────────────────────────────────────────
+const TRANSFER_VEHICLES = [
+  { icon: 'car-outline',       label: '5-Seat Standard Car',      price: '$150',  tag: 'Round Trip' },
+  { icon: 'car-sport-outline', label: '5-Seat Mid & Large SUV',   price: '$180',  tag: 'Round Trip' },
+  { icon: 'bus-outline',       label: '7-Seat Business Vehicle',  price: '$220',  tag: 'Round Trip' },
+  { icon: 'star-outline',      label: 'Luxury / Large Vehicle',   price: '$300',  tag: 'Round Trip' },
 ];
 
-const SERVICES = [
-  { icon: 'car-sport',      label: 'Airport Pickup',    desc: 'Driver meets you at the arrival hall with a name sign.' },
-  { icon: 'bed',            label: 'Hotel Booking',     desc: 'Recommended hotels near trade markets, sorted for you.' },
-  { icon: 'phone-portrait', label: 'SIM Card',          desc: 'Chinese SIM with data, ready the moment you land.' },
-  { icon: 'language',       label: 'Translator',        desc: 'English-Chinese interpreter available daily.' },
-  { icon: 'map',            label: 'Market Guide',      desc: 'Expert local guide around Guangzhou & Yiwu markets.' },
-  { icon: 'wallet',         label: 'Payment Support',   desc: 'WeChat Pay & Alipay setup and top-up assistance.' },
+const INSPECTION_VEHICLES = [
+  { icon: 'car-outline',       label: '5-Seat Standard Car',      price: '$180',  tag: 'Per Day' },
+  { icon: 'car-sport-outline', label: '5-Seat Mid & Large SUV',   price: '$210',  tag: 'Per Day' },
+  { icon: 'bus-outline',       label: '7-Seat Business Vehicle',  price: '$270',  tag: 'Per Day' },
+  { icon: 'star-outline',      label: 'Luxury / Large Vehicle',   price: '$380',  tag: 'Per Day' },
 ];
 
-const SLIDE_W = W - 64;
+const HOTELS = [
+  {
+    icon:  'bed-outline',
+    tier:  'Budget Business Hotel',
+    start: 'From $30',
+    unit:  'per room / night',
+    color: TEAL,
+  },
+  {
+    icon:  'business-outline',
+    tier:  'Mid-Range Chain Boutique Hotel',
+    start: 'From $50',
+    unit:  'per room / night',
+    color: GOLD,
+  },
+  {
+    icon:  'diamond-outline',
+    tier:  'High-End 4–5 Star Hotel',
+    start: 'From $200',
+    unit:  'per room / night',
+    color: '#9b59b6',
+  },
+];
 
-const ServiceSlide = ({ item }) => (
-  <View style={styles.svcCard}>
-    <LinearGradient colors={[BRAND, TEAL]} style={styles.svcIconBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-      <Ionicons name={item.icon} size={22} color={WHITE} />
-    </LinearGradient>
-    <Text style={styles.svcLabel}>{item.label}</Text>
-    <Text style={styles.svcDesc}>{item.desc}</Text>
-  </View>
-);
+// ─── Section header ───────────────────────────────────────────────────────────
+function SectionHead({ num, title, icon, color = TEAL }) {
+  return (
+    <View style={s.secHead}>
+      <LinearGradient colors={[BRAND, color]} style={s.secNum} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <Text style={s.secNumTxt}>{num}</Text>
+      </LinearGradient>
+      <View style={[s.secIconBox, { backgroundColor: a(color, 0.1) }]}>
+        <Ionicons name={icon} size={16} color={color} />
+      </View>
+      <Text style={s.secTitle}>{title}</Text>
+    </View>
+  );
+}
 
+// ─── Vehicle row ──────────────────────────────────────────────────────────────
+function VehicleRow({ item, isLast, accentColor = TEAL }) {
+  return (
+    <View style={[s.vRow, isLast && { borderBottomWidth: 0 }]}>
+      <View style={[s.vIconBox, { backgroundColor: a(accentColor, 0.09) }]}>
+        <Ionicons name={item.icon} size={17} color={accentColor} />
+      </View>
+      <Text style={s.vLabel}>{item.label}</Text>
+      <View style={s.vPriceWrap}>
+        <Text style={[s.vPrice, { color: accentColor }]}>{item.price}</Text>
+        <Text style={s.vTag}>{item.tag}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 export default function ArrivalConcierge() {
   const navigation = useNavigation();
   const insets     = useSafeAreaInsets();
-  const flatRef    = useRef(null);
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#0c3f44" translucent={false} />
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} translucent={false} />
 
-      {/* ── Header ── */}
-      <LinearGradient colors={["#0c3f44", "#1a5a60"]} style={[styles.header, { paddingTop: insets.top + 14 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={21} color={WHITE} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Arrival Concierge</Text>
-          <Text style={styles.headerSub}>HafrikX Premium Service</Text>
-        </View>
-        <View style={{ width: 38 }} />
-      </LinearGradient>
+      <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[]} bounces>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-
-        {/* ── Hero Card ── */}
+        {/* ── Hero header (scrolls away) ── */}
         <LinearGradient
-          colors={[BRAND, TEAL]}
-          style={styles.hero}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={[BRAND, '#144f55', TEAL]}
+          style={[s.hero, { paddingTop: insets.top + 18 }]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         >
-          <View style={styles.heroCircle} />
+          {/* blobs */}
+          <View style={s.blob1} />
+          <View style={s.blob2} />
 
-          <View style={styles.heroLeft}>
-            <Text style={styles.heroTag}>PREMIUM ARRIVAL</Text>
-            <Text style={styles.heroTitle}>Arrive in China{'\n'}like a Pro</Text>
-            <Text style={styles.heroSub}>
-              Airport pickup · Hotel · SIM · Guide{'\n'}all handled before you land.
-            </Text>
-            <View style={styles.heroBadgeRow}>
-              <View style={styles.heroBadge}>
-                <Ionicons name="shield-checkmark" size={11} color={WHITE} />
-                <Text style={styles.heroBadgeTxt}>Verified Service</Text>
-              </View>
-              <View style={styles.heroBadge}>
-                <Ionicons name="people" size={11} color={WHITE} />
-                <Text style={styles.heroBadgeTxt}>500+ Served</Text>
-              </View>
-            </View>
+          <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+            <Ionicons name="arrow-back" size={20} color={WHITE} />
+          </TouchableOpacity>
+
+          <View style={s.heroBadge}>
+            <Ionicons name="shield-checkmark" size={11} color={WHITE} />
+            <Text style={s.heroBadgeTxt}>HAFRIKX VERIFIED</Text>
           </View>
 
-          <View style={styles.heroRight}>
-            <View style={styles.heroIconRing}>
-              <Ionicons name="airplane" size={36} color={WHITE} />
-            </View>
-            <Text style={styles.heroCities}>GZ · YW · SH</Text>
+          <View style={s.heroIconRing}>
+            <Ionicons name="airplane" size={34} color={WHITE} />
+          </View>
+
+          <Text style={s.heroTitle}>Foreign Merchant{'\n'}Reception Service</Text>
+          <Text style={s.heroSub}>
+            Airport transfer · Factory inspection · Hotel booking{'\n'}for international business travellers to China.
+          </Text>
+
+          <View style={s.heroTagRow}>
+            {['Airport Transfer', 'Hotel Booking', 'Factory Tour'].map(t => (
+              <View key={t} style={s.heroTag}>
+                <Text style={s.heroTagTxt}>{t}</Text>
+              </View>
+            ))}
           </View>
         </LinearGradient>
 
-        {/* ── How It Works ── */}
-        <Text style={styles.sectionLabel}>HOW IT WORKS</Text>
-        <View style={styles.stepsCard}>
-          {STEPS.map((step, i) => (
-            <View key={step.num}>
-              <View style={styles.stepRow}>
-                <View style={styles.stepLeftCol}>
-                  <LinearGradient colors={[BRAND, TEAL]} style={styles.stepNumCircle} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                    <Text style={styles.stepNumTxt}>{step.num}</Text>
-                  </LinearGradient>
-                  {i < STEPS.length - 1 && <View style={styles.stepLine} />}
-                </View>
-                <View style={styles.stepBody}>
-                  <View style={styles.stepTitleRow}>
-                    <Ionicons name={step.icon} size={15} color={TEAL} style={{ marginRight: 6 }} />
-                    <Text style={styles.stepTitle}>{step.title}</Text>
-                  </View>
-                  <Text style={styles.stepDesc}>{step.desc}</Text>
-                </View>
+        <View style={s.body}>
+
+          {/* ════════════════════════════════════════
+              SECTION 1 — Airport Transfer
+          ════════════════════════════════════════ */}
+          <SectionHead num="1" title="Round-Trip Airport Transfer" icon="car-outline" color={TEAL} />
+
+          <View style={s.card}>
+            {TRANSFER_VEHICLES.map((v, i) => (
+              <VehicleRow key={i} item={v} isLast={i === TRANSFER_VEHICLES.length - 1} accentColor={TEAL} />
+            ))}
+          </View>
+
+          <View style={s.infoStrip}>
+            <Ionicons name="information-circle-outline" size={15} color={TEAL} />
+            <Text style={s.infoStripTxt}>Prices are per round trip (airport pick-up + drop-off).</Text>
+          </View>
+
+          {/* ════════════════════════════════════════
+              SECTION 2 — Daily Inspection
+          ════════════════════════════════════════ */}
+          <SectionHead num="2" title="Daily Inspection & Accompaniment" icon="search-outline" color={GREEN} />
+
+          {/* Guangzhou-only badge */}
+          <View style={s.restrictionBanner}>
+            <Ionicons name="location" size={14} color={GREEN} />
+            <Text style={s.restrictionTxt}>
+              <Text style={{ fontWeight: '800', color: GREEN }}>Guangzhou only</Text>
+              {'  '}·{'  '}Excludes Shenzhen, Dongguan & Foshan
+            </Text>
+          </View>
+
+          {/* Service highlights */}
+          <View style={s.highlightRow}>
+            {[
+              { icon: 'time-outline',         label: '9 hrs / day' },
+              { icon: 'navigate-outline',     label: 'Route planning' },
+              { icon: 'business-outline',     label: '2–3 factories' },
+            ].map((h, i) => (
+              <View key={i} style={s.highlightPill}>
+                <Ionicons name={h.icon} size={14} color={GREEN} />
+                <Text style={s.highlightTxt}>{h.label}</Text>
               </View>
+            ))}
+          </View>
+
+          <View style={s.card}>
+            {INSPECTION_VEHICLES.map((v, i) => (
+              <VehicleRow key={i} item={v} isLast={i === INSPECTION_VEHICLES.length - 1} accentColor={GREEN} />
+            ))}
+          </View>
+
+          {/* Remark */}
+          <View style={[s.remarkCard, { borderLeftColor: GREEN }]}>
+            <Ionicons name="checkmark-circle" size={15} color={GREEN} style={{ marginTop: 1 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.remarkTitle}>100% Genuine Factories — No Middlemen</Text>
+              <Text style={s.remarkBody}>
+                We recommend 3 suitable factories for selection based on your product type and sourcing needs.
+              </Text>
             </View>
-          ))}
+          </View>
+
+          {/* ════════════════════════════════════════
+              SECTION 3 — Hotel Reservation
+          ════════════════════════════════════════ */}
+          <SectionHead num="3" title="Hotel Reservation Service" icon="bed-outline" color={GOLD} />
+
+          <View style={s.card}>
+            {HOTELS.map((h, i) => (
+              <View key={i} style={[s.hotelRow, i === HOTELS.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={[s.hotelIconBox, { backgroundColor: a(h.color, 0.1) }]}>
+                  <Ionicons name={h.icon} size={17} color={h.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.hotelTier}>{h.tier}</Text>
+                  <Text style={s.hotelUnit}>{h.unit}</Text>
+                </View>
+                <Text style={[s.hotelPrice, { color: h.color }]}>{h.start}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={s.infoStrip}>
+            <Ionicons name="information-circle-outline" size={15} color={GOLD} />
+            <Text style={[s.infoStripTxt, { color: '#8a6800' }]}>
+              Hotel prices follow real-time quotations. You may also book directly.
+            </Text>
+          </View>
+
+          {/* ════════════════════════════════════════
+              SECTION 4 — Supplementary Terms
+          ════════════════════════════════════════ */}
+          <SectionHead num="4" title="Supplementary Terms" icon="document-text-outline" color={MUTED} />
+
+          <View style={[s.card, s.termsCard]}>
+            {[
+              { icon: 'moon-outline',        text: 'Night service charges may apply for late or early flights.' },
+              { icon: 'time-outline',        text: 'Overtime charges apply beyond the standard service window.' },
+              { icon: 'map-outline',         text: 'Road tolls and bridge charges billed at cost.' },
+              { icon: 'alert-circle-outline',text: 'Additional terms may be supplemented as required.' },
+            ].map((t, i, arr) => (
+              <View key={i} style={[s.termRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={[s.termIconBox, { backgroundColor: a(MUTED, 0.08) }]}>
+                  <Ionicons name={t.icon} size={15} color={MUTED} />
+                </View>
+                <Text style={s.termTxt}>{t.text}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── CTA ── */}
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => navigation.navigate('ArrivalTripDetails')}
+          >
+            <LinearGradient
+              colors={[BRAND, TEAL]}
+              style={s.ctaBtn}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="airplane" size={19} color={WHITE} />
+              <Text style={s.ctaTxt}>Book This Service</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={s.ctaSecondary}
+            activeOpacity={0.75}
+            onPress={() => navigation.navigate('ArrivalMyBookings')}
+          >
+            <Ionicons name="receipt-outline" size={15} color={TEAL} />
+            <Text style={s.ctaSecondaryTxt}>View My Bookings</Text>
+          </TouchableOpacity>
+
+          <View style={{ height: 40 }} />
         </View>
-
-        {/* ── Services Slider ── */}
-        <Text style={styles.sectionLabel}>WHAT'S INCLUDED</Text>
-        <FlatList
-          ref={flatRef}
-          data={SERVICES}
-          keyExtractor={s => s.label}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={SLIDE_W + 12}
-          decelerationRate="fast"
-          contentContainerStyle={styles.svcList}
-          renderItem={({ item }) => <ServiceSlide item={item} />}
-        />
-
-        {/* ── Cities ── */}
-        <Text style={[styles.sectionLabel, { marginTop: 20 }]}>CITIES COVERED</Text>
-        <View style={styles.citiesRow}>
-          {['Guangzhou', 'Yiwu', 'Shanghai', 'Shenzhen'].map(city => (
-            <View key={city} style={styles.cityPill}>
-              <Ionicons name="location" size={12} color={TEAL} />
-              <Text style={styles.cityPillTxt}>{city}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Notice ── */}
-        <View style={styles.noticeBox}>
-          <Ionicons name="time-outline" size={16} color={TEAL} />
-          <Text style={styles.noticeTxt}>
-            Book at least <Text style={{ color: TEAL, fontFamily: 'WorkSans_700Bold' }}>48 hours</Text> before your flight for guaranteed availability.
-          </Text>
-        </View>
-
-        {/* ── CTA ── */}
-        <TouchableOpacity activeOpacity={0.88} style={styles.ctaBtn} onPress={() => navigation.navigate('ArrivalTripDetails')}>
-          <LinearGradient colors={[BRAND, TEAL]} style={styles.ctaGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Ionicons name="airplane" size={19} color={WHITE} />
-            <Text style={styles.ctaTxt}>Book Arrival Package</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.ctaSecondary} activeOpacity={0.75} onPress={() => navigation.navigate('ArrivalMyBookings')}>
-          <Ionicons name="receipt-outline" size={15} color={TEAL} />
-          <Text style={styles.ctaSecondaryTxt}>View My Bookings</Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: BG },
-  scroll: { paddingHorizontal: 16, paddingTop: 16 },
-
-  // Header
-  header:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
-  backBtn:     { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  headerCenter:{ flex: 1, alignItems: 'center' },
-  headerTitle: { color: '#ffffff', fontSize: 17, fontFamily: 'ReadexPro_600SemiBold' },
-  headerSub:   { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'WorkSans_400Regular', marginTop: 2 },
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
 
   // Hero
-  hero:        { borderRadius: 20, padding: 22, flexDirection: 'row', alignItems: 'center', marginBottom: 26, overflow: 'hidden' },
-  heroCircle:  { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.06)', right: -50, top: -50 },
-  heroLeft:    { flex: 1 },
-  heroTag:     { color: 'rgba(255,255,255,0.7)', fontSize: 9, fontFamily: 'WorkSans_700Bold', letterSpacing: 1.8, marginBottom: 8 },
-  heroTitle:   { color: WHITE, fontSize: 22, fontFamily: 'ReadexPro_600SemiBold', lineHeight: 30, marginBottom: 8 },
-  heroSub:     { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontFamily: 'WorkSans_400Regular', lineHeight: 18, marginBottom: 14 },
-  heroBadgeRow:{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  heroBadge:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, paddingHorizontal: 9, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  heroBadgeTxt:{ color: WHITE, fontSize: 10, fontFamily: 'WorkSans_600SemiBold' },
-  heroRight:   { alignItems: 'center', marginLeft: 14, gap: 10 },
-  heroIconRing:{ width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-  heroCities:  { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontFamily: 'WorkSans_600SemiBold', letterSpacing: 1 },
+  hero: { paddingHorizontal: 20, paddingBottom: 28, overflow: 'hidden' },
+  blob1: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.05)', right: -60, top: -60 },
+  blob2: { position: 'absolute', width: 140, height: 140, borderRadius: 70,  backgroundColor: 'rgba(255,255,255,0.05)', left: -40,  bottom: -40 },
+  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  heroBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', marginBottom: 18 },
+  heroBadgeTxt: { color: WHITE, fontSize: 9.5, fontWeight: '800', letterSpacing: 1.2 },
+  heroIconRing: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', marginBottom: 16 },
+  heroTitle: { color: WHITE, fontSize: 24, fontWeight: '800', lineHeight: 32, marginBottom: 10 },
+  heroSub: { color: 'rgba(255,255,255,0.75)', fontSize: 12.5, lineHeight: 19, marginBottom: 20 },
+  heroTagRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  heroTag: { backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  heroTagTxt: { color: WHITE, fontSize: 11, fontWeight: '600' },
 
-  // Section label
-  sectionLabel: { color: MUTED, fontSize: 10, fontFamily: 'WorkSans_700Bold', letterSpacing: 1.6, marginBottom: 12 },
+  // Body
+  body: { paddingHorizontal: 16, paddingTop: 24 },
 
-  // Steps
-  stepsCard:     { backgroundColor: CARD, borderRadius: 18, borderWidth: 1, borderColor: BORDER, padding: 20, marginBottom: 24 },
-  stepRow:       { flexDirection: 'row' },
-  stepLeftCol:   { width: 36, alignItems: 'center' },
-  stepNumCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  stepNumTxt:    { color: WHITE, fontSize: 11, fontFamily: 'WorkSans_700Bold' },
-  stepLine:      { flex: 1, width: 2, backgroundColor: BORDER, marginVertical: 6, minHeight: 28 },
-  stepBody:      { flex: 1, paddingLeft: 12, paddingBottom: 20 },
-  stepTitleRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
-  stepTitle:     { color: BRAND, fontSize: 14, fontFamily: 'WorkSans_600SemiBold' },
-  stepDesc:      { color: MUTED, fontSize: 12.5, fontFamily: 'WorkSans_400Regular', lineHeight: 18 },
+  // Section head
+  secHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  secNum: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  secNumTxt: { color: WHITE, fontSize: 12, fontWeight: '800' },
+  secIconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  secTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: DARK },
 
-  // Services slider
-  svcList: { paddingLeft: 0, paddingRight: 16, gap: 12 },
-  svcCard: {
-    width: SLIDE_W,
-    backgroundColor: CARD,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 18,
-    gap: 10,
-  },
-  svcIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  svcLabel:   { color: BRAND, fontSize: 15, fontFamily: 'WorkSans_600SemiBold' },
-  svcDesc:    { color: MUTED, fontSize: 13, fontFamily: 'WorkSans_400Regular', lineHeight: 19 },
+  // Card
+  card: { backgroundColor: CARD, borderRadius: 18, borderWidth: 1, borderColor: BORDER, marginBottom: 12, overflow: 'hidden' },
 
-  // Cities
-  citiesRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
-  cityPill:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: CARD, borderRadius: 20, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 14, paddingVertical: 7 },
-  cityPillTxt:{ color: BRAND, fontSize: 12.5, fontFamily: 'WorkSans_500Medium' },
+  // Vehicle row
+  vRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: a(BORDER, 0.8) },
+  vIconBox: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  vLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: DARK },
+  vPriceWrap: { alignItems: 'flex-end' },
+  vPrice: { fontSize: 16, fontWeight: '800' },
+  vTag: { fontSize: 10, color: MUTED, fontWeight: '500', marginTop: 1 },
 
-  // Notice
-  noticeBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: TEAL + '0d', borderRadius: 12, borderWidth: 1, borderColor: TEAL + '2a', padding: 14, marginBottom: 20 },
-  noticeTxt: { flex: 1, color: BRAND, fontSize: 12.5, fontFamily: 'WorkSans_400Regular', lineHeight: 18 },
+  // Info strip
+  infoStrip: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: a(TEAL, 0.07), borderRadius: 12, borderWidth: 1, borderColor: a(TEAL, 0.18), padding: 11, marginBottom: 24 },
+  infoStripTxt: { flex: 1, fontSize: 12, color: '#1a5f63', fontWeight: '500', lineHeight: 17 },
+
+  // Restriction banner
+  restrictionBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: a(GREEN, 0.08), borderRadius: 12, borderWidth: 1, borderColor: a(GREEN, 0.2), paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 },
+  restrictionTxt: { flex: 1, fontSize: 12.5, color: '#145a38', lineHeight: 18 },
+
+  // Highlights
+  highlightRow: { flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
+  highlightPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: a(GREEN, 0.08), borderRadius: 20, borderWidth: 1, borderColor: a(GREEN, 0.2), paddingHorizontal: 12, paddingVertical: 6 },
+  highlightTxt: { fontSize: 12, fontWeight: '600', color: GREEN },
+
+  // Remark card
+  remarkCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: a(GREEN, 0.06), borderRadius: 14, borderWidth: 1, borderColor: a(GREEN, 0.2), borderLeftWidth: 4, padding: 14, marginBottom: 26 },
+  remarkTitle: { fontSize: 13, fontWeight: '800', color: DARK, marginBottom: 4 },
+  remarkBody: { fontSize: 12, color: MUTED, lineHeight: 17 },
+
+  // Hotel row
+  hotelRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: a(BORDER, 0.8) },
+  hotelIconBox: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  hotelTier: { fontSize: 13, fontWeight: '700', color: DARK, marginBottom: 2 },
+  hotelUnit: { fontSize: 10.5, color: MUTED },
+  hotelPrice: { fontSize: 15, fontWeight: '800' },
+
+  // Terms
+  termsCard: { marginBottom: 24 },
+  termRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 11, paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: a(BORDER, 0.8) },
+  termIconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  termTxt: { flex: 1, fontSize: 13, color: MUTED, lineHeight: 19 },
 
   // CTA
-  ctaBtn:         { marginBottom: 12 },
-  ctaGrad:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 15, paddingVertical: 17 },
-  ctaTxt:         { color: WHITE, fontSize: 16, fontFamily: 'WorkSans_700Bold' },
-  ctaSecondary:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 13, paddingVertical: 14, borderWidth: 1, borderColor: TEAL + '44', backgroundColor: TEAL + '0a' },
-  ctaSecondaryTxt:{ color: TEAL, fontSize: 14, fontFamily: 'WorkSans_600SemiBold' },
+  ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 15, paddingVertical: 17, marginBottom: 12 },
+  ctaTxt: { color: WHITE, fontSize: 16, fontWeight: '800' },
+  ctaSecondary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 13, paddingVertical: 14, borderWidth: 1, borderColor: a(TEAL, 0.3), backgroundColor: a(TEAL, 0.07) },
+  ctaSecondaryTxt: { color: TEAL, fontSize: 14, fontWeight: '700' },
 });

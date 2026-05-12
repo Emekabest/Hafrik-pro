@@ -159,6 +159,11 @@ const Header = ({
           />
 
           <IconBtn
+            name="qr-code-outline"
+            onPress={() => navigation.navigate('ProfileQr')}
+          />
+
+          <IconBtn
             name="notifications-outline"
             count={notificationCount}
             onPress={onOpenNotifications}

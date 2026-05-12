@@ -386,8 +386,8 @@ export default function AboutUsScreen() {
               },
               {
                 icon: 'storefront',
-                title: 'Marketplace',
-                text: 'Buy, sell, and promote services — a local and global marketplace in one place.',
+                title: 'Hafrik Shop',
+                text: 'Buy, sell, and promote services — a local and global shop in one place.',
                 gradient: [PURPLE, '#5b21b6'],
                 delay: 340,
               },

@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../AuthContext';
@@ -43,19 +44,152 @@ const getMeta = (action) =>
 const FILTER_TABS = [
   { id: 'All',      label: 'All',      icon: 'layers-outline'           },
   { id: 'Unread',   label: 'Unread',   icon: 'radio-button-on-outline'  },
-  { id: 'Mentions', label: 'Mentions', icon: 'at-outline'               },
-  { id: 'Messages', label: 'Messages', icon: 'paper-plane-outline'      },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const apiFetch = async (path, token, opts = {}) => {
+  const { headers: extraHeaders, ...rest } = opts;
   try {
     const res = await fetch(`${BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      ...opts,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        ...(extraHeaders ?? {}),
+      },
+      ...rest,
     });
-    return await res.json();
+    const json = await res.json().catch(() => null);
+    return { ...(json ?? {}), _ok: res.ok, _status: res.status };
   } catch { return null; }
+};
+
+const getNotifId = (item) => item?.id ?? item?.notification_id ?? item?.notify_id ?? null;
+const getNotifKey = (item, fallback = 0) => {
+  const id = getNotifId(item) ?? 'no-id';
+  const action = item?.action ?? item?.type ?? item?.node_type ?? 'notification';
+  const created = item?.created_at ?? item?.time ?? 'no-time';
+  const node = item?.post_id ?? item?.postId ?? item?.node_id ?? item?.conversation_id ?? item?.from_user_id ?? 'no-node';
+  return `${id}-${action}-${created}-${node}-${fallback}`;
+};
+
+const uniqueNotifications = (items = []) => {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = getNotifKey(item, 'same');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const CONTENT_ACTIONS = new Set([
+  'react_like', 'like', 'reaction', 'react', 'comment', 'reply',
+  'mention', 'share', 'repost', 'post', 'feed', 'comment_like',
+  'like_comment', 'comment_reply', 'post_comment', 'post_like',
+]);
+
+const firstValue = (...values) => values.find((v) => v !== undefined && v !== null && String(v).trim() !== '');
+
+const getNested = (item = {}, key) => firstValue(
+  item?.[key],
+  item?.data?.[key],
+  item?.payload?.[key],
+  item?.meta?.[key],
+  item?.extra?.[key],
+  item?.notification?.[key],
+);
+
+const extractPostIdFromText = (value) => {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  if (!text) return null;
+  const patterns = [
+    /(?:post|posts|feed|feeds)\/(\d+)/i,
+    /(?:post_id|postId|feed_id|feedId)=([0-9]+)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+};
+
+const TARGET_POST_TYPES = new Set(['post', 'feed', 'comment', 'reply', 'reaction', 'mention']);
+
+const getTargetPostId = (item = {}) => {
+  const action = String(item.action ?? item.type ?? '').toLowerCase();
+  const nodeType = String(item.node_type ?? item.object_type ?? item.target_type ?? '').toLowerCase();
+
+  // Handle { target: { id, type } } shape returned by the API
+  const targetObj = item.target ?? item.object ?? null;
+  const targetObjType = String(targetObj?.type ?? '').toLowerCase();
+  const targetObjId = targetObj?.id ?? null;
+
+  const raw = firstValue(
+    getNested(item, 'post_id'),
+    getNested(item, 'postId'),
+    getNested(item, 'feed_id'),
+    getNested(item, 'feedId'),
+    getNested(item, 'target_post_id'),
+    getNested(item, 'targetPostId'),
+    getNested(item, 'parent_post_id'),
+    getNested(item, 'parentPostId'),
+    item.post?.id,
+    item.post?.post_id,
+    item.feed?.id,
+    item.feed?.post_id,
+    TARGET_POST_TYPES.has(targetObjType) ? targetObjId : undefined,
+  );
+  if (raw) return raw;
+
+  const linkRaw = firstValue(
+    getNested(item, 'url'),
+    getNested(item, 'link'),
+    getNested(item, 'permalink'),
+    getNested(item, 'target_url'),
+    getNested(item, 'notification_url'),
+    getNested(item, 'redirect_url'),
+  );
+  const linkPostId = extractPostIdFromText(linkRaw);
+  if (linkPostId) return linkPostId;
+
+  const nodeLooksLikePost =
+    nodeType.includes('post') ||
+    nodeType.includes('feed') ||
+    nodeType.includes('comment') ||
+    nodeType.includes('reaction') ||
+    nodeType.includes('mention') ||
+    CONTENT_ACTIONS.has(action);
+
+  const nodeLooksLikeUser =
+    nodeType.includes('user') ||
+    nodeType.includes('profile') ||
+    nodeType.includes('friend') ||
+    nodeType.includes('follow');
+
+  return nodeLooksLikePost && !nodeLooksLikeUser
+    ? firstValue(getNested(item, 'node_id'), getNested(item, 'object_id'), getNested(item, 'target_id'))
+    : null;
+};
+
+const getTargetCommentId = (item = {}) => {
+  const nodeType = String(item.node_type ?? item.object_type ?? item.target_type ?? '').toLowerCase();
+  const action = String(item.action ?? item.type ?? '').toLowerCase();
+  const explicit = firstValue(
+    getNested(item, 'comment_id'),
+    getNested(item, 'commentId'),
+    getNested(item, 'target_comment_id'),
+    getNested(item, 'targetCommentId'),
+    getNested(item, 'reply_id'),
+    getNested(item, 'replyId'),
+    item.comment?.id,
+    item.comment?.comment_id,
+  );
+  if (explicit) return explicit;
+  if (nodeType.includes('comment') || nodeType.includes('reply') || action.includes('comment') || action.includes('reply')) {
+    return firstValue(getNested(item, 'node_id'), getNested(item, 'object_id'), getNested(item, 'target_id'));
+  }
+  return null;
 };
 
 const timeAgo = (d) => {
@@ -142,8 +276,7 @@ const InlineFollowBtn = React.memo(({ userId, initialFollowing, token }) => {
 });
 
 // ── Notification row (TikTok-style) ──────────────────────────────────────
-const NotifRow = React.memo(({ item, index, onDelete, token, currentUserId }) => {
-  const navigation = useNavigation();
+const NotifRow = React.memo(({ item, index, onDelete, onOpen, token, currentUserId }) => {
   const fade  = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(1)).current;
 
@@ -164,7 +297,7 @@ const NotifRow = React.memo(({ item, index, onDelete, token, currentUserId }) =>
   const ts       = timeAgo(item.created_at ?? item.time);
   const body     = item.message ?? item.text ?? item.notify_text ?? '';
   const postImg  = (() => { const v = item.post_image ?? item.postImage ?? item.post_thumbnail ?? null; return typeof v === 'string' && v.trim().length > 8 ? v.trim() : null; })();
-  const notifId  = item.id ?? item.notification_id ?? item.notify_id;
+  const notifId  = getNotifId(item);
   const isSystem = action === 'system' || action === 'admin' || !actorId;
   const isOwnNotif = actorId && String(actorId) === String(currentUserId);
 
@@ -174,19 +307,11 @@ const NotifRow = React.memo(({ item, index, onDelete, token, currentUserId }) =>
       Animated.spring(press, { toValue: 1,    useNativeDriver: true, tension: 300, friction: 10 }),
     ]).start();
     Haptics.selectionAsync().catch(() => {});
-    if (action === 'follow') {
-      if (actorId) navigation.navigate('UserProfile', { userId: actorId });
-      return;
-    }
-    if (action === 'message') { navigation.navigate('Inbox'); return; }
-    if (action === 'system' || action === 'admin') return;
-    const pid = item.post_id ?? item.postId ?? item.node_id ?? item.notify_id;
-    if (pid) navigation.navigate('PostDetail', { postId: pid });
-  }, [action, actorId, item, navigation]);
+    onOpen?.(item);
+  }, [item, onOpen, press]);
 
   // System notifications have a different visual treatment
   if (isSystem) {
-    const sysPid = item.post_id ?? item.postId ?? item.node_id ?? item.notify_id;
     return (
       <Animated.View style={{ opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }}>
         <Swipeable
@@ -206,8 +331,8 @@ const NotifRow = React.memo(({ item, index, onDelete, token, currentUserId }) =>
           )}
         >
           <TouchableOpacity
-            activeOpacity={sysPid ? 0.7 : 1}
-            onPress={() => { if (sysPid) navigation.navigate('PostDetail', { postId: sysPid }); }}
+            activeOpacity={0.7}
+            onPress={() => onOpen?.(item)}
             style={[ns.systemRow, { borderLeftColor: meta.color }]}
           >
             <View style={[ns.systemIconWrap, { backgroundColor: meta.bg }]}>
@@ -337,6 +462,7 @@ export default function NotificationsScreen() {
   const { token, user } = useAuth();
   const { colors: tc } = useTheme();
   const setNotifCount = useStore((s) => s.setNotificationCount);
+  const setMsgCount   = useStore((s) => s.setMessageCount);
 
   const [allItems,      setAllItems]      = useState([]);
   const [refreshing,    setRefreshing]    = useState(false);
@@ -345,6 +471,7 @@ export default function NotificationsScreen() {
   const [hasMore,       setHasMore]       = useState(true);
   const [loadingMore,   setLoadingMore]   = useState(false);
   const [apiUnreadCount, setApiUnreadCount] = useState(0);
+  const [apiMessageCount, setApiMessageCount] = useState(0);
   const hdrAnim = useRef(new Animated.Value(0)).current;
   const pollRef = useRef(null);
 
@@ -356,6 +483,13 @@ export default function NotificationsScreen() {
     setNotifCount(count);
   }, [token, setNotifCount]);
 
+  const fetchMessageCount = useCallback(async () => {
+    const res = await apiFetch('/api/v1/messages/unread-count.php', token);
+    const count = Number(res?.data?.unread ?? res?.data?.count ?? res?.unread ?? 0) || 0;
+    setApiMessageCount(count);
+    setMsgCount(count);
+  }, [token, setMsgCount]);
+
   const load = useCallback(async (pageNum = 1, append = false) => {
     if (!append) setRefreshing(pageNum === 1); else setLoadingMore(true);
     const res = await apiFetch(`/api/v1/notifications/get.php?page=${pageNum}&limit=20`, token);
@@ -363,7 +497,8 @@ export default function NotificationsScreen() {
     if (Array.isArray(res?.data?.items)) items = res.data.items;
     else if (Array.isArray(res?.data))   items = res.data;
     else if (Array.isArray(res?.items))  items = res.items;
-    if (append) setAllItems((p) => [...p, ...items]); else setAllItems(items);
+    if (append) setAllItems((p) => uniqueNotifications([...p, ...items]));
+    else setAllItems(uniqueNotifications(items));
     setHasMore(items.length >= 20);
     setRefreshing(false); setLoadingMore(false);
   }, [token]);
@@ -371,30 +506,143 @@ export default function NotificationsScreen() {
   useEffect(() => {
     Animated.timing(hdrAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     fetchCount();
+    fetchMessageCount();
     load();
-    pollRef.current = setInterval(() => { fetchCount(); }, 7000);
+    pollRef.current = setInterval(() => { fetchCount(); fetchMessageCount(); }, 7000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  const onRefresh   = useCallback(() => { setPage(1); setHasMore(true); load(1, false); }, [load]);
+  const onRefresh   = useCallback(() => { setPage(1); setHasMore(true); load(1, false); fetchCount(); fetchMessageCount(); }, [load, fetchCount, fetchMessageCount]);
   const loadMore    = useCallback(() => { if (!hasMore || loadingMore || refreshing) return; const n = page + 1; setPage(n); load(n, true); }, [hasMore, loadingMore, refreshing, page, load]);
-  const handleDel   = useCallback((id) => { if (!id) return; setAllItems((p) => p.filter((n) => (n.id ?? n.notification_id ?? n.notify_id) !== id)); }, []);
+  const handleDel   = useCallback((id) => { if (!id) return; setAllItems((p) => p.filter((n) => getNotifId(n) !== id)); }, []);
+
+  const markOneRead = useCallback((item) => {
+    const id = getNotifId(item);
+    if (!id) return;
+    const wasUnread = !item.seen || item.seen === 0 || item.seen === '0';
+    setAllItems((p) => p.map((n) => getNotifId(n) === id ? { ...n, seen: 1 } : n));
+    if (wasUnread) {
+      setApiUnreadCount((n) => {
+        const next = Math.max(0, n - 1);
+        setNotifCount(next);
+        return next;
+      });
+    }
+    apiFetch('/api/v1/notifications/read.php', token, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notification_id: id }),
+    });
+  }, [token, setNotifCount]);
+
   const markAllRead = useCallback(async () => {
+    if (apiUnreadCount <= 0 && !allItems.some((n) => !n.seen || n.seen === 0 || n.seen === '0')) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setAllItems((p) => p.map((n) => ({ ...n, seen: 1 })));
     setApiUnreadCount(0);
     setNotifCount(0);
-    apiFetch('/api/v1/notifications/read.php', token, { method: 'POST' });
-  }, [token, setNotifCount]);
+    const res = await apiFetch('/api/v1/notifications/read.php', token, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: 1, mark_all: 1 }),
+    });
+    if (res && res._ok === false) {
+      await apiFetch('/api/v1/notifications/read.php', token, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'all=1&mark_all=1',
+      });
+    }
+    fetchCount();
+  }, [apiUnreadCount, allItems, token, setNotifCount, fetchCount]);
+
+  const openNotification = useCallback((item) => {
+    markOneRead(item);
+    const action = String(item.action ?? item.type ?? item.node_type ?? '').toLowerCase();
+    const screen = item.screen ?? item.data?.screen ?? item.payload?.screen;
+    const allowedScreens = new Set([
+      'AIChat',
+      'ExploreHome',
+      'GroupScreen',
+      'HafrikXHome',
+      'HafrikXVisa',
+      'MarketplaceScreen',
+      'Reels2',
+      'WalletScreen',
+    ]);
+    if (screen && allowedScreens.has(screen)) {
+      const params = {};
+      if (screen === 'AIChat') params.fresh = true;
+      if (screen === 'Reels2' && (item.mode ?? item.data?.mode)) params.mode = item.mode ?? item.data?.mode;
+      navigation.navigate(screen, params);
+      return;
+    }
+    const isContentAction = CONTENT_ACTIONS.has(action) || ['post', 'feed', 'comment', 'reply', 'reaction'].some((part) => action.includes(part));
+    const actor  = item.actor ?? item.from_user ?? item.user ?? {};
+    const actorId = actor?.id ?? actor?.user_id ?? item?.from_user_id ?? item?.user_id;
+    const conversationId = item.conversation_id ?? item.thread_id ?? item.chat_id;
+    const postId = getTargetPostId(item);
+    const commentId = getTargetCommentId(item);
+
+    if (action === 'message') {
+      if (conversationId) {
+        navigation.navigate('Thread', {
+          conversationId,
+          otherUser: {
+            id: actorId,
+            user_id: actorId,
+            full_name: actor?.full_name ?? actor?.name ?? actor?.username ?? item.username ?? 'User',
+            username: actor?.username ?? item.username ?? '',
+            user_picture: actor?.user_picture ?? actor?.avatar ?? item.avatar ?? '',
+          },
+        });
+      } else {
+        navigation.navigate('Inbox');
+      }
+      return;
+    }
+
+    if (postId) {
+      navigation.navigate('PostDetail', {
+        postId,
+        commentId,
+        highlightCommentId: commentId,
+        notificationId: getNotifId(item),
+      });
+      return;
+    }
+
+    if (isContentAction) {
+      return;
+    }
+
+    if (action === 'follow' && actorId) {
+      navigation.navigate('UserProfile', { userId: actorId, username: actor?.username ?? item.username ?? '' });
+      return;
+    }
+
+    const groupId = item.group_id ?? item.groupId ?? (String(item.node_type ?? '').toLowerCase().includes('group') ? item.node_id : null);
+    if (groupId) {
+      navigation.navigate('GroupDetails', { groupId });
+      return;
+    }
+
+    const pageId = item.page_id ?? item.pageId ?? item.business_id ?? (String(item.node_type ?? '').toLowerCase().includes('page') ? item.node_id : null);
+    if (pageId) {
+      navigation.navigate('BusinessDetails', { pageId });
+      return;
+    }
+
+    if (actorId) {
+      navigation.navigate('UserProfile', { userId: actorId, username: actor?.username ?? item.username ?? '' });
+    }
+  }, [markOneRead, navigation]);
 
   const unread   = apiUnreadCount;
-  const mentions = useMemo(() => allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'mention').length, [allItems]);
-  const messages = useMemo(() => allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'message').length, [allItems]);
+  const messages = apiMessageCount;
 
   const filtered = useMemo(() => {
     if (filter === 'Unread')   return allItems.filter((n) => !n.seen || n.seen === 0 || n.seen === '0');
-    if (filter === 'Mentions') return allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'mention');
-    if (filter === 'Messages') return allItems.filter((n) => String(n.action ?? n.type ?? n.node_type ?? '').toLowerCase() === 'message');
     return allItems;
   }, [allItems, filter]);
 
@@ -402,7 +650,7 @@ export default function NotificationsScreen() {
     const rows = [];
     sectionize(filtered).forEach(({ title, data }) => {
       rows.push({ _type: 'header', title });
-      data.forEach((item, i) => rows.push({ _type: 'item', item, _i: i }));
+      data.forEach((item, i) => rows.push({ _type: 'item', item, _i: i, _section: title, _key: `n-${getNotifKey(item, i)}-${title}` }));
     });
     return rows;
   }, [filtered]);
@@ -414,19 +662,26 @@ export default function NotificationsScreen() {
         item={row.item}
         index={row._i}
         onDelete={handleDel}
+        onOpen={openNotification}
         token={token}
         currentUserId={user?.id}
       />
     );
-  }, [handleDel, token, user?.id]);
+  }, [handleDel, openNotification, token, user?.id]);
 
   return (
     <View style={[ns.root, { backgroundColor: tc.background }]}>
       <StatusBar barStyle="light-content" />
 
       {/* ── Header ── */}
-      <View style={[ns.header, { paddingTop: top + 8 }]}>
+      <LinearGradient
+        colors={[BRAND, '#10545B', ACCENT]}
+        style={[ns.header, { paddingTop: top + 8 }]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         <View style={ns.decorCircle} pointerEvents="none" />
+        <View style={ns.decorCircle2} pointerEvents="none" />
 
         <Animated.View style={[ns.headerRow, { opacity: hdrAnim, transform: [{ translateY: hdrAnim.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }] }]}>
           <TouchableOpacity style={ns.hBtn} activeOpacity={0.8}
@@ -455,13 +710,35 @@ export default function NotificationsScreen() {
           </View>
         </Animated.View>
 
+        <View style={ns.summaryCard}>
+          <View style={ns.summaryIcon}>
+            <Ionicons name={unread > 0 ? 'notifications' : 'checkmark-done'} size={21} color={ACCENT} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={ns.summaryEyebrow}>Unread notifications</Text>
+            <Text style={ns.summaryTitle}>
+              {unread > 0 ? `${unread > 99 ? '99+' : unread} waiting for you` : 'All caught up'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[ns.summaryAction, unread <= 0 && ns.summaryActionOff]}
+            activeOpacity={0.8}
+            onPress={markAllRead}
+            disabled={unread <= 0}
+          >
+            <Text style={[ns.summaryActionTxt, unread <= 0 && ns.summaryActionTxtOff]}>
+              Mark read
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <FilterBar
           tabs={FILTER_TABS}
           active={filter}
           onChange={setFilter}
-          counts={{ Unread: apiUnreadCount, Mentions: mentions, Messages: messages }}
+          counts={{ Unread: apiUnreadCount }}
         />
-      </View>
+      </LinearGradient>
 
       {/* ── List ── */}
       <FlatList
@@ -469,7 +746,7 @@ export default function NotificationsScreen() {
         keyExtractor={(row, i) =>
           row._type === 'header'
             ? `hdr-${row.title}`
-            : `n-${row.item?.id ?? row.item?.notification_id ?? row.item?.notify_id ?? i}`
+            : row._key ?? `n-${getNotifKey(row.item, i)}`
         }
         renderItem={renderRow}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={ACCENT} colors={[ACCENT]} />}
@@ -484,7 +761,7 @@ export default function NotificationsScreen() {
         }
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
-        contentContainerStyle={{ paddingBottom: 60, flexGrow: 1 }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: 60, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews
       />
@@ -498,18 +775,22 @@ const ns = StyleSheet.create({
 
   // Header
   header: {
-    backgroundColor: BRAND,
-    paddingHorizontal: 16, paddingBottom: 0, overflow: 'hidden',
+    paddingHorizontal: 16, paddingBottom: 12, overflow: 'hidden',
     shadowColor: BRAND, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.22, shadowRadius: 10, elevation: 8,
   },
   decorCircle: {
     position: 'absolute', width: 220, height: 220, borderRadius: 110,
     backgroundColor: WHITE + '0A', top: -90, right: -70,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
+  decorCircle2: {
+    position: 'absolute', width: 150, height: 150, borderRadius: 75,
+    backgroundColor: WHITE + '08', left: -45, bottom: -42,
+  },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   hBtn: {
-    width: 38, height: 38, borderRadius: 12,
+    width: 40, height: 40, borderRadius: 14,
     backgroundColor: WHITE + '1F', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: WHITE + '18',
   },
   hBtnDot: {
     position: 'absolute', top: -4, right: -4,
@@ -519,28 +800,66 @@ const ns = StyleSheet.create({
   },
   hBtnDotTxt: { color: Colors.white, fontSize: 8, fontWeight: '900' },
   titleRow:     { flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
-  titleEyebrow: { fontSize: 9, fontWeight: '800', letterSpacing: 2.5, color: ACCENT, marginBottom: 2 },
-  title: { fontSize: 18, fontWeight: '800', color: Colors.white, letterSpacing: 0.2 },
+  titleEyebrow: { fontSize: 9, fontWeight: '800', letterSpacing: 2.5, color: WHITE + 'B8', marginBottom: 2 },
+  title: { fontSize: 19, fontWeight: '900', color: Colors.white, letterSpacing: 0.2 },
   titleBadge: {
     backgroundColor: ACCENT, borderRadius: 10, minWidth: 22, height: 20,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
   },
   titleBadgeTxt: { color: Colors.white, fontSize: 10, fontWeight: '900' },
 
+  summaryCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: WHITE + 'F2',
+    borderRadius: 22,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: WHITE + '55',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  summaryIcon: {
+    width: 44, height: 44, borderRadius: 15,
+    backgroundColor: ACCENT + '18',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  summaryEyebrow: {
+    fontSize: 10, fontWeight: '900', color: MUTED,
+    letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2,
+  },
+  summaryTitle: { fontSize: 16, fontWeight: '900', color: DARK, letterSpacing: -0.2 },
+  summaryAction: {
+    backgroundColor: ACCENT,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  summaryActionOff: { backgroundColor: BRAND + '10' },
+  summaryActionTxt: { color: WHITE, fontSize: 11, fontWeight: '900' },
+  summaryActionTxtOff: { color: MUTED },
+
   // Filter
   filterBar: {
     flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: WHITE + '1A',
+    backgroundColor: WHITE + '14',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: WHITE + '18',
+    padding: 4,
   },
   filterTab: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 4, paddingVertical: 13, position: 'relative',
+    gap: 4, paddingVertical: 9, position: 'relative', borderRadius: 14,
   },
   filterLine: {
-    position: 'absolute', bottom: 0, left: '15%', right: '15%',
-    height: 2.5, borderRadius: 99, backgroundColor: ACCENT,
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: 14, backgroundColor: WHITE + '22',
   },
-  filterTxt:   { fontSize: 11, fontWeight: '600', color: WHITE + '6B' },
+  filterTxt:   { fontSize: 11, fontWeight: '700', color: WHITE + '85' },
   filterTxtOn: { color: Colors.white, fontWeight: '800' },
   filterBadge: {
     backgroundColor: DANGER, borderRadius: 8, minWidth: 14, height: 14,
@@ -549,18 +868,26 @@ const ns = StyleSheet.create({
   filterBadgeTxt: { color: Colors.white, fontSize: 8, fontWeight: '900' },
 
   // Section
-  sectionRow:  { paddingHorizontal: 18, paddingTop: 22, paddingBottom: 8 },
+  sectionRow:  { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 9 },
   sectionTxt:  { fontSize: 11, fontWeight: '800', color: MUTED, letterSpacing: 1.2, textTransform: 'uppercase' },
 
   // Row
   row: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 13,
+    marginHorizontal: 14, marginBottom: 10,
+    paddingHorizontal: 14, paddingVertical: 13,
     backgroundColor: CARD,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BRAND + '12',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: BRAND + '0D',
+    shadowColor: BRAND,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
   },
-  rowUnread: { backgroundColor: ACCENT + '14' },
-  bar: { position: 'absolute', left: 0, top: 14, bottom: 14, width: 3, borderRadius: 99 },
+  rowUnread: { backgroundColor: ACCENT + '10', borderColor: ACCENT + '2A' },
+  bar: { position: 'absolute', left: 0, top: 16, bottom: 16, width: 3, borderRadius: 99 },
 
   // Avatar
   avatarWrap: { marginRight: 13, position: 'relative' },
@@ -596,10 +923,18 @@ const ns = StyleSheet.create({
   // System alert row
   systemRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 14,
+    marginHorizontal: 14, marginBottom: 10,
+    paddingHorizontal: 14, paddingVertical: 14,
     backgroundColor: '#FFFBEB',
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F59E0B26',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F59E0B26',
     borderLeftWidth: 4,
+    shadowColor: '#92400E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    elevation: 2,
   },
   systemIconWrap: {
     width: 42, height: 42, borderRadius: 12,

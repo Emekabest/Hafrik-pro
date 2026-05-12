@@ -6,7 +6,7 @@
     "icon": "./src/assl.js/icon.png",
     "android": {
       "package": "com.hafrik.app",
-"icon": "./src/assl.js/icon.png"
+      "icon": "./src/assl.js/icon.png"
     },
     "ios": {
       "bundleIdentifier": "com.hafrik.hafrikpro",
@@ -22,7 +22,8 @@
           "mixWithOthers"
         ],
         "NSPhotoLibraryUsageDescription": "Hafrik needs access to your photo library to send images in chats.",
-        "NSMicrophoneUsageDescription": "Hafrik needs microphone access to record and send voice messages.",
+        "NSMicrophoneUsageDescription": "Hafrik needs microphone access to record voice messages and voice prompts.",
+        "NSSpeechRecognitionUsageDescription": "Hafrik uses speech recognition to turn your voice prompts into text for Hafrik AI.",
         "NSCameraUsageDescription": "Hafrik needs camera access to take and send photos."
       }
     },
@@ -35,13 +36,16 @@
           "microphonePermission": "Hafrik needs microphone access to record voice messages."
         }
       ],
-      ["expo-font", {
-        "fonts": [
-          "./assets/fonts/ionicons.ttf",
-          "./assets/fonts/material-community.ttf",
-          "./assets/fonts/feather.ttf"
-        ]
-      }],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/ionicons.ttf",
+            "./assets/fonts/material-community.ttf",
+            "./assets/fonts/feather.ttf"
+          ]
+        }
+      ],
       [
         "expo-video",
         {
@@ -54,6 +58,13 @@
         {
           "icon": "./src/assl.js/icon.png",
           "color": "#ffffff"
+        }
+      ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Hafrik needs microphone access to record voice prompts.",
+          "speechRecognitionPermission": "Hafrik uses speech recognition to turn your voice prompts into text for Hafrik AI."
         }
       ]
     ],

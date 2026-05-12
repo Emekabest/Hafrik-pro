@@ -107,7 +107,7 @@ const QUICK_ROW_1 = [
 const QUICK_ROW_2 = [
   { id: 'warehouse', screen: 'HafrikXWarehouses', label: 'Warehouse', icon: 'storefront',    color: '#8b5cf6' },
   { id: 'learn',     screen: 'HafrikXLearn',      label: 'Learn',     icon: 'school',        color: '#ef4444' },
-  { id: 'visa',      screen: 'HafrikXVisa',        label: 'Visa',      icon: 'document-text', color: '#06b6d4' },
+  { id: 'visa',      screen: 'HafrikXVisa',        label: 'Services',  icon: 'document-text', color: '#06b6d4' },
   { id: 'cityguide', screen: 'CityGuide',           label: 'City Guide',icon: 'map',           color: TEAL      },
   { id: 'orders',    screen: 'HafrikXMyOrders',    label: 'My Orders', icon: 'receipt',       color: BRAND     },
 ];

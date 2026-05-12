@@ -15,7 +15,7 @@
  * Usage:
  *   <LinkPreview url="https://youtube.com/watch?v=abc123" />
  */
-import React, { useEffect, useState, memo, useCallback } from 'react';
+import React, { useEffect, useState, memo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -243,13 +243,42 @@ const YouTubeEmbed = memo(({ url }) => {
   );
 });
 
+// Mobile Safari UA — Spotify's embed player requires a recognised browser UA
+// otherwise it redirects to the "open in app" landing page.
+const MOBILE_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) ' +
+  'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+
 // ─── Spotify Embed ────────────────────────────────────────────────────────────
 const SpotifyEmbed = memo(({ url }) => {
   const embedUrl = getSpotifyEmbedUrl(url);
+  const [failed,  setFailed]  = useState(false);
+  const embedUrlRef = useRef(embedUrl);
+
   if (!embedUrl) return null;
 
   const isCompact = /\/(track|episode)\//.test(url);
   const height = isCompact ? 152 : 352;
+
+  // Fallback card shown when the embed redirects to a landing / error page
+  if (failed) {
+    return (
+      <TouchableOpacity
+        style={styles.spotifyFallback}
+        onPress={() => Linking.openURL(url).catch(() => {})}
+        activeOpacity={0.85}
+      >
+        <View style={styles.spotifyFallbackLeft}>
+          <Ionicons name="musical-notes" size={28} color="#1DB954" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.spotifyFallbackTitle}>Listen on Spotify</Text>
+          <Text style={styles.spotifyFallbackSub} numberOfLines={1}>{url}</Text>
+        </View>
+        <Ionicons name="open-outline" size={18} color="#1DB954" />
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View style={[styles.webEmbedContainer, { height }]}>
@@ -263,7 +292,22 @@ const SpotifyEmbed = memo(({ url }) => {
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
         startInLoadingState
+        userAgent={MOBILE_UA}
         renderLoading={() => <EmbedLoader color="#1DB954" bg="#191414" />}
+        onError={() => setFailed(true)}
+        onHttpError={(e) => { if (e.nativeEvent.statusCode >= 400) setFailed(true); }}
+        onNavigationStateChange={(state) => {
+          // Spotify may redirect to an "open in app" landing page.
+          // Detect that by checking if the URL drifted away from the embed path.
+          if (
+            state.url &&
+            !state.url.startsWith('about:') &&
+            !state.url.includes('spotify.com/embed') &&
+            !state.url.includes('spotify.com/intl') // allow locale redirects within embed
+          ) {
+            setFailed(true);
+          }
+        }}
       />
       <PlatformBadge icon="musical-notes" label="Spotify" color="#1DB954" bg="rgba(0,0,0,0.6)" />
     </View>
@@ -514,6 +558,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingLeft: 4,
+  },
+
+  // ── Spotify fallback (when embed redirects to landing page) ─────────────
+  spotifyFallback: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#191414',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  spotifyFallbackLeft: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(29,185,84,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  spotifyFallbackTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: AppDetails.fontFamily?.body,
+  },
+  spotifyFallbackSub: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: AppDetails.fontFamily?.body,
   },
 
   // ── Vimeo placeholder (before tap) ───────────────────────────────────────

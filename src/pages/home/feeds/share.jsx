@@ -136,7 +136,7 @@ const ShareModal = ({ visible, onClose, feed, onSaveAsImage }) => {
     }
   };
 
-  const postUrl = `https://hafrik.com/post/${feed?.id}`;
+  const postUrl = `https://hafrik.com/posts/${feed?.id}`;
 
   const handleCopyLink = useCallback(async () => {
     try {

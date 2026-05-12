@@ -1,4 +1,4 @@
-import { StyleSheet, View, Alert, Text, Animated, FlatList, Image, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Alert, Text, Animated, FlatList, Image, TouchableOpacity, ScrollView } from "react-native";
 import { useAuth } from "../../AuthContext";
 import { useEffect, useMemo, useState, useCallback, useRef, memo } from "react";
 import React from "react";
@@ -368,6 +368,90 @@ const mau = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Trending Hashtags pill row
+// ─────────────────────────────────────────────────────────────────────────────
+const HASHTAGS = [
+  { tag: '#CantonFair',      color: '#f59e0b' },
+  { tag: '#Guangzhou',       color: '#3b82f6' },
+  { tag: '#Sourcing',        color: '#10b981' },
+  { tag: '#Yiwu',            color: '#8b5cf6' },
+  { tag: '#Visa2025',        color: '#ef4444' },
+  { tag: '#AfricanInChina',  color: '#f97316' },
+  { tag: '#Shipping',        color: '#0891b2' },
+  { tag: '#Shenzhen',        color: '#6366f1' },
+  { tag: '#Nigeria',         color: '#16a34a' },
+  { tag: '#Ghana',           color: '#dc2626' },
+  { tag: '#Kenya',           color: '#dc2626' },
+  { tag: '#WeChatPay',       color: '#07c160' },
+  { tag: '#Trading',         color: '#d97706' },
+  { tag: '#Hafrik',          color: ACCENT    },
+  { tag: '#1688Guide',       color: '#e11d48' },
+  { tag: '#FreightChina',    color: '#0284c7' },
+  { tag: '#AfricaChina',     color: '#7c3aed' },
+];
+
+const TrendingHashtags = memo(({ onPress }) => {
+  const navigation = useNavigation();
+  return (
+    <View style={ht.wrap}>
+      <View style={ht.header}>
+        <Ionicons name="trending-up" size={14} color={ACCENT} />
+        <Text style={ht.headerTxt}>Trending Topics</Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={ht.scroll}
+      >
+        {HASHTAGS.map(({ tag, color }) => (
+          <TouchableOpacity
+            key={tag}
+            style={[ht.pill, { borderColor: color + '40', backgroundColor: color + '10' }]}
+            activeOpacity={0.75}
+            onPress={() => onPress?.(tag)}
+          >
+            <Text style={[ht.pillTxt, { color }]}>{tag}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+});
+
+const ht = StyleSheet.create({
+  wrap: {
+    backgroundColor: CARD,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND + '10',
+    paddingBottom: 14,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  headerTxt: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: MUTED,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    fontFamily: FONT_B,
+  },
+  scroll: { paddingHorizontal: 14, gap: 8, flexWrap: 'nowrap' },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 100,
+    borderWidth: 1.5,
+  },
+  pillTxt: { fontSize: 12.5, fontWeight: '700', fontFamily: FONT_B },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Normalize a feed item — ensures likes_count and reactions are always present
 // ─────────────────────────────────────────────────────────────────────────────
 const normalizeFeed = (feed) => {
@@ -483,12 +567,22 @@ const TrendingOnHafrikScreen = () => {
     navigation.navigate('PostDetail', { postId });
   }, [navigation]);
 
+  const handleHashtagPress = useCallback((tag) => {
+    // Navigate to a search/filter for the hashtag
+    navigation.navigate('Search', { query: tag });
+  }, [navigation]);
+
   const combinedData = useMemo(() => {
     const hero = {
       type: "renderComponent",
       renderComponent: () => (
         <TrendingHeader count={trendingFeedsFromStore.length} totalViews={totalViews} />
       ),
+    };
+
+    const hashtagRow = {
+      type: "renderComponent",
+      renderComponent: () => <TrendingHashtags onPress={handleHashtagPress} />,
     };
 
     // Interstitial pool
@@ -541,7 +635,7 @@ const TrendingOnHafrikScreen = () => {
       ? { type: 'renderComponent', renderComponent: () => <MostActiveUsers users={peopleList} /> }
       : null;
 
-    return [hero, ...(mostActiveItem ? [mostActiveItem] : []), ...feedItems];
+    return [hero, hashtagRow, ...(mostActiveItem ? [mostActiveItem] : []), ...feedItems];
   }, [trendingFeedsFromStore, totalViews, adsList, peopleList, bizList, communityList]);
 
   return (

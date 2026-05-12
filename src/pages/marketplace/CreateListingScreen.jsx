@@ -69,6 +69,7 @@ export default function CreateListingScreen({ navigation }) {
       body.append('location', location.trim());
       body.append('category', category);
       body.append('condition', condition);
+      body.append('product_type', 'simple');
 
       const res = await fetch(`${API_BASE}/api/v1/marketplace/create_listing.php`, {
         method: 'POST',

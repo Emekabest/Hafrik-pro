@@ -17,6 +17,29 @@ const withOpacity = (hex, opacity) => {
   return `#${normalized}${alpha}`;
 };
 
+const stripHtml = (raw = '') => {
+  if (!raw) return '';
+  return raw
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(parseInt(num, 10)))
+    .replace(/&rsquo;|&lsquo;|&apos;/g, "'")
+    .replace(/&rdquo;|&ldquo;/g, '"')
+    .replace(/&ndash;|&mdash;/g, '-')
+    .replace(/&hellip;/g, '...')
+    .replace(/&#039;/g, "'")
+    .replace(/&amp;?/g, '&')
+    .replace(/&#038;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&apos;/g, "'")
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
 
 const BRAND  = Colors.primaryDark;
 const ACCENT = Colors.primary;
@@ -34,12 +57,13 @@ export const ProductCard = memo(function ProductCard({
   onPress?: () => void;
 }) {
   const thumb = item.thumbnail ?? item.photos?.[0] ?? null;
-  const inStock = item.stock_status === "In Stock";
+  const inStock = item.in_stock === true;
   const isPage = item.seller.type === "page";
   const displayName =
     isPage && item.seller.page_name
       ? item.seller.page_name
       : item.seller.username;
+  const cleanTitle = stripHtml(item.title);
 
   return (
     <TouchableOpacity
@@ -61,7 +85,7 @@ export const ProductCard = memo(function ProductCard({
         <View style={[styles.stockBadge, !inStock && styles.stockOut]}>
           <View style={styles.stockDot} />
           <Text style={styles.stockTxt}>
-            {inStock ? "In Stock" : "Out"}
+            {inStock ? "In Stock" : "Out of Stock"}
           </Text>
         </View>
 
@@ -84,7 +108,7 @@ export const ProductCard = memo(function ProductCard({
       {/* Body */}
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={2}>
-          {item.title}
+          {cleanTitle}
         </Text>
 
         <Text style={styles.price}>

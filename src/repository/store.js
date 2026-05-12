@@ -108,6 +108,7 @@ const useStore = create((set, get) => ({
             popularFeeds: [],
             communityFeeds: [],
             followingFeeds: [],
+            recommendedFeeds: [],
             reelsFeeds: [],
             watchFeeds: [],
         },
@@ -280,12 +281,13 @@ const useStore = create((set, get) => ({
         isVisible: false,
         feedId: null,
         sharedVideo: null, // Optional video data for seamless transfer
+        initialText: '',
     },
-    openCommentModal: (feedId, sharedVideo = null) => set({
-        commentModal: { isVisible: true, feedId, sharedVideo }
+    openCommentModal: (feedId, sharedVideo = null, initialText = '') => set({
+        commentModal: { isVisible: true, feedId, sharedVideo, initialText }
     }),
     closeCommentModal: () => set({
-        commentModal: { isVisible: false, feedId: null, sharedVideo: null }
+        commentModal: { isVisible: false, feedId: null, sharedVideo: null, initialText: '' }
     }),
 
 
@@ -353,6 +355,18 @@ const useStore = create((set, get) => ({
     // ── Country filter (reactive — drives apiUrl rebuild in UnifiedFeedScreen) ─
     selectedCountryId: null, // null | 'all' | number/string country_id
     setSelectedCountryId: (id) => set({ selectedCountryId: id }),
+
+    // ── Media content filter (photos/videos/articles etc.) ───────────────────
+    feedContentFilter: '',
+    setFeedContentFilter: (v) => set({ feedContentFilter: v }),
+
+    // ── Cart badge (global count across all marketplace screens) ─────────────
+    cartCount: 0,
+    setCartCount: (n) => set({ cartCount: Number(n ?? 0) }),
+
+    // ── Marketplace display currency (shared across all marketplace screens) ──
+    marketplaceCurrency: 'NGN',
+    setMarketplaceCurrency: (c) => set({ marketplaceCurrency: c }),
 
     // ── Toast ────────────────────────────────────────────────────────────────
     toast: null, // { message: string, emoji: string | null, id: number }

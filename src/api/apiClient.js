@@ -43,31 +43,38 @@ const USER_KEY  = 'hafrik_user';
 // ── Axios instance ─────────────────────────────────────────────────────────────
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: 15000,   // default for normal API calls
   headers: {
     'Content-Type': 'application/json',
     'Accept':        'application/json',
   },
 });
 
-// ── Request interceptor — attach JWT ──────────────────────────────────────────
-apiClient.interceptors.request.use(
-  async (config) => {
-    // verify.php is a public endpoint — email + code only, no session needed.
-    const isPublicRoute = config.url?.includes('/auth/verify.php');
-    if (isPublicRoute) return config;
-
-    // If a caller already set Authorization (edge case), respect it.
-    if (config.headers.Authorization) return config;
-
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
+// ── Upload-specific axios instance — NO timeout ────────────────────────────────
+// axios treats timeout:0 inconsistently across versions, so we use a separate
+// instance with no timeout key at all for large file uploads.
+export const uploadClient = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept':        'application/json',
   },
-  (error) => Promise.reject(error),
-);
+});
+
+// ── Shared request interceptor — attach JWT ───────────────────────────────────
+const authRequestInterceptor = async (config) => {
+  const isPublicRoute = config.url?.includes('/auth/verify.php');
+  if (isPublicRoute) return config;
+  if (config.headers.Authorization) return config;
+  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+};
+
+apiClient.interceptors.request.use(authRequestInterceptor, (error) => Promise.reject(error));
+uploadClient.interceptors.request.use(authRequestInterceptor, (error) => Promise.reject(error));
 
 // ── Response interceptor — handle 401 globally ────────────────────────────────
 apiClient.interceptors.response.use(

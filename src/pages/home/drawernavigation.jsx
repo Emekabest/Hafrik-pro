@@ -217,6 +217,8 @@ const DrawerNavigation = ({ isVisible, onClose }) => {
     ]);
   }, [close, logout, navigation]);
 
+
+  
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <Modal animationType="none" transparent visible={showModal} onRequestClose={close} statusBarTranslucent>
