@@ -67,7 +67,8 @@
           "microphonePermission": "Hafrik needs microphone access to record voice prompts.",
           "speechRecognitionPermission": "Hafrik uses speech recognition to turn your voice prompts into text for Hafrik AI."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {
