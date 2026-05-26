@@ -6,7 +6,8 @@
     "icon": "./src/assl.js/icon.png",
     "android": {
       "package": "com.hafrik.app",
-      "icon": "./src/assl.js/icon.png"
+      "icon": "./src/assl.js/icon.png",
+      "versionCode": 2
     },
     "ios": {
       "bundleIdentifier": "com.hafrik.hafrikpro",
