@@ -62,7 +62,7 @@
         }
       ],
       [
-        "@react-native-voice/voice",
+        // "@react-native-voice/voice", --- IGNORE ---
         {
           "microphonePermission": "Hafrik needs microphone access to record voice prompts.",
           "speechRecognitionPermission": "Hafrik uses speech recognition to turn your voice prompts into text for Hafrik AI."
